@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kubeasy"
+version = "1.0.0"
+description = "AI-native Kubernetes Operational Workspace"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.9"
+authors = [
+    {name = "Atewary"}
+]
+keywords = [
+    "kubernetes", "k8s", "cli", "devops",
+    "operations", "monitoring", "diagnostics"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "Topic :: System :: Systems Administration",
+    "Programming Language :: Python :: 3",
+]
+dependencies = [
+    "rich>=13.0",
+    "prompt-toolkit>=3.0",
+    "questionary>=2.0",
+    "rapidfuzz>=3.0",
+    "humanize>=4.0",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+tui = ["textual>=0.40"]
+api = ["fastapi>=0.104.0", "uvicorn[standard]>=0.24.0"]
+all = ["textual>=0.40", "fastapi>=0.104.0", "uvicorn[standard]>=0.24.0"]
+
+[project.scripts]
+kubeasy = "main:main"
+
+[project.urls]
+Homepage = "https://github.com/atewary/kubeasy"
+Issues = "https://github.com/atewary/kubeasy/issues"
+
+[tool.setuptools.packages.find]
+include = ["core*", "config*", "tui*", "plugins*", "api*"]

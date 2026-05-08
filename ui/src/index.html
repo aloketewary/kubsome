@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>KubeEasy</title>
+  <base href="/">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <style>
+    body {
+      margin: 0;
+      background: #09090b;
+    }
+    .app-loader {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      background: #09090b;
+      z-index: 9999;
+    }
+    .app-loader .spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid #27272a;
+      border-top-color: #3b82f6;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    .app-loader .loader-text {
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: 13px;
+      color: #52525b;
+      letter-spacing: 0.02em;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <app-root>
+    <div class="app-loader">
+      <div class="spinner"></div>
+      <span class="loader-text">Loading KubeEasy...</span>
+    </div>
+  </app-root>
+</body>
+</html>
