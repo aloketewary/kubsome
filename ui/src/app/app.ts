@@ -18,6 +18,9 @@ import { ErrorToastComponent } from './shared/components/error-toast.component';
   standalone: true,
   imports: [RouterOutlet, Select, FormsModule, ShellComponent, CommandPaletteComponent, AiFloatComponent, ToastAlertsComponent, BreadcrumbComponent, ConnectionStatusComponent, ErrorToastComponent],
   template: `
+    <!-- Connection Status (top-most) -->
+    <app-connection-status />
+
     <!-- Global loading bar -->
     @if (loadingService.loading()) {
       <div class="loading-bar"><div class="loading-bar-inner"></div></div>
@@ -110,9 +113,6 @@ import { ErrorToastComponent } from './shared/components/error-toast.component';
 
     <!-- Error Toasts -->
     <app-error-toast />
-
-    <!-- Connection Status -->
-    <app-connection-status />
 
     <!-- Toast Alerts -->
     <app-toast-alerts />

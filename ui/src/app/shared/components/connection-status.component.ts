@@ -11,11 +11,9 @@ import { ButtonModule } from 'primeng/button';
       <div class="offline-banner">
         <div class="offline-content">
           <i class="pi pi-wifi-off"></i>
-          <div class="offline-text">
-            <span class="offline-title">API Disconnected</span>
-            <span class="offline-detail">Cannot reach localhost:8000 — retrying...</span>
-          </div>
-          <button pButton label="Retry Now" icon="pi pi-refresh" class="p-button-sm" (click)="checkConnection()"></button>
+          <span class="offline-title">API Disconnected</span>
+          <span class="offline-detail">Cannot reach localhost:8000 — retrying...</span>
+          <button pButton label="Retry" icon="pi pi-refresh" class="p-button-sm p-button-outlined" (click)="checkConnection()"></button>
         </div>
       </div>
     }
@@ -23,13 +21,12 @@ import { ButtonModule } from 'primeng/button';
   styles: [`
     .offline-banner {
       position: fixed;
-      top: 52px;
-      left: 220px;
+      top: 0;
+      left: 0;
       right: 0;
-      z-index: 5000;
-      background: var(--danger-subtle);
-      border-bottom: 1px solid var(--danger);
-      padding: 10px 20px;
+      z-index: 99999;
+      background: var(--danger);
+      padding: 8px 20px;
       animation: slideDown 0.2s ease-out;
     }
     @keyframes slideDown {
@@ -40,18 +37,21 @@ import { ButtonModule } from 'primeng/button';
       display: flex;
       align-items: center;
       gap: 12px;
+      justify-content: center;
     }
     .offline-content > i {
-      font-size: 18px;
-      color: var(--danger);
+      font-size: 16px;
+      color: #fff;
     }
-    .offline-text {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
+    .offline-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #fff;
     }
-    .offline-title { font-size: 13px; font-weight: 600; color: var(--danger); }
-    .offline-detail { font-size: 11px; color: var(--text-secondary); }
+    .offline-detail {
+      font-size: 11px;
+      color: rgba(255,255,255,0.8);
+    }
   `],
 })
 export class ConnectionStatusComponent implements OnInit, OnDestroy {

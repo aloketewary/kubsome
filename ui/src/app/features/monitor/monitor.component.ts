@@ -179,6 +179,9 @@ interface MonitorCard {
                 <button class="fs-btn" (click)="fetchCardData(card)" title="Refresh">
                   <i class="pi pi-refresh"></i>
                 </button>
+                <button class="fs-btn" (click)="card.fullscreen = false" title="Minimize">
+                  <i class="pi pi-window-minimize"></i>
+                </button>
                 <button class="fs-btn fs-btn-close" (click)="card.fullscreen = false" title="Close">
                   <i class="pi pi-times"></i>
                 </button>
@@ -400,14 +403,12 @@ interface MonitorCard {
 
     /* Fullscreen Modal */
     .fs-overlay {
-      position: fixed; inset: 0; background: rgba(0,0,0,0.7);
-      backdrop-filter: blur(4px); z-index: 9000;
-      display: flex; align-items: center; justify-content: center; padding: 12px;
+      position: fixed; inset: 0; background: var(--bg);
+      z-index: 9000; display: flex; flex-direction: column;
     }
     .fs-modal {
-      width: 95vw; max-width: 1100px; max-height: 90vh;
-      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
-      box-shadow: 0 24px 80px rgba(0,0,0,0.5); display: flex; flex-direction: column; overflow: hidden;
+      width: 100%; height: 100%;
+      background: var(--bg); display: flex; flex-direction: column; overflow: hidden;
     }
     .fs-header {
       display: flex; align-items: center; justify-content: space-between;
@@ -426,7 +427,7 @@ interface MonitorCard {
     }
     .fs-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-subtle); }
     .fs-btn-close:hover { border-color: var(--danger); color: var(--danger); background: var(--danger-subtle); }
-    .fs-body { padding: 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 24px; }
+    .fs-body { padding: 24px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 24px; }
     .fs-health-row { display: flex; align-items: center; gap: 24px; }
     .fs-ring-wrap { position: relative; width: 90px; height: 90px; flex-shrink: 0; }
     .fs-ring-svg { width: 100%; height: 100%; transform: rotate(-90deg); }

@@ -45,4 +45,15 @@ def health():
 # Serve Angular build in production
 ui_dist = Path(__file__).parent.parent / "ui" / "dist" / "ui" / "browser"
 if ui_dist.exists():
-    app.mount("/", StaticFiles(directory=str(ui_dist), html=True), name="ui")
+    from fastapi.responses import FileResponse
+
+    @app.get("/app")
+    def serve_spa_root():
+        return FileResponse(ui_dist / "index.html")
+
+    @app.get("/app/{path:path}")
+    def serve_spa(path: str):
+        file_path = ui_dist / path
+        if file_path.is_file():
+            return FileResponse(file_path)
+        return FileResponse(ui_dist / "index.html")

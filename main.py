@@ -29,6 +29,7 @@ from core.bookmarks import get_bookmark
 from core.chaining import split_chain
 from core.banner import render_banner
 from core.notify import notify_if_critical
+from core.version import check_update
 
 
 console = Console()
@@ -99,7 +100,7 @@ def _start_server(args):
         Panel.fit(
             f"[bold green]Kubsome Server[/bold green]\n"
             f"[dim]API:[/dim]  http://localhost:{port}/api\n"
-            f"[dim]UI:[/dim]   http://localhost:{port}\n"
+            f"[dim]UI:[/dim]   http://localhost:{port}/app\n"
             f"[dim]Docs:[/dim] http://localhost:{port}/docs",
             border_style="green"
         )
@@ -163,6 +164,17 @@ def _start_cli():
 
     render_banner()
     create_default_workflows()
+
+    # Check for updates (non-blocking)
+    update = check_update()
+    if update:
+        latest, current = update
+        console.print(
+            f"[yellow]⬆ Update available:[/yellow] "
+            f"[dim]{current}[/dim] → [green]{latest}[/green]  "
+            f"[dim]Run:[/dim] pip install --upgrade kubsome\n"
+        )
+
     last_command = ""
 
     while True:

@@ -67,12 +67,19 @@ import { Pod } from '../../core/models';
           </div>
           <button pButton icon="pi pi-arrow-down" class="p-button-sm p-button-text p-button-rounded" pTooltip="Scroll to bottom" (click)="scrollBottom()"></button>
           <button pButton icon="pi pi-copy" class="p-button-sm p-button-text p-button-rounded" pTooltip="Copy all" (click)="copyLogs()"></button>
+          <button pButton [icon]="fullscreen ? 'pi pi-window-minimize' : 'pi pi-window-maximize'" class="p-button-sm p-button-text p-button-rounded" [pTooltip]="fullscreen ? 'Exit fullscreen' : 'Fullscreen'" (click)="fullscreen = !fullscreen"></button>
         </div>
       </div>
     }
 
     <!-- Log Viewer -->
-    <div class="log-container" #logEl>
+    <div class="log-container" [class.log-fullscreen]="fullscreen" #logEl>
+      @if (fullscreen) {
+        <div class="fs-bar-header">
+          <span class="fs-bar-title"><i class="pi pi-terminal"></i> {{ selectedPod || 'Logs' }}</span>
+          <button class="fs-close-btn" (click)="fullscreen = false"><i class="pi pi-times"></i></button>
+        </div>
+      }
       @if (filteredLines.length > 0) {
         <div class="log-viewer">
           @for (line of filteredLines; track $index) {
@@ -157,8 +164,26 @@ import { Pod } from '../../core/models';
     .log-container {
       background: var(--bg-card); border: 1px solid var(--border);
       border-radius: 0 0 var(--radius-sm) var(--radius-sm);
-      overflow: hidden;
+      overflow: hidden; transition: all 0.2s;
     }
+    .log-container.log-fullscreen {
+      position: fixed; inset: 0; z-index: 9000;
+      border-radius: 0; border: none;
+      display: flex; flex-direction: column;
+    }
+    .log-fullscreen .log-viewer { max-height: none; flex: 1; }
+    .fs-bar-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 16px; background: var(--bg-elevated); border-bottom: 1px solid var(--border);
+    }
+    .fs-bar-title { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+    .fs-bar-title i { opacity: 0.5; }
+    .fs-close-btn {
+      width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--border);
+      background: var(--bg-card); color: var(--text-muted); cursor: pointer;
+      display: flex; align-items: center; justify-content: center; transition: all 0.12s;
+    }
+    .fs-close-btn:hover { border-color: var(--danger); color: var(--danger); background: var(--danger-subtle); }
     .log-viewer {
       max-height: calc(100vh - 320px); overflow-y: auto; padding: 8px 0;
       font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 1.7;
@@ -205,6 +230,7 @@ export class LogsComponent implements OnInit, OnDestroy {
   streaming = false;
   searchQuery = '';
   levelFilter: 'all' | 'error' | 'warn' = 'all';
+  fullscreen = false;
 
   private streamSub: Subscription | null = null;
   private streamClose: (() => void) | null = null;
