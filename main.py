@@ -39,8 +39,78 @@ app_config = load_config()
 
 def main():
     import sys
+    from core.config import CONFIG_PATH, save_default_config
 
     args = sys.argv[1:]
+
+    # Auto-init on first run if no config exists
+    if not CONFIG_PATH.exists():
+        save_default_config()
+        console.print(
+            f"[green]✓ First run — config created:[/green] "
+            f"{CONFIG_PATH}\n"
+        )
+        console.print(
+            "[bold]Quick Start[/bold]\n"
+            "────────────────────────────────────────\n"
+            "[cyan]kubsome[/cyan]              "
+            "Interactive CLI\n"
+            "[cyan]kubsome serve[/cyan]        "
+            "API + Web UI (opens browser)\n"
+            "[cyan]kubsome tui[/cyan]          "
+            "Full-screen terminal dashboard\n"
+            "[cyan]kubsome --exec \"pods\"[/cyan] "
+            "Run single command (CI/CD)\n"
+            "\n"
+            "[bold]Enable Features[/bold]\n"
+            "────────────────────────────────────────\n"
+            "[cyan]pip install kubsome[/cyan]       "
+            "CLI only (installed ✓)\n"
+            "[cyan]pip install \"kubsome[api]\"[/cyan] "
+            "→ enables [green]kubsome serve[/green] "
+            "(REST API + Web UI)\n"
+            "[cyan]pip install \"kubsome[tui]\"[/cyan] "
+            "→ enables [green]kubsome tui[/green] "
+            "(full-screen dashboard)\n"
+            "[cyan]pip install \"kubsome[all]\"[/cyan] "
+            "→ enables [green]everything[/green]\n"
+            "\n"
+            "[bold]Inside the CLI[/bold]\n"
+            "────────────────────────────────────────\n"
+            "[cyan]overview[/cyan]     "
+            "Cluster health dashboard\n"
+            "[cyan]pods[/cyan]         "
+            "List pods with status\n"
+            "[cyan]logs <pod>[/cyan]   "
+            "View pod logs\n"
+            "[cyan]diagnose <pod>[/cyan] "
+            "Root cause analysis\n"
+            "[cyan]events[/cyan]       "
+            "Recent cluster events\n"
+            "[cyan]top pods[/cyan]     "
+            "CPU/memory usage\n"
+            "[cyan]security[/cyan]     "
+            "Misconfiguration scan\n"
+            "[cyan]help[/cyan]         "
+            "Full command list (85+)\n"
+            "\n"
+            "[bold]Aliases[/bold] (type less)\n"
+            "────────────────────────────────────────\n"
+            "[dim]p[/dim]=pods  [dim]o[/dim]=overview  "
+            "[dim]l[/dim]=logs  [dim]d[/dim]=diagnose  "
+            "[dim]e[/dim]=events  [dim]s[/dim]=switch\n"
+            "\n"
+            "[bold]Tips[/bold]\n"
+            "────────────────────────────────────────\n"
+            "• Fuzzy matching — type partial "
+            "names, Kubsome finds it\n"
+            "• Natural language — "
+            "\"why is payment failing\" works\n"
+            "• Chain commands — "
+            "[cyan]pods && events && alerts[/cyan]\n"
+            "• Edit config — "
+            f"[dim]{CONFIG_PATH}[/dim]\n"
+        )
 
     # kubsome init
     if args and args[0] == "init":

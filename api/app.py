@@ -43,7 +43,14 @@ def health():
 
 
 # Serve Angular build in production
-ui_dist = Path(__file__).parent.parent / "ui" / "dist" / "ui" / "browser"
+# Check bundled ui_dist first (pip install), then dev path
+ui_dist = Path(__file__).parent / "ui_dist"
+if not ui_dist.exists():
+    ui_dist = (
+        Path(__file__).parent.parent
+        / "ui" / "dist" / "ui" / "browser"
+    )
+
 if ui_dist.exists():
     from fastapi.responses import FileResponse
 

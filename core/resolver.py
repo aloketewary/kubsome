@@ -12,24 +12,24 @@ def resolve_pod_name(query: str):
     names = [pod["name"] for pod in pods]
 
     matches = process.extract(
-        query,
-        names,
-        limit=5
+        query, names, limit=5
     )
 
-    filtered = [
-        match[0]
-        for match in matches
-        if match[1] > 50
-    ]
+    if not matches:
+        return None
 
-    return filtered
+    # Strong match — return just that one
+    if matches[0][1] > 80:
+        return [matches[0][0]]
+
+    return [
+        m[0] for m in matches if m[1] > 50
+    ] or None
 
 
 def resolve_deployment_name(query: str):
     """Fuzzy match deployment names."""
     import subprocess
-    import json
     from core.context import context
 
     cmd = (
@@ -51,19 +51,20 @@ def resolve_deployment_name(query: str):
         query, names, limit=5
     )
 
-    filtered = [
-        match[0]
-        for match in matches
-        if match[1] > 50
-    ]
+    if not matches:
+        return None
 
-    return filtered
+    if matches[0][1] > 80:
+        return [matches[0][0]]
+
+    return [
+        m[0] for m in matches if m[1] > 50
+    ] or None
 
 
 def resolve_cronjob_name(query: str):
     """Fuzzy match cronjob names."""
     import subprocess
-    import json
     from core.context import context
 
     cmd = (
@@ -85,10 +86,12 @@ def resolve_cronjob_name(query: str):
         query, names, limit=5
     )
 
-    filtered = [
-        match[0]
-        for match in matches
-        if match[1] > 50
-    ]
+    if not matches:
+        return None
 
-    return filtered
+    if matches[0][1] > 80:
+        return [matches[0][0]]
+
+    return [
+        m[0] for m in matches if m[1] > 50
+    ] or None

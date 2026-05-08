@@ -3,3 +3,4 @@ include LICENSE
 include requirements.txt
 recursive-include plugins *.py
 recursive-include config *.py
+recursive-include api/ui_dist *

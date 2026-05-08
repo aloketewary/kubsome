@@ -45,17 +45,24 @@ def find_context(query: str):
         limit=5
     )
 
+    if not matches:
+        return []
+
+    # Strong match — return only that one
+    if matches[0][1] > 80:
+        ctx = next(
+            c for c in contexts
+            if c["name"] == matches[0][0]
+        )
+        return [ctx]
+
     results = []
-
     for match in matches:
-
         if match[1] > 40:
-
             ctx = next(
                 c for c in contexts
                 if c["name"] == match[0]
             )
-
             results.append(ctx)
 
     return results

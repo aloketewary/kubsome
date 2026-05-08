@@ -10,10 +10,8 @@ def _is_interactive():
 def choose_pod(matches):
     if len(matches) == 1:
         return matches[0]
-
     if not _is_interactive():
         return matches[0]
-
     return questionary.select(
         "Select Pod:",
         choices=matches
@@ -23,10 +21,8 @@ def choose_pod(matches):
 def choose_deployment(matches):
     if len(matches) == 1:
         return matches[0]
-
     if not _is_interactive():
         return matches[0]
-
     return questionary.select(
         "Select Deployment:",
         choices=matches
@@ -36,10 +32,8 @@ def choose_deployment(matches):
 def choose_cronjob(matches):
     if len(matches) == 1:
         return matches[0]
-
     if not _is_interactive():
         return matches[0]
-
     return questionary.select(
         "Select CronJob:",
         choices=matches
@@ -47,13 +41,15 @@ def choose_cronjob(matches):
 
 
 def choose_context(contexts):
+    if not contexts:
+        return None
+    if len(contexts) == 1:
+        return contexts[0]
     if not _is_interactive():
-        return contexts[0] if contexts else None
+        return contexts[0]
 
     labels = []
-
     for ctx in contexts:
-
         labels.append(
             f"{ctx['name']} "
             f"({ctx['environment']})"
@@ -65,12 +61,10 @@ def choose_context(contexts):
     ).ask()
 
     for ctx in contexts:
-
         label = (
             f"{ctx['name']} "
             f"({ctx['environment']})"
         )
-
         if label == selected:
             return ctx
 
