@@ -41,6 +41,11 @@ def main():
 
     args = sys.argv[1:]
 
+    # kubsome init
+    if args and args[0] == "init":
+        _init_config()
+        return
+
     # kubsome serve [port]
     if args and args[0] == "serve":
         _start_server(args)
@@ -58,6 +63,32 @@ def main():
 
     # kubsome (interactive CLI)
     _start_cli()
+
+
+def _init_config():
+    """Generate default config interactively."""
+    from core.config import (
+        CONFIG_PATH, save_default_config
+    )
+
+    if CONFIG_PATH.exists():
+        console.print(
+            f"[yellow]Config already exists:[/yellow] "
+            f"{CONFIG_PATH}"
+        )
+        overwrite = input("Overwrite? [y/N]: ").strip()
+        if overwrite.lower() != "y":
+            console.print("[dim]Skipped.[/dim]")
+            return
+
+    save_default_config()
+    console.print(
+        f"[green]✓ Config created:[/green] {CONFIG_PATH}"
+    )
+    console.print(
+        "[dim]Edit it to customize theme, aliases, "
+        "and LLM settings.[/dim]"
+    )
 
 
 def _start_server(args):

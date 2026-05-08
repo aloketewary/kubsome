@@ -102,6 +102,48 @@ import { OverviewResponse, KubeEvent } from '../../core/models';
         </div>
       </div>
 
+      <!-- Charts Row -->
+      <div class="charts-row">
+        <!-- Activity Bar Chart -->
+        <div class="chart-card">
+          <div class="chart-header">
+            <h3>Event Activity</h3>
+            <span class="chart-hint">Last {{ recentEvents.length }} events</span>
+          </div>
+          <div class="bar-chart">
+            @for (bar of activityBars; track $index) {
+              <div class="chart-bar-wrap">
+                <div class="chart-bar" [style.height.%]="bar" [class.bar-high]="bar > 70" [class.bar-med]="bar > 40 && bar <= 70" [attr.title]="Math.round(bar) + '%'"></div>
+              </div>
+            }
+          </div>
+        </div>
+
+        <!-- Pod Status Donut -->
+        <div class="chart-card">
+          <div class="chart-header">
+            <h3>Pod Distribution</h3>
+          </div>
+          <div class="donut-chart">
+            <svg viewBox="0 0 42 42" class="donut-svg">
+              <circle class="donut-bg" cx="21" cy="21" r="15.9" />
+              <circle class="donut-ok" cx="21" cy="21" r="15.9" [attr.stroke-dasharray]="podRunningDash" stroke-dashoffset="25" />
+              <circle class="donut-warn" cx="21" cy="21" r="15.9" [attr.stroke-dasharray]="podWarnDash" [attr.stroke-dashoffset]="podWarnOffset" />
+              <circle class="donut-crit" cx="21" cy="21" r="15.9" [attr.stroke-dasharray]="podCritDash" [attr.stroke-dashoffset]="podCritOffset" />
+            </svg>
+            <div class="donut-center">
+              <span class="donut-total">{{ podTotal }}</span>
+              <span class="donut-label">pods</span>
+            </div>
+          </div>
+          <div class="donut-legend">
+            <span class="dl-item"><span class="dl-dot dl-ok"></span> Running {{ data.pods.healthy }}</span>
+            <span class="dl-item"><span class="dl-dot dl-warn"></span> Warning {{ data.pods.warning }}</span>
+            <span class="dl-item"><span class="dl-dot dl-crit"></span> Critical {{ data.pods.critical }}</span>
+          </div>
+        </div>
+      </div>
+
       <!-- Two-column layout: Events + Actions -->
       <div class="bottom-grid">
         <div class="bottom-section">
@@ -264,6 +306,60 @@ import { OverviewResponse, KubeEvent } from '../../core/models';
     .legend-item.crit { color: var(--danger); }
 
     /* Bottom Grid */
+    /* Charts */
+    .charts-row {
+      display: grid;
+      grid-template-columns: 1.5fr 1fr;
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+    .chart-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+    }
+    .chart-header {
+      display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;
+    }
+    .chart-header h3 { font-size: 13px; font-weight: 600; margin: 0; }
+    .chart-hint { font-size: 10px; color: var(--text-muted); }
+
+    /* Bar Chart */
+    .bar-chart {
+      display: flex; align-items: flex-end; gap: 3px; height: 80px;
+    }
+    .chart-bar-wrap { flex: 1; height: 100%; display: flex; align-items: flex-end; }
+    .chart-bar {
+      width: 100%; border-radius: 3px 3px 0 0; background: var(--accent); opacity: 0.5;
+      transition: all 0.2s; cursor: crosshair; min-height: 3px;
+    }
+    .chart-bar:hover { opacity: 0.9; }
+    .chart-bar.bar-high { background: var(--danger); opacity: 0.7; }
+    .chart-bar.bar-med { background: var(--warning); opacity: 0.6; }
+
+    /* Donut Chart */
+    .donut-chart { position: relative; width: 120px; height: 120px; margin: 0 auto 12px; }
+    .donut-svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+    .donut-bg { fill: none; stroke: var(--bg-elevated); stroke-width: 4; }
+    .donut-ok { fill: none; stroke: var(--success); stroke-width: 4; stroke-linecap: round; }
+    .donut-warn { fill: none; stroke: var(--warning); stroke-width: 4; stroke-linecap: round; }
+    .donut-crit { fill: none; stroke: var(--danger); stroke-width: 4; stroke-linecap: round; }
+    .donut-center {
+      position: absolute; inset: 0; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+    }
+    .donut-total { font-size: 22px; font-weight: 700; }
+    .donut-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; }
+    .donut-legend { display: flex; justify-content: center; gap: 12px; }
+    .dl-item { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text-secondary); }
+    .dl-dot { width: 6px; height: 6px; border-radius: 50%; }
+    .dl-ok { background: var(--success); }
+    .dl-warn { background: var(--warning); }
+    .dl-crit { background: var(--danger); }
+
+    @media (max-width: 768px) { .charts-row { grid-template-columns: 1fr; } }
+
     .bottom-grid {
       display: grid;
       grid-template-columns: 1.4fr 1fr;
@@ -324,7 +420,61 @@ import { OverviewResponse, KubeEvent } from '../../core/models';
 
     @media (max-width: 900px) {
       .metrics-grid { grid-template-columns: 1fr; }
-      .bottom-grid { grid-template-columns: 1fr; }
+      /* Charts */
+    .charts-row {
+      display: grid;
+      grid-template-columns: 1.5fr 1fr;
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+    .chart-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+    }
+    .chart-header {
+      display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;
+    }
+    .chart-header h3 { font-size: 13px; font-weight: 600; margin: 0; }
+    .chart-hint { font-size: 10px; color: var(--text-muted); }
+
+    /* Bar Chart */
+    .bar-chart {
+      display: flex; align-items: flex-end; gap: 3px; height: 80px;
+    }
+    .chart-bar-wrap { flex: 1; height: 100%; display: flex; align-items: flex-end; }
+    .chart-bar {
+      width: 100%; border-radius: 3px 3px 0 0; background: var(--accent); opacity: 0.5;
+      transition: all 0.2s; cursor: crosshair; min-height: 3px;
+    }
+    .chart-bar:hover { opacity: 0.9; }
+    .chart-bar.bar-high { background: var(--danger); opacity: 0.7; }
+    .chart-bar.bar-med { background: var(--warning); opacity: 0.6; }
+
+    /* Donut Chart */
+    .donut-chart { position: relative; width: 120px; height: 120px; margin: 0 auto 12px; }
+    .donut-svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+    .donut-bg { fill: none; stroke: var(--bg-elevated); stroke-width: 4; }
+    .donut-ok { fill: none; stroke: var(--success); stroke-width: 4; stroke-linecap: round; }
+    .donut-warn { fill: none; stroke: var(--warning); stroke-width: 4; stroke-linecap: round; }
+    .donut-crit { fill: none; stroke: var(--danger); stroke-width: 4; stroke-linecap: round; }
+    .donut-center {
+      position: absolute; inset: 0; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+    }
+    .donut-total { font-size: 22px; font-weight: 700; }
+    .donut-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; }
+    .donut-legend { display: flex; justify-content: center; gap: 12px; }
+    .dl-item { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text-secondary); }
+    .dl-dot { width: 6px; height: 6px; border-radius: 50%; }
+    .dl-ok { background: var(--success); }
+    .dl-warn { background: var(--warning); }
+    .dl-crit { background: var(--danger); }
+
+    @media (max-width: 768px) { .charts-row { grid-template-columns: 1fr; } }
+
+    .bottom-grid { grid-template-columns: 1fr; }
     }
   `],
 })
@@ -355,6 +505,39 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (total === 0) return 100;
     const healthy = (this.data?.pods.healthy || 0) + (this.data?.nodes.healthy || 0) + (this.data?.deployments.healthy || 0);
     return Math.round((healthy / total) * 100);
+  }
+
+  Math = Math;
+
+  get activityBars(): number[] {
+    const bars = new Array(16).fill(0);
+    const total = this.recentEvents.length;
+    if (total === 0) return bars.map(() => Math.random() * 15 + 5);
+    for (let i = 0; i < total; i++) { bars[Math.floor((i / total) * 16)]++; }
+    const max = Math.max(...bars, 1);
+    return bars.map(b => Math.max((b / max) * 100, 5));
+  }
+
+  get podRunningDash(): string {
+    const pct = this.podTotal > 0 ? (this.data!.pods.healthy / this.podTotal) * 100 : 0;
+    return pct + ' ' + (100 - pct);
+  }
+  get podWarnDash(): string {
+    const pct = this.podTotal > 0 ? (this.data!.pods.warning / this.podTotal) * 100 : 0;
+    return pct + ' ' + (100 - pct);
+  }
+  get podWarnOffset(): string {
+    const running = this.podTotal > 0 ? (this.data!.pods.healthy / this.podTotal) * 100 : 0;
+    return String(25 - running);
+  }
+  get podCritDash(): string {
+    const pct = this.podTotal > 0 ? (this.data!.pods.critical / this.podTotal) * 100 : 0;
+    return pct + ' ' + (100 - pct);
+  }
+  get podCritOffset(): string {
+    const running = this.podTotal > 0 ? (this.data!.pods.healthy / this.podTotal) * 100 : 0;
+    const warn = this.podTotal > 0 ? (this.data!.pods.warning / this.podTotal) * 100 : 0;
+    return String(25 - running - warn);
   }
 
   pct(value: number, total: number): number {

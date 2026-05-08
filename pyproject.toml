@@ -10,7 +10,7 @@ readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.9"
 authors = [
-    {name = "Aloke Tewary"}
+    {name = "Aloke Tewary", email = "aloketewary@gmail.com"}
 ]
 keywords = [
     "kubernetes", "k8s", "cli", "devops",
@@ -23,6 +23,12 @@ classifiers = [
     "Intended Audience :: System Administrators",
     "Topic :: System :: Systems Administration",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
 ]
 dependencies = [
     "rich>=13.0",
@@ -37,14 +43,16 @@ dependencies = [
 tui = ["textual>=0.40"]
 api = ["fastapi>=0.104.0", "uvicorn[standard]>=0.24.0"]
 all = ["textual>=0.40", "fastapi>=0.104.0", "uvicorn[standard]>=0.24.0"]
+dev = ["pytest>=7.0", "build", "twine"]
 
 [project.scripts]
 kubsome = "main:main"
 
-
 [project.urls]
 Homepage = "https://github.com/aloketewary/kubsome"
+Repository = "https://github.com/aloketewary/kubsome"
 Issues = "https://github.com/aloketewary/kubsome/issues"
+
 [tool.setuptools]
 py-modules = ["main"]
 

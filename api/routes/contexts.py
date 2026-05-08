@@ -60,3 +60,18 @@ def post_switch_namespace(req: NamespaceRequest):
     context.namespace = req.namespace
     save_state(context.current_context, context.namespace)
     return {"namespace": context.namespace}
+
+
+@router.get("/namespaces/{ctx}")
+def get_namespaces_for(ctx: str):
+    """Get namespaces for a specific context without switching global state."""
+    import subprocess
+    result = subprocess.run(
+        f"kubectl --context {ctx} get namespaces -o jsonpath='{{.items[*].metadata.name}}'",
+        shell=True, capture_output=True, text=True,
+    )
+    if result.returncode != 0:
+        return {"namespaces": []}
+    raw = result.stdout.strip().strip("'")
+    namespaces = sorted([ns for ns in raw.split() if ns])
+    return {"namespaces": namespaces}

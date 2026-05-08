@@ -4,8 +4,23 @@
 
 Faster debugging. Safer operations. Less cognitive load.
 
-## Install (one command)
+## Install
 
+### From PyPI (recommended)
+```bash
+pip install kubsome
+kubsome init              # Generate default config
+kubsome                   # Start
+```
+
+With optional features:
+```bash
+pip install "kubsome[tui]"   # + Full-screen TUI
+pip install "kubsome[api]"   # + REST API + Web UI
+pip install "kubsome[all]"   # Everything
+```
+
+### From source
 ```bash
 git clone https://github.com/aloketewary/kubsome.git && cd kubsome && ./install.sh
 ```
