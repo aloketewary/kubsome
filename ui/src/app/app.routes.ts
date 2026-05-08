@@ -12,6 +12,7 @@ export const routes: Routes = [
   { path: 'namespace', loadComponent: () => import('./features/namespace/namespace.component').then(m => m.NamespaceComponent) },
   { path: 'rbac', loadComponent: () => import('./features/rbac/rbac.component').then(m => m.RbacComponent) },
   { path: 'network', loadComponent: () => import('./features/network/network.component').then(m => m.NetworkComponent) },
+  { path: 'secrets', loadComponent: () => import('./features/secrets/secrets.component').then(m => m.SecretsComponent) },
   { path: 'incident', loadComponent: () => import('./features/incident/incident.component').then(m => m.IncidentComponent) },
   { path: 'graph', loadComponent: () => import('./features/graph/graph.component').then(m => m.GraphComponent) },
   { path: 'yaml', loadComponent: () => import('./features/yaml-editor/yaml-editor.component').then(m => m.YamlEditorComponent) },

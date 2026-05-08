@@ -8,6 +8,14 @@ from core.context import context
 router = APIRouter(tags=["operations"])
 
 
+# ─── Image Pull Secrets ───────────────────────────────────────────────────────
+
+@router.get("/image-pull-secrets")
+def get_image_pull_secrets(pod: Optional[str] = None):
+    from core.collectors.image_pull import check_image_pull_secrets
+    return check_image_pull_secrets(pod)
+
+
 # ─── Incident Mode ───────────────────────────────────────────────────────────
 
 class IncidentStartRequest(BaseModel):
