@@ -32,39 +32,72 @@ def handle_ai_query(query):
     lower = query.lower()
 
     # "why is X failing/crashing/down"
-    if "why" in lower:
+    if "why" in lower and (
+        "fail" in lower or "crash" in lower
+        or "down" in lower or "broken" in lower
+    ):
         return _why_query(query)
 
-    # "summarize" / "summary"
-    if "summar" in lower:
+    # "diagnose high restart pods" / "diagnose" without target
+    if "diagnose" in lower and "restart" in lower:
+        return _high_restart_pods()
+
+    # "summarize" / "summary" / "cluster health"
+    if "summar" in lower or "cluster health" in lower:
         return _summarize_cluster()
 
-    # "what changed" / "what happened"
-    if "what changed" in lower or "what happened" in lower:
+    # "what changed" / "what happened" / "recently"
+    if (
+        "what changed" in lower
+        or "what happened" in lower
+        or "recently" in lower
+        or "last hour" in lower
+    ):
         return _what_changed()
 
     # "which pods are unhealthy/failing"
-    if "unhealthy" in lower or "failing" in lower:
+    if "unhealthy" in lower or (
+        "which" in lower and "pod" in lower
+    ):
         return _unhealthy_pods()
 
-    # "top consumers" / "resource hogs"
-    if "top" in lower or "consumer" in lower or "hog" in lower:
+    # "top consumers" / "resource"
+    if "consumer" in lower or "resource" in lower or "hog" in lower:
         return _top_consumers()
+
+    # "show warning events" / "warning"
+    if "warning" in lower and "event" in lower:
+        return _warning_events()
+
+    # "any anomalies" / "any issues"
+    if "anomal" in lower or "issue" in lower:
+        return _anomaly_check()
 
     # "is X healthy"
     if "healthy" in lower or "status" in lower:
         return _health_check(query)
 
+    # "crash" / "high restart"
+    if "crash" in lower or "high restart" in lower:
+        return _high_restart_pods()
+
+    # Fallback
     return {
         "title": "🤖 AI Assistant",
         "content": (
             "I can help with:\n\n"
+            "  [bold]DIAGNOSE[/bold]\n"
             "  • [cyan]why is <pod> failing[/cyan]\n"
+            "  • [cyan]diagnose high restart pods[/cyan]\n"
+            "  • [cyan]which pods are unhealthy[/cyan]\n\n"
+            "  [bold]ANALYZE[/bold]\n"
             "  • [cyan]summarize cluster health[/cyan]\n"
-            "  • [cyan]what changed in last hour[/cyan]\n"
-            "  • [cyan]which pods are unhealthy[/cyan]\n"
             "  • [cyan]top resource consumers[/cyan]\n"
-            "  • [cyan]is <deployment> healthy[/cyan]\n"
+            "  • [cyan]is <deployment> healthy[/cyan]\n\n"
+            "  [bold]INVESTIGATE[/bold]\n"
+            "  • [cyan]what changed recently[/cyan]\n"
+            "  • [cyan]show warning events[/cyan]\n"
+            "  • [cyan]any anomalies detected[/cyan]\n"
         ),
         "severity": "info",
     }
@@ -406,6 +439,137 @@ def _top_consumers():
         "title": "🤖 Top Consumers",
         "content": "\n".join(lines),
         "severity": "info",
+    }
+
+
+def _high_restart_pods():
+    """Find pods with high restart counts."""
+    pods = collect_pods()
+
+    high_restart = sorted(
+        [p for p in pods if p["restarts"] >= 3],
+        key=lambda x: -x["restarts"]
+    )
+
+    if not high_restart:
+        return {
+            "title": "🤖 Restart Analysis",
+            "content": "[green]No pods with high restarts.[/green]",
+            "severity": "healthy",
+        }
+
+    lines = [
+        f"[bold]{len(high_restart)} pods with high restarts:[/bold]\n"
+    ]
+
+    for pod in high_restart[:10]:
+        severity = "red" if pod["restarts"] >= 10 else "yellow"
+        lines.append(
+            f"  [{severity}]● {pod['restarts']:>3} restarts[/{severity}]  "
+            f"{pod['name']}"
+        )
+
+    lines.append(
+        "\n[bold]Possible causes:[/bold]"
+        "\n  • Application crash on startup"
+        "\n  • OOM kills (check memory limits)"
+        "\n  • Failed health probes"
+        "\n  • Missing config/secrets"
+        "\n\n[dim]Run: diagnose <pod> for root cause[/dim]"
+    )
+
+    return {
+        "title": "🤖 High Restart Pods",
+        "content": "\n".join(lines),
+        "severity": "warning",
+    }
+
+
+def _warning_events():
+    """Show recent warning events."""
+    events = collect_events(limit=50)
+
+    warnings = [
+        e for e in events if e["type"] == "Warning"
+    ]
+
+    if not warnings:
+        return {
+            "title": "🤖 Events",
+            "content": "[green]No warning events.[/green]",
+            "severity": "healthy",
+        }
+
+    # Group by reason
+    reasons = {}
+    for e in warnings:
+        r = e["reason"]
+        if r not in reasons:
+            reasons[r] = []
+        reasons[r].append(e)
+
+    lines = [
+        f"[bold]{len(warnings)} warning events:[/bold]\n"
+    ]
+
+    for reason, evs in sorted(
+        reasons.items(), key=lambda x: -len(x[1])
+    ):
+        objects = set(e["object"] for e in evs)
+        lines.append(
+            f"  [yellow]● {reason}[/yellow] ({len(evs)}×)"
+        )
+        for obj in list(objects)[:3]:
+            lines.append(f"    [dim]{obj}[/dim]")
+
+    lines.append(
+        "\n[dim]Run: events watch for live stream[/dim]"
+    )
+
+    return {
+        "title": "🤖 Warning Events",
+        "content": "\n".join(lines),
+        "severity": "warning",
+    }
+
+
+def _anomaly_check():
+    """Quick anomaly detection."""
+    from core.ai.anomaly import detect_anomalies
+
+    alerts = detect_anomalies()
+
+    if not alerts:
+        return {
+            "title": "🤖 Anomaly Check",
+            "content": "[green]✓ No anomalies detected.[/green]",
+            "severity": "healthy",
+        }
+
+    critical = [a for a in alerts if a["severity"] == "critical"]
+    warnings = [a for a in alerts if a["severity"] == "warning"]
+
+    lines = [
+        f"[bold]{len(alerts)} anomalies detected:[/bold]\n"
+    ]
+
+    for a in critical:
+        lines.append(
+            f"  [red]● {a['title']}[/red]\n"
+            f"    {a['detail']}\n"
+            f"    [dim]→ {a['action']}[/dim]"
+        )
+
+    for a in warnings:
+        lines.append(
+            f"  [yellow]● {a['title']}[/yellow]\n"
+            f"    {a['detail']}"
+        )
+
+    return {
+        "title": "🤖 Anomalies",
+        "content": "\n".join(lines),
+        "severity": "critical" if critical else "warning",
     }
 
 

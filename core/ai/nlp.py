@@ -1,6 +1,6 @@
 """
 Natural Language Operations — parse English into
-KubeEasy commands.
+Kubsome commands.
 
 Examples:
   "scale payment to 5" → scale payment 5

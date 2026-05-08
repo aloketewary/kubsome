@@ -1,241 +1,124 @@
-# ◆ KubeEasy
+# 🚀 Kubsome
 
-**AI-native Kubernetes Operations Platform**
+**AI-native Kubernetes Operational Workspace**
 
-CLI + Web UI + API — reduces operational cognitive load with faster debugging, safer production operations, and intelligent cluster insights.
+Faster debugging. Safer operations. Less cognitive load.
+
+## Install (one command)
+
+```bash
+git clone https://github.com/aloketewary/kubsome.git && cd kubsome && ./install.sh
+```
+
+Then:
+```bash
+source venv/bin/activate
+kubsome
+```
 
 ## Quick Start
 
 ```bash
-# Clone & install
-git clone https://github.com/atewary/kubeasy.git
-cd kubeasy
-python3 -m venv venv && source venv/bin/activate
-pip install -r requirements.txt
-cd ui && npm install && cd ..
+kubsome                          # Interactive CLI
+kubsome --exec "check"           # Single command (CI/CD)
+kubsome --exec "export json"     # Generate report
+```
 
-# Development (API + UI hot-reload)
-./dev.sh
+## Commands (85+)
 
-# Production (single port)
-./start.sh
+Type `help` inside Kubsome for the full list. Highlights:
+
+```bash
+# Observe
+overview                         # Cluster dashboard + anomaly alerts
+pods                             # Pod list with health
+pods watch                       # Live monitoring
+top pods                         # CPU/memory usage
+
+# Operate
+logs payment                     # Fuzzy-match pod logs
+logcat payment --follow          # Combined logs from all replicas (logcat style)
+rollout billing-api              # Rollout status
+restart gateway                  # Rolling restart
+scale payment 5                  # Scale replicas
+
+# Diagnose
+inspect customer                 # Deep pod inspection
+diagnose payment                 # Root cause analysis + playbook
+trace payment-api                # Resource relationship map
+netcheck auth                    # Network diagnostics
+
+# AI (natural language)
+why is payment-api failing       # Root cause explanation
+summarize cluster health         # Health summary
+which pods are unhealthy         # Degraded pod list
+any anomalies detected           # Anomaly scan
+what changed recently            # Recent activity
+
+# Security & Cost
+security                         # Misconfiguration scan
+optimize                         # Resource right-sizing
+unused                           # Find orphaned resources
+
+# Incident Mode
+incident start API outage        # Start tracking
+note found OOM in payment        # Add observation
+incident stop                    # Close & export report
+```
+
+## Features
+
+- **Fuzzy matching** — type partial names, Kubsome finds the resource
+- **Smart suggestions** — typo correction ("Did you mean: pods")
+- **Natural language** — "show me logs for payment" just works
+- **Command chaining** — `pods && events && alerts`
+- **Aliases** — `p`=pods, `o`=overview, `d`=diagnose, `l`=logs
+- **Bookmarks** — save and recall frequent commands
+- **Workflows** — chain commands into reusable sequences
+- **Watch mode** — `watch <any-command>` for live refresh
+- **Logcat** — combined logs from all pods of a deployment
+- **Playbooks** — step-by-step remediation guides
+- **Anomaly detection** — restart spikes, event storms, cascading failures
+- **Multi-cluster compare** — drift detection between environments
+- **Export** — Markdown/JSON reports for sharing
+- **Audit log** — tracks all destructive operations
+- **Desktop notifications** — alerts for critical issues
+- **Plugin system** — extend with custom commands
+- **Persistent history** — command recall across sessions
+- **Production safety** — confirmation prompts for dangerous actions
+
+## Requirements
+
+- Python 3.9+
+- kubectl configured with cluster access
+- metrics-server (for `top` commands)
+
+## Configuration
+
+Settings in `~/.kubsome/config.yaml`:
+```yaml
+refresh_interval: 2
+notifications: true
+theme: dark                      # dark, light, minimal, hacker
+aliases:
+  p: pods
+  o: overview
+  d: diagnose
+llm:
+  provider: local                # or: ollama (for AI-powered explain)
 ```
 
 ## Architecture
 
 ```
-kubeasy/
-├── core/              → Kubernetes engine (collectors, analyzers, AI)
-├── api/               → FastAPI backend (71 REST + 4 WebSocket endpoints)
-├── ui/                → Angular 20 + PrimeNG dark dashboard
-├── tui/               → Textual full-screen terminal app
-├── plugins/           → Custom command plugins
-├── dev.sh             → Start both servers for development
-└── start.sh           → Production build & serve
+main.py              → 150 lines, clean entry point
+core/dispatcher.py   → Command handler registry
+core/ai/             → 8 intelligence modules
+core/collectors/     → 24 data collectors
+core/renderers/      → 21 presentation renderers
+core/diagnostics/    → Root cause engine
+100 Python files     → Complete operational platform
 ```
-
-## Interfaces
-
-| Interface | Port | Purpose |
-|-----------|------|---------|
-| CLI | — | `python3 main.py` — interactive terminal |
-| API | :8000 | `python3 main.py serve` — REST + WebSocket |
-| UI | :3001 | `cd ui && ng serve` — Angular dashboard |
-| TUI | — | `python3 main.py` then `tui` — full-screen |
-
-## Web UI Features
-
-### Dashboard
-- Cluster health cards (clickable → navigate to detail)
-- Recent events feed
-- Quick action buttons
-- Auto-refresh every 30s with skeleton loading
-
-### Pods
-- Grouped by deployment, unhealthy groups at top
-- Search/filter
-- Multi-select within group for combined logs (logcat)
-- Single-select: Logs, Inspect, Diagnose, Live Logs (WebSocket)
-- Pod detail drawer (slide-out with tabs)
-- Watch mode (real-time WebSocket updates)
-
-### Deployments
-- Rollout progress visualization
-- Restart / Rollback / Scale actions
-- Rollout history dialog
-- Link to deployment's pods
-
-### Logs
-- Pod selector with filter
-- Errors-only toggle
-- Line numbers, error highlighting
-- Live streaming via WebSocket
-
-### Events, Metrics, Jobs, RBAC, Network, Namespace
-- Full feature parity with CLI
-
-### Incident Mode
-- Start/stop tracking
-- Add timestamped notes
-- Capture cluster snapshots
-
-### AI Assistant
-- Floating chat panel (always accessible)
-- Full-page mode for longer sessions
-- Natural language queries about cluster health
-
-### Terminal
-- Web-based CLI with command history
-- Supports all KubeEasy commands + raw kubectl
-
-### UX
-- ⌘K Command Palette (search pages, pods, deployments)
-- Keyboard shortcuts (G+D, G+P, G+L, G+T, H)
-- Toast notifications for pod crashes (WebSocket)
-- Breadcrumb navigation
-- Collapsible sidebar with favorites
-- Status bar with connection indicator
-- Dark theme throughout
-
-## API Endpoints
-
-### Core
-```
-GET  /health
-GET  /api/overview
-GET  /api/pods
-GET  /api/events
-GET  /api/top/pods
-GET  /api/top/nodes
-GET  /api/contexts
-GET  /api/namespaces
-POST /api/switch-context
-POST /api/switch-namespace
-```
-
-### Operations
-```
-GET  /api/deployments
-GET  /api/rollout/{name}
-POST /api/restart/{name}
-POST /api/rollback/{name}
-POST /api/scale/{name}
-GET  /api/logs/{pod}
-GET  /api/logs/{pod}/stream
-POST /api/exec
-```
-
-### Diagnostics
-```
-GET  /api/inspect/{pod}
-GET  /api/diagnose/{pod}
-GET  /api/trace/{name}
-GET  /api/search?q=
-GET  /api/security
-GET  /api/health-check
-GET  /api/anomalies
-GET  /api/optimize
-GET  /api/unused
-```
-
-### Intelligence
-```
-POST /api/ai
-POST /api/explain
-POST /api/generate
-GET  /api/correlate
-GET  /api/playbook/{issue}
-```
-
-### Infrastructure
-```
-GET  /api/cronjobs
-GET  /api/jobs
-POST /api/trigger/{name}
-GET  /api/rbac
-GET  /api/hpa
-GET  /api/pdb
-GET  /api/capacity
-GET  /api/quota
-GET  /api/ingress
-GET  /api/mesh
-GET  /api/dns/{service}
-GET  /api/timeline
-GET  /api/changelog
-GET  /api/audit
-```
-
-### Incident
-```
-POST /api/incident/start
-POST /api/incident/stop
-GET  /api/incident/status
-POST /api/incident/note
-POST /api/incident/snapshot
-```
-
-### WebSocket
-```
-ws://localhost:8000/ws/pods      → Live pod status
-ws://localhost:8000/ws/events    → Live events
-ws://localhost:8000/ws/logs/{pod} → Live log stream
-ws://localhost:8000/ws/shell/{pod} → Interactive shell
-```
-
-## CLI Commands
-
-### Workspace
-```
-switch <context>    contexts    use <namespace>
-```
-
-### Observability
-```
-overview    pods    pods watch    events    events watch
-top pods    top nodes    ns
-```
-
-### Operations
-```
-logs <pod>    logs <pod> --follow    logs <pod> --errors
-rollout <dep>    rollback <dep>    restart <dep>    scale <dep> <n>
-```
-
-### Diagnostics
-```
-inspect <pod>    diagnose <pod>    trace <dep>
-```
-
-### AI
-```
-why is <pod> failing    summarize    what changed
-which pods are unhealthy    is <dep> healthy
-```
-
-### Advanced
-```
-find <query>    compare <ctx-a> <ctx-b>    incident start/stop/note
-security    optimize    unused    check    export
-cronjobs    jobs    trigger <cj>    rbac    timeline
-hpa    pdb    capacity    quota    ingress    mesh
-```
-
-## Requirements
-
-- Python 3.9+
-- Node.js 18+
-- kubectl configured with cluster access
-- metrics-server (for `top` commands)
-
-## Philosophy
-
-KubeEasy is not a kubectl wrapper. It's an **operational intelligence platform**:
-
-- **Faster debugging** — diagnose + AI explain failures in seconds
-- **Safer operations** — confirmation dialogs, incident tracking
-- **Less mental load** — visual health indicators, smart suggestions
-- **Multi-interface** — CLI for speed, UI for visibility, API for integration
-- **Extensible** — plugin system for org-specific workflows
 
 ## License
 

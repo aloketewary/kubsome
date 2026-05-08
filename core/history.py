@@ -1,7 +1,7 @@
 from pathlib import Path
 from prompt_toolkit.history import FileHistory
 
-HISTORY_FILE = Path.home() / ".kubeasy" / "history"
+HISTORY_FILE = Path.home() / ".kubsome" / "history"
 
 
 def get_history():

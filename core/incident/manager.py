@@ -18,7 +18,7 @@ from core.context import context
 from core.collectors.pods import collect_pods
 from core.collectors.events import collect_events
 
-INCIDENTS_DIR = Path.home() / ".kubeasy" / "incidents"
+INCIDENTS_DIR = Path.home() / ".kubsome" / "incidents"
 
 
 def ensure_dir():

@@ -1,5 +1,5 @@
 """
-KubeEasy — AI-native Kubernetes Operational Workspace
+Kubsome — AI-native Kubernetes Operational Workspace
 """
 
 import time
@@ -37,6 +37,86 @@ app_config = load_config()
 
 
 def main():
+    import sys
+
+    args = sys.argv[1:]
+
+    # kubsome serve [port]
+    if args and args[0] == "serve":
+        _start_server(args)
+        return
+
+    # kubsome tui
+    if args and args[0] == "tui":
+        _start_tui()
+        return
+
+    # kubsome --exec "command"
+    if args and args[0] == "--exec":
+        _exec_mode(args[1:])
+        return
+
+    # kubsome (interactive CLI)
+    _start_cli()
+
+
+def _start_server(args):
+    """Start API server (serves UI if built)."""
+    port = int(args[1]) if len(args) > 1 else 8000
+
+    console.print(
+        Panel.fit(
+            f"[bold green]Kubsome Server[/bold green]\n"
+            f"[dim]API:[/dim]  http://localhost:{port}/api\n"
+            f"[dim]UI:[/dim]   http://localhost:{port}\n"
+            f"[dim]Docs:[/dim] http://localhost:{port}/docs",
+            border_style="green"
+        )
+    )
+
+    try:
+        from api.serve import start
+        start(port=port)
+    except ImportError:
+        console.print(
+            "[red]API dependencies not installed.[/red]\n"
+            "Run: pip install 'kubsome[api]'"
+        )
+
+
+def _start_tui():
+    """Launch full-screen TUI."""
+    try:
+        from tui.app import run_tui
+        run_tui()
+    except ImportError:
+        console.print(
+            "[red]TUI dependencies not installed.[/red]\n"
+            "Run: pip install 'kubsome[tui]'"
+        )
+
+
+def _exec_mode(args):
+    """Run a single command non-interactively."""
+    if not args:
+        console.print(
+            "Usage: kubsome --exec \"<command>\""
+        )
+        return
+
+    cmd_input = " ".join(args)
+    command = resolve_command(cmd_input)
+
+    if command and isinstance(command, str):
+        execute(command)
+    elif command:
+        dispatch(command)
+    else:
+        console.print(f"[red]Unknown: {cmd_input}[/red]")
+
+
+def _start_cli():
+    """Interactive CLI mode."""
     # Startup health check
     ok, info = check_kubectl()
     if not ok:
@@ -51,14 +131,11 @@ def main():
         context.current_context = info
 
     render_banner()
-
     create_default_workflows()
     last_command = ""
 
     while True:
-        # Environment detection
         env = _detect_env()
-
         prompt_text = f"[{env}] {context.namespace}"
 
         try:
@@ -185,18 +262,4 @@ def _handle_use(user_input):
 
 
 if __name__ == "__main__":
-    import sys
-
-    if len(sys.argv) > 1 and sys.argv[1] == "serve":
-        from api.serve import start
-        port = int(sys.argv[2]) if len(sys.argv) > 2 else 8000
-        start(port=port)
-    elif len(sys.argv) > 1 and sys.argv[1] == "--exec":
-        cmd_input = " ".join(sys.argv[2:])
-        command = resolve_command(cmd_input)
-        if command and isinstance(command, str):
-            execute(command)
-        elif command:
-            dispatch(command)
-    else:
-        main()
+    main()

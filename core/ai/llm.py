@@ -5,7 +5,7 @@ LLM Provider — supports only:
 
 No cloud APIs. No API keys. Fully offline-capable.
 
-Configure in ~/.kubeasy/config.yaml:
+Configure in ~/.kubsome/config.yaml:
   llm:
     provider: local       # default, no server needed
     # provider: ollama    # if you have Ollama running

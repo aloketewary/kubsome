@@ -1,5 +1,5 @@
 """
-KubeEasy API — FastAPI backend exposing the Kubernetes engine.
+Kubsome API — FastAPI backend exposing the Kubernetes engine.
 """
 
 from fastapi import FastAPI
@@ -10,7 +10,7 @@ from pathlib import Path
 from api.routes import pods, overview, contexts, events, metrics, logs, deployments, diagnostics, intelligence, terminal, operations, ws
 
 app = FastAPI(
-    title="KubeEasy API",
+    title="Kubsome API",
     version="1.0.0",
     description="Kubernetes Operations Engine API",
 )

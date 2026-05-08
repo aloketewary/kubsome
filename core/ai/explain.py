@@ -173,7 +173,7 @@ def _rule_based_explain(query):
             "start a local LLM server:\n"
             "  ollama serve\n"
             "  ollama pull llama3\n\n"
-            "Then set in ~/.kubeasy/config.yaml:\n"
+            "Then set in ~/.kubsome/config.yaml:\n"
             "  llm:\n"
             "    provider: ollama[/dim]"
         ),

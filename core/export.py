@@ -20,7 +20,7 @@ from core.analyzer import (
 )
 from core.ai.anomaly import detect_anomalies
 
-EXPORT_DIR = Path.home() / ".kubeasy" / "reports"
+EXPORT_DIR = Path.home() / ".kubsome" / "reports"
 
 
 def export_report(format="md"):
@@ -85,7 +85,7 @@ def export_report(format="md"):
 
 def _to_markdown(data):
     lines = [
-        f"# KubeEasy Cluster Report",
+        f"# Kubsome Cluster Report",
         f"",
         f"**Generated:** {data['generated'][:19]}",
         f"**Context:** {data['context']}",

@@ -232,15 +232,52 @@ a { text-decoration: none; color: inherit; }
   background: var(--bg-elevated) !important;
   border: 1px solid var(--border) !important;
   border-radius: var(--radius-sm) !important;
+  color: var(--text) !important;
 }
 .p-select:hover, .p-dropdown:hover {
   border-color: var(--border-hover) !important;
 }
-.p-select-panel, .p-dropdown-panel {
+.p-select-panel, .p-dropdown-panel, .p-select-overlay, .p-dropdown-items-wrapper {
   background: var(--bg-card) !important;
   border: 1px solid var(--border) !important;
   border-radius: var(--radius-sm) !important;
   box-shadow: 0 8px 30px rgba(0,0,0,0.5) !important;
+  color: var(--text) !important;
+}
+.p-select-list, .p-select-items, .p-dropdown-items {
+  background: var(--bg-card) !important;
+  color: var(--text) !important;
+}
+.p-select-option, .p-select-item, .p-dropdown-item, .p-listbox-option {
+  color: var(--text) !important;
+  background: transparent !important;
+}
+.p-select-option:hover, .p-select-item:hover, .p-dropdown-item:hover, .p-listbox-option:hover,
+.p-select-option.p-focus, .p-select-item.p-focus, .p-dropdown-item.p-focus {
+  background: var(--bg-hover) !important;
+  color: var(--text) !important;
+}
+.p-select-option.p-highlight, .p-select-item.p-highlight, .p-dropdown-item.p-highlight {
+  background: var(--accent-subtle) !important;
+  color: var(--accent) !important;
+}
+.p-select-filter, .p-dropdown-filter {
+  background: var(--bg-elevated) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--text) !important;
+}
+.p-select-filter-container, .p-dropdown-filter-container {
+  background: var(--bg-card) !important;
+}
+.p-select-empty-message, .p-dropdown-empty-message {
+  color: var(--text-muted) !important;
+}
+.p-select-header, .p-dropdown-header {
+  background: var(--bg-card) !important;
+  border-bottom: 1px solid var(--border) !important;
+}
+.p-overlay, .p-connected-overlay {
+  background: var(--bg-card) !important;
 }
 
 /* Input */
@@ -394,14 +431,6 @@ h1, h2, h3, h4, h5, h6, p, span, label, code, pre, td, th, li, a, div {
 
 .p-datatable .p-datatable-thead > tr > th {
   color: var(--text-muted) !important;
-}
-
-.p-select-option {
-  color: var(--text) !important;
-}
-
-.p-select-option:hover {
-  background: var(--bg-hover) !important;
 }
 
 .p-toast-message-text,

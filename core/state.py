@@ -2,7 +2,7 @@ import json
 import os
 
 STATE_FILE = os.path.expanduser(
-    "~/.kubeasy_state.json"
+    "~/.kubsome/state.json"
 )
 
 
@@ -19,6 +19,10 @@ def save_state(current_context, namespace):
         "current_context": current_context,
         "namespace": namespace
     }
+
+    os.makedirs(
+        os.path.dirname(STATE_FILE), exist_ok=True
+    )
 
     with open(STATE_FILE, "w") as f:
         json.dump(state, f)

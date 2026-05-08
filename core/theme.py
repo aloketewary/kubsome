@@ -1,7 +1,7 @@
 """
 Theming — configurable color schemes.
 
-Configure in ~/.kubeasy/config.yaml:
+Configure in ~/.kubsome/config.yaml:
   theme: dark  # dark, light, minimal, hacker
 
 Colors are used by renderers for consistent styling.

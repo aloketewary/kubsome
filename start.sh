@@ -1,11 +1,11 @@
 #!/bin/bash
-# KubeEasy — Production build & serve on single port
+# Kubsome — Production build & serve on single port
 
 set -e
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
 
-echo "◆ KubeEasy Production Build"
+echo "◆ Kubsome Production Build"
 echo "───────────────────────────"
 
 # Build UI

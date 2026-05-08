@@ -1,11 +1,11 @@
 #!/bin/bash
-# KubeEasy — Start both API and UI in development mode
+# Kubsome — Start both API and UI in development mode
 
 set -e
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
 
-echo "◆ KubeEasy Dev Server"
+echo "◆ Kubsome Dev Server"
 echo "─────────────────────"
 
 # Start API

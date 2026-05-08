@@ -13,8 +13,8 @@ export interface PodsResponse {
 export interface HealthCount {
   healthy: number;
   warning: number;
-  critical?: number;
-  unavailable?: number;
+  critical: number;
+  unavailable: number;
 }
 
 export interface OverviewResponse {

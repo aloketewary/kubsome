@@ -153,12 +153,12 @@ def render_help():
     table.add_row("plugins / plugin <name>", "Plugin system")
     table.add_row("tui / dashboard", "Full-screen TUI")
     table.add_row("help", "Show this help")
-    table.add_row("exit", "Quit KubeEasy")
+    table.add_row("exit", "Quit Kubsome")
 
     console.print(
         Panel(
             table,
-            title="[bold]🚀 KubeEasy Commands[/bold]",
+            title="[bold]🚀 Kubsome Commands[/bold]",
             border_style="cyan",
             padding=(1, 1)
         )

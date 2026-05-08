@@ -49,8 +49,9 @@ def get_namespaces():
     )
     if result.returncode != 0:
         return {"namespaces": [], "current": context.namespace}
-    namespaces = result.stdout.strip().split()
-    return {"namespaces": sorted(namespaces), "current": context.namespace}
+    raw = result.stdout.strip().strip("'")
+    namespaces = sorted([ns for ns in raw.split() if ns])
+    return {"namespaces": namespaces, "current": context.namespace}
 
 
 @router.post("/switch-namespace")

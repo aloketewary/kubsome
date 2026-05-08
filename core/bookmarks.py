@@ -1,12 +1,12 @@
 """
 Bookmarks — save frequently used commands and resources.
-Stored in ~/.kubeasy/bookmarks.json
+Stored in ~/.kubsome/bookmarks.json
 """
 
 import json
 from pathlib import Path
 
-BOOKMARKS_FILE = Path.home() / ".kubeasy" / "bookmarks.json"
+BOOKMARKS_FILE = Path.home() / ".kubsome" / "bookmarks.json"
 
 
 def _load():

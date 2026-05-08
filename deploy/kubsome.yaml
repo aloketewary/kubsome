@@ -1,48 +1,48 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: kubeasy
+  name: kubsome
 ---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: kubeasy
-  namespace: kubeasy
+  name: kubsome
+  namespace: kubsome
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: kubeasy-view
+  name: kubsome-view
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
   name: view
 subjects:
   - kind: ServiceAccount
-    name: kubeasy
-    namespace: kubeasy
+    name: kubsome
+    namespace: kubsome
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: kubeasy
-  namespace: kubeasy
+  name: kubsome
+  namespace: kubsome
   labels:
-    app: kubeasy
+    app: kubsome
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: kubeasy
+      app: kubsome
   template:
     metadata:
       labels:
-        app: kubeasy
+        app: kubsome
     spec:
-      serviceAccountName: kubeasy
+      serviceAccountName: kubsome
       containers:
-        - name: kubeasy
-          image: kubeasy:latest
+        - name: kubsome
+          image: kubsome:latest
           ports:
             - containerPort: 8000
           resources:
@@ -68,11 +68,11 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: kubeasy
-  namespace: kubeasy
+  name: kubsome
+  namespace: kubsome
 spec:
   selector:
-    app: kubeasy
+    app: kubsome
   ports:
     - port: 80
       targetPort: 8000
@@ -81,20 +81,20 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: kubeasy
-  namespace: kubeasy
+  name: kubsome
+  namespace: kubsome
   annotations:
     nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
 spec:
   rules:
-    - host: kubeasy.internal
+    - host: kubsome.internal
       http:
         paths:
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: kubeasy
+                name: kubsome
                 port:
                   number: 80

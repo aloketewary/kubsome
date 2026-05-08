@@ -2,7 +2,7 @@
 Notifications — desktop alerts for critical events.
 Uses osascript on macOS (no dependencies).
 
-Configure in ~/.kubeasy/config.yaml:
+Configure in ~/.kubsome/config.yaml:
   notifications: true
 """
 
@@ -20,7 +20,7 @@ def notify(title, message):
                 [
                     "osascript", "-e",
                     f'display notification "{message}" '
-                    f'with title "KubeEasy" '
+                    f'with title "Kubsome" '
                     f'subtitle "{title}"'
                 ],
                 capture_output=True,
@@ -30,7 +30,7 @@ def notify(title, message):
             subprocess.run(
                 [
                     "notify-send",
-                    f"KubeEasy: {title}",
+                    f"Kubsome: {title}",
                     message
                 ],
                 capture_output=True,

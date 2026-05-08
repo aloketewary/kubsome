@@ -33,7 +33,7 @@ def render_workflows(workflows):
     if not workflows:
         console.print(
             "[dim]No workflows. "
-            "Add .yaml files to ~/.kubeasy/workflows/[/dim]"
+            "Add .yaml files to ~/.kubsome/workflows/[/dim]"
         )
         return
 

@@ -1,6 +1,6 @@
 """
 Audit Log — tracks destructive operations for compliance.
-Stored in ~/.kubeasy/audit.log
+Stored in ~/.kubsome/audit.log
 """
 
 import json
@@ -9,7 +9,7 @@ from pathlib import Path
 
 from core.context import context
 
-AUDIT_FILE = Path.home() / ".kubeasy" / "audit.log"
+AUDIT_FILE = Path.home() / ".kubsome" / "audit.log"
 
 
 def log_action(action, target, details=""):

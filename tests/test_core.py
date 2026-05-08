@@ -1,5 +1,5 @@
 """
-Tests for KubeEasy core modules.
+Tests for Kubsome core modules.
 Run: pytest tests/
 """
 

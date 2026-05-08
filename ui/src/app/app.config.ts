@@ -9,7 +9,7 @@ import Aura from '@primeng/themes/aura';
 import { loadingInterceptor } from './core/interceptors/loading.interceptor';
 import { errorInterceptor } from './core/interceptors/error.interceptor';
 
-const KubeEasyPreset = definePreset(Aura, {
+const KubsomePreset = definePreset(Aura, {
   semantic: {
     primary: {
       50: '{blue.50}',
@@ -56,7 +56,7 @@ export const appConfig: ApplicationConfig = {
     provideAnimationsAsync(),
     providePrimeNG({
       theme: {
-        preset: KubeEasyPreset,
+        preset: KubsomePreset,
         options: {
           darkModeSelector: false,
           cssLayer: false,

@@ -10,314 +10,321 @@ import { OverviewResponse, KubeEvent } from '../../core/models';
   standalone: true,
   imports: [TagModule, ButtonModule],
   template: `
-    <div class="page-header">
-      <div>
-        <h1>Overview</h1>
-        <p class="subtitle">Cluster health at a glance</p>
-      </div>
-      <button pButton icon="pi pi-refresh" label="Refresh" class="p-button-outlined p-button-sm" (click)="refresh()"></button>
-    </div>
-    @if (lastUpdated) {
-      <span class="last-updated">Updated {{ lastUpdated }}</span>
-    }
-
     @if (data) {
-      <!-- Stat Cards - Clickable -->
-      <div class="stat-cards">
-        <div class="stat-card clickable" (click)="goToPods()">
-          <div class="stat-header">
-            <div class="stat-icon pods-icon"><i class="pi pi-box"></i></div>
-            <i class="pi pi-arrow-right card-arrow"></i>
+      <!-- Hero Status Banner -->
+      <div class="hero" [class]="'hero-' + overallHealth">
+        <div class="hero-ring">
+          <svg viewBox="0 0 36 36" class="ring-svg">
+            <path class="ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+            <path class="ring-fill" [attr.stroke-dasharray]="healthPct + ', 100'" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+          </svg>
+          <span class="ring-value">{{ healthPct }}%</span>
+        </div>
+        <div class="hero-info">
+          <h1 class="hero-title">{{ overallHealth === 'healthy' ? 'All Systems Operational' : overallHealth === 'degraded' ? 'Degraded Performance' : 'Critical Issues Detected' }}</h1>
+          <p class="hero-sub">{{ data.pods.healthy + data.nodes.healthy + data.deployments.healthy }} / {{ podTotal + nodeTotal + depTotal }} resources healthy</p>
+          <span class="hero-time">Updated {{ lastUpdated }}</span>
+        </div>
+        <button pButton icon="pi pi-refresh" class="p-button-text p-button-sm hero-refresh" (click)="refresh()"></button>
+      </div>
+
+      <!-- Critical Alert Banner -->
+      @if ((data.pods.critical) > 0 || data.nodes.warning > 0) {
+        <div class="alert-banner">
+          <i class="pi pi-exclamation-triangle"></i>
+          <span>
+            @if ((data.pods.critical) > 0) { {{ data.pods.critical }} pod(s) in critical state. }
+            @if (data.nodes.warning > 0) { {{ data.nodes.warning }} node(s) not ready. }
+          </span>
+          <button pButton label="Investigate" icon="pi pi-arrow-right" iconPos="right" class="p-button-sm p-button-text" (click)="goToPods()"></button>
+        </div>
+      }
+
+      <!-- Metric Cards -->
+      <div class="metrics-grid">
+        <div class="metric-card" (click)="goToPods()">
+          <div class="metric-top">
+            <div class="metric-icon pods"><i class="pi pi-box"></i></div>
+            <div class="metric-numbers">
+              <span class="metric-value">{{ data.pods.healthy }}</span>
+              <span class="metric-of">/ {{ podTotal }}</span>
+            </div>
           </div>
-          <div class="stat-value">{{ data.pods.healthy }}<span class="stat-total">/{{ podTotal }}</span></div>
-          <div class="stat-label">pods running</div>
-          <div class="stat-bar">
-            <div class="bar-fill bar-success" [style.width.%]="pct(data.pods.healthy, podTotal)"></div>
+          <div class="metric-label">Pods Running</div>
+          <div class="metric-bar">
+            <div class="bar-segment bar-ok" [style.width.%]="pct(data.pods.healthy, podTotal)"></div>
+            <div class="bar-segment bar-warn" [style.width.%]="pct(data.pods.warning, podTotal)"></div>
+            <div class="bar-segment bar-crit" [style.width.%]="pct(data.pods.critical, podTotal)"></div>
           </div>
-          <div class="stat-breakdown">
-            <span class="stat-item success">{{ data.pods.healthy }} ready</span>
-            @if (data.pods.warning! > 0) {
-              <span class="stat-item warning">{{ data.pods.warning }} warn</span>
+          <div class="metric-legend">
+            @if ((data.pods.warning) > 0) { <span class="legend-item warn">{{ data.pods.warning }} warning</span> }
+            @if ((data.pods.critical) > 0) { <span class="legend-item crit">{{ data.pods.critical }} critical</span> }
+            @if ((data.pods.warning) === 0 && (data.pods.critical) === 0) { <span class="legend-item ok">All healthy</span> }
+          </div>
+        </div>
+
+        <div class="metric-card" (click)="router.navigate(['/metrics'])">
+          <div class="metric-top">
+            <div class="metric-icon nodes"><i class="pi pi-server"></i></div>
+            <div class="metric-numbers">
+              <span class="metric-value">{{ data.nodes.healthy }}</span>
+              <span class="metric-of">/ {{ nodeTotal }}</span>
+            </div>
+          </div>
+          <div class="metric-label">Nodes Ready</div>
+          <div class="metric-bar">
+            <div class="bar-segment bar-ok" [style.width.%]="pct(data.nodes.healthy, nodeTotal)"></div>
+            <div class="bar-segment bar-warn" [style.width.%]="pct(data.nodes.warning, nodeTotal)"></div>
+          </div>
+          <div class="metric-legend">
+            @if (data.nodes.warning > 0) { <span class="legend-item warn">{{ data.nodes.warning }} not ready</span> }
+            @else { <span class="legend-item ok">All ready</span> }
+          </div>
+        </div>
+
+        <div class="metric-card" (click)="router.navigate(['/deployments'])">
+          <div class="metric-top">
+            <div class="metric-icon deploys"><i class="pi pi-send"></i></div>
+            <div class="metric-numbers">
+              <span class="metric-value">{{ data.deployments.healthy }}</span>
+              <span class="metric-of">/ {{ depTotal }}</span>
+            </div>
+          </div>
+          <div class="metric-label">Deployments Available</div>
+          <div class="metric-bar">
+            <div class="bar-segment bar-ok" [style.width.%]="pct(data.deployments.healthy, depTotal)"></div>
+            <div class="bar-segment bar-crit" [style.width.%]="pct(data.deployments.unavailable, depTotal)"></div>
+          </div>
+          <div class="metric-legend">
+            @if ((data.deployments.unavailable) > 0) { <span class="legend-item crit">{{ data.deployments.unavailable }} unavailable</span> }
+            @else { <span class="legend-item ok">All available</span> }
+          </div>
+        </div>
+      </div>
+
+      <!-- Two-column layout: Events + Actions -->
+      <div class="bottom-grid">
+        <div class="bottom-section">
+          <div class="section-header">
+            <h2>Recent Events</h2>
+            <button pButton label="All" class="p-button-text p-button-sm" icon="pi pi-arrow-right" iconPos="right" (click)="router.navigate(['/events'])"></button>
+          </div>
+          <div class="events-card">
+            @for (event of recentEvents; track $index) {
+              <div class="event-row">
+                <div class="event-dot" [class.warn]="event.type === 'Warning'"></div>
+                <div class="event-content">
+                  <span class="event-reason">{{ event.reason }}</span>
+                  <span class="event-msg">{{ event.message }}</span>
+                </div>
+                <code class="event-obj">{{ event.object }}</code>
+              </div>
             }
-            @if (data.pods.critical! > 0) {
-              <span class="stat-item danger clickable-text" (click)="goToPods(); $event.stopPropagation()">{{ data.pods.critical }} critical →</span>
+            @if (recentEvents.length === 0) {
+              <div class="events-empty"><i class="pi pi-check-circle"></i> No recent events</div>
             }
           </div>
         </div>
 
-        <div class="stat-card clickable" (click)="router.navigate(['/metrics'])">
-          <div class="stat-header">
-            <div class="stat-icon nodes-icon"><i class="pi pi-server"></i></div>
-            <i class="pi pi-arrow-right card-arrow"></i>
+        <div class="bottom-section">
+          <div class="section-header">
+            <h2>Quick Actions</h2>
           </div>
-          <div class="stat-value">{{ data.nodes.healthy }}<span class="stat-total">/{{ nodeTotal }}</span></div>
-          <div class="stat-label">nodes ready</div>
-          <div class="stat-bar">
-            <div class="bar-fill bar-success" [style.width.%]="pct(data.nodes.healthy, nodeTotal)"></div>
-          </div>
-          <div class="stat-breakdown">
-            <span class="stat-item success">{{ data.nodes.healthy }} ready</span>
-            @if (data.nodes.warning > 0) {
-              <span class="stat-item warning">{{ data.nodes.warning }} not ready</span>
-            }
-          </div>
-        </div>
-
-        <div class="stat-card clickable" (click)="router.navigate(['/deployments'])">
-          <div class="stat-header">
-            <div class="stat-icon deploy-icon"><i class="pi pi-send"></i></div>
-            <i class="pi pi-arrow-right card-arrow"></i>
-          </div>
-          <div class="stat-value">{{ data.deployments.healthy }}<span class="stat-total">/{{ depTotal }}</span></div>
-          <div class="stat-label">deployments healthy</div>
-          <div class="stat-bar">
-            <div class="bar-fill bar-success" [style.width.%]="pct(data.deployments.healthy, depTotal)"></div>
-          </div>
-          <div class="stat-breakdown">
-            <span class="stat-item success">{{ data.deployments.healthy }} available</span>
-            @if (data.deployments.unavailable! > 0) {
-              <span class="stat-item danger">{{ data.deployments.unavailable }} down</span>
-            }
+          <div class="actions-grid">
+            <div class="action-card" (click)="router.navigate(['/ai'])">
+              <i class="pi pi-sparkles"></i>
+              <span>AI Summary</span>
+            </div>
+            <div class="action-card" (click)="router.navigate(['/terminal'])">
+              <i class="pi pi-code"></i>
+              <span>Terminal</span>
+            </div>
+            <div class="action-card" (click)="router.navigate(['/runbooks'])">
+              <i class="pi pi-book"></i>
+              <span>Runbooks</span>
+            </div>
+            <div class="action-card" (click)="router.navigate(['/incident'])">
+              <i class="pi pi-exclamation-circle"></i>
+              <span>Incident</span>
+            </div>
+            <div class="action-card" (click)="router.navigate(['/secrets'])">
+              <i class="pi pi-lock"></i>
+              <span>Secrets</span>
+            </div>
+            <div class="action-card" (click)="router.navigate(['/cost'])">
+              <i class="pi pi-dollar"></i>
+              <span>Optimize</span>
+            </div>
           </div>
         </div>
-      </div>
-
-      <!-- Recent Events -->
-      <div class="section-header">
-        <h2>Recent Events</h2>
-        <button pButton label="View All" class="p-button-text p-button-sm" icon="pi pi-arrow-right" iconPos="right" (click)="router.navigate(['/events'])"></button>
-      </div>
-      <div class="events-list">
-        @for (event of recentEvents; track $index) {
-          <div class="event-row">
-            <span class="event-type-dot" [class.warn]="event.type === 'Warning'"></span>
-            <span class="event-reason">{{ event.reason }}</span>
-            <code class="event-object">{{ event.object }}</code>
-            <span class="event-message">{{ event.message }}</span>
-            @if (event.count > 1) {
-              <span class="event-count">{{ event.count }}×</span>
-            }
-          </div>
-        }
-        @if (recentEvents.length === 0) {
-          <div class="events-empty">No recent events</div>
-        }
-      </div>
-
-      <!-- Quick Actions -->
-      <div class="section-header">
-        <h2>Quick Actions</h2>
-      </div>
-      <div class="quick-actions">
-        <button pButton label="AI Summary" icon="pi pi-sparkles" class="p-button-outlined p-button-sm" (click)="router.navigate(['/ai'])"></button>
-        <button pButton label="Terminal" icon="pi pi-code" class="p-button-outlined p-button-sm" (click)="router.navigate(['/terminal'])"></button>
-        <button pButton label="Security Scan" icon="pi pi-shield" class="p-button-outlined p-button-sm" (click)="router.navigate(['/rbac'])"></button>
-        <button pButton label="Start Incident" icon="pi pi-exclamation-circle" class="p-button-outlined p-button-sm p-button-danger" (click)="router.navigate(['/incident'])"></button>
       </div>
     } @else {
-      <div class="loading-state">
-        <div class="skeleton-cards">
-          <div class="skeleton-card">
-            <div class="skeleton skeleton-line" style="width: 40%; height: 12px;"></div>
-            <div class="skeleton skeleton-line" style="width: 60%; height: 32px; margin-top: 12px;"></div>
-            <div class="skeleton skeleton-line" style="width: 80%; height: 8px; margin-top: 16px;"></div>
-          </div>
-          <div class="skeleton-card">
-            <div class="skeleton skeleton-line" style="width: 40%; height: 12px;"></div>
-            <div class="skeleton skeleton-line" style="width: 60%; height: 32px; margin-top: 12px;"></div>
-            <div class="skeleton skeleton-line" style="width: 80%; height: 8px; margin-top: 16px;"></div>
-          </div>
-          <div class="skeleton-card">
-            <div class="skeleton skeleton-line" style="width: 40%; height: 12px;"></div>
-            <div class="skeleton skeleton-line" style="width: 60%; height: 32px; margin-top: 12px;"></div>
-            <div class="skeleton skeleton-line" style="width: 80%; height: 8px; margin-top: 16px;"></div>
-          </div>
-        </div>
+      <!-- Skeleton -->
+      <div class="skeleton-hero skeleton"></div>
+      <div class="skeleton-grid">
+        <div class="skeleton-card skeleton"></div>
+        <div class="skeleton-card skeleton"></div>
+        <div class="skeleton-card skeleton"></div>
       </div>
     }
   `,
   styles: [`
-    .page-header {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      margin-bottom: 28px;
-    }
-    .page-header h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.03em; }
-    .subtitle { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
-    .last-updated {
-      font-size: 11px;
-      color: var(--text-muted);
-      position: absolute;
-      top: 48px;
-      right: 0;
-    }
-    .page-header { position: relative; }
-
-    .stat-cards {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 16px;
-      margin-bottom: 32px;
-    }
-    .stat-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 24px;
-      transition: all 0.2s;
-    }
-    .stat-card.clickable {
-      cursor: pointer;
-    }
-    .stat-card.clickable:hover {
-      border-color: var(--accent);
-      transform: translateY(-2px);
-      box-shadow: 0 4px 20px rgba(59, 130, 246, 0.1);
-    }
-    .stat-card.clickable:hover .card-arrow {
-      opacity: 1;
-      transform: translateX(0);
-    }
-    .stat-header {
+    /* Hero */
+    .hero {
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      margin-bottom: 16px;
+      gap: 20px;
+      padding: 24px 28px;
+      border-radius: var(--radius);
+      margin-bottom: 20px;
+      position: relative;
     }
-    .stat-icon {
-      width: 36px;
-      height: 36px;
-      border-radius: 10px;
+    .hero-healthy { background: linear-gradient(135deg, rgba(34,197,94,0.08), rgba(34,197,94,0.02)); border: 1px solid rgba(34,197,94,0.2); }
+    .hero-degraded { background: linear-gradient(135deg, rgba(234,179,8,0.08), rgba(234,179,8,0.02)); border: 1px solid rgba(234,179,8,0.2); }
+    .hero-critical { background: linear-gradient(135deg, rgba(239,68,68,0.08), rgba(239,68,68,0.02)); border: 1px solid rgba(239,68,68,0.2); }
+
+    .hero-ring { position: relative; width: 64px; height: 64px; flex-shrink: 0; }
+    .ring-svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+    .ring-bg { fill: none; stroke: var(--bg-elevated); stroke-width: 3; }
+    .ring-fill { fill: none; stroke-width: 3; stroke-linecap: round; transition: stroke-dasharray 0.6s ease; }
+    .hero-healthy .ring-fill { stroke: var(--success); }
+    .hero-degraded .ring-fill { stroke: var(--warning); }
+    .hero-critical .ring-fill { stroke: var(--danger); }
+    .ring-value {
+      position: absolute;
+      inset: 0;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 16px;
-    }
-    .card-arrow {
-      font-size: 12px;
-      color: var(--accent);
-      opacity: 0;
-      transform: translateX(-4px);
-      transition: all 0.2s;
-    }
-    .pods-icon { background: var(--accent-subtle); color: var(--accent); }
-    .nodes-icon { background: var(--success-subtle); color: var(--success); }
-    .deploy-icon { background: rgba(168, 85, 247, 0.1); color: var(--purple); }
-    .stat-value {
-      font-size: 40px;
+      font-size: 14px;
       font-weight: 700;
-      letter-spacing: -0.04em;
-      line-height: 1;
     }
-    .stat-total {
-      font-size: 20px;
-      color: var(--text-muted);
-      font-weight: 500;
-    }
-    .stat-label {
-      font-size: 13px;
-      color: var(--text-muted);
-      margin-top: 4px;
-      margin-bottom: 16px;
-    }
-    .stat-bar {
-      height: 4px;
-      border-radius: 2px;
-      background: var(--bg-elevated);
-      overflow: hidden;
-      margin-bottom: 12px;
-    }
-    .bar-fill {
-      height: 100%;
-      border-radius: 2px;
-      transition: width 0.6s ease;
-    }
-    .bar-success { background: var(--success); }
-    .stat-breakdown { display: flex; gap: 12px; font-size: 12px; }
-    .stat-item { display: flex; align-items: center; gap: 4px; color: var(--text-secondary); }
-    .stat-item::before { content: ''; width: 6px; height: 6px; border-radius: 50%; }
-    .stat-item.success::before { background: var(--success); }
-    .stat-item.warning::before { background: var(--warning); }
-    .stat-item.danger::before { background: var(--danger); }
-    .clickable-text { cursor: pointer; text-decoration: underline; }
 
-    .section-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 12px;
-    }
-    .section-header h2 { font-size: 16px; font-weight: 600; }
+    .hero-info { flex: 1; }
+    .hero-title { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; margin: 0; }
+    .hero-sub { font-size: 13px; color: var(--text-secondary); margin: 4px 0 0; }
+    .hero-time { font-size: 11px; color: var(--text-muted); }
+    .hero-refresh { position: absolute; top: 16px; right: 16px; }
 
-    .events-list {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      overflow: hidden;
-      margin-bottom: 32px;
-    }
-    .event-row {
+    /* Alert Banner */
+    .alert-banner {
       display: flex;
       align-items: center;
       gap: 10px;
-      padding: 10px 16px;
-      border-bottom: 1px solid var(--border);
-      font-size: 12px;
+      padding: 12px 16px;
+      background: var(--danger-subtle);
+      border: 1px solid var(--danger);
+      border-radius: var(--radius-sm);
+      margin-bottom: 20px;
+      font-size: 13px;
     }
-    .event-row:last-child { border-bottom: none; }
-    .event-row:hover { background: var(--bg-hover); }
-    .event-type-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: var(--accent);
-      flex-shrink: 0;
-    }
-    .event-type-dot.warn { background: var(--warning); }
-    .event-reason { font-weight: 500; white-space: nowrap; }
-    .event-object {
-      font-size: 11px;
-      color: var(--text-muted);
-      background: var(--bg-elevated);
-      padding: 1px 5px;
-      border-radius: 3px;
-    }
-    .event-message {
-      flex: 1;
-      color: var(--text-secondary);
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    .event-count {
-      font-size: 10px;
-      color: var(--text-muted);
-      background: var(--bg-elevated);
-      padding: 1px 5px;
-      border-radius: 8px;
-    }
-    .events-empty { padding: 24px; text-align: center; color: var(--text-muted); font-size: 13px; }
+    .alert-banner i { color: var(--danger); font-size: 16px; }
+    .alert-banner span { flex: 1; }
 
-    .quick-actions {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
-    .loading-state {
-      padding: 0;
-    }
-    .skeleton-cards {
+    /* Metric Cards */
+    .metrics-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 16px;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      margin-bottom: 28px;
     }
-    .skeleton-card {
+    .metric-card {
       background: var(--bg-card);
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      padding: 24px;
+      padding: 20px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .metric-card:hover { border-color: var(--border-hover); transform: translateY(-1px); }
+    .metric-top { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+    .metric-icon {
+      width: 40px; height: 40px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center; font-size: 18px;
+    }
+    .metric-icon.pods { background: var(--accent-subtle); color: var(--accent); }
+    .metric-icon.nodes { background: var(--success-subtle); color: var(--success); }
+    .metric-icon.deploys { background: rgba(168,85,247,0.1); color: var(--purple); }
+    .metric-numbers { display: flex; align-items: baseline; gap: 2px; }
+    .metric-value { font-size: 32px; font-weight: 700; letter-spacing: -0.04em; }
+    .metric-of { font-size: 16px; color: var(--text-muted); }
+    .metric-label { font-size: 12px; color: var(--text-muted); margin-bottom: 12px; }
+    .metric-bar {
+      height: 6px; border-radius: 3px; background: var(--bg-elevated);
+      display: flex; overflow: hidden; margin-bottom: 8px;
+    }
+    .bar-segment { height: 100%; transition: width 0.5s ease; }
+    .bar-ok { background: var(--success); }
+    .bar-warn { background: var(--warning); }
+    .bar-crit { background: var(--danger); }
+    .metric-legend { font-size: 11px; }
+    .legend-item { display: inline-flex; align-items: center; gap: 4px; }
+    .legend-item.ok { color: var(--success); }
+    .legend-item.warn { color: var(--warning); }
+    .legend-item.crit { color: var(--danger); }
+
+    /* Bottom Grid */
+    .bottom-grid {
+      display: grid;
+      grid-template-columns: 1.4fr 1fr;
+      gap: 16px;
+    }
+    .section-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .section-header h2 { font-size: 15px; font-weight: 600; margin: 0; }
+
+    /* Events */
+    .events-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .event-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 14px; border-bottom: 1px solid var(--border);
+      font-size: 12px; transition: background 0.1s;
+    }
+    .event-row:last-child { border-bottom: none; }
+    .event-row:hover { background: var(--bg-hover); }
+    .event-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+    .event-dot.warn { background: var(--warning); }
+    .event-content { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+    .event-reason { font-weight: 500; font-size: 12px; }
+    .event-msg { font-size: 11px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .event-obj { font-size: 10px; color: var(--text-muted); background: var(--bg-elevated); padding: 2px 6px; border-radius: 4px; white-space: nowrap; }
+    .events-empty { padding: 24px; text-align: center; color: var(--text-muted); font-size: 12px; display: flex; align-items: center; justify-content: center; gap: 6px; }
+
+    /* Actions */
+    .actions-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+    .action-card {
+      display: flex; align-items: center; gap: 10px;
+      padding: 14px 16px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      font-size: 13px;
+      transition: all 0.12s;
+    }
+    .action-card:hover { border-color: var(--accent); background: var(--accent-subtle); }
+    .action-card i { font-size: 16px; color: var(--text-muted); }
+    .action-card:hover i { color: var(--accent); }
+
+    /* Skeleton */
+    .skeleton-hero { height: 100px; border-radius: var(--radius); margin-bottom: 20px; }
+    .skeleton-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+    .skeleton-card { height: 160px; border-radius: var(--radius); }
+
+    @media (max-width: 900px) {
+      .metrics-grid { grid-template-columns: 1fr; }
+      .bottom-grid { grid-template-columns: 1fr; }
     }
   `],
 })
@@ -330,22 +337,31 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private refreshInterval: any;
 
   get podTotal() {
-    return (this.data?.pods.healthy ?? 0) + (this.data?.pods.warning ?? 0) + (this.data?.pods.critical ?? 0);
+    return (this.data?.pods.healthy || 0) + (this.data?.pods.warning || 0) + (this.data?.pods.critical || 0);
   }
   get nodeTotal() {
-    return (this.data?.nodes.healthy ?? 0) + (this.data?.nodes.warning ?? 0);
+    return (this.data?.nodes.healthy || 0) + (this.data?.nodes.warning || 0);
   }
   get depTotal() {
-    return (this.data?.deployments.healthy ?? 0) + (this.data?.deployments.unavailable ?? 0);
+    return (this.data?.deployments.healthy || 0) + (this.data?.deployments.unavailable || 0);
+  }
+  get overallHealth(): 'healthy' | 'degraded' | 'critical' {
+    if ((this.data?.pods.critical || 0) > 0 || (this.data?.nodes.warning || 0) > 0) return 'critical';
+    if ((this.data?.pods.warning || 0) > 0 || (this.data?.deployments.unavailable || 0) > 0) return 'degraded';
+    return 'healthy';
+  }
+  get healthPct(): number {
+    const total = this.podTotal + this.nodeTotal + this.depTotal;
+    if (total === 0) return 100;
+    const healthy = (this.data?.pods.healthy || 0) + (this.data?.nodes.healthy || 0) + (this.data?.deployments.healthy || 0);
+    return Math.round((healthy / total) * 100);
   }
 
   pct(value: number, total: number): number {
     return total === 0 ? 0 : Math.round((value / total) * 100);
   }
 
-  goToPods() {
-    this.router.navigate(['/pods']);
-  }
+  goToPods() { this.router.navigate(['/pods']); }
 
   refresh() {
     this.api.getOverview().subscribe(res => (this.data = res));
@@ -355,7 +371,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.refresh();
-    // Auto-refresh every 30s
     this.refreshInterval = setInterval(() => this.refresh(), 30000);
   }
 

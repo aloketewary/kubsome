@@ -448,7 +448,7 @@ def _handle_plugins_list(cmd, env):
     plugins = list_plugins()
     if not plugins:
         console.print(
-            "[dim]No plugins. Add .py to ~/.kubeasy/plugins/[/dim]"
+            "[dim]No plugins. Add .py to ~/.kubsome/plugins/[/dim]"
         )
     else:
         for name, info in plugins.items():

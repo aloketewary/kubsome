@@ -1,5 +1,5 @@
 """
-User configuration — loaded from ~/.kubeasy/config.yaml
+User configuration — loaded from ~/.kubsome/config.yaml
 Falls back to defaults if file doesn't exist.
 """
 
@@ -8,7 +8,7 @@ from pathlib import Path
 
 import yaml
 
-CONFIG_PATH = Path.home() / ".kubeasy" / "config.yaml"
+CONFIG_PATH = Path.home() / ".kubsome" / "config.yaml"
 
 DEFAULTS = {
     "refresh_interval": 2,

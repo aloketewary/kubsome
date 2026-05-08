@@ -1,8 +1,8 @@
 """
 Workflows — chain multiple commands into reusable sequences.
-Stored in ~/.kubeasy/workflows/
+Stored in ~/.kubsome/workflows/
 
-Example workflow file (~/.kubeasy/workflows/deploy-check.yaml):
+Example workflow file (~/.kubsome/workflows/deploy-check.yaml):
   name: deploy-check
   description: Post-deployment verification
   steps:
@@ -15,7 +15,7 @@ Example workflow file (~/.kubeasy/workflows/deploy-check.yaml):
 import yaml
 from pathlib import Path
 
-WORKFLOWS_DIR = Path.home() / ".kubeasy" / "workflows"
+WORKFLOWS_DIR = Path.home() / ".kubsome" / "workflows"
 
 
 def ensure_dir():

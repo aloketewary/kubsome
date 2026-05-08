@@ -1,13 +1,13 @@
 """
-Plugin System for KubeEasy.
+Plugin System for Kubsome.
 
-Plugins are Python files placed in ~/.kubeasy/plugins/
+Plugins are Python files placed in ~/.kubsome/plugins/
 Each plugin must define:
   - NAME: str (command name)
   - DESCRIPTION: str
   - run(context) -> str or None (output to display)
 
-Example plugin (~/.kubeasy/plugins/my_check.py):
+Example plugin (~/.kubsome/plugins/my_check.py):
 
     NAME = "mycheck"
     DESCRIPTION = "Run custom health check"
@@ -24,7 +24,7 @@ from rich.console import Console
 
 console = Console()
 
-PLUGINS_DIR = Path.home() / ".kubeasy" / "plugins"
+PLUGINS_DIR = Path.home() / ".kubsome" / "plugins"
 
 
 def ensure_plugins_dir():

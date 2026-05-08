@@ -1,7 +1,7 @@
 """
-Example KubeEasy Plugin
+Example Kubsome Plugin
 
-Place this file in ~/.kubeasy/plugins/
+Place this file in ~/.kubsome/plugins/
 Then run: plugin health-summary
 """
 

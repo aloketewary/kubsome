@@ -1,6 +1,6 @@
 """
 Change Tracking — capture state snapshots and detect drift.
-Stores snapshots in ~/.kubeasy/snapshots/
+Stores snapshots in ~/.kubsome/snapshots/
 """
 
 import json
@@ -13,7 +13,7 @@ from core.collectors.deployments import collect_deployments
 from core.collectors.events import collect_events
 
 
-SNAPSHOTS_DIR = Path.home() / ".kubeasy" / "snapshots"
+SNAPSHOTS_DIR = Path.home() / ".kubsome" / "snapshots"
 
 
 def take_state_snapshot():

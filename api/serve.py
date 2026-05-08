@@ -1,9 +1,9 @@
 """
-Start the KubeEasy API server.
+Start the Kubsome API server.
 
 Usage:
     python -m api.serve
-    kubeasy serve
+    kubsome serve
 """
 
 import uvicorn

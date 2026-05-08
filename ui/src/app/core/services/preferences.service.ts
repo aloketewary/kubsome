@@ -8,7 +8,7 @@ export interface UserPreferences {
   notifications: boolean;
 }
 
-const STORAGE_KEY = 'kubeasy_prefs';
+const STORAGE_KEY = 'kubsome_prefs';
 
 const DEFAULTS: UserPreferences = {
   theme: 'dark',
@@ -21,6 +21,14 @@ const DEFAULTS: UserPreferences = {
 @Injectable({ providedIn: 'root' })
 export class PreferencesService {
   prefs = signal<UserPreferences>(this.load());
+
+  constructor() {
+    // Apply saved theme on startup
+    const theme = this.prefs().theme;
+    if (theme === 'light') {
+      document.documentElement.setAttribute('data-theme', 'light');
+    }
+  }
 
   get<K extends keyof UserPreferences>(key: K): UserPreferences[K] {
     return this.prefs()[key];
@@ -42,6 +50,10 @@ export class PreferencesService {
   }
 
   private save(prefs: UserPreferences): void {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs));
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs));
+    } catch (e) {
+      console.warn('Failed to save preferences:', e);
+    }
   }
 }

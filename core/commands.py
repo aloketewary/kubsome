@@ -552,6 +552,25 @@ def resolve_command(user_input: str):
             "query": user_input
         }
 
+    # Catch-all AI patterns
+    ai_triggers = [
+        "diagnose", "analyze", "investigate",
+        "show warning", "show error",
+        "any anomal", "any issue",
+        "high restart", "crash",
+        "what's wrong", "whats wrong",
+        "cluster health", "resource consumer",
+        "recently", "last hour",
+    ]
+
+    lower = user_input.lower()
+    for trigger in ai_triggers:
+        if trigger in lower:
+            return {
+                "type": "ai",
+                "query": user_input
+            }
+
     # Services
     if cmd == "services":
         return (

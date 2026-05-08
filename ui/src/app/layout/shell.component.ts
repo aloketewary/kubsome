@@ -1,14 +1,14 @@
 import { Component, OnInit, HostListener, inject } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
-import { DialogModule } from 'primeng/dialog';
 import { ContextsResponse } from '../core/models';
+import { PreferencesService } from '../core/services/preferences.service';
 import { HelpDialogComponent } from '../shared/components/help-dialog.component';
 
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [RouterLink, RouterLinkActive, DialogModule, HelpDialogComponent],
+  imports: [RouterLink, RouterLinkActive, HelpDialogComponent],
   template: `
     <div class="ctx-block">
       <div class="ctx-dot"></div>
@@ -22,10 +22,15 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
       <nav class="nav-section">
         <span class="nav-label">Favorites</span>
         @for (item of favorites; track item.path) {
-          <a [routerLink]="item.path" routerLinkActive="active" class="nav-item">
-            <i [class]="item.icon"></i>
-            <span>{{ item.label }}</span>
-          </a>
+          <div class="fav-row">
+            <a [routerLink]="item.path" routerLinkActive="active" class="nav-item fav-item">
+              <i [class]="item.icon"></i>
+              <span>{{ item.label }}</span>
+            </a>
+            <button class="fav-remove" (click)="removeFavorite(item.path)" title="Remove from favorites">
+              <i class="pi pi-times"></i>
+            </button>
+          </div>
         }
       </nav>
     }
@@ -37,10 +42,15 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
       </span>
       @if (!monitorCollapsed) {
         @for (item of monitorItems; track item.path) {
-          <a [routerLink]="item.path" routerLinkActive="active" class="nav-item">
-            <i [class]="item.icon"></i>
-            <span>{{ item.label }}</span>
-          </a>
+          <div class="nav-row">
+            <a [routerLink]="item.path" routerLinkActive="active" class="nav-item">
+              <i [class]="item.icon"></i>
+              <span>{{ item.label }}</span>
+            </a>
+            <button class="star-btn" [class.starred]="isFavorite(item.path)" (click)="toggleFavorite(item.path)" title="Toggle favorite">
+              <i class="pi" [class.pi-star-fill]="isFavorite(item.path)" [class.pi-star]="!isFavorite(item.path)"></i>
+            </button>
+          </div>
         }
       }
     </nav>
@@ -52,10 +62,15 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
       </span>
       @if (!opsCollapsed) {
         @for (item of opsItems; track item.path) {
-          <a [routerLink]="item.path" routerLinkActive="active" class="nav-item">
-            <i [class]="item.icon"></i>
-            <span>{{ item.label }}</span>
-          </a>
+          <div class="nav-row">
+            <a [routerLink]="item.path" routerLinkActive="active" class="nav-item">
+              <i [class]="item.icon"></i>
+              <span>{{ item.label }}</span>
+            </a>
+            <button class="star-btn" [class.starred]="isFavorite(item.path)" (click)="toggleFavorite(item.path)" title="Toggle favorite">
+              <i class="pi" [class.pi-star-fill]="isFavorite(item.path)" [class.pi-star]="!isFavorite(item.path)"></i>
+            </button>
+          </div>
         }
       }
     </nav>
@@ -83,60 +98,71 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
       </a>
     </div>
 
-    <p-dialog header="KubeEasy Help" [(visible)]="helpVisible" [modal]="true" [style]="{ width: '650px' }">
-      <app-help-dialog />
-    </p-dialog>
+    @if (helpVisible) {
+      <div class="help-overlay" (click)="helpVisible = false">
+        <div class="help-modal" (click)="$event.stopPropagation()">
+          <div class="help-header">
+            <span>Kubsome Help</span>
+            <button class="help-close" (click)="helpVisible = false"><i class="pi pi-times"></i></button>
+          </div>
+          <div class="help-body">
+            <app-help-dialog />
+          </div>
+        </div>
+      </div>
+    }
   `,
   styles: [`
-    :host { display: flex; flex-direction: column; height: calc(100vh - 52px); }
+    :host { display: flex; flex-direction: column; height: calc(100vh - 48px); }
     .ctx-block {
       display: flex;
       align-items: center;
-      gap: 8px;
-      padding: 12px 12px 16px;
+      gap: 6px;
+      padding: 8px 10px 12px;
     }
     .ctx-dot {
-      width: 8px;
-      height: 8px;
+      width: 6px;
+      height: 6px;
       border-radius: 50%;
       background: var(--success);
-      box-shadow: 0 0 6px var(--success);
+      box-shadow: 0 0 4px var(--success);
     }
     .ctx-name {
-      font-size: 11px;
+      font-size: 10px;
       color: var(--text-secondary);
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
     .nav-section {
-      margin-bottom: 16px;
+      margin-bottom: 8px;
     }
     .nav-label {
       display: flex;
       align-items: center;
       gap: 4px;
-      font-size: 10px;
+      font-size: 9px;
       font-weight: 600;
       color: var(--text-muted);
       text-transform: uppercase;
-      letter-spacing: 0.08em;
-      padding: 4px 12px 6px;
+      letter-spacing: 0.06em;
+      padding: 4px 10px 4px;
       user-select: none;
+      cursor: pointer;
     }
     .collapse-icon {
-      font-size: 10px;
+      font-size: 9px;
     }
     .nav-item {
       display: flex;
       align-items: center;
-      gap: 10px;
-      padding: 8px 12px;
-      border-radius: 8px;
-      font-size: 13px;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 12px;
       color: var(--text-secondary);
       cursor: pointer;
-      transition: all 0.12s ease;
+      transition: all 0.1s ease;
       text-decoration: none;
     }
     .nav-item:hover {
@@ -148,24 +174,67 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
       color: var(--accent);
     }
     .nav-item i {
-      font-size: 14px;
-      width: 18px;
+      font-size: 13px;
+      width: 16px;
       text-align: center;
     }
     .nav-item kbd {
       margin-left: auto;
-      font-size: 10px;
-      padding: 1px 5px;
-      border-radius: 4px;
+      font-size: 9px;
+      padding: 1px 4px;
+      border-radius: 3px;
       background: var(--bg-elevated);
       border: 1px solid var(--border);
       color: var(--text-muted);
     }
+    .fav-row, .nav-row {
+      display: flex;
+      align-items: center;
+    }
+    .fav-row .nav-item, .nav-row .nav-item { flex: 1; }
+    .fav-remove, .star-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 4px;
+      font-size: 10px;
+      opacity: 0;
+      transition: all 0.12s;
+    }
+    .fav-row:hover .fav-remove, .nav-row:hover .star-btn { opacity: 0.6; }
+    .fav-remove:hover { opacity: 1 !important; color: var(--danger); }
+    .star-btn:hover { opacity: 1 !important; color: var(--warning); }
+    .star-btn.starred { opacity: 0.8; color: var(--warning); }
+    .star-btn.starred:hover { opacity: 1; }
     .nav-footer {
       margin-top: auto;
-      padding-top: 8px;
+      padding-top: 6px;
       border-top: 1px solid var(--border);
     }
+    .help-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(4px); z-index: 9000;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .help-modal {
+      width: 650px; max-height: 80vh; background: var(--bg-card);
+      border: 1px solid var(--border); border-radius: var(--radius);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5); display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+    .help-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 20px; border-bottom: 1px solid var(--border);
+      font-size: 15px; font-weight: 600;
+    }
+    .help-close {
+      background: none; border: none; color: var(--text-muted);
+      cursor: pointer; padding: 4px; border-radius: 4px;
+    }
+    .help-close:hover { background: var(--bg-hover); color: var(--text); }
+    .help-body { padding: 20px; overflow-y: auto; }
   `],
 })
 export class ShellComponent implements OnInit {
@@ -178,14 +247,12 @@ export class ShellComponent implements OnInit {
   opsCollapsed = false;
   aiCollapsed = false;
 
-  favorites = [
-    { path: '/dashboard', icon: 'pi pi-objects-column', label: 'Dashboard' },
-    { path: '/pods', icon: 'pi pi-box', label: 'Pods' },
-    { path: '/logs', icon: 'pi pi-align-left', label: 'Logs' },
-  ];
+  private prefsService = inject(PreferencesService);
+  favorites: { path: string; icon: string; label: string }[] = [];
 
   monitorItems = [
     { path: '/dashboard', icon: 'pi pi-objects-column', label: 'Dashboard' },
+    { path: '/monitor', icon: 'pi pi-desktop', label: 'Monitor' },
     { path: '/pods', icon: 'pi pi-box', label: 'Pods' },
     { path: '/events', icon: 'pi pi-bolt', label: 'Events' },
     { path: '/metrics', icon: 'pi pi-chart-bar', label: 'Metrics' },
@@ -248,8 +315,53 @@ export class ShellComponent implements OnInit {
   openHelp() { this.helpVisible = true; }
 
   ngOnInit() {
+    this.loadFavorites();
     this.http.get<ContextsResponse>('http://localhost:8000/api/contexts').subscribe(res => {
       this.currentContext = res.current ?? 'none';
     });
   }
+  private allItems = [
+    { path: '/dashboard', icon: 'pi pi-objects-column', label: 'Dashboard' },
+    { path: '/pods', icon: 'pi pi-box', label: 'Pods' },
+    { path: '/events', icon: 'pi pi-bolt', label: 'Events' },
+    { path: '/metrics', icon: 'pi pi-chart-bar', label: 'Metrics' },
+    { path: '/deployments', icon: 'pi pi-send', label: 'Deployments' },
+    { path: '/logs', icon: 'pi pi-align-left', label: 'Logs' },
+    { path: '/jobs', icon: 'pi pi-clock', label: 'Jobs' },
+    { path: '/terminal', icon: 'pi pi-code', label: 'Terminal' },
+    { path: '/ai', icon: 'pi pi-sparkles', label: 'AI Assistant' },
+    { path: '/incident', icon: 'pi pi-exclamation-circle', label: 'Incident' },
+  ];
+
+  loadFavorites() {
+    const paths = this.prefsService.get('sidebarFavorites');
+    this.favorites = paths.map(p => this.allItems.find(i => i.path === p)).filter(Boolean) as any[];
+  }
+
+  toggleFavorite(path: string) {
+    if (this.isFavorite(path)) {
+      this.removeFavorite(path);
+    } else {
+      this.addFavorite(path);
+    }
+  }
+
+  removeFavorite(path: string) {
+    const paths = this.prefsService.get('sidebarFavorites').filter(p => p !== path);
+    this.prefsService.set('sidebarFavorites', paths);
+    this.loadFavorites();
+  }
+
+  addFavorite(path: string) {
+    const paths = this.prefsService.get('sidebarFavorites');
+    if (!paths.includes(path)) {
+      this.prefsService.set('sidebarFavorites', [...paths, path]);
+      this.loadFavorites();
+    }
+  }
+
+  isFavorite(path: string): boolean {
+    return this.prefsService.get('sidebarFavorites').includes(path);
+  }
+
 }

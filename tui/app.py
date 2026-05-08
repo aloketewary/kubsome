@@ -57,7 +57,7 @@ class KubeasyApp(App):
         ("6", "tab_jobs", "Jobs"),
     ]
 
-    TITLE = "KubeEasy"
+    TITLE = "Kubsome"
     SUB_TITLE = "Kubernetes Operational Workspace"
 
     def compose(self) -> ComposeResult:

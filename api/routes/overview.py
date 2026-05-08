@@ -23,10 +23,14 @@ def get_overview():
     node_health = {
         "healthy": sum(1 for n in nodes if n["ready"]),
         "warning": sum(1 for n in nodes if not n["ready"]),
+        "critical": 0,
+        "unavailable": 0,
     }
 
     dep_health = {
         "healthy": sum(1 for d in deployments if d["available"] == d["desired"]),
+        "warning": 0,
+        "critical": 0,
         "unavailable": sum(1 for d in deployments if d["available"] < d["desired"]),
     }
 

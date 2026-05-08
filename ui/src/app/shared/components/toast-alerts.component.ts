@@ -93,6 +93,7 @@ export class ToastAlertsComponent implements OnInit, OnDestroy {
   toasts: Toast[] = [];
 
   ngOnInit() {
+    this.requestNotificationPermission();
     const conn = this.ws.connect('/ws/pods');
     this.closeWs = conn.close;
     this.sub = conn.messages$.subscribe(data => {
@@ -129,6 +130,9 @@ export class ToastAlertsComponent implements OnInit, OnDestroy {
     const toast: Toast = { id: ++this.idCounter, severity, title, message, time: Date.now() };
     this.toasts.push(toast);
 
+    // OS-level notification
+    this.sendOsNotification(title, message, severity);
+
     // Auto-dismiss after 8 seconds
     setTimeout(() => this.dismiss(toast.id), 8000);
 
@@ -136,6 +140,33 @@ export class ToastAlertsComponent implements OnInit, OnDestroy {
     if (this.toasts.length > 5) {
       this.toasts.shift();
     }
+  }
+
+  private requestNotificationPermission() {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }
+
+  private sendOsNotification(title: string, body: string, severity: string) {
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+
+    const icon = severity === 'danger' ? '🔴' : severity === 'warn' ? '🟡' : '🟢';
+    const notification = new Notification(`${icon} Kubsome: ${title}`, {
+      body,
+      icon: '/favicon.ico',
+      tag: title, // prevents duplicate notifications
+      silent: false,
+    });
+
+    // Auto-close after 6s
+    setTimeout(() => notification.close(), 6000);
+
+    // Click notification to focus the app
+    notification.onclick = () => {
+      window.focus();
+      notification.close();
+    };
   }
 
   dismiss(id: number) {
