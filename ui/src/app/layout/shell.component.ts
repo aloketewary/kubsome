@@ -230,6 +230,9 @@ export class ShellComponent implements OnInit {
         case 'l': this.router.navigate(['/logs']); break;
         case 't': this.router.navigate(['/terminal']); break;
         case 'a': this.router.navigate(['/ai']); break;
+        case 'm': this.router.navigate(['/metrics']); break;
+        case 'r': this.router.navigate(['/runbooks']); break;
+        case 's': this.router.navigate(['/settings']); break;
       }
       return;
     }
