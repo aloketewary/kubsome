@@ -1,4 +1,4 @@
-import { Component, inject, Input, Output, EventEmitter } from '@angular/core';
+import { Component, inject, Input, Output, EventEmitter, OnChanges, SimpleChanges } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { JsonPipe } from '@angular/common';
 import { TagModule } from 'primeng/tag';
@@ -228,7 +228,7 @@ import { Subscription } from 'rxjs';
     .finding-action { font-size: 11px; color: var(--text-muted); margin: 2px 0; }
   `],
 })
-export class PodDrawerComponent {
+export class PodDrawerComponent implements OnChanges {
   private api = inject(ApiService);
   private ws = inject(WsService);
 
@@ -261,8 +261,8 @@ export class PodDrawerComponent {
     if (tab === 'diagnose' && !this.diagnoseDone && this.findings.length === 0) this.loadDiagnose();
   }
 
-  ngOnChanges() {
-    if (this.podName) {
+  ngOnChanges(changes: SimpleChanges) {
+    if (changes['podName'] && this.podName) {
       this.reset();
       this.loadLogs();
     }

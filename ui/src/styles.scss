@@ -265,14 +265,37 @@ a { text-decoration: none; color: inherit; }
   background: var(--bg-card) !important;
   border-bottom: 1px solid var(--border) !important;
   border-radius: var(--radius) var(--radius) 0 0 !important;
+  color: var(--text) !important;
 }
 .p-dialog .p-dialog-content {
   background: var(--bg-card) !important;
+  color: var(--text) !important;
 }
 .p-dialog .p-dialog-footer {
   background: var(--bg-card) !important;
   border-top: 1px solid var(--border) !important;
   border-radius: 0 0 var(--radius) var(--radius) !important;
+}
+.p-dialog-mask {
+  background: rgba(0, 0, 0, 0.6) !important;
+  backdrop-filter: blur(4px) !important;
+}
+.p-dialog .p-dialog-header .p-dialog-title {
+  color: var(--text) !important;
+}
+.p-dialog .p-dialog-header-close {
+  color: var(--text-muted) !important;
+}
+.p-dialog .p-dialog-header-close:hover {
+  color: var(--text) !important;
+  background: var(--bg-hover) !important;
+}
+.p-dialog .p-dialog-header-maximize {
+  color: var(--text-muted) !important;
+}
+.p-dialog .p-dialog-header-maximize:hover {
+  color: var(--text) !important;
+  background: var(--bg-hover) !important;
 }
 
 /* Toast */
