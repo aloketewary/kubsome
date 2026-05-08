@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { TagModule } from 'primeng/tag';
@@ -288,82 +288,94 @@ interface Runbook {
     .completion-card p { font-size: 13px; color: var(--text-secondary); margin: 0 0 16px; }
   `],
 })
-export class RunbooksComponent {
+export class RunbooksComponent implements OnInit {
   private http = inject(HttpClient);
   activeRunbook: Runbook | null = null;
+  apiPlaybooks: any[] = [];
 
   get completedSteps() { return this.activeRunbook?.steps.filter(s => s.done).length || 0; }
   get progressPct() { return this.activeRunbook ? Math.round((this.completedSteps / this.activeRunbook.steps.length) * 100) : 0; }
   get currentStepIndex() { return this.activeRunbook?.steps.findIndex(s => !s.done) ?? -1; }
 
-  runbooks: Runbook[] = [
-    {
-      id: 'pod-crash', name: 'Pod CrashLoopBackOff', description: 'Diagnose and fix a pod stuck in crash loop. Covers log analysis, resource checks, and image verification.',
-      icon: 'pi pi-exclamation-triangle', color: '#ef4444', severity: 'Critical', estimatedTime: '5-10 min',
-      steps: [
-        { title: 'Identify crashing pods', description: 'List all pods not in Running state to find the affected workload.', command: 'kubectl get pods --field-selector=status.phase!=Running', done: false },
-        { title: 'Check pod events', description: 'Look for scheduling failures, image pull errors, or OOM kills.', command: 'events', done: false },
-        { title: 'View pod logs', description: 'Check the last container output for stack traces or error messages.', command: 'kubectl logs --previous --tail=50', done: false },
-        { title: 'Inspect pod details', description: 'Check resource limits, node assignment, and container state.', command: 'pods', done: false },
-        { title: 'Check image pull secrets', description: 'Verify registry credentials are present and valid.', done: false },
-        { title: 'Run AI diagnosis', description: 'Let the AI engine analyze the pod and suggest root cause.', done: false },
-      ],
-    },
-    {
-      id: 'high-cpu', name: 'High CPU Usage', description: 'Investigate CPU spikes across pods and nodes. Identify resource hogs and scaling opportunities.',
-      icon: 'pi pi-chart-bar', color: '#eab308', severity: 'High', estimatedTime: '3-5 min',
-      steps: [
-        { title: 'Check top pods by CPU', description: 'Identify which pods are consuming the most CPU.', command: 'top pods', done: false },
-        { title: 'Check node pressure', description: 'See if any nodes are under resource pressure.', command: 'top nodes', done: false },
-        { title: 'Review HPA status', description: 'Check if autoscalers are active and at max replicas.', command: 'kubectl get hpa', done: false },
-        { title: 'Check resource limits', description: 'Verify CPU requests and limits are properly set.', command: 'kubectl describe nodes | grep -A5 "Allocated"', done: false },
-        { title: 'Scale if needed', description: 'Increase replicas or adjust resource limits.', done: false },
-      ],
-    },
-    {
-      id: 'deploy-fail', name: 'Failed Deployment', description: 'Rollback a broken deployment and diagnose what went wrong. Covers rollout status and revision history.',
-      icon: 'pi pi-send', color: '#3b82f6', severity: 'High', estimatedTime: '3-7 min',
-      steps: [
-        { title: 'Check rollout status', description: 'See if the deployment is stuck or progressing.', command: 'kubectl rollout status deployment --timeout=10s', done: false },
-        { title: 'View recent events', description: 'Look for image pull failures or scheduling issues.', command: 'events', done: false },
-        { title: 'Check new pod status', description: 'See if new pods are starting or crashing.', command: 'pods', done: false },
-        { title: 'Compare revisions', description: 'Check what changed between the current and previous revision.', command: 'kubectl rollout history deployment', done: false },
-        { title: 'Rollback if needed', description: 'Undo the deployment to the last known good revision.', command: 'kubectl rollout undo deployment', done: false },
-      ],
-    },
-    {
-      id: 'node-pressure', name: 'Node Pressure', description: 'Diagnose node resource exhaustion — memory pressure, disk pressure, or PID pressure.',
-      icon: 'pi pi-server', color: '#a855f7', severity: 'Critical', estimatedTime: '5-10 min',
-      steps: [
-        { title: 'Check node conditions', description: 'Identify which nodes have pressure conditions.', command: 'kubectl get nodes', done: false },
-        { title: 'Check resource usage', description: 'See CPU and memory consumption per node.', command: 'top nodes', done: false },
-        { title: 'Find heavy pods', description: 'Identify pods consuming the most resources on affected nodes.', command: 'kubectl top pods --sort-by=memory', done: false },
-        { title: 'Check for evictions', description: 'Look for pods that were evicted due to pressure.', command: 'kubectl get events --field-selector reason=Evicted', done: false },
-        { title: 'Drain check', description: 'Evaluate if the node can be safely drained for maintenance.', done: false },
-      ],
-    },
-    {
-      id: 'network-issue', name: 'Network Connectivity', description: 'Debug DNS resolution, service discovery, and pod-to-pod communication issues.',
-      icon: 'pi pi-globe', color: '#22c55e', severity: 'Medium', estimatedTime: '5-8 min',
-      steps: [
-        { title: 'Check services', description: 'Verify service endpoints are populated.', command: 'kubectl get svc', done: false },
-        { title: 'Check endpoints', description: 'Ensure services have backing pod endpoints.', command: 'kubectl get endpoints', done: false },
-        { title: 'Test DNS resolution', description: 'Verify internal DNS is resolving service names.', command: 'kubectl get pods -n kube-system -l k8s-app=kube-dns', done: false },
-        { title: 'Check network policies', description: 'Look for policies that might be blocking traffic.', command: 'kubectl get networkpolicies', done: false },
-        { title: 'Check ingress', description: 'Verify external access routes are configured.', command: 'kubectl get ingress', done: false },
-      ],
-    },
-    {
-      id: 'secret-issue', name: 'Secret/Config Issues', description: 'Diagnose missing secrets, expired certificates, or misconfigured ConfigMaps.',
-      icon: 'pi pi-lock', color: '#f97316', severity: 'High', estimatedTime: '3-5 min',
-      steps: [
-        { title: 'Check pull secrets', description: 'Verify image pull secrets exist for all pods.', done: false },
-        { title: 'List secrets', description: 'Check what secrets are available in the namespace.', command: 'kubectl get secrets', done: false },
-        { title: 'Check mounted secrets', description: 'Verify pods can access their required secrets.', command: 'kubectl get pods -o jsonpath="{.items[*].spec.volumes[*].secret.secretName}"', done: false },
-        { title: 'Check ConfigMaps', description: 'Verify ConfigMaps referenced by pods exist.', command: 'kubectl get configmaps', done: false },
-      ],
-    },
-  ];
+  ngOnInit() {
+    this.http.get<any>('http://localhost:8000/api/playbooks').subscribe({
+      next: (res) => {
+        const icons: Record<string, string> = {
+          CrashLoopBackOff: 'pi pi-exclamation-triangle',
+          ImagePullBackOff: 'pi pi-image',
+          OOMKilled: 'pi pi-database',
+          Pending: 'pi pi-clock',
+          FailedScheduling: 'pi pi-calendar-times',
+          Unhealthy: 'pi pi-heart',
+          restart_spike: 'pi pi-refresh',
+          event_storm: 'pi pi-bolt',
+          DNS: 'pi pi-globe',
+          NetworkPolicy: 'pi pi-shield',
+          HPA: 'pi pi-chart-line',
+          Security: 'pi pi-lock',
+          ResourceExhaustion: 'pi pi-server',
+          RolloutStuck: 'pi pi-send',
+          HighLatency: 'pi pi-stopwatch',
+          CertificateExpiry: 'pi pi-key',
+          PVCPending: 'pi pi-save',
+          NodeNotReady: 'pi pi-desktop',
+          ServiceUnavailable: 'pi pi-times-circle',
+          ConfigMapChange: 'pi pi-file-edit',
+          HighRestarts: 'pi pi-replay',
+          IngressNotWorking: 'pi pi-directions',
+          JobFailing: 'pi pi-briefcase',
+          EtcdSlow: 'pi pi-database',
+          GracefulShutdown: 'pi pi-power-off',
+          RBAC: 'pi pi-users',
+        };
+        const colors: Record<string, string> = {
+          CrashLoopBackOff: '#ef4444', ImagePullBackOff: '#f97316', OOMKilled: '#ef4444',
+          Pending: '#eab308', FailedScheduling: '#eab308', Unhealthy: '#ef4444',
+          restart_spike: '#f97316', event_storm: '#a855f7', DNS: '#22c55e',
+          NetworkPolicy: '#22c55e', HPA: '#3b82f6', Security: '#ef4444',
+          ResourceExhaustion: '#a855f7', RolloutStuck: '#3b82f6', HighLatency: '#eab308',
+          CertificateExpiry: '#f97316', PVCPending: '#eab308', NodeNotReady: '#ef4444',
+          ServiceUnavailable: '#ef4444', ConfigMapChange: '#3b82f6', HighRestarts: '#f97316',
+          IngressNotWorking: '#eab308', JobFailing: '#a855f7', EtcdSlow: '#ef4444',
+          GracefulShutdown: '#eab308', RBAC: '#3b82f6',
+        };
+        const severities: Record<string, string> = {
+          CrashLoopBackOff: 'Critical', ImagePullBackOff: 'High', OOMKilled: 'Critical',
+          Pending: 'Medium', FailedScheduling: 'High', Unhealthy: 'High',
+          restart_spike: 'High', event_storm: 'Medium', DNS: 'High',
+          NetworkPolicy: 'Medium', HPA: 'Medium', Security: 'High',
+          ResourceExhaustion: 'Critical', RolloutStuck: 'High', HighLatency: 'Medium',
+          CertificateExpiry: 'Critical', PVCPending: 'Medium', NodeNotReady: 'Critical',
+          ServiceUnavailable: 'Critical', ConfigMapChange: 'Medium', HighRestarts: 'High',
+          IngressNotWorking: 'High', JobFailing: 'Medium', EtcdSlow: 'Critical',
+          GracefulShutdown: 'Medium', RBAC: 'Medium',
+        };
+        this.runbooks = (res.playbooks || []).map((pb: any) => ({
+          id: pb.id,
+          name: pb.title,
+          description: `Step-by-step guide for ${pb.title.toLowerCase()}`,
+          icon: icons[pb.id] || 'pi pi-book',
+          color: colors[pb.id] || '#3b82f6',
+          severity: severities[pb.id] || 'Medium',
+          estimatedTime: `${pb.steps.length * 2} min`,
+          steps: pb.steps.map((s: string) => ({
+            title: s.replace(/\[\/?[^\]]+\]/g, '').trim(),
+            description: '',
+            command: this.extractCommand(s),
+            done: false,
+          })),
+        }));
+      },
+      error: () => {},
+    });
+  }
+
+  private extractCommand(step: string): string | undefined {
+    const match = step.match(/\[cyan\](.+?)\[\/cyan\]/);
+    return match ? match[1] : undefined;
+  }
+
+  runbooks: Runbook[] = [];
 
   selectRunbook(rb: Runbook) {
     this.activeRunbook = { ...rb, steps: rb.steps.map(s => ({ ...s, done: false, output: undefined, loading: false })) };

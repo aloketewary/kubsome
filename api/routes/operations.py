@@ -210,6 +210,17 @@ def get_playbook(issue: str):
     return get_playbook(issue)
 
 
+@router.get("/playbooks")
+def list_playbooks():
+    from core.ai.playbooks import PLAYBOOKS
+    return {
+        "playbooks": [
+            {"id": key, "title": pb["title"], "steps": pb["steps"]}
+            for key, pb in PLAYBOOKS.items()
+        ]
+    }
+
+
 # ─── Changelog / Snap ─────────────────────────────────────────────────────────
 
 @router.get("/changelog")

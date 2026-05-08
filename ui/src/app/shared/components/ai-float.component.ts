@@ -5,6 +5,8 @@ import { ApiService } from '../../core/services/api.service';
 interface Message {
   role: 'user' | 'ai';
   text: string;
+  options?: string[];
+  originalQuery?: string;
 }
 
 @Component({
@@ -31,6 +33,13 @@ interface Message {
           @for (msg of messages; track $index) {
             <div class="msg" [class.msg-user]="msg.role === 'user'" [class.msg-ai]="msg.role === 'ai'">
               <div class="msg-text">{{ msg.text }}</div>
+              @if (msg.options && msg.options.length > 0) {
+                <div class="msg-options">
+                  @for (opt of msg.options; track opt) {
+                    <button class="opt-btn" (click)="selectOption(opt, msg)">{{ opt }}</button>
+                  }
+                </div>
+              }
             </div>
           }
           @if (loading) {
@@ -141,6 +150,7 @@ interface Message {
       border-radius: 12px;
       font-size: 13px;
       line-height: 1.5;
+      overflow: visible;
     }
     .msg-user {
       align-self: flex-end;
@@ -153,8 +163,25 @@ interface Message {
       background: var(--bg-elevated);
       border: 1px solid var(--border);
       border-bottom-left-radius: 4px;
+      max-width: 95%;
     }
     .msg-text { white-space: pre-wrap; }
+    .msg-options {
+      display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px;
+      padding-top: 8px; border-top: 1px solid var(--border);
+    }
+    .opt-btn {
+      padding: 6px 10px; border-radius: 6px;
+      background: var(--bg); border: 1px solid var(--accent);
+      color: var(--accent); font-size: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      cursor: pointer; transition: all 0.12s;
+      white-space: nowrap; overflow: hidden;
+      text-overflow: ellipsis; max-width: 100%;
+    }
+    .opt-btn:hover {
+      background: var(--accent); color: #fff;
+    }
 
     .panel-empty {
       flex: 1;
@@ -231,7 +258,9 @@ export class AiFloatComponent {
   suggestions = [
     'summarize cluster health',
     'which pods are unhealthy',
+    'how many pods running',
     'what changed recently',
+    'any anomalies detected',
   ];
 
   ask() {
@@ -242,8 +271,17 @@ export class AiFloatComponent {
     this.loading = true;
 
     this.api.askAi(q).subscribe({
-      next: (res) => {
-        this.messages.push({ role: 'ai', text: res.answer || JSON.stringify(res) });
+      next: (res: any) => {
+        if (res.severity === 'clarify' && res.options) {
+          this.messages.push({
+            role: 'ai',
+            text: res.answer,
+            options: res.options,
+            originalQuery: res.original_query || q,
+          });
+        } else {
+          this.messages.push({ role: 'ai', text: res.answer || JSON.stringify(res) });
+        }
         this.loading = false;
       },
       error: () => {
@@ -251,5 +289,21 @@ export class AiFloatComponent {
         this.loading = false;
       },
     });
+  }
+
+  selectOption(option: string, msg: Message) {
+    msg.options = [];
+    const original = msg.originalQuery || '';
+    const skip = new Set(['why', 'is', 'how', 'many', 'pod', 'pods', 'the', 'my', 'failing', 'crashing', 'running', 'consuming', 'cpu', 'memory', 'more', 'check', 'diagnose', 'inspect', 'logs', 'for', 'of', 'healthy', 'status', 'what', 'wrong', 'with']);
+    let replaced = false;
+    const refined = original.split(' ').map(w => {
+      if (!replaced && !skip.has(w.toLowerCase().replace('?', ''))) {
+        replaced = true;
+        return option;
+      }
+      return w;
+    }).join(' ');
+    this.query = replaced ? refined : `${original} ${option}`;
+    this.ask();
   }
 }

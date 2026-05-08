@@ -851,6 +851,108 @@ def _handle_dns(cmd, env):
     data = dns_debug(cmd["service"])
     render_dns(data)
 
+
+def _handle_kubectl_pretty(cmd, env):
+    """Run kubectl command with pretty-printed output."""
+    from core.renderers.describe_renderer import (
+        render_describe
+    )
+
+    kubectl_cmd = cmd["cmd"]
+    console.print(f"[dim]→ {kubectl_cmd}[/dim]")
+
+    result = subprocess.run(
+        kubectl_cmd,
+        shell=True,
+        capture_output=True,
+        text=True
+    )
+
+    if result.returncode != 0:
+        err = result.stderr.strip()
+        console.print(
+            Panel(
+                f"[red]{err}[/red]",
+                title="[red]Error[/red]",
+                border_style="red",
+            )
+        )
+        return
+
+    output = result.stdout.strip()
+    if not output:
+        console.print("[dim]No output[/dim]")
+        return
+
+    # Detect action and resource type
+    parts = kubectl_cmd.split()
+    action = ""
+    resource = ""
+    for i, p in enumerate(parts):
+        if p in ("describe", "get", "delete"):
+            action = p
+            if i + 1 < len(parts):
+                resource = parts[i + 1]
+            break
+
+    if action == "describe":
+        render_describe(output, resource)
+    elif action == "get":
+        _render_get(output)
+    elif action == "delete":
+        console.print(
+            f"[green]✓[/green] {output}"
+        )
+    else:
+        console.print(output)
+
+
+
+def _render_get(output):
+    """Pretty-print kubectl get output as a table."""
+    from rich.table import Table
+
+    lines = output.strip().split("\n")
+    if not lines:
+        return
+
+    # First line is header
+    headers = lines[0].split()
+    table = Table(show_header=True, border_style="dim")
+
+    for h in headers:
+        style = None
+        if h == "STATUS":
+            style = "cyan"
+        elif h == "NAME":
+            style = "bold"
+        table.add_column(h, style=style)
+
+    for line in lines[1:]:
+        if not line.strip():
+            continue
+        cols = line.split(None, len(headers) - 1)
+        # Color status column
+        styled = []
+        for i, col in enumerate(cols):
+            if i < len(headers) and headers[i] == "STATUS":
+                if col in ("Running", "Active", "Bound", "Available"):
+                    styled.append(f"[green]{col}[/green]")
+                elif col in ("Pending", "Terminating"):
+                    styled.append(f"[yellow]{col}[/yellow]")
+                elif col in (
+                    "CrashLoopBackOff", "Error",
+                    "Failed", "ImagePullBackOff"
+                ):
+                    styled.append(f"[red]{col}[/red]")
+                else:
+                    styled.append(col)
+            else:
+                styled.append(col)
+        table.add_row(*styled)
+
+    console.print(table)
+
 # Handler registry
 HANDLERS = {
     "pods_table": _handle_pods_table,
@@ -926,4 +1028,5 @@ HANDLERS = {
     "ingress": _handle_ingress,
     "deps": _handle_deps,
     "dns": _handle_dns,
+    "kubectl_pretty": _handle_kubectl_pretty,
 }

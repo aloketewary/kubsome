@@ -146,6 +146,8 @@ interface MonitorCard {
             </div>
           } @else if (card.loading) {
             <div class="mc-state"><div class="spin"></div> Loading...</div>
+          } @else if (card.data?.error) {
+            <div class="mc-error"><i class="pi pi-exclamation-triangle"></i> {{ card.data.error }}</div>
           } @else {
             <div class="mc-state"><i class="pi pi-chart-bar"></i> Select cluster & namespace</div>
           }
@@ -389,6 +391,12 @@ interface MonitorCard {
     /* States */
     .mc-state { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 24px; color: var(--text-muted); font-size: 11px; }
     .mc-state i { font-size: 16px; opacity: 0.3; }
+    .mc-error {
+      display: flex; align-items: center; gap: 8px; padding: 12px 14px;
+      background: var(--danger-subtle); border-radius: 6px;
+      font-size: 11px; color: var(--danger); font-weight: 500;
+    }
+    .mc-error i { font-size: 14px; }
     .spin { width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -540,7 +548,12 @@ export class MonitorComponent implements OnInit, OnDestroy {
     card.namespace = '';
     card.data = null;
     this.http.get<any>(`http://localhost:8000/api/namespaces/${card.context}`).subscribe({
-      next: (res) => { card.namespaces = res.namespaces || []; },
+      next: (res) => {
+        card.namespaces = res.namespaces || [];
+        if (res.error) {
+          card.data = { error: res.error };
+        }
+      },
       error: () => { card.namespaces = []; },
     });
   }

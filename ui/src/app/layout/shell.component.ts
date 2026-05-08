@@ -267,6 +267,7 @@ export class ShellComponent implements OnInit {
     { path: '/jobs', icon: 'pi pi-clock', label: 'Jobs' },
     { path: '/rbac', icon: 'pi pi-shield', label: 'RBAC' },
     { path: '/network', icon: 'pi pi-globe', label: 'Network' },
+    { path: '/resources', icon: 'pi pi-database', label: 'Resources' },
     { path: '/secrets', icon: 'pi pi-lock', label: 'Pull Secrets' },
     { path: '/incident', icon: 'pi pi-exclamation-circle', label: 'Incident' },
     { path: '/graph', icon: 'pi pi-sitemap', label: 'Service Map' },

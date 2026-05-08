@@ -19,6 +19,8 @@ from core.config import load_config, resolve_alias
 from core.dispatcher import dispatch
 from core.ai.nlp import parse_natural_language
 from core.ai.suggest import suggest_command
+from core.nlp.matcher import parse_query
+from core.nlp.actions import map_to_command
 from core.kubeconfig import enriched_contexts
 from core.context_formatter import render_contexts
 from core.context_switcher import find_context, switch_context
@@ -65,10 +67,7 @@ def main():
             "[bold]Enable Features[/bold]\n"
             "────────────────────────────────────────\n"
             "[cyan]pip install kubsome[/cyan]       "
-            "CLI only (installed ✓)\n"
-            "[cyan]pip install \"kubsome[api]\"[/cyan] "
-            "→ enables [green]kubsome serve[/green] "
-            "(REST API + Web UI)\n"
+            "CLI + API + Web UI (installed ✓)\n"
             "[cyan]pip install \"kubsome[tui]\"[/cyan] "
             "→ enables [green]kubsome tui[/green] "
             "(full-screen dashboard)\n"
@@ -301,12 +300,32 @@ def _execute_single(user_input, env):
     # Resolve command
     command = resolve_command(user_input)
 
-    # NLP fallback
+    # NLP fallback (rule-based)
     if not command:
         nlp_cmd = parse_natural_language(user_input)
         if nlp_cmd:
             console.print(f"[dim]→ {nlp_cmd}[/dim]")
             command = resolve_command(nlp_cmd)
+
+    # Intent engine fallback (fuzzy intent matching)
+    if not command:
+        parsed = parse_query(user_input)
+        if parsed and parsed["score"] >= 65:
+            action = map_to_command(parsed)
+            if action:
+                intent = parsed["intent"]
+                target = parsed["entities"].get(
+                    "target", ""
+                )
+                console.print(
+                    f"[dim]→ intent:{intent}"
+                    f"{' target:' + target if target else ''}"
+                    f"[/dim]"
+                )
+                if isinstance(action, str):
+                    command = resolve_command(action)
+                else:
+                    command = action
 
     # Suggestion fallback
     if not command:

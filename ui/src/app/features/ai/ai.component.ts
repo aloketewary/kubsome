@@ -8,6 +8,8 @@ interface Message {
   role: 'user' | 'ai';
   text: string;
   time: string;
+  options?: string[];
+  originalQuery?: string;
 }
 
 @Component({
@@ -78,6 +80,13 @@ interface Message {
                 <span class="msg-time">{{ msg.time }}</span>
               </div>
               <div class="msg-content">{{ msg.text }}</div>
+              @if (msg.options && msg.options.length > 0) {
+                <div class="msg-options">
+                  @for (opt of msg.options; track opt) {
+                    <button class="opt-btn" (click)="selectOption(opt, msg)">{{ opt }}</button>
+                  }
+                </div>
+              }
             </div>
           </div>
         }
@@ -213,9 +222,10 @@ interface Message {
     .avatar-ai { background: linear-gradient(135deg, var(--accent-subtle), rgba(168,85,247,0.15)); color: var(--accent); }
 
     .msg-bubble {
-      max-width: 70%;
+      max-width: 80%;
       padding: 10px 14px;
       border-radius: 12px;
+      overflow: visible;
     }
     .bubble-user {
       background: var(--accent);
@@ -226,6 +236,7 @@ interface Message {
       background: var(--bg-elevated);
       border: 1px solid var(--border);
       border-bottom-left-radius: 4px;
+      max-width: 90%;
     }
     .msg-header {
       display: flex;
@@ -240,6 +251,22 @@ interface Message {
       line-height: 1.6;
       white-space: pre-wrap;
       word-break: break-word;
+    }
+    .msg-options {
+      display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px;
+      padding-top: 10px; border-top: 1px solid var(--border);
+    }
+    .opt-btn {
+      padding: 6px 12px; border-radius: 8px;
+      background: var(--bg); border: 1px solid var(--accent);
+      color: var(--accent); font-size: 11px;
+      font-family: 'JetBrains Mono', monospace;
+      cursor: pointer; transition: all 0.12s;
+      white-space: nowrap; overflow: hidden;
+      text-overflow: ellipsis; max-width: 100%;
+    }
+    .opt-btn:hover {
+      background: var(--accent); color: #fff;
     }
 
     /* Typing Indicator */
@@ -314,9 +341,11 @@ export class AiComponent implements AfterViewChecked {
     'why is payment-api failing',
     'diagnose high restart pods',
     'which pods are unhealthy',
+    'what\'s wrong with billing',
   ];
   analyzeSuggestions = [
     'summarize cluster health',
+    'how many pods running',
     'top resource consumers',
     'is billing-api healthy',
   ];
@@ -324,6 +353,7 @@ export class AiComponent implements AfterViewChecked {
     'what changed recently',
     'show warning events',
     'any anomalies detected',
+    'count customer pods',
   ];
 
   ngAfterViewChecked() {
@@ -342,9 +372,19 @@ export class AiComponent implements AfterViewChecked {
     this.shouldScroll = true;
 
     this.api.askAi(q).subscribe({
-      next: (res) => {
-        const text = res.answer || res.summary || JSON.stringify(res, null, 2);
-        this.messages.push({ role: 'ai', text, time: this.now() });
+      next: (res: any) => {
+        if (res.severity === 'clarify' && res.options) {
+          this.messages.push({
+            role: 'ai',
+            text: res.answer,
+            time: this.now(),
+            options: res.options,
+            originalQuery: res.original_query || q,
+          });
+        } else {
+          const text = res.answer || res.summary || JSON.stringify(res, null, 2);
+          this.messages.push({ role: 'ai', text, time: this.now() });
+        }
         this.loading = false;
         this.shouldScroll = true;
       },
@@ -358,6 +398,29 @@ export class AiComponent implements AfterViewChecked {
 
   clearHistory() {
     this.messages = [];
+  }
+
+  selectOption(option: string, msg: Message) {
+    // Clear options so they can't be clicked again
+    msg.options = [];
+
+    // Re-ask with the specific pod name in the original query
+    const original = msg.originalQuery || '';
+    // Replace the ambiguous target with the selected option
+    const words = original.split(' ');
+    // Find and replace the fuzzy target
+    const skip = new Set(['why', 'is', 'how', 'many', 'pod', 'pods', 'the', 'my', 'failing', 'crashing', 'running', 'consuming', 'cpu', 'memory', 'more', 'check', 'diagnose', 'inspect', 'logs', 'for', 'of', 'healthy', 'status', 'what', 'wrong', 'with']);
+    let replaced = false;
+    const refined = words.map(w => {
+      if (!replaced && !skip.has(w.toLowerCase().replace('?', ''))) {
+        replaced = true;
+        return option;
+      }
+      return w;
+    }).join(' ');
+
+    this.query = replaced ? refined : `${original} ${option}`;
+    this.ask();
   }
 
   private scrollToBottom() {

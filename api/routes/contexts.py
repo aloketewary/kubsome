@@ -67,11 +67,17 @@ def get_namespaces_for(ctx: str):
     """Get namespaces for a specific context without switching global state."""
     import subprocess
     result = subprocess.run(
-        f"kubectl --context {ctx} get namespaces -o jsonpath='{{.items[*].metadata.name}}'",
+        f"kubectl --context {ctx} get namespaces "
+        f"-o jsonpath='{{.items[*].metadata.name}}'",
         shell=True, capture_output=True, text=True,
+        timeout=10,
     )
     if result.returncode != 0:
-        return {"namespaces": []}
+        error = result.stderr.strip() if result.stderr else "Unknown error"
+        return {
+            "namespaces": [],
+            "error": f"Cannot reach cluster: {error}",
+        }
     raw = result.stdout.strip().strip("'")
     namespaces = sorted([ns for ns in raw.split() if ns])
     return {"namespaces": namespaces}

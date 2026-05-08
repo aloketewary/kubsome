@@ -147,6 +147,24 @@ def render_help():
     table.add_row("find <query>", "Fuzzy search all resources")
     table.add_row("generate <kind> <name>", "Generate YAML manifest")
 
+    # kubectl
+    table.add_row("", "")
+    table.add_row("[bold]— kubectl (fuzzy) —[/bold]", "")
+    table.add_row("describe pod <name>", "Describe pod (pretty)")
+    table.add_row("describe deploy <name>", "Describe deployment")
+    table.add_row("get pods", "List pods (table)")
+    table.add_row("get deploy [name]", "List/get deployments")
+    table.add_row("get svc", "List services")
+    table.add_row("get nodes", "List nodes")
+    table.add_row("get ingress", "List ingress")
+    table.add_row("get pvc", "List persistent volumes")
+    table.add_row("delete pod <name>", "Delete pod (fuzzy)")
+    table.add_row("edit deploy <name>", "Edit resource in $EDITOR")
+    table.add_row("port-forward <pod> <port>", "Port forward (fuzzy)")
+    table.add_row("exec <pod>", "Shell into pod (fuzzy)")
+    table.add_row("cp <pod>:<path> <local>", "Copy files from/to pod")
+    table.add_row("kubectl <anything>", "Raw kubectl passthrough")
+
     # System
     table.add_row("", "")
     table.add_row("[bold]— System —[/bold]", "")

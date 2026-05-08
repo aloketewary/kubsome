@@ -25,4 +25,5 @@ export const routes: Routes = [
   { path: 'search', loadComponent: () => import('./features/search/search.component').then(m => m.SearchComponent) },
   { path: 'ai', loadComponent: () => import('./features/ai/ai.component').then(m => m.AiComponent) },
   { path: 'terminal', loadComponent: () => import('./features/terminal/terminal.component').then(m => m.TerminalComponent) },
+  { path: 'resources', loadComponent: () => import('./features/resources/resources.component').then(m => m.ResourcesComponent) },
 ];

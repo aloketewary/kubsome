@@ -59,21 +59,56 @@ def _fuzzy_resolve(command: str) -> str:
     if sub not in _RESOURCE_CMDS:
         return command
 
-    # kubectl describe pod <name>
-    # kubectl logs <name>
-    if sub == "logs" or sub == "exec" or sub == "port-forward":
-        # Next non-flag token is the pod name
+    # kubectl logs <name> / kubectl exec <name>
+    if sub in ("logs", "exec", "port-forward"):
         name_idx = _next_non_flag(tokens, sub_idx + 1)
-    else:
-        # kubectl describe pod <name>
-        res_idx = _next_non_flag(tokens, sub_idx + 1)
-        if res_idx is None:
+        if name_idx is None or name_idx >= len(tokens):
             return command
-        resource = tokens[res_idx]
-        if resource not in _POD_RESOURCES:
+        query = tokens[name_idx]
+        matches = resolve_pod_name(query)
+        if not matches:
             return command
-        name_idx = _next_non_flag(tokens, res_idx + 1)
+        pod = choose_pod(matches)
+        if not pod:
+            return command
+        if pod != query:
+            console.print(
+                f"[dim]→ resolved:[/dim] [cyan]{pod}[/cyan]"
+            )
+        tokens[name_idx] = pod
+        return " ".join(tokens)
 
+    # kubectl describe/get/delete/edit <resource> <name>
+    res_idx = _next_non_flag(tokens, sub_idx + 1)
+    if res_idx is None:
+        return command
+
+    resource = tokens[res_idx]
+
+    # If resource looks like a name (not a known type),
+    # assume it's a pod name: kubectl describe customer
+    if resource not in _KNOWN_RESOURCES:
+        query = resource
+        matches = resolve_pod_name(query)
+        if not matches:
+            return command
+        pod = choose_pod(matches)
+        if not pod:
+            return command
+        if pod != query:
+            console.print(
+                f"[dim]→ resolved:[/dim] "
+                f"[cyan]pod/{pod}[/cyan]"
+            )
+        tokens[res_idx] = "pod"
+        tokens.insert(res_idx + 1, pod)
+        return " ".join(tokens)
+
+    # Normal: kubectl describe pod <name>
+    if resource not in _POD_RESOURCES:
+        return command
+
+    name_idx = _next_non_flag(tokens, res_idx + 1)
     if name_idx is None or name_idx >= len(tokens):
         return command
 
@@ -93,6 +128,35 @@ def _fuzzy_resolve(command: str) -> str:
 
     tokens[name_idx] = pod
     return " ".join(tokens)
+
+
+_KNOWN_RESOURCES = {
+    "pod", "pods", "po",
+    "deployment", "deployments", "deploy",
+    "service", "services", "svc",
+    "node", "nodes", "no",
+    "namespace", "namespaces", "ns",
+    "configmap", "configmaps", "cm",
+    "secret", "secrets",
+    "ingress", "ingresses", "ing",
+    "job", "jobs",
+    "cronjob", "cronjobs", "cj",
+    "replicaset", "replicasets", "rs",
+    "statefulset", "statefulsets", "sts",
+    "daemonset", "daemonsets", "ds",
+    "pvc", "persistentvolumeclaim",
+    "pv", "persistentvolume",
+    "hpa", "horizontalpodautoscaler",
+    "sa", "serviceaccount",
+    "role", "roles",
+    "rolebinding", "rolebindings",
+    "clusterrole", "clusterroles",
+    "clusterrolebinding", "clusterrolebindings",
+    "endpoints", "ep",
+    "event", "events", "ev",
+    "networkpolicy", "netpol",
+    "pdb", "poddisruptionbudget",
+}
 
 
 def _next_non_flag(tokens, start):

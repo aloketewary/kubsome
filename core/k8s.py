@@ -8,7 +8,9 @@ from core.context import context
 
 def get_pods():
     command = (
-        f"kubectl get pods "
+        f"kubectl "
+        f"--context {context.current_context} "
+        f"get pods "
         f"-n {context.namespace} "
         f"-o json"
     )

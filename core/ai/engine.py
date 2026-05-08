@@ -31,10 +31,23 @@ def handle_ai_query(query):
     """
     lower = query.lower()
 
+    # "how many X pods" / "count X" / "number of X"
+    if (
+        lower.startswith("how many")
+        or lower.startswith("count ")
+        or "number of" in lower
+    ):
+        return _count_pods(query)
+
     # "why is X failing/crashing/down"
     if "why" in lower and (
         "fail" in lower or "crash" in lower
         or "down" in lower or "broken" in lower
+        or "restart" in lower or "oom" in lower
+        or "stuck" in lower or "pending" in lower
+        or "not ready" in lower or "error" in lower
+        or "consuming" in lower or "cpu" in lower
+        or "memory" in lower
     ):
         return _why_query(query)
 
@@ -81,6 +94,14 @@ def handle_ai_query(query):
     if "crash" in lower or "high restart" in lower:
         return _high_restart_pods()
 
+    # "diagnose X" / "inspect X" / "debug X"
+    if (
+        lower.startswith("diagnose")
+        or lower.startswith("inspect")
+        or lower.startswith("debug")
+    ):
+        return _why_query(query)
+
     # Fallback
     return {
         "title": "🤖 AI Assistant",
@@ -103,11 +124,108 @@ def handle_ai_query(query):
     }
 
 
+def _count_pods(query):
+    """Count pods matching a name pattern."""
+    import re
+    lower = query.lower().replace("?", "")
+
+    # Extract target name
+    target = None
+    patterns = [
+        r"how many (\S+) pods",
+        r"how many (\S+)",
+        r"count (\S+)",
+        r"number of (\S+)",
+    ]
+    for p in patterns:
+        match = re.search(p, lower)
+        if match:
+            target = match.group(1)
+            break
+
+    if not target or target in {
+        "pods", "total", "all", "the", "running",
+    }:
+        # General count
+        pods = collect_pods()
+        running = sum(
+            1 for p in pods if p["status"] == "Running"
+        )
+        return {
+            "title": "🤖 Pod Count",
+            "content": (
+                f"[bold]Total pods:[/bold] {len(pods)}\n"
+                f"  [green]● Running:[/green] {running}\n"
+                f"  [yellow]● Other:[/yellow] "
+                f"{len(pods) - running}"
+            ),
+            "severity": "info",
+        }
+
+    pods = collect_pods()
+    matching = [
+        p for p in pods
+        if target in p["name"].lower()
+    ]
+
+    if not matching:
+        return {
+            "title": f"🤖 {target} pods",
+            "content": (
+                f"No pods matching '{target}' found."
+            ),
+            "severity": "info",
+        }
+
+    running = [
+        p for p in matching
+        if p["status"] == "Running"
+    ]
+    not_running = [
+        p for p in matching
+        if p["status"] != "Running"
+    ]
+
+    lines = [
+        f"[bold]{len(matching)} pods matching "
+        f"'{target}':[/bold]\n",
+        f"  [green]● Running:[/green] {len(running)}",
+    ]
+
+    if not_running:
+        lines.append(
+            f"  [red]● Not running:[/red] "
+            f"{len(not_running)}"
+        )
+
+    lines.append("\n[bold]Pods:[/bold]")
+    for p in matching:
+        status_color = (
+            "green" if p["status"] == "Running"
+            else "red"
+        )
+        restart_info = (
+            f" (R:{p['restarts']})"
+            if p["restarts"] > 0 else ""
+        )
+        lines.append(
+            f"  [{status_color}]●[/{status_color}] "
+            f"{p['name']} "
+            f"[dim]{p['status']}{restart_info}[/dim]"
+        )
+
+    return {
+        "title": f"🤖 {target} pods",
+        "content": "\n".join(lines),
+        "severity": "info",
+    }
+
+
 def _why_query(query):
     """Analyze why a specific resource is failing."""
     words = query.lower().replace("?", "").split()
 
-    # Extract resource name (word after "is" or last word)
+    # Extract resource name (word after "is" or before action word)
     target = None
     for i, w in enumerate(words):
         if w == "is" and i + 1 < len(words):
@@ -115,11 +233,30 @@ def _why_query(query):
             break
 
     if not target:
+        # Try word before action keywords
+        action_words = {
+            "failing", "crashing", "down", "broken",
+            "restarting", "consuming", "consumes",
+            "stuck", "pending", "unhealthy",
+        }
+        for i, w in enumerate(words):
+            if w in action_words and i > 0:
+                candidate = words[i - 1]
+                if candidate not in {
+                    "is", "pod", "the", "my", "why",
+                    "more", "so", "much", "high",
+                }:
+                    target = candidate
+                    break
+
+    if not target:
         # Try last meaningful word
         skip = {
             "why", "is", "failing", "crashing",
             "down", "broken", "not", "working",
-            "the", "my"
+            "the", "my", "more", "cpu", "memory",
+            "consuming", "consumes", "so", "much",
+            "pod", "restarting", "stuck", "pending",
         }
         for w in reversed(words):
             if w not in skip:

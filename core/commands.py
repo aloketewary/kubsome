@@ -574,12 +574,203 @@ def resolve_command(user_input: str):
     # Services
     if cmd == "services":
         return (
-            f"kubectl get services "
+            f"kubectl --context {context.current_context} "
+            f"get services "
             f"-n {context.namespace}"
         )
 
     # Nodes
     if cmd == "nodes":
-        return "kubectl get nodes"
+        return (
+            f"kubectl --context {context.current_context} "
+            f"get nodes"
+        )
+
+    # describe <resource> <name>
+    if cmd == "describe":
+        if len(tokens) < 3:
+            return None
+        resource = tokens[1]
+        query = tokens[2]
+        # Pod describe → reuse inspect
+        pod_types = {"pod", "pods", "po"}
+        if resource in pod_types:
+            matches = resolve_pod_name(query)
+            if not matches:
+                return None
+            pod = choose_pod(matches)
+            if not pod:
+                return None
+            return {"type": "inspect", "target": pod}
+        # Deployment describe → full describe with containers
+        deploy_types = {"deployment", "deployments", "deploy"}
+        if resource in deploy_types:
+            matches = resolve_deployment_name(query)
+            if not matches:
+                return None
+            dep = choose_deployment(matches)
+            if not dep:
+                return None
+            kubectl_cmd = (
+                f"kubectl --context {context.current_context} "
+                f"describe deployment {dep} "
+                f"-n {context.namespace}"
+            )
+            return {"type": "kubectl_pretty", "cmd": kubectl_cmd}
+        # Other resources → pretty kubectl
+        resolved = _resolve_kubectl_resource(
+            "describe", tokens[1:]
+        )
+        if resolved:
+            return {"type": "kubectl_pretty", "cmd": resolved}
+        return None
+
+    # get <resource> [name]
+    if cmd == "get" and len(tokens) > 1:
+        resource = tokens[1]
+        # get pods → reuse pods table
+        pod_types = {"pod", "pods", "po"}
+        deploy_types = {"deployment", "deployments", "deploy"}
+        if resource in pod_types and len(tokens) == 2:
+            return {"type": "pods_table"}
+        # get deployments → reuse deployments handler
+        if resource in deploy_types and len(tokens) == 2:
+            return {"type": "kubectl_pretty", "cmd": (
+                f"kubectl --context {context.current_context} "
+                f"get deployments -n {context.namespace}"
+            )}
+        # get <resource> <name> → pretty kubectl
+        resolved = _resolve_kubectl_resource(
+            "get", tokens[1:]
+        )
+        if resolved:
+            return {"type": "kubectl_pretty", "cmd": resolved}
+        return None
+
+    # delete <resource> <name>
+    if cmd == "delete" and len(tokens) > 1:
+        resolved = _resolve_kubectl_resource(
+            "delete", tokens[1:]
+        )
+        if resolved:
+            return {"type": "kubectl_pretty", "cmd": resolved}
+        return None
+
+    # edit <resource> <name>
+    if cmd == "edit" and len(tokens) > 1:
+        resolved = _resolve_kubectl_resource(
+            "edit", tokens[1:]
+        )
+        if resolved:
+            return resolved  # raw string, needs interactive tty
+
+    # port-forward <pod> <ports>
+    if cmd == "port-forward" and len(tokens) > 1:
+        query = tokens[1]
+        matches = resolve_pod_name(query)
+        if not matches:
+            return None
+        pod = choose_pod(matches)
+        if not pod:
+            return None
+        ports = " ".join(tokens[2:]) if len(tokens) > 2 else "8080:8080"
+        return (
+            f"kubectl --context {context.current_context} "
+            f"port-forward {pod} {ports} "
+            f"-n {context.namespace}"
+        )
+
+    # exec <pod> [-- command]
+    if cmd == "exec" and len(tokens) > 1:
+        query = tokens[1]
+        matches = resolve_pod_name(query)
+        if not matches:
+            return None
+        pod = choose_pod(matches)
+        if not pod:
+            return None
+        extra = " ".join(tokens[2:]) if len(tokens) > 2 else "-- /bin/sh"
+        return (
+            f"kubectl --context {context.current_context} "
+            f"exec -it {pod} -n {context.namespace} {extra}"
+        )
+
+    # cp <pod>:<path> <local> or <local> <pod>:<path>
+    if cmd == "cp" and len(tokens) > 2:
+        return (
+            f"kubectl --context {context.current_context} "
+            f"cp {' '.join(tokens[1:])} "
+            f"-n {context.namespace}"
+        )
+
+    # Raw kubectl passthrough
+    if cmd == "kubectl":
+        return " ".join(tokens)
 
     return None
+
+
+def _resolve_kubectl_resource(action, args):
+    """Resolve kubectl <action> <resource> <name> with fuzzy matching."""
+    if not args:
+        return None
+
+    resource = args[0]
+    name = args[1] if len(args) > 1 else None
+    extra = " ".join(args[2:]) if len(args) > 2 else ""
+
+    ctx = context.current_context
+    ns = context.namespace
+
+    # Resources that are namespace-scoped
+    ns_flag = f"-n {ns}"
+    # Cluster-scoped resources
+    cluster_resources = {
+        "node", "nodes", "no",
+        "namespace", "namespaces", "ns",
+        "clusterrole", "clusterroles",
+        "clusterrolebinding", "clusterrolebindings",
+        "pv", "persistentvolumes",
+    }
+
+    if resource in cluster_resources:
+        ns_flag = ""
+
+    # Fuzzy resolve name for pod-like resources
+    pod_types = {"pod", "pods", "po"}
+    deploy_types = {"deployment", "deployments", "deploy"}
+    cronjob_types = {"cronjob", "cronjobs", "cj"}
+
+    if name:
+        if resource in pod_types:
+            matches = resolve_pod_name(name)
+            if matches:
+                name = choose_pod(matches)
+                if not name:
+                    return None
+        elif resource in deploy_types:
+            matches = resolve_deployment_name(name)
+            if matches:
+                name = choose_deployment(matches)
+                if not name:
+                    return None
+        elif resource in cronjob_types:
+            matches = resolve_cronjob_name(name)
+            if matches:
+                name = choose_cronjob(matches)
+                if not name:
+                    return None
+
+    parts = [
+        f"kubectl --context {ctx}",
+        action,
+        resource,
+    ]
+    if name:
+        parts.append(name)
+    if ns_flag:
+        parts.append(ns_flag)
+    if extra:
+        parts.append(extra)
+
+    return " ".join(parts)
