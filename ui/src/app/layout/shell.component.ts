@@ -190,6 +190,8 @@ export class ShellComponent implements OnInit {
     { path: '/events', icon: 'pi pi-bolt', label: 'Events' },
     { path: '/metrics', icon: 'pi pi-chart-bar', label: 'Metrics' },
     { path: '/namespace', icon: 'pi pi-th-large', label: 'Namespace' },
+    { path: '/timeline', icon: 'pi pi-history', label: 'Timeline' },
+    { path: '/cost', icon: 'pi pi-dollar', label: 'Optimization' },
   ];
 
   opsItems = [
@@ -201,6 +203,8 @@ export class ShellComponent implements OnInit {
     { path: '/incident', icon: 'pi pi-exclamation-circle', label: 'Incident' },
     { path: '/graph', icon: 'pi pi-sitemap', label: 'Service Map' },
     { path: '/yaml', icon: 'pi pi-file-edit', label: 'YAML Editor' },
+    { path: '/runbooks', icon: 'pi pi-book', label: 'Runbooks' },
+    { path: '/compare', icon: 'pi pi-arrows-h', label: 'Compare' },
   ];
 
   aiItems = [

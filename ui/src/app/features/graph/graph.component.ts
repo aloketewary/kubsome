@@ -42,6 +42,8 @@ interface GraphEdge {
                 <i class="pi" [class.pi-box]="node.kind === 'Pod'"
                    [class.pi-send]="node.kind === 'Deployment'"
                    [class.pi-globe]="node.kind === 'Service'"
+                   [class.pi-copy]="node.kind === 'ReplicaSet'"
+                   [class.pi-link]="node.kind === 'Ingress'"
                    [class.pi-database]="node.kind === 'ConfigMap' || node.kind === 'Secret'"
                    [class.pi-server]="node.kind === 'Node'"></i>
               </div>
@@ -105,6 +107,8 @@ interface GraphEdge {
     .node-Deployment { border-left: 3px solid var(--accent); }
     .node-Service { border-left: 3px solid var(--success); }
     .node-Pod { border-left: 3px solid var(--purple); }
+    .node-ReplicaSet { border-left: 3px solid var(--warning); }
+    .node-Ingress { border-left: 3px solid #f472b6; }
     .node-ConfigMap, .node-Secret { border-left: 3px solid var(--warning); }
     .node-icon {
       width: 32px;
@@ -164,35 +168,64 @@ export class GraphComponent implements OnInit {
     this.nodes = [];
     this.edges = [];
 
-    // Extract nodes and edges from trace data
-    if (data.deployment) {
-      this.nodes.push({ name: data.deployment, kind: 'Deployment' });
+    const depName = typeof data.deployment === 'string' ? data.deployment : data.deployment?.name;
+    const svcName = typeof data.service === 'string' ? data.service : data.service?.name;
+
+    if (depName) {
+      this.nodes.push({ name: depName, kind: 'Deployment' });
     }
-    if (data.service) {
-      this.nodes.push({ name: data.service, kind: 'Service' });
-      if (data.deployment) {
-        this.edges.push({ from: data.service, to: data.deployment, label: 'routes to' });
+    if (svcName) {
+      this.nodes.push({ name: svcName, kind: 'Service' });
+      if (depName) {
+        this.edges.push({ from: svcName, to: depName, label: 'routes to' });
       }
     }
     if (data.pods) {
       for (const pod of data.pods) {
         const podName = typeof pod === 'string' ? pod : pod.name;
         this.nodes.push({ name: podName, kind: 'Pod' });
-        if (data.deployment) {
-          this.edges.push({ from: data.deployment, to: podName });
+        if (depName) {
+          this.edges.push({ from: depName, to: podName });
+        }
+      }
+    }
+    if (data.replicasets) {
+      // Only show active replicasets (replicas > 0)
+      for (const rs of data.replicasets) {
+        if (rs.replicas > 0) {
+          const rsName = typeof rs === 'string' ? rs : rs.name;
+          this.nodes.push({ name: rsName, kind: 'ReplicaSet' });
+          if (depName) {
+            this.edges.push({ from: depName, to: rsName, label: 'manages' });
+          }
         }
       }
     }
     if (data.configmaps) {
       for (const cm of data.configmaps) {
-        this.nodes.push({ name: cm, kind: 'ConfigMap' });
-        this.edges.push({ from: data.deployment, to: cm, label: 'mounts' });
+        const cmName = typeof cm === 'string' ? cm : cm.name;
+        this.nodes.push({ name: cmName, kind: 'ConfigMap' });
+        if (depName) {
+          this.edges.push({ from: depName, to: cmName, label: 'mounts' });
+        }
       }
     }
     if (data.secrets) {
       for (const s of data.secrets) {
-        this.nodes.push({ name: s, kind: 'Secret' });
-        this.edges.push({ from: data.deployment, to: s, label: 'uses' });
+        const sName = typeof s === 'string' ? s : s.name;
+        this.nodes.push({ name: sName, kind: 'Secret' });
+        if (depName) {
+          this.edges.push({ from: depName, to: sName, label: 'uses' });
+        }
+      }
+    }
+    if (data.ingress) {
+      const ingName = typeof data.ingress === 'string' ? data.ingress : data.ingress.name;
+      if (ingName) {
+        this.nodes.push({ name: ingName, kind: 'Ingress' });
+        if (svcName) {
+          this.edges.push({ from: ingName, to: svcName, label: 'exposes' });
+        }
       }
     }
   }
