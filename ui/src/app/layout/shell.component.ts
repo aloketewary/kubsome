@@ -199,11 +199,14 @@ export class ShellComponent implements OnInit {
     { path: '/rbac', icon: 'pi pi-shield', label: 'RBAC' },
     { path: '/network', icon: 'pi pi-globe', label: 'Network' },
     { path: '/incident', icon: 'pi pi-exclamation-circle', label: 'Incident' },
+    { path: '/graph', icon: 'pi pi-sitemap', label: 'Service Map' },
+    { path: '/yaml', icon: 'pi pi-file-edit', label: 'YAML Editor' },
   ];
 
   aiItems = [
     { path: '/ai', icon: 'pi pi-sparkles', label: 'AI Assistant' },
     { path: '/terminal', icon: 'pi pi-code', label: 'Terminal' },
+    { path: '/settings', icon: 'pi pi-cog', label: 'Settings' },
   ];
 
   @HostListener('document:keydown', ['$event'])

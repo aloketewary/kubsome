@@ -9,11 +9,12 @@ import { CommandPaletteComponent } from './shared/components/command-palette.com
 import { AiFloatComponent } from './shared/components/ai-float.component';
 import { ToastAlertsComponent } from './shared/components/toast-alerts.component';
 import { BreadcrumbComponent } from './shared/components/breadcrumb.component';
+import { ConnectionStatusComponent } from './shared/components/connection-status.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, Select, FormsModule, ShellComponent, CommandPaletteComponent, AiFloatComponent, ToastAlertsComponent, BreadcrumbComponent],
+  imports: [RouterOutlet, Select, FormsModule, ShellComponent, CommandPaletteComponent, AiFloatComponent, ToastAlertsComponent, BreadcrumbComponent, ConnectionStatusComponent],
   template: `
     <!-- Global loading bar -->
     @if (loadingService.loading()) {
@@ -61,6 +62,9 @@ import { BreadcrumbComponent } from './shared/components/breadcrumb.component';
         }
       </div>
     </header>
+
+    <!-- Connection Status -->
+    <app-connection-status />
 
     <!-- Toast Alerts -->
     <app-toast-alerts />
