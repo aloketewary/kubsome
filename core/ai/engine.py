@@ -201,6 +201,14 @@ def _why_query(query, target=None):
             "severity": "warning",
         }
 
+    # Fetch logs for error detection
+    logs = pod_logs(pod_name, tail=50)
+    log_errors = [l for l in logs if any(x in l.lower() for x in ["error", "fail", "exception", "fatal", "panic"])]
+
+    # Fetch events
+    events = pod_events(pod_name)
+    warning_events = [e for e in events if e["type"] == "Warning"]
+
     findings = diagnose(data)
 
     # Build explanation
@@ -239,6 +247,17 @@ def _why_query(query, target=None):
                 f"  ⚠️  {f['title']}\n"
                 f"     [dim]→ {f['action']}[/dim]"
             )
+
+    # Add evidence from logs/events
+    if log_errors:
+        lines.append("\n[bold red]Evidence from Logs:[/bold red]")
+        for l in log_errors[:3]:
+            lines.append(f"  [dim]{l.strip()}[/dim]")
+
+    if warning_events:
+        lines.append("\n[bold yellow]Recent Warning Events:[/bold yellow]")
+        for e in warning_events[:3]:
+            lines.append(f"  ⚠️  {e['reason']}: {e['message']}")
 
     return {
         "title": f"🤖 Why is {target} failing?",

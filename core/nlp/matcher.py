@@ -148,8 +148,21 @@ def extract_entities(query, intent):
     Extract target entities from a query given its intent.
     Returns dict with extracted fields.
     """
+    from core.context import context
     lower = query.lower().strip().rstrip("?")
     entities = {}
+
+    # Handle pronouns/contextual references
+    contextual_pronouns = ["it", "this", "that", "the pod", "the deployment", "the service"]
+    # Sort by length descending to match longer phrases first
+    contextual_pronouns.sort(key=len, reverse=True)
+
+    for pronoun in contextual_pronouns:
+        if pronoun in lower and context.last_target:
+            entities["target"] = context.last_target
+            # Replace the pronoun in lower so subsequent logic doesn't pick it up as a target
+            lower = lower.replace(pronoun, context.last_target)
+            break
 
     # 1. Try extracting from Regex first (most accurate)
     if intent in REGEX_INTENTS:
