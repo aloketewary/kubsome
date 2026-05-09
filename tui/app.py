@@ -1,7 +1,8 @@
 from textual.app import App, ComposeResult
 from textual.widgets import (
     Header, Footer, TabbedContent,
-    TabPane, Static, DataTable
+    TabPane, Static, DataTable,
+    Input, Markdown
 )
 from textual import work
 
@@ -37,6 +38,18 @@ class KubeasyApp(App):
     DataTable {
         height: 1fr;
     }
+    #tab-assistant {
+        padding: 1;
+    }
+    #assistant-input {
+        margin-bottom: 1;
+    }
+    #assistant-output {
+        height: 1fr;
+        border: tall $primary;
+        background: $surface;
+        padding: 1;
+    }
     #status-bar {
         dock: bottom;
         height: 1;
@@ -55,6 +68,8 @@ class KubeasyApp(App):
         ("4", "tab_metrics", "Metrics"),
         ("5", "tab_security", "Security"),
         ("6", "tab_jobs", "Jobs"),
+        ("7", "tab_assistant", "Assistant"),
+        ("d", "diagnose_selected", "Diagnose"),
     ]
 
     TITLE = "Kubsome"
@@ -64,7 +79,7 @@ class KubeasyApp(App):
         yield Header()
         with TabbedContent(
             "Overview", "Pods", "Events",
-            "Metrics", "Security", "Jobs"
+            "Metrics", "Security", "Jobs", "Assistant"
         ):
             with TabPane("Overview", id="tab-overview"):
                 yield Static(id="overview-content")
@@ -78,6 +93,9 @@ class KubeasyApp(App):
                 yield DataTable(id="security-table")
             with TabPane("Jobs", id="tab-jobs"):
                 yield DataTable(id="jobs-table")
+            with TabPane("Assistant", id="tab-assistant"):
+                yield Input(placeholder="Ask the AI assistant...", id="assistant-input")
+                yield Markdown(id="assistant-output")
         yield Static(id="status-bar")
         yield Footer()
 
@@ -281,6 +299,56 @@ class KubeasyApp(App):
     def action_tab_jobs(self) -> None:
         self.query_one(TabbedContent).active = "tab-jobs"
 
+    def action_tab_assistant(self) -> None:
+        self.query_one(TabbedContent).active = "tab-assistant"
+        self.query_one("#assistant-input").focus()
+
+    def on_input_submitted(self, event: Input.Submitted) -> None:
+        if event.input.id == "assistant-input":
+            query = event.value
+            if query.strip():
+                self.run_ai_query(query)
+
+    @work(thread=True)
+    def run_ai_query(self, query: str) -> None:
+        from core.ai.engine import handle_ai_query
+        import re
+
+        self.call_from_thread(self._set_assistant_output, "⏳ Analyzing...")
+
+        try:
+            response = handle_ai_query(query)
+            content = response.get("content", "")
+            # Basic Rich to Markdown conversion for the widget
+            content = re.sub(r'\[bold\](.*?)\[/bold\]', r'**\1**', content)
+            content = re.sub(r'\[bold red\](.*?)\[/bold red\]', r'**\1**', content)
+            content = re.sub(r'\[bold yellow\](.*?)\[/bold yellow\]', r'**\1**', content)
+            content = re.sub(r'\[cyan\](.*?)\[/cyan\]', r'`\1`', content)
+            content = re.sub(r'\[dim\](.*?)\[/dim\]', r'*\1*', content)
+            content = re.sub(r'\[green\](.*?)\[/green\]', r'\1', content)
+            content = re.sub(r'\[red\](.*?)\[/red\]', r'\1', content)
+            content = re.sub(r'\[yellow\](.*?)\[/yellow\]', r'\1', content)
+
+            full_md = f"# {response.get('title', 'AI Assistant')}\n\n{content}"
+            self.call_from_thread(self._set_assistant_output, full_md)
+        except Exception as e:
+            self.call_from_thread(self._set_assistant_output, f"Error: {e}")
+
+    def _set_assistant_output(self, content: str) -> None:
+        self.query_one("#assistant-output", Markdown).update(content)
+
+    def action_diagnose_selected(self) -> None:
+        table = self.query_one("#pods-table", DataTable)
+        try:
+            row_index = table.cursor_row
+            row = table.get_row_at(row_index)
+            pod_name = row[1]
+            self.action_tab_assistant()
+            self.query_one("#assistant-input", Input).value = f"why is {pod_name} failing?"
+            self.run_ai_query(f"why is {pod_name} failing?")
+        except Exception:
+            self.notify("No pod selected", severity="error")
+
     def on_data_table_row_selected(
         self, event: DataTable.RowSelected
     ) -> None:
@@ -288,7 +356,7 @@ class KubeasyApp(App):
         if table.id == "pods-table":
             row = table.get_row(event.row_key)
             pod_name = row[1]
-            self.notify(f"Selected: {pod_name}", title="Pod")
+            self.notify(f"Selected: {pod_name}. Press 'd' to diagnose.", title="Pod")
 
 
 def run_tui():

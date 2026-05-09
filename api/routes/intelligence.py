@@ -13,6 +13,7 @@ router = APIRouter(tags=["intelligence"])
 
 class AiRequest(BaseModel):
     query: str
+    last_target: str = None
 
 
 @router.get("/search")
@@ -52,10 +53,17 @@ def get_unused():
 @router.post("/ai")
 def post_ai(req: AiRequest):
     import re
-    from core.resolver import resolve_pod_name
+    from core.nlp.matcher import parse_query
+    from core.context import context
+
+    # Temporarily set context memory for this request if provided
+    if req.last_target:
+        context.last_target = req.last_target
+
+    parsed = parse_query(req.query)
 
     # Check if query references an ambiguous resource
-    clarification = _check_ambiguity(req.query)
+    clarification = _check_ambiguity(req.query, parsed)
     if clarification:
         return clarification
 
@@ -67,84 +75,35 @@ def post_ai(req: AiRequest):
         "title": response.get("title", "").replace("🤖 ", ""),
         "answer": content,
         "severity": response.get("severity", "info"),
+        "last_target": context.last_target
     }
 
 
-def _check_ambiguity(query: str):
+def _check_ambiguity(query: str, parsed=None):
     """If query mentions a resource with multiple matches, return options."""
     from core.collectors.pods import collect_pods
     import re
 
-    lower = query.lower()
-    # Extract potential resource name from query
-    target = None
-    patterns = [
-        r"why is (\S+)",
-        r"why (\S+)",
-        r"pod (\S+)",
-        r"pods (\S+)",
-        r"how many (\S+)",
-        r"count (\S+)",
-        r"number of (\S+)",
-        r"diagnose (\S+)",
-        r"inspect (\S+)",
-        r"describe (\S+)",
-        r"logs for (\S+)",
-        r"logs of (\S+)",
-        r"logs (\S+)",
-        r"is (\S+) healthy",
-        r"is (\S+) running",
-        r"is (\S+) failing",
-        r"(\S+) consuming",
-        r"(\S+) consumes",
-        r"(\S+) cpu",
-        r"(\S+) memory",
-        r"(\S+) failing",
-        r"(\S+) crashing",
-        r"(\S+) restarting",
-        r"(\S+) down",
-        r"(\S+) unhealthy",
-        r"(\S+) oom",
-        r"(\S+) stuck",
-        r"(\S+) pending",
-        r"(\S+) not ready",
-        r"(\S+) error",
-        r"(\S+) running",
-        r"restart.* (\S+)",
-        r"scale (\S+)",
-        r"rollback (\S+)",
-        r"trace (\S+)",
-        r"events for (\S+)",
-        r"events of (\S+)",
-        r"what.* wrong with (\S+)",
-        r"check (\S+)",
-        r"status of (\S+)",
-        r"health of (\S+)",
-    ]
-
-    for pattern in patterns:
-        match = re.search(pattern, lower)
-        if match:
-            target = match.group(1).rstrip("?")
-            break
+    # Use target from unified NLP engine if available
+    target = parsed["entities"].get("target") if parsed else None
 
     if not target:
-        return None
+        # Fallback to old patterns if needed
+        lower = query.lower()
+        patterns = [
+            r"why is (\S+)",
+            r"diagnose (\S+)",
+            r"inspect (\S+)",
+            r"logs for (\S+)",
+        ]
 
-    # Skip if target is a generic word
-    skip_words = {
-        "failing", "crashing", "down", "more",
-        "high", "the", "my", "all", "pods",
-        "cluster", "health", "unhealthy",
-        "running", "healthy", "stuck", "pending",
-        "error", "oom", "ready", "not",
-        "recently", "events", "logs", "status",
-        "what", "which", "how", "when", "where",
-        "is", "are", "was", "were", "been",
-        "cpu", "memory", "consuming", "consumes",
-        "restarting", "restart", "restarts",
-    }
-    if target in skip_words:
+        for pattern in patterns:
+            match = re.search(pattern, lower)
+            if match:
+                target = match.group(1).rstrip("?")
+                break
+
+    if not target:
         return None
 
     # Use substring matching to find ALL pods containing target
