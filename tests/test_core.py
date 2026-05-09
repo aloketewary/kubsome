@@ -10,17 +10,24 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 
 def test_nlp_parsing():
-    from core.ai.nlp import parse_natural_language
+    from core.nlp.matcher import parse_query
+    from core.nlp.actions import map_to_command
 
-    assert parse_natural_language("scale payment to 5") == "scale payment 5"
-    assert parse_natural_language("show me the logs for auth") == "logs auth"
-    assert parse_natural_language("restart the gateway") == "restart gateway"
-    assert parse_natural_language("list all pods") == "pods"
-    assert parse_natural_language("show events") == "events"
-    assert parse_natural_language("get nodes") == "nodes"
-    assert parse_natural_language("diagnose payment") == "diagnose payment"
-    assert parse_natural_language("rollback billing") == "rollback billing"
-    assert parse_natural_language("random gibberish xyz") is None
+    def parse_to_cmd(query):
+        parsed = parse_query(query)
+        if not parsed:
+            return None
+        return map_to_command(parsed)
+
+    assert parse_to_cmd("scale payment to 5") == "scale payment 5"
+    assert parse_to_cmd("show me the logs for auth") == "logs auth"
+    assert parse_to_cmd("restart the gateway") == "restart gateway"
+    assert parse_to_cmd("list all pods") == {"type": "pods_table"}
+    assert parse_to_cmd("show events") == {"type": "events"}
+    assert parse_to_cmd("get nodes") == {"type": "nodes"}
+    assert parse_to_cmd("diagnose payment") == "diagnose payment"
+    assert parse_to_cmd("rollback billing") == "rollback billing"
+    assert parse_to_cmd("random gibberish xyz") is None
 
 
 def test_suggest_command():

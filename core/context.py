@@ -13,5 +13,8 @@ class AppContext:
         )
         self.kubeconfig = "~/.kube/config"
 
+        # Contextual memory
+        self.last_target = None
+
 
 context = AppContext()

@@ -29,78 +29,46 @@ def handle_ai_query(query):
     Route natural language queries to appropriate
     analysis functions. Returns a structured response.
     """
-    lower = query.lower()
+    from core.nlp.matcher import parse_query
+    parsed = parse_query(query)
 
-    # "how many X pods" / "count X" / "number of X"
-    if (
-        lower.startswith("how many")
-        or lower.startswith("count ")
-        or "number of" in lower
-    ):
-        return _count_pods(query)
+    intent = parsed["intent"] if parsed else None
+    entities = parsed["entities"] if parsed else {}
+    target = entities.get("target")
 
-    # "why is X failing/crashing/down"
-    if "why" in lower and (
-        "fail" in lower or "crash" in lower
-        or "down" in lower or "broken" in lower
-        or "restart" in lower or "oom" in lower
-        or "stuck" in lower or "pending" in lower
-        or "not ready" in lower or "error" in lower
-        or "consuming" in lower or "cpu" in lower
-        or "memory" in lower
-    ):
-        return _why_query(query)
+    if intent == "count_pods":
+        return _count_pods(query, target)
 
-    # "diagnose high restart pods" / "diagnose" without target
-    if "diagnose" in lower and "restart" in lower:
+    if intent == "why_failing":
+        return _why_query(query, target)
+
+    if intent == "diagnose" and not target:
         return _high_restart_pods()
 
-    # "summarize" / "summary" / "cluster health"
-    if "summar" in lower or "cluster health" in lower:
+    if intent == "summarize":
         return _summarize_cluster()
 
-    # "what changed" / "what happened" / "recently"
-    if (
-        "what changed" in lower
-        or "what happened" in lower
-        or "recently" in lower
-        or "last hour" in lower
-    ):
+    if intent == "what_changed":
         return _what_changed()
 
-    # "which pods are unhealthy/failing"
-    if "unhealthy" in lower or (
-        "which" in lower and "pod" in lower
-    ):
+    if intent == "unhealthy":
         return _unhealthy_pods()
 
-    # "top consumers" / "resource"
-    if "consumer" in lower or "resource" in lower or "hog" in lower:
+    if intent == "top_pods":
         return _top_consumers()
 
-    # "show warning events" / "warning"
-    if "warning" in lower and "event" in lower:
+    if intent == "events":
         return _warning_events()
 
-    # "any anomalies" / "any issues"
-    if "anomal" in lower or "issue" in lower:
+    if intent == "anomalies":
         return _anomaly_check()
 
-    # "is X healthy"
-    if "healthy" in lower or "status" in lower:
-        return _health_check(query)
+    if intent == "health_check":
+        return _health_check(query, target)
 
-    # "crash" / "high restart"
-    if "crash" in lower or "high restart" in lower:
-        return _high_restart_pods()
-
-    # "diagnose X" / "inspect X" / "debug X"
-    if (
-        lower.startswith("diagnose")
-        or lower.startswith("inspect")
-        or lower.startswith("debug")
-    ):
-        return _why_query(query)
+    if intent == "is_safe":
+        # Fallback to general explanation if not handled by safety logic
+        return _why_query(query, target)
 
     # Fallback
     return {
@@ -124,25 +92,8 @@ def handle_ai_query(query):
     }
 
 
-def _count_pods(query):
+def _count_pods(query, target=None):
     """Count pods matching a name pattern."""
-    import re
-    lower = query.lower().replace("?", "")
-
-    # Extract target name
-    target = None
-    patterns = [
-        r"how many (\S+) pods",
-        r"how many (\S+)",
-        r"count (\S+)",
-        r"number of (\S+)",
-    ]
-    for p in patterns:
-        match = re.search(p, lower)
-        if match:
-            target = match.group(1)
-            break
-
     if not target or target in {
         "pods", "total", "all", "the", "running",
     }:
@@ -221,48 +172,8 @@ def _count_pods(query):
     }
 
 
-def _why_query(query):
+def _why_query(query, target=None):
     """Analyze why a specific resource is failing."""
-    words = query.lower().replace("?", "").split()
-
-    # Extract resource name (word after "is" or before action word)
-    target = None
-    for i, w in enumerate(words):
-        if w == "is" and i + 1 < len(words):
-            target = words[i + 1]
-            break
-
-    if not target:
-        # Try word before action keywords
-        action_words = {
-            "failing", "crashing", "down", "broken",
-            "restarting", "consuming", "consumes",
-            "stuck", "pending", "unhealthy",
-        }
-        for i, w in enumerate(words):
-            if w in action_words and i > 0:
-                candidate = words[i - 1]
-                if candidate not in {
-                    "is", "pod", "the", "my", "why",
-                    "more", "so", "much", "high",
-                }:
-                    target = candidate
-                    break
-
-    if not target:
-        # Try last meaningful word
-        skip = {
-            "why", "is", "failing", "crashing",
-            "down", "broken", "not", "working",
-            "the", "my", "more", "cpu", "memory",
-            "consuming", "consumes", "so", "much",
-            "pod", "restarting", "stuck", "pending",
-        }
-        for w in reversed(words):
-            if w not in skip:
-                target = w
-                break
-
     if not target:
         return {
             "title": "🤖 Analysis",
@@ -289,6 +200,14 @@ def _why_query(query):
             "content": f"Could not inspect '{pod_name}'.",
             "severity": "warning",
         }
+
+    # Fetch logs for error detection
+    logs = pod_logs(pod_name, tail=50)
+    log_errors = [l for l in logs if any(x in l.lower() for x in ["error", "fail", "exception", "fatal", "panic"])]
+
+    # Fetch events
+    events = pod_events(pod_name)
+    warning_events = [e for e in events if e["type"] == "Warning"]
 
     findings = diagnose(data)
 
@@ -328,6 +247,17 @@ def _why_query(query):
                 f"  ⚠️  {f['title']}\n"
                 f"     [dim]→ {f['action']}[/dim]"
             )
+
+    # Add evidence from logs/events
+    if log_errors:
+        lines.append("\n[bold red]Evidence from Logs:[/bold red]")
+        for l in log_errors[:3]:
+            lines.append(f"  [dim]{l.strip()}[/dim]")
+
+    if warning_events:
+        lines.append("\n[bold yellow]Recent Warning Events:[/bold yellow]")
+        for e in warning_events[:3]:
+            lines.append(f"  ⚠️  {e['reason']}: {e['message']}")
 
     return {
         "title": f"🤖 Why is {target} failing?",
@@ -710,20 +640,8 @@ def _anomaly_check():
     }
 
 
-def _health_check(query):
+def _health_check(query, target=None):
     """Check health of a specific resource."""
-    words = query.lower().replace("?", "").split()
-
-    skip = {
-        "is", "healthy", "status", "the",
-        "of", "my", "check", "what"
-    }
-    target = None
-    for w in words:
-        if w not in skip:
-            target = w
-            break
-
     if not target:
         return _summarize_cluster()
 

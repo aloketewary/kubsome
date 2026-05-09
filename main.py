@@ -17,7 +17,6 @@ from core.history import get_history
 from core.health import check_kubectl
 from core.config import load_config, resolve_alias
 from core.dispatcher import dispatch
-from core.ai.nlp import parse_natural_language
 from core.ai.suggest import suggest_command
 from core.nlp.matcher import parse_query
 from core.nlp.actions import map_to_command
@@ -300,14 +299,7 @@ def _execute_single(user_input, env):
     # Resolve command
     command = resolve_command(user_input)
 
-    # NLP fallback (rule-based)
-    if not command:
-        nlp_cmd = parse_natural_language(user_input)
-        if nlp_cmd:
-            console.print(f"[dim]→ {nlp_cmd}[/dim]")
-            command = resolve_command(nlp_cmd)
-
-    # Intent engine fallback (fuzzy intent matching)
+    # Unified NLP fallback
     if not command:
         parsed = parse_query(user_input)
         if parsed and parsed["score"] >= 65:
@@ -343,14 +335,21 @@ def _execute_single(user_input, env):
         return
 
     # Execute
+    start = time.time()
     if isinstance(command, str):
+        # Try to extract target from command string for memory
+        _update_context_memory_from_str(command)
         execute(command)
     else:
-        start = time.time()
+        # Update context memory from command dict
+        if "target" in command:
+            context.last_target = command["target"]
+
         dispatch(command, env)
-        elapsed = time.time() - start
-        if elapsed > 3:
-            console.print(f"[dim]({elapsed:.1f}s)[/dim]")
+
+    elapsed = time.time() - start
+    if elapsed > 3:
+        console.print(f"[dim]({elapsed:.1f}s)[/dim]")
 
 
 def _detect_env():
@@ -391,6 +390,26 @@ def _handle_use(user_input):
         f"[green]Switched namespace to[/green] "
         f"[cyan]{namespace}[/cyan]"
     )
+
+
+def _update_context_memory_from_str(cmd_str):
+    """Try to extract a resource target from a raw command string."""
+    tokens = cmd_str.split()
+    if not tokens:
+        return
+
+    # Simple heuristics for common commands: <cmd> <target>
+    if tokens[0] in {
+        "logs", "inspect", "describe", "diagnose",
+        "restart", "rollback", "scale", "exec", "shell",
+        "trace", "netcheck", "delete", "edit", "port-forward",
+        "forward"
+    } and len(tokens) > 1:
+        # Handle cases like 'describe pod <name>'
+        if tokens[1] in {"pod", "pods", "po", "deployment", "deploy", "svc", "service"} and len(tokens) > 2:
+            context.last_target = tokens[2]
+        else:
+            context.last_target = tokens[1]
 
 
 if __name__ == "__main__":

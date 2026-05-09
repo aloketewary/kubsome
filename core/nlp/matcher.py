@@ -1,14 +1,89 @@
 """
 Intent Matcher — classifies user queries into
-operational intents using fuzzy matching.
+operational intents using fuzzy matching and regex.
 
 Architecture:
   User Query → Intent Classification → Entity Extraction → Action
 """
 
-from rapidfuzz import fuzz
+import re
+from rapidfuzz import fuzz, process
 
 from core.nlp.intents import INTENTS
+
+# Compiled regex for performance and cleaner logic
+REGEX_INTENTS = {
+    "scale": [
+        r"scale (\S+) to (\d+)",
+        r"set (\S+) replicas? to (\d+)",
+    ],
+    "logs": [
+        r"(?:show|get|view)?\s*(?:me\s+)?(?:the\s+)?logs?\s+(?:for\s+|of\s+)?(\S+)",
+    ],
+    "restart": [
+        r"restart\s+(?:the\s+)?(\S+)",
+    ],
+    "rollback": [
+        r"(?:rollback|undo|revert)\s+(?:the\s+)?(\S+)",
+    ],
+    "show_pods": [
+        r"(?:show|list|get)\s+(?:all\s+)?pods?",
+    ],
+    "events": [
+        r"(?:show|list|get)\s+(?:all\s+)?events?",
+    ],
+    "show_nodes": [
+        r"(?:show|list|get)\s+(?:all\s+)?nodes?",
+    ],
+    "show_services": [
+        r"(?:show|list|get)\s+(?:all\s+)?services?",
+    ],
+    "top_pods": [
+        r"(?:show|get)?\s*(?:top|resource|usage)\s*pods?",
+    ],
+    "top_nodes": [
+        r"(?:show|get)?\s*(?:top|resource|usage)\s*nodes?",
+    ],
+    "inspect": [
+        r"(?:show|describe|inspect|look at)\s+(?:the\s+)?(?:pod\s+)?(\S+)",
+    ],
+    "switch_context": [
+        r"(?:switch|change|use)\s+(?:to\s+)?(?:context\s+)?(\S+)",
+    ],
+    "use_namespace": [
+        r"(?:switch|change|use)\s+namespace\s+(\S+)",
+    ],
+    "diagnose": [
+        r"(?:diagnose|debug|troubleshoot)\s+(?:the\s+)?(\S+)",
+    ],
+    "describe": [
+        r"(?:describe|details? (?:of|for))\s+(?:pod\s+|deploy(?:ment)?\s+)?(\S+)",
+    ],
+    "delete": [
+        r"(?:delete|remove|kill)\s+(?:pod\s+)?(\S+)",
+    ],
+    "exec": [
+        r"(?:exec|shell|ssh)\s+(?:into\s+)?(?:pod\s+)?(\S+)",
+    ],
+    "port_forward": [
+        r"(?:forward|port.?forward)\s+(\S+)\s+(?:port\s+)?(\d+)",
+    ],
+    "security": [
+        r"(?:run|show)?\s*(?:security|scan|vulnerabilit)",
+    ],
+    "optimize": [
+        r"(?:optimize|right.?size|cost|savings)",
+    ],
+    "unused": [
+        r"(?:unused|orphan|cleanup|clean up|find unused)",
+    ],
+    "overview": [
+        r"(?:overview|dashboard|cluster|health)",
+    ],
+    "trace": [
+        r"trace\s+(?:the\s+)?(\S+)",
+    ],
+}
 
 
 def detect_intent(query):
@@ -18,7 +93,13 @@ def detect_intent(query):
     """
     lower = query.lower().strip()
 
-    # Priority keyword checks (exact intent signals)
+    # 1. Regex Matchers (Fast & High Confidence)
+    for intent, patterns in REGEX_INTENTS.items():
+        for pattern in patterns:
+            if re.match(pattern, lower):
+                return intent, 100
+
+    # 2. Priority keyword checks (Exact intent signals)
     priority = [
         ("unhealthy", "unhealthy"),
         ("how many", "count_pods"),
@@ -30,25 +111,31 @@ def detect_intent(query):
         ("anomal", "anomalies"),
         ("why is", "why_failing"),
         ("why ", "why_failing"),
+        ("is ", "health_check"),
     ]
     for keyword, intent in priority:
         if keyword in lower:
             return intent, 95
 
+    # 3. Fuzzy Matching (Fallback)
     best_intent = None
     best_score = 0
 
+    # Optimization: pre-calculate phrases if this gets slow, but for now it's fine.
+    # We use token_sort_ratio for better handling of word order
     for intent, phrases in INTENTS.items():
-        for phrase in phrases:
-            score = fuzz.token_sort_ratio(
-                lower, phrase
-            )
+        # Use rapidfuzz.process.extractOne to find the best match in phrases
+        result = process.extractOne(lower, phrases, scorer=fuzz.token_sort_ratio)
+        if result:
+            phrase, score, _ = result
             if phrase in lower:
                 score = max(score, 90)
 
             if score > best_score:
                 best_score = score
                 best_intent = intent
+                if score >= 90: # Early exit for high confidence
+                    break
 
     if best_score < 55:
         return None, 0
@@ -61,18 +148,50 @@ def extract_entities(query, intent):
     Extract target entities from a query given its intent.
     Returns dict with extracted fields.
     """
-    import re
+    from core.context import context
     lower = query.lower().strip().rstrip("?")
-    tokens = lower.split()
-
     entities = {}
+
+    # Handle pronouns/contextual references
+    contextual_pronouns = ["it", "this", "that", "the pod", "the deployment", "the service"]
+    # Sort by length descending to match longer phrases first
+    contextual_pronouns.sort(key=len, reverse=True)
+
+    for pronoun in contextual_pronouns:
+        if pronoun in lower and context.last_target:
+            entities["target"] = context.last_target
+            # Replace the pronoun in lower so subsequent logic doesn't pick it up as a target
+            lower = lower.replace(pronoun, context.last_target)
+            break
+
+    # 1. Try extracting from Regex first (most accurate)
+    if intent in REGEX_INTENTS:
+        for pattern in REGEX_INTENTS[intent]:
+            m = re.match(pattern, lower)
+            if m:
+                if intent == "scale":
+                    entities["target"] = m.group(1)
+                    entities["replicas"] = int(m.group(2))
+                elif intent == "port_forward":
+                    entities["target"] = m.group(1)
+                    entities["port"] = m.group(2)
+                elif intent == "use_namespace":
+                    entities["namespace"] = m.group(1)
+                elif intent == "switch_context":
+                    entities["context"] = m.group(1)
+                elif m.groups():
+                    entities["target"] = m.group(1)
+                return entities
+
+    # 2. Fallback to general extraction logic
+    tokens = [t.strip("?.,!") for t in lower.split()]
 
     # Skip words that are never targets
     skip = {
         "why", "is", "the", "my", "a", "an",
         "show", "get", "list", "me", "all",
-        "pod", "pods", "deployment", "deploy",
-        "service", "svc", "node", "nodes",
+        "pod", "pods", "deployment", "deploy", "deployments",
+        "service", "svc", "services", "node", "nodes",
         "please", "can", "you", "what",
         "how", "many", "which", "are",
         "failing", "crashing", "running",
@@ -80,25 +199,25 @@ def extract_entities(query, intent):
         "broken", "stuck", "pending",
         "restarting", "consuming", "consumes",
         "more", "cpu", "memory", "oom",
-        "safely", "safe", "to",
+        "safely", "safe", "to", "in", "last", "hour",
+        "high", "restart", "restarts", "matching",
+        "resource", "consumers", "hog", "usage", "pods",
+        "anomalies", "detected", "any", "changes", "recently",
+        "happened", "what",
     }
 
-    # Intent-specific extraction
     if intent in (
         "diagnose", "inspect", "trace",
         "logs", "restart", "rollback",
         "rollout", "netcheck", "delete",
-        "exec", "health_check", "why_failing",
+        "exec", "health_check", "why_failing", "describe",
     ):
-        # Extract target: first non-skip word
-        # that looks like a resource name
-        for token in tokens:
-            cleaned = token.strip("?.,!")
-            if cleaned not in skip and len(cleaned) > 1:
-                entities["target"] = cleaned
-                break
+        # Specific patterns to ignore common adjectives used as targets
+        if intent == "diagnose" and ("restart" in tokens or "high" in tokens):
+             # This is handled as a general high-restart check in the AI engine
+             return entities
 
-        # Better: look after key phrases
+        # Look after key phrases with regex
         patterns = [
             r"(?:why is|diagnose|inspect|trace|"
             r"restart|rollback|logs for|logs of|"
@@ -106,7 +225,7 @@ def extract_entities(query, intent):
             r"status of|exec|shell into|"
             r"delete|netcheck)\s+(?:the\s+)?"
             r"(?:pod\s+|deploy\s+)?"
-            r"(\S+)",
+            r"([a-z0-9\-\.]+)",
         ]
         for p in patterns:
             m = re.search(p, lower)
@@ -114,52 +233,28 @@ def extract_entities(query, intent):
                 candidate = m.group(1).strip("?.,!")
                 if candidate not in skip:
                     entities["target"] = candidate
+                    return entities
+
+        # Target: first non-skip word that looks like a resource name
+        for token in tokens:
+            if token not in skip and len(token) > 1:
+                # Basic check for kubernetes resource name format
+                if re.match(r"^[a-z0-9\-\.]+$", token):
+                    # Final check: don't pick 'high' or 'restart' if it's likely a general query
+                    if token in {"high", "restart"}:
+                         continue
+                    entities["target"] = token
                     break
 
-    elif intent == "scale":
-        # Extract target and replicas
-        m = re.search(
-            r"scale\s+(\S+)\s+(?:to\s+)?(\d+)",
-            lower
-        )
-        if m:
-            entities["target"] = m.group(1)
-            entities["replicas"] = int(m.group(2))
-        else:
-            m = re.search(
-                r"set\s+(\S+)\s+replicas?\s+(?:to\s+)?(\d+)",
-                lower
-            )
-            if m:
-                entities["target"] = m.group(1)
-                entities["replicas"] = int(m.group(2))
-
     elif intent == "count_pods":
-        # Extract what to count
-        m = re.search(
-            r"(?:how many|count|number of)\s+(\S+)",
-            lower
-        )
+        m = re.search(r"(?:how many|count|number of)\s+(?:pods? matching\s+)?([a-z0-9\-\.]+)", lower)
         if m:
             candidate = m.group(1).strip("?.,!")
             if candidate not in skip:
                 entities["target"] = candidate
 
-    elif intent == "port_forward":
-        m = re.search(
-            r"(?:forward|port.?forward)\s+(\S+)\s+(\d+)",
-            lower
-        )
-        if m:
-            entities["target"] = m.group(1)
-            entities["port"] = m.group(2)
-
     elif intent == "is_safe":
-        # Extract action and target
-        m = re.search(
-            r"safe to (\w+)\s+(\S+)",
-            lower
-        )
+        m = re.search(r"safe to (\w+)\s+(\S+)", lower)
         if m:
             entities["action"] = m.group(1)
             entities["target"] = m.group(2)
