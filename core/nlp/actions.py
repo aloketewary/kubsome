@@ -36,6 +36,20 @@ def map_to_command(parsed):
     if intent == "top_nodes":
         return {"type": "top_nodes"}
 
+    if intent == "show_nodes":
+        return {"type": "nodes"}
+
+    if intent == "show_services":
+        return "services"
+
+    if intent == "switch_context":
+        ctx = entities.get("context")
+        return f"switch {ctx}" if ctx else None
+
+    if intent == "use_namespace":
+        ns = entities.get("namespace")
+        return f"use {ns}" if ns else None
+
     # Diagnose
     if intent == "diagnose" and target:
         return f"diagnose {target}"
@@ -65,6 +79,9 @@ def map_to_command(parsed):
 
     if intent == "rollout" and target:
         return f"rollout {target}"
+
+    if intent == "describe" and target:
+        return f"describe pod {target}"
 
     if intent == "exec" and target:
         return f"exec {target}"

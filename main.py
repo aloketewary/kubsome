@@ -300,14 +300,7 @@ def _execute_single(user_input, env):
     # Resolve command
     command = resolve_command(user_input)
 
-    # NLP fallback (rule-based)
-    if not command:
-        nlp_cmd = parse_natural_language(user_input)
-        if nlp_cmd:
-            console.print(f"[dim]→ {nlp_cmd}[/dim]")
-            command = resolve_command(nlp_cmd)
-
-    # Intent engine fallback (fuzzy intent matching)
+    # Unified NLP fallback
     if not command:
         parsed = parse_query(user_input)
         if parsed and parsed["score"] >= 65:
