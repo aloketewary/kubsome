@@ -122,9 +122,12 @@ import { ErrorToastComponent } from './shared/components/error-toast.component';
     <app-ai-float />
 
     <!-- Layout -->
-    <div class="layout">
-      <aside class="sidebar">
-        <app-shell />
+    <div class="layout" [class.sidebar-collapsed]="sidebarCollapsed">
+      <aside class="sidebar" [class.rail]="sidebarCollapsed">
+        <app-shell [collapsed]="sidebarCollapsed" />
+        <button class="collapse-toggle" (click)="toggleSidebar()">
+          <i class="pi" [class.pi-chevron-left]="!sidebarCollapsed" [class.pi-chevron-right]="sidebarCollapsed"></i>
+        </button>
       </aside>
       <main class="content">
         <app-breadcrumb />
@@ -384,9 +387,36 @@ import { ErrorToastComponent } from './shared/components/error-toast.component';
       flex-shrink: 0;
       border-right: 1px solid var(--border);
       overflow-y: auto;
+      overflow-x: hidden;
       background: var(--bg-card);
       padding: 8px 6px;
+      transition: width 0.2s ease;
+      position: relative;
     }
+    .sidebar.rail {
+      width: 48px;
+      padding: 8px 4px;
+    }
+    .collapse-toggle {
+      position: absolute;
+      bottom: 8px;
+      right: 6px;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: var(--bg-elevated);
+      color: var(--text-muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      transition: all 0.12s;
+      z-index: 10;
+    }
+    .collapse-toggle:hover { border-color: var(--accent); color: var(--accent); }
+    .sidebar-collapsed .status-bar { left: 48px; }
     .content {
       flex: 1;
       padding: 24px 32px;
@@ -451,8 +481,10 @@ export class AppComponent implements OnInit {
   anomalyCount = 0;
   showNotifications = false;
   anomalies: any[] = [];
+  sidebarCollapsed = false;
 
   ngOnInit() {
+    this.sidebarCollapsed = localStorage.getItem('sidebar_collapsed') === 'true';
     this.api.getNamespaces().subscribe(res => {
       this.namespaces = res.namespaces;
       this.currentNamespace = res.current;
@@ -512,5 +544,10 @@ export class AppComponent implements OnInit {
   openPalette() {
     // Trigger Cmd+K programmatically
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }));
+  }
+
+  toggleSidebar() {
+    this.sidebarCollapsed = !this.sidebarCollapsed;
+    localStorage.setItem('sidebar_collapsed', String(this.sidebarCollapsed));
   }
 }

@@ -1,4 +1,4 @@
-import { Component, OnInit, HostListener, inject } from '@angular/core';
+import { Component, OnInit, HostListener, inject, Input } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { ContextsResponse } from '../core/models';
@@ -10,16 +10,18 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
   standalone: true,
   imports: [RouterLink, RouterLinkActive, HelpDialogComponent],
   template: `
-    <div class="sidebar-header">
+    <div class="sidebar-header" [class.header-mini]="collapsed">
       <div class="logo-area">
         <i class="pi pi-box logo-icon"></i>
-        <span class="logo-text">Kubsome</span>
+        @if (!collapsed) { <span class="logo-text">Kubsome</span> }
       </div>
-      <div class="ctx-block glass">
+      <div class="ctx-block" [class.glass]="!collapsed">
         <div class="ctx-dot" [class.dot-ok]="clusterOk" [class.dot-bad]="!clusterOk"></div>
-        <div class="ctx-info">
-          <span class="ctx-name">{{ currentContext }}</span>
-        </div>
+        @if (!collapsed) {
+          <div class="ctx-info">
+            <span class="ctx-name">{{ currentContext }}</span>
+          </div>
+        }
       </div>
     </div>
 
@@ -119,7 +121,17 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
     }
   `,
   styles: [`
-    :host { display: flex; flex-direction: column; height: calc(100vh - 48px - 24px); }
+    :host { display: flex; flex-direction: column; height: calc(100vh - 48px - 24px); overflow: hidden; }
+    :host-context(.rail) .nav-label { display: none; }
+    :host-context(.rail) .nav-item span { display: none; }
+    :host-context(.rail) .nav-item kbd { display: none; }
+    :host-context(.rail) .nav-item { justify-content: center; padding: 8px; margin: 1px 2px; }
+    :host-context(.rail) .nav-item i { margin: 0; }
+    :host-context(.rail) .fav-remove, :host-context(.rail) .star-btn { display: none; }
+    :host-context(.rail) .nav-footer .nav-item span { display: none; }
+    :host-context(.rail) .header-mini { padding: 12px 4px 8px; }
+    :host-context(.rail) .logo-area { justify-content: center; }
+    :host-context(.rail) .ctx-block { justify-content: center; padding: 6px; }
     .sidebar-header {
       padding: 20px 12px 16px;
     }
@@ -202,6 +214,8 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
       cursor: pointer;
       transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
       text-decoration: none;
+      overflow: hidden;
+      white-space: nowrap;
     }
     .nav-item:hover {
       background: var(--bg-hover);
@@ -278,6 +292,7 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
   `],
 })
 export class ShellComponent implements OnInit {
+  @Input() collapsed = false;
   private http = inject(HttpClient);
   private router = inject(Router);
 
