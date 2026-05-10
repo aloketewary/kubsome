@@ -44,7 +44,7 @@ dependencies = [
 [project.optional-dependencies]
 tui = ["textual>=0.40"]
 all = ["textual>=0.40"]
-dev = ["pytest>=7.0", "build", "twine"]
+dev = ["pytest>=7.0", "httpx>=0.24.0", "build", "twine"]
 
 [project.scripts]
 kubsome = "main:main"
