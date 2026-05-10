@@ -166,4 +166,31 @@ INTENTS = {
         "incident stop", "close incident",
         "end incident", "resolve incident",
     ],
+
+    # New features
+    "correlate_logs": [
+        "correlate logs", "merge logs",
+        "combined logs", "multi-pod logs",
+        "logs from multiple", "log timeline",
+    ],
+    "diff_timeline": [
+        "diff timeline", "what changed",
+        "changes today", "recent changes",
+        "changelog", "mutations",
+    ],
+    "dep_health": [
+        "dependency health", "dependencies",
+        "what depends on", "upstream health",
+        "downstream health", "service graph",
+    ],
+    "rollback_preview": [
+        "rollback preview", "preview rollback",
+        "what will change", "rollback diff",
+        "show rollback",
+    ],
+    "watch_alert": [
+        "watch and alert", "monitor pod",
+        "alert if crashes", "alert when",
+        "notify if", "watch for crash",
+    ],
 }

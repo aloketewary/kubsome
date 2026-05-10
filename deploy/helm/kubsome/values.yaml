@@ -1,0 +1,54 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/aloketewary/kubsome
+  tag: "1.5.0"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8000
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: kubsome.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+serviceAccount:
+  create: true
+  name: kubsome
+
+rbac:
+  create: true
+  # ClusterRole with read access to all resources
+  rules:
+    - apiGroups: ["", "apps", "batch", "networking.k8s.io", "autoscaling", "policy"]
+      resources: ["*"]
+      verbs: ["get", "list", "watch"]
+    - apiGroups: ["apps"]
+      resources: ["deployments"]
+      verbs: ["get", "list", "watch", "patch"]
+    - apiGroups: [""]
+      resources: ["pods"]
+      verbs: ["get", "list", "watch", "delete"]
+    - apiGroups: [""]
+      resources: ["pods/log", "pods/exec"]
+      verbs: ["get", "create"]
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

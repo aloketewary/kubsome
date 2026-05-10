@@ -1016,6 +1016,170 @@ def _handle_uptime(cmd, env):
     )
 
 
+def _handle_correlate_logs(cmd, env):
+    from core.collectors.log_correlation import correlate_logs
+    from core.resolver import resolve_pod_name
+    from core.selector import choose_pod
+
+    pods = cmd.get("pods", [])
+    resolved = []
+    for p in pods:
+        matches = resolve_pod_name(p)
+        if matches:
+            resolved.append(choose_pod(matches) or matches[0])
+        else:
+            resolved.append(p)
+
+    with loading(f"Correlating logs from {len(resolved)} pods..."):
+        data = correlate_logs(resolved, tail=50)
+
+    if not data["entries"]:
+        console.print("[dim]No log entries found[/dim]")
+        return
+
+    from rich.table import Table
+    table = Table(show_header=True, border_style="dim", expand=True)
+    table.add_column("Time", width=12, style="dim")
+    table.add_column("Pod", width=18, style="cyan")
+    table.add_column("Message")
+
+    for entry in data["entries"][-80:]:
+        ts = entry["timestamp"][-12:] if entry["timestamp"] else ""
+        style = "red" if entry["level"] == "error" else "yellow" if entry["level"] == "warn" else ""
+        table.add_row(ts, entry["pod"], f"[{style}]{entry['message']}[/{style}]" if style else entry["message"])
+
+    console.print(Panel(table, title=f"[bold]Log Correlation ({data['total']} entries)[/bold]", border_style="cyan"))
+
+
+def _handle_diff_timeline(cmd, env):
+    from core.collectors.diff_timeline import collect_diff_timeline
+
+    hours = cmd.get("hours", 24)
+    with loading(f"Scanning changes in last {hours}h..."):
+        data = collect_diff_timeline(hours)
+
+    if not data["changes"]:
+        console.print("[green]No changes detected[/green]")
+        return
+
+    lines = [f"[bold]{data['total']} changes in last {hours}h:[/bold]\n"]
+    icons = {
+        "image_changes": "📦", "scaling": "⚖️",
+        "restarts": "🔄", "new_deployments": "🆕",
+        "deletions": "🗑️", "config_changes": "⚙️",
+        "other": "•",
+    }
+    for category, events in data["changes"].items():
+        icon = icons.get(category, "•")
+        label = category.replace("_", " ").title()
+        lines.append(f"  {icon} [bold]{label}[/bold] ({len(events)})")
+        for ev in events[:5]:
+            lines.append(f"     [dim]{ev['name']}[/dim] — {ev['message'][:60]}")
+
+    console.print(Panel("\n".join(lines), title="[bold]📅 Diff Timeline[/bold]", border_style="cyan"))
+
+
+def _handle_dep_health(cmd, env):
+    from core.collectors.dep_health import dependency_health
+    from core.resolver import resolve_deployment_name
+    from core.selector import choose_deployment
+
+    target = cmd["target"]
+    matches = resolve_deployment_name(target)
+    if matches:
+        target = choose_deployment(matches) or target
+
+    with loading(f"Mapping dependencies for {target}..."):
+        data = dependency_health(target)
+
+    lines = [f"[bold]{target}[/bold] dependency health:\n"]
+    for node in data["nodes"]:
+        icon = "[green]●[/green]" if node["healthy"] else "[red]●[/red]"
+        lines.append(f"  {icon} {node['name']} [{node['type']}] — {node['detail']}")
+
+    if data["root_cause"]:
+        lines.append(f"\n[bold red]⚠ Likely root cause:[/bold red]")
+        lines.append(f"  {data['root_cause']['suggestion']}")
+
+    console.print(Panel("\n".join(lines), title="[bold]🔗 Dependency Health[/bold]", border_style="cyan"))
+
+
+def _handle_rollback_preview(cmd, env):
+    from core.collectors.rollback_preview import rollback_preview
+    from core.resolver import resolve_deployment_name
+    from core.selector import choose_deployment
+
+    target = cmd["target"]
+    matches = resolve_deployment_name(target)
+    if matches:
+        target = choose_deployment(matches) or target
+
+    with loading(f"Fetching rollback preview for {target}..."):
+        data = rollback_preview(target)
+
+    if not data["available"]:
+        console.print(f"[red]{data.get('reason', 'Cannot preview')}[/red]")
+        return
+
+    if not data["has_changes"]:
+        console.print(f"[dim]No differences between current and previous revision[/dim]")
+        return
+
+    from rich.table import Table
+    table = Table(show_header=True, border_style="dim")
+    table.add_column("Field", style="cyan")
+    table.add_column("Current", style="red")
+    table.add_column("Rollback To", style="green")
+
+    for diff in data["diffs"]:
+        table.add_row(diff["field"], diff["current"][:50], diff["rollback_to"][:50])
+
+    console.print(Panel(table, title=f"[bold]↩ Rollback Preview: {target}[/bold]", border_style="yellow"))
+
+
+def _handle_watch_alert(cmd, env):
+    from core.watch_alert import (
+        get_watcher, pod_crash_condition,
+        pod_restart_condition, pod_count_condition
+    )
+
+    target = cmd["target"]
+    condition = cmd.get("condition", "crash")
+    watcher = get_watcher()
+
+    conditions = {
+        "crash": pod_crash_condition(target),
+        "restart": pod_restart_condition(target, 5),
+        "count": pod_count_condition(target, 1),
+    }
+
+    check_fn = conditions.get(condition, conditions["crash"])
+    name = f"{target}-{condition}"
+    watcher.add(name, check_fn, interval=30)
+    watcher.start()
+
+    console.print(f"[green]✓ Watching:[/green] {target} (condition: {condition})")
+    console.print(f"[dim]  Checking every 30s. Desktop notification on trigger.[/dim]")
+    console.print(f"[dim]  Run: watch-status to see all watches[/dim]")
+
+
+def _handle_watch_status(cmd, env):
+    from core.watch_alert import get_watcher
+
+    status = get_watcher().status()
+    if not status["watches"]:
+        console.print("[dim]No active watches. Use: watch-alert <pod> [crash|restart|count][/dim]")
+        return
+
+    lines = [f"[bold]Active Watches ({len(status['watches'])}):[/bold]\n"]
+    for w in status["watches"]:
+        icon = "[red]🔔[/red]" if w["triggered"] else "[green]●[/green]"
+        lines.append(f"  {icon} {w['name']} — alerts: {w['alert_count']}")
+
+    lines.append(f"\n[dim]Background: {'running' if status['running'] else 'stopped'}[/dim]")
+    console.print(Panel("\n".join(lines), title="[bold]👁 Watch Status[/bold]", border_style="cyan"))
+
+
 # Handler registry
 HANDLERS = {
     "pods_table": _handle_pods_table,
@@ -1093,4 +1257,10 @@ HANDLERS = {
     "dns": _handle_dns,
     "kubectl_pretty": _handle_kubectl_pretty,
     "uptime": _handle_uptime,
+    "correlate_logs": _handle_correlate_logs,
+    "diff_timeline": _handle_diff_timeline,
+    "dep_health": _handle_dep_health,
+    "rollback_preview": _handle_rollback_preview,
+    "watch_alert": _handle_watch_alert,
+    "watch_status": _handle_watch_status,
 }

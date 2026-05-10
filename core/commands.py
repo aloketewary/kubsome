@@ -563,13 +563,22 @@ def resolve_command(user_input: str):
         "recently", "last hour",
     ]
 
+    # Skip AI triggers for explicit commands
+    skip_ai = {
+        "watch-alert", "watch-status",
+        "correlate-logs", "diff-timeline",
+        "dep-health", "rollback-preview",
+        "changes", "changelog", "uptime",
+    }
+
     lower = user_input.lower()
-    for trigger in ai_triggers:
-        if trigger in lower:
-            return {
-                "type": "ai",
-                "query": user_input
-            }
+    if cmd not in skip_ai:
+        for trigger in ai_triggers:
+            if trigger in lower:
+                return {
+                    "type": "ai",
+                    "query": user_input
+                }
 
     # Services
     if cmd == "services":
@@ -589,6 +598,46 @@ def resolve_command(user_input: str):
     # Uptime
     if cmd == "uptime":
         return {"type": "uptime"}
+
+    # Correlate logs
+    if cmd == "correlate-logs" and len(tokens) > 1:
+        return {
+            "type": "correlate_logs",
+            "pods": tokens[1:],
+        }
+
+    # Diff timeline
+    if cmd in ("diff-timeline", "changes", "changelog"):
+        hours = 24
+        if len(tokens) > 1 and tokens[1].isdigit():
+            hours = int(tokens[1])
+        return {"type": "diff_timeline", "hours": hours}
+
+    # Dependency health
+    if cmd == "dep-health" and len(tokens) > 1:
+        return {
+            "type": "dep_health",
+            "target": tokens[1],
+        }
+
+    # Rollback preview
+    if cmd == "rollback-preview" and len(tokens) > 1:
+        return {
+            "type": "rollback_preview",
+            "target": tokens[1],
+        }
+
+    # Watch alert
+    if cmd == "watch-alert" and len(tokens) > 1:
+        return {
+            "type": "watch_alert",
+            "target": tokens[1],
+            "condition": tokens[2] if len(tokens) > 2 else "crash",
+        }
+
+    # Watch status
+    if cmd == "watch-status":
+        return {"type": "watch_status"}
 
     # describe <resource> <name>
     if cmd == "describe":
