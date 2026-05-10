@@ -310,6 +310,8 @@ export class ShellComponent implements OnInit {
   private router = inject(Router);
   private api = inject(ApiService);
 
+  currentContext = '...';
+  clusterOk = true;
   helpVisible = false;
   monitorCollapsed = false;
   opsCollapsed = false;
@@ -391,6 +393,14 @@ export class ShellComponent implements OnInit {
 
   ngOnInit() {
     this.loadFavorites();
+    this.http.get<any>('http://localhost:8000/api/contexts').subscribe({
+      next: (res) => { this.currentContext = res.current ?? 'none'; },
+      error: () => {},
+    });
+    this.http.get<any>('http://localhost:8000/api/uptime').subscribe({
+      next: (res) => { this.clusterOk = res.api_reachable && !res.cluster_down; },
+      error: () => { this.clusterOk = false; },
+    });
   }
   private allItems = [
     { path: '/dashboard', icon: 'pi pi-objects-column', label: 'Dashboard' },

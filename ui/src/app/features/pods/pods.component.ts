@@ -13,6 +13,8 @@ import { WsService } from '../../core/services/ws.service';
 import { Pod } from '../../core/models';
 import { PodDrawerComponent } from '../../shared/components/pod-drawer.component';
 import { PageInfoComponent } from '../../shared/components/page-info.component';
+import { AiInsightDrawerComponent } from '../../shared/components/ai-insight-drawer.component';
+import { LogTerminalComponent } from '../../shared/components/log-terminal.component';
 
 interface PodGroup {
   deployment: string;
@@ -25,7 +27,7 @@ interface PodGroup {
 @Component({
   selector: 'app-pods',
   standalone: true,
-  imports: [JsonPipe, TagModule, ButtonModule, TooltipModule, DialogModule, InputTextModule, FormsModule, PodDrawerComponent, PageInfoComponent],
+  imports: [JsonPipe, TagModule, ButtonModule, TooltipModule, DialogModule, InputTextModule, FormsModule, PodDrawerComponent, PageInfoComponent, AiInsightDrawerComponent, LogTerminalComponent],
   template: `
     <!-- Header -->
     <div class="page-header">
