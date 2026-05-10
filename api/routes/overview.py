@@ -194,3 +194,43 @@ def delete_saved_query(name: str):
         from fastapi import HTTPException
         raise HTTPException(404, "Query not found")
     return {"deleted": name}
+
+
+@router.post("/watch-alert")
+def post_watch_alert(req: dict):
+    from core.watch_alert import (
+        get_watcher, pod_crash_condition,
+        pod_restart_condition, pod_count_condition
+    )
+
+    target = req.get("target", "")
+    condition = req.get("condition", "crash")
+
+    if not target:
+        from fastapi import HTTPException
+        raise HTTPException(400, "target required")
+
+    watcher = get_watcher()
+    conditions = {
+        "crash": pod_crash_condition(target),
+        "restart": pod_restart_condition(target, 5),
+        "count": pod_count_condition(target, 1),
+    }
+
+    check_fn = conditions.get(condition, conditions["crash"])
+    name = f"{target}-{condition}"
+    watcher.add(name, check_fn, interval=30)
+    watcher.start()
+
+    return {
+        "added": name,
+        "condition": condition,
+        "target": target,
+    }
+
+
+@router.delete("/watch-alert/{name}")
+def delete_watch_alert(name: str):
+    from core.watch_alert import get_watcher
+    get_watcher().remove(name)
+    return {"removed": name}
