@@ -26,4 +26,6 @@ export const routes: Routes = [
   { path: 'ai', loadComponent: () => import('./features/ai/ai.component').then(m => m.AiComponent) },
   { path: 'terminal', loadComponent: () => import('./features/terminal/terminal.component').then(m => m.TerminalComponent) },
   { path: 'resources', loadComponent: () => import('./features/resources/resources.component').then(m => m.ResourcesComponent) },
+  { path: 'scorecard', loadComponent: () => import('./features/scorecard/scorecard.component').then(m => m.ScorecardComponent) },
+  { path: 'cost-estimate', loadComponent: () => import('./features/cost-estimate/cost-estimate.component').then(m => m.CostEstimateComponent) },
 ];

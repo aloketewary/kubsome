@@ -267,7 +267,9 @@ export class ShellComponent implements OnInit {
     { path: '/metrics', icon: 'pi pi-chart-bar', label: 'Metrics' },
     { path: '/namespace', icon: 'pi pi-th-large', label: 'Namespace' },
     { path: '/timeline', icon: 'pi pi-history', label: 'Timeline' },
+    { path: '/scorecard', icon: 'pi pi-trophy', label: 'Scorecard' },
     { path: '/cost', icon: 'pi pi-dollar', label: 'Optimization' },
+    { path: '/cost-estimate', icon: 'pi pi-calculator', label: 'Cost' },
   ];
 
   opsItems = [
