@@ -3,6 +3,7 @@ import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { ContextsResponse } from '../core/models';
 import { PreferencesService } from '../core/services/preferences.service';
+import { ApiService } from '../core/services/api.service';
 import { HelpDialogComponent } from '../shared/components/help-dialog.component';
 
 @Component({
@@ -10,10 +11,21 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
   standalone: true,
   imports: [RouterLink, RouterLinkActive, HelpDialogComponent],
   template: `
-    <div class="ctx-block">
-      <div class="ctx-dot" [class.dot-ok]="clusterOk" [class.dot-bad]="!clusterOk"></div>
-      <div class="ctx-info">
-        <span class="ctx-name">{{ currentContext }}</span>
+    <div class="sidebar-header">
+      <div class="logo-area">
+        <i class="pi pi-box logo-icon"></i>
+        <span class="logo-text">Kubsome</span>
+      </div>
+
+      <div class="context-card">
+        <div class="cc-row">
+          <span class="cc-dot"></span>
+          <span class="cc-value">{{ currentContext }}</span>
+        </div>
+        <div class="cc-row ns-row">
+          <i class="pi pi-tag"></i>
+          <span class="cc-value">{{ currentNamespace }}</span>
+        </div>
       </div>
     </div>
 
@@ -114,33 +126,57 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
   `,
   styles: [`
     :host { display: flex; flex-direction: column; height: calc(100vh - 48px - 24px); }
-    .ctx-block {
+    .sidebar-header {
+      padding: 20px 12px 16px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 12px;
+    }
+    .logo-area {
       display: flex;
       align-items: center;
-      gap: 6px;
-      padding: 8px 10px 12px;
+      gap: 8px;
+      margin-bottom: 16px;
+      padding-left: 8px;
     }
-    .ctx-dot {
-      width: 7px;
-      height: 7px;
+    .context-card {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 12px;
+      margin: 0 8px;
+    }
+    .cc-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .cc-dot {
+      width: 6px;
+      height: 6px;
       border-radius: 50%;
-    }
-    .ctx-dot.dot-ok {
       background: var(--success);
       box-shadow: 0 0 4px var(--success);
     }
-    .ctx-dot.dot-bad {
-      background: var(--danger);
-      box-shadow: 0 0 4px var(--danger);
-      animation: ctx-pulse 1.5s infinite;
+    .ns-row {
+      margin-top: 4px;
+      color: var(--text-muted);
+      font-weight: 400;
     }
-    @keyframes ctx-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
-    .ctx-name {
-      font-size: 10px;
-      color: var(--text-secondary);
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+    .ns-row i { font-size: 10px; }
+    .logo-icon {
+      font-size: 20px;
+      color: var(--accent);
+    }
+    .logo-text {
+      font-weight: 800;
+      font-size: 18px;
+      letter-spacing: -0.02em;
     }
     .nav-section {
       margin-bottom: 8px;
@@ -164,22 +200,26 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
     .nav-item {
       display: flex;
       align-items: center;
-      gap: 8px;
-      padding: 6px 10px;
-      border-radius: 6px;
-      font-size: 12px;
+      gap: 10px;
+      padding: 8px 12px;
+      margin: 1px 8px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 500;
       color: var(--text-secondary);
       cursor: pointer;
-      transition: all 0.1s ease;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
       text-decoration: none;
     }
     .nav-item:hover {
       background: var(--bg-hover);
       color: var(--text);
+      transform: translateX(2px);
     }
     .nav-item.active {
       background: var(--accent-subtle);
       color: var(--accent);
+      box-shadow: inset 2px 0 0 var(--accent);
     }
     .nav-item i {
       font-size: 13px;
@@ -248,9 +288,11 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
 export class ShellComponent implements OnInit {
   private http = inject(HttpClient);
   private router = inject(Router);
+  private api = inject(ApiService);
 
   currentContext = '...';
-  clusterOk = true;
+  currentNamespace = '...';
+
   helpVisible = false;
   monitorCollapsed = false;
   opsCollapsed = false;
@@ -326,13 +368,8 @@ export class ShellComponent implements OnInit {
 
   ngOnInit() {
     this.loadFavorites();
-    this.http.get<ContextsResponse>('http://localhost:8000/api/contexts').subscribe(res => {
-      this.currentContext = res.current ?? 'none';
-    });
-    this.http.get<any>('http://localhost:8000/api/uptime').subscribe({
-      next: (res) => { this.clusterOk = res.api_reachable && !res.cluster_down; },
-      error: () => { this.clusterOk = false; },
-    });
+    this.api.getContexts().subscribe(res => this.currentContext = res.current || '...');
+    this.api.getNamespaces().subscribe(res => this.currentNamespace = res.current || '...');
   }
   private allItems = [
     { path: '/dashboard', icon: 'pi pi-objects-column', label: 'Dashboard' },

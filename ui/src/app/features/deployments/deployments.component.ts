@@ -8,11 +8,12 @@ import { FormsModule } from '@angular/forms';
 import { InputTextModule } from 'primeng/inputtext';
 import { ApiService } from '../../core/services/api.service';
 import { Deployment } from '../../core/models';
+import { AiInsightDrawerComponent } from '../../shared/components/ai-insight-drawer.component';
 
 @Component({
   selector: 'app-deployments',
   standalone: true,
-  imports: [TagModule, ButtonModule, TooltipModule, DialogModule, FormsModule, InputTextModule],
+  imports: [TagModule, ButtonModule, TooltipModule, DialogModule, FormsModule, InputTextModule, AiInsightDrawerComponent],
   template: `
     <div class="page-header">
       <div>
@@ -73,6 +74,7 @@ import { Deployment } from '../../core/models';
 
           <!-- Actions (visible on hover) -->
           <div class="dep-actions">
+            <button pButton icon="pi pi-sparkles" label="AI Diagnose" class="p-button-sm p-button-text p-button-warning" (click)="aiDiagnose(dep)"></button>
             <button pButton icon="pi pi-replay" label="Restart" class="p-button-sm p-button-text" (click)="onRestart(dep)"></button>
             <button pButton icon="pi pi-undo" label="Rollback" class="p-button-sm p-button-text" (click)="onRollback(dep)"></button>
             <button pButton icon="pi pi-arrows-v" label="Scale" class="p-button-sm p-button-text" (click)="onScale(dep)"></button>
@@ -81,6 +83,16 @@ import { Deployment } from '../../core/models';
           </div>
         </div>
       }
+
+      <!-- AI Insight Drawer -->
+      <app-ai-insight-drawer
+        [visible]="aiDrawerVisible"
+        [loading]="aiLoading"
+        [resourceName]="selectedDepName"
+        [summary]="aiSummary"
+        [findings]="aiFindings"
+        [reasoning]="aiReasoning"
+        (closed)="aiDrawerVisible = false" />
 
       @if (filtered.length === 0 && searchQuery) {
         <div class="empty-state"><i class="pi pi-search"></i> No deployments matching "{{ searchQuery }}"</div>
@@ -237,6 +249,14 @@ export class DeploymentsComponent implements OnInit {
   scaleReplicas = 1;
   scaleCurrentReplicas = 1;
 
+  // AI Insight State
+  aiDrawerVisible = false;
+  aiLoading = false;
+  selectedDepName = '';
+  aiSummary = '';
+  aiFindings: any[] = [];
+  aiReasoning = '';
+
   Math = Math;
 
   get healthyCount() { return this.deployments.filter(d => d.available === d.desired).length; }
@@ -301,6 +321,29 @@ export class DeploymentsComponent implements OnInit {
 
   viewPods(dep: Deployment) {
     this.router.navigate(['/pods'], { queryParams: { filter: dep.name } });
+  }
+
+  aiDiagnose(dep: Deployment) {
+    this.selectedDepName = dep.name;
+    this.aiDrawerVisible = true;
+    this.aiLoading = true;
+    this.aiFindings = [];
+    this.aiSummary = '';
+    this.aiReasoning = '';
+
+    // Use diagnose endpoint (works for deployments too via pod resolution in backend)
+    this.api.diagnose(dep.name).subscribe({
+      next: (res) => {
+        this.aiFindings = res.findings || [];
+        this.aiSummary = res.summary || `Analysis of deployment ${dep.name} complete. ${this.aiFindings.length} issues identified.`;
+        this.aiReasoning = res.reasoning || 'AI analyzed rollout history, replica availability, and pod status patterns.';
+        this.aiLoading = false;
+      },
+      error: () => {
+        this.aiSummary = 'Failed to perform AI diagnosis for deployment.';
+        this.aiLoading = false;
+      }
+    });
   }
 
   ngOnInit() { this.refresh(); }

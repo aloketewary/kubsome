@@ -3,219 +3,240 @@ import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { TagModule } from 'primeng/tag';
 import { ButtonModule } from 'primeng/button';
+import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { ApiService } from '../../core/services/api.service';
+import { PreferencesService } from '../../core/services/preferences.service';
 import { OverviewResponse, KubeEvent } from '../../core/models';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [TagModule, ButtonModule],
+  imports: [TagModule, ButtonModule, DragDropModule],
   template: `
     @if (data) {
-      <!-- Hero Status Banner -->
-      <div class="hero" [class]="'hero-' + overallHealth">
-        <div class="hero-ring">
-          <svg viewBox="0 0 36 36" class="ring-svg">
-            <path class="ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-            <path class="ring-fill" [attr.stroke-dasharray]="healthPct + ', 100'" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-          </svg>
-          <span class="ring-value">{{ healthPct }}%</span>
-        </div>
-        <div class="hero-info">
-          <h1 class="hero-title">{{ overallHealth === 'healthy' ? 'All Systems Operational' : overallHealth === 'degraded' ? 'Degraded Performance' : 'Critical Issues Detected' }}</h1>
-          <p class="hero-sub">{{ data.pods.healthy + data.nodes.healthy + data.deployments.healthy }} / {{ podTotal + nodeTotal + depTotal }} resources healthy</p>
-          <span class="hero-time">Updated {{ lastUpdated }}</span>
-        </div>
-        <button pButton icon="pi pi-refresh" class="p-button-text p-button-sm hero-refresh" (click)="refresh()"></button>
-      </div>
-
-      <!-- Critical Alert Banner -->
-      @if ((data.pods.critical) > 0 || data.nodes.warning > 0) {
-        <div class="alert-banner">
-          <i class="pi pi-exclamation-triangle"></i>
-          <span>
-            @if ((data.pods.critical) > 0) { {{ data.pods.critical }} pod(s) in critical state. }
-            @if (data.nodes.warning > 0) { {{ data.nodes.warning }} node(s) not ready. }
-          </span>
-          <button pButton label="Investigate" icon="pi pi-arrow-right" iconPos="right" class="p-button-sm p-button-text" (click)="goToPods()"></button>
-        </div>
-      }
-
-      <!-- Metric Cards -->
-      <div class="metrics-grid">
-        <div class="metric-card" (click)="goToPods()">
-          <div class="metric-top">
-            <div class="metric-icon pods"><i class="pi pi-box"></i></div>
-            <div class="metric-numbers">
-              <span class="metric-value">{{ data.pods.healthy }}</span>
-              <span class="metric-of">/ {{ podTotal }}</span>
+      <div cdkDropList class="dashboard-list" (cdkDropListDropped)="drop($event)">
+        @for (widget of widgets; track widget) {
+          <div class="widget-item" cdkDrag>
+            <div class="widget-handle" cdkDragHandle title="Drag to reorder">
+              <i class="pi pi-ellipsis-v"></i><i class="pi pi-ellipsis-v"></i>
             </div>
-          </div>
-          <div class="metric-label">Pods Running</div>
-          <div class="metric-bar">
-            <div class="bar-segment bar-ok" [style.width.%]="pct(data.pods.healthy, podTotal)"></div>
-            <div class="bar-segment bar-warn" [style.width.%]="pct(data.pods.warning, podTotal)"></div>
-            <div class="bar-segment bar-crit" [style.width.%]="pct(data.pods.critical, podTotal)"></div>
-          </div>
-          <div class="metric-legend">
-            @if ((data.pods.warning) > 0) { <span class="legend-item warn">{{ data.pods.warning }} warning</span> }
-            @if ((data.pods.critical) > 0) { <span class="legend-item crit">{{ data.pods.critical }} critical</span> }
-            @if ((data.pods.warning) === 0 && (data.pods.critical) === 0) { <span class="legend-item ok">All healthy</span> }
-          </div>
-        </div>
 
-        <div class="metric-card" (click)="router.navigate(['/metrics'])">
-          <div class="metric-top">
-            <div class="metric-icon nodes"><i class="pi pi-server"></i></div>
-            <div class="metric-numbers">
-              <span class="metric-value">{{ data.nodes.healthy }}</span>
-              <span class="metric-of">/ {{ nodeTotal }}</span>
-            </div>
-          </div>
-          <div class="metric-label">Nodes Ready</div>
-          <div class="metric-bar">
-            <div class="bar-segment bar-ok" [style.width.%]="pct(data.nodes.healthy, nodeTotal)"></div>
-            <div class="bar-segment bar-warn" [style.width.%]="pct(data.nodes.warning, nodeTotal)"></div>
-          </div>
-          <div class="metric-legend">
-            @if (data.nodes.warning > 0) { <span class="legend-item warn">{{ data.nodes.warning }} not ready</span> }
-            @else { <span class="legend-item ok">All ready</span> }
-          </div>
-        </div>
-
-        <div class="metric-card" (click)="router.navigate(['/deployments'])">
-          <div class="metric-top">
-            <div class="metric-icon deploys"><i class="pi pi-send"></i></div>
-            <div class="metric-numbers">
-              <span class="metric-value">{{ data.deployments.healthy }}</span>
-              <span class="metric-of">/ {{ depTotal }}</span>
-            </div>
-          </div>
-          <div class="metric-label">Deployments Available</div>
-          <div class="metric-bar">
-            <div class="bar-segment bar-ok" [style.width.%]="pct(data.deployments.healthy, depTotal)"></div>
-            <div class="bar-segment bar-crit" [style.width.%]="pct(data.deployments.unavailable, depTotal)"></div>
-          </div>
-          <div class="metric-legend">
-            @if ((data.deployments.unavailable) > 0) { <span class="legend-item crit">{{ data.deployments.unavailable }} unavailable</span> }
-            @else { <span class="legend-item ok">All available</span> }
-          </div>
-        </div>
-      </div>
-
-      <!-- Charts Row -->
-      <div class="charts-row">
-        <!-- Activity Bar Chart -->
-        <div class="chart-card">
-          <div class="chart-header">
-            <h3>Event Activity</h3>
-            <span class="chart-hint">Last {{ recentEvents.length }} events</span>
-          </div>
-          <div class="bar-chart">
-            @for (bar of activityBars; track $index) {
-              <div class="chart-bar-wrap">
-                <div class="chart-bar" [style.height.%]="bar" [class.bar-high]="bar > 70" [class.bar-med]="bar > 40 && bar <= 70" [attr.title]="Math.round(bar) + '%'"></div>
-              </div>
-            }
-          </div>
-        </div>
-
-        <!-- Pod Status Donut -->
-        <div class="chart-card">
-          <div class="chart-header">
-            <h3>Pod Distribution</h3>
-          </div>
-          <div class="donut-chart">
-            <svg viewBox="0 0 42 42" class="donut-svg">
-              <circle class="donut-bg" cx="21" cy="21" r="15.9" />
-              <circle class="donut-ok" cx="21" cy="21" r="15.9" [attr.stroke-dasharray]="podRunningDash" stroke-dashoffset="25" />
-              <circle class="donut-warn" cx="21" cy="21" r="15.9" [attr.stroke-dasharray]="podWarnDash" [attr.stroke-dashoffset]="podWarnOffset" />
-              <circle class="donut-crit" cx="21" cy="21" r="15.9" [attr.stroke-dasharray]="podCritDash" [attr.stroke-dashoffset]="podCritOffset" />
-            </svg>
-            <div class="donut-center">
-              <span class="donut-total">{{ podTotal }}</span>
-              <span class="donut-label">pods</span>
-            </div>
-          </div>
-          <div class="donut-legend">
-            <span class="dl-item"><span class="dl-dot dl-ok"></span> Running {{ data.pods.healthy }}</span>
-            <span class="dl-item"><span class="dl-dot dl-warn"></span> Warning {{ data.pods.warning }}</span>
-            <span class="dl-item"><span class="dl-dot dl-crit"></span> Critical {{ data.pods.critical }}</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Uptime Card -->
-      @if (uptime) {
-        <div class="uptime-card" [class.uptime-down]="uptime.cluster_down" [class.uptime-ok]="!uptime.cluster_down">
-          <div class="uptime-dot" [class.dot-up]="!uptime.cluster_down" [class.dot-down]="uptime.cluster_down"></div>
-          <div class="uptime-info">
-            <span class="uptime-status">{{ uptime.cluster_down ? 'Cluster Down' : 'Cluster Up' }}</span>
-            @if (uptime.downtime_hint) {
-              <span class="uptime-hint">{{ uptime.downtime_hint }}</span>
-            } @else if (uptime.nodes?.length) {
-              <span class="uptime-hint">{{ uptime.nodes.length }} nodes · oldest uptime: {{ uptime.nodes[0]?.uptime_human }}</span>
-            }
-          </div>
-          <span class="uptime-day">{{ uptime.day }}</span>
-        </div>
-      }
-
-      <!-- Two-column layout: Events + Actions -->
-      <div class="bottom-grid">
-        <div class="bottom-section">
-          <div class="section-header">
-            <h2>Recent Events</h2>
-            <button pButton label="All" class="p-button-text p-button-sm" icon="pi pi-arrow-right" iconPos="right" (click)="router.navigate(['/events'])"></button>
-          </div>
-          <div class="events-card">
-            @for (event of recentEvents; track $index) {
-              <div class="event-row">
-                <div class="event-dot" [class.warn]="event.type === 'Warning'"></div>
-                <div class="event-content">
-                  <span class="event-reason">{{ event.reason }}</span>
-                  <span class="event-msg">{{ event.message }}</span>
+            @if (widget === 'hero') {
+              <!-- Hero Status Banner -->
+              <div class="hero glass" [class]="'hero-' + overallHealth">
+                <div class="hero-ring">
+                  <svg viewBox="0 0 36 36" class="ring-svg">
+                    <path class="ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                    <path class="ring-fill" [attr.stroke-dasharray]="healthPct + ', 100'" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                  </svg>
+                  <span class="ring-value">{{ healthPct }}%</span>
                 </div>
-                <code class="event-obj">{{ event.object }}</code>
+                <div class="hero-info">
+                  <h1 class="hero-title">{{ overallHealth === 'healthy' ? 'All Systems Operational' : overallHealth === 'degraded' ? 'Degraded Performance' : 'Critical Issues Detected' }}</h1>
+                  <p class="hero-sub">{{ data.pods.healthy + data.nodes.healthy + data.deployments.healthy }} / {{ podTotal + nodeTotal + depTotal }} resources healthy</p>
+                  <span class="hero-time">Updated {{ lastUpdated }}</span>
+                </div>
+                <button pButton icon="pi pi-refresh" class="p-button-text p-button-sm hero-refresh" (click)="refresh()"></button>
+              </div>
+
+              <!-- Critical Alert Banner -->
+              @if ((data.pods.critical) > 0 || data.nodes.warning > 0) {
+                <div class="alert-banner">
+                  <i class="pi pi-exclamation-triangle"></i>
+                  <span>
+                    @if ((data.pods.critical) > 0) { {{ data.pods.critical }} pod(s) in critical state. }
+                    @if (data.nodes.warning > 0) { {{ data.nodes.warning }} node(s) not ready. }
+                  </span>
+                  <button pButton label="Investigate" icon="pi pi-arrow-right" iconPos="right" class="p-button-sm p-button-text" (click)="goToPods()"></button>
+                </div>
+              }
+            }
+
+            @if (widget === 'metrics') {
+              <!-- Metric Cards -->
+              <div class="metrics-grid">
+                <div class="metric-card p-card" (click)="goToPods()">
+                  <div class="metric-top">
+                    <div class="metric-icon pods"><i class="pi pi-box"></i></div>
+                    <div class="metric-numbers">
+                      <span class="metric-value">{{ data.pods.healthy }}</span>
+                      <span class="metric-of">/ {{ podTotal }}</span>
+                    </div>
+                  </div>
+                  <div class="metric-label">Pods Running</div>
+                  <div class="metric-bar">
+                    <div class="bar-segment bar-ok" [style.width.%]="pct(data.pods.healthy, podTotal)"></div>
+                    <div class="bar-segment bar-warn" [style.width.%]="pct(data.pods.warning, podTotal)"></div>
+                    <div class="bar-segment bar-crit" [style.width.%]="pct(data.pods.critical, podTotal)"></div>
+                  </div>
+                  <div class="metric-legend">
+                    @if ((data.pods.warning) > 0) { <span class="legend-item warn">{{ data.pods.warning }} warning</span> }
+                    @if ((data.pods.critical) > 0) { <span class="legend-item crit">{{ data.pods.critical }} critical</span> }
+                    @if ((data.pods.warning) === 0 && (data.pods.critical) === 0) { <span class="legend-item ok">All healthy</span> }
+                  </div>
+                </div>
+
+                <div class="metric-card p-card" (click)="router.navigate(['/metrics'])">
+                  <div class="metric-top">
+                    <div class="metric-icon nodes"><i class="pi pi-server"></i></div>
+                    <div class="metric-numbers">
+                      <span class="metric-value">{{ data.nodes.healthy }}</span>
+                      <span class="metric-of">/ {{ nodeTotal }}</span>
+                    </div>
+                  </div>
+                  <div class="metric-label">Nodes Ready</div>
+                  <div class="metric-bar">
+                    <div class="bar-segment bar-ok" [style.width.%]="pct(data.nodes.healthy, nodeTotal)"></div>
+                    <div class="bar-segment bar-warn" [style.width.%]="pct(data.nodes.warning, nodeTotal)"></div>
+                  </div>
+                  <div class="metric-legend">
+                    @if (data.nodes.warning > 0) { <span class="legend-item warn">{{ data.nodes.warning }} not ready</span> }
+                    @else { <span class="legend-item ok">All ready</span> }
+                  </div>
+                </div>
+
+                <div class="metric-card p-card" (click)="router.navigate(['/deployments'])">
+                  <div class="metric-top">
+                    <div class="metric-icon deploys"><i class="pi pi-send"></i></div>
+                    <div class="metric-numbers">
+                      <span class="metric-value">{{ data.deployments.healthy }}</span>
+                      <span class="metric-of">/ {{ depTotal }}</span>
+                    </div>
+                  </div>
+                  <div class="metric-label">Deployments Available</div>
+                  <div class="metric-bar">
+                    <div class="bar-segment bar-ok" [style.width.%]="pct(data.deployments.healthy, depTotal)"></div>
+                    <div class="bar-segment bar-crit" [style.width.%]="pct(data.deployments.unavailable, depTotal)"></div>
+                  </div>
+                  <div class="metric-legend">
+                    @if ((data.deployments.unavailable) > 0) { <span class="legend-item crit">{{ data.deployments.unavailable }} unavailable</span> }
+                    @else { <span class="legend-item ok">All available</span> }
+                  </div>
+                </div>
               </div>
             }
-            @if (recentEvents.length === 0) {
-              <div class="events-empty"><i class="pi pi-check-circle"></i> No recent events</div>
+
+            @if (widget === 'charts') {
+              <!-- Charts Row -->
+              <div class="charts-row">
+                <!-- Activity Bar Chart -->
+                <div class="chart-card p-card">
+                  <div class="chart-header">
+                    <h3>Event Activity</h3>
+                    <span class="chart-hint">Last {{ recentEvents.length }} events</span>
+                  </div>
+                  <div class="bar-chart">
+                    @for (bar of activityBars; track $index) {
+                      <div class="chart-bar-wrap">
+                        <div class="chart-bar" [style.height.%]="bar" [class.bar-high]="bar > 70" [class.bar-med]="bar > 40 && bar <= 70" [attr.title]="Math.round(bar) + '%'"></div>
+                      </div>
+                    }
+                  </div>
+                </div>
+
+                <!-- Pod Status Donut -->
+                <div class="chart-card p-card">
+                  <div class="chart-header">
+                    <h3>Pod Distribution</h3>
+                  </div>
+                  <div class="donut-chart">
+                    <svg viewBox="0 0 42 42" class="donut-svg">
+                      <circle class="donut-bg" cx="21" cy="21" r="15.9" />
+                      <circle class="donut-ok" cx="21" cy="21" r="15.9" [attr.stroke-dasharray]="podRunningDash" stroke-dashoffset="25" />
+                      <circle class="donut-warn" cx="21" cy="21" r="15.9" [attr.stroke-dasharray]="podWarnDash" [attr.stroke-dashoffset]="podWarnOffset" />
+                      <circle class="donut-crit" cx="21" cy="21" r="15.9" [attr.stroke-dasharray]="podCritDash" [attr.stroke-dashoffset]="podCritOffset" />
+                    </svg>
+                    <div class="donut-center">
+                      <span class="donut-total">{{ podTotal }}</span>
+                      <span class="donut-label">pods</span>
+                    </div>
+                  </div>
+                  <div class="donut-legend">
+                    <span class="dl-item"><span class="dl-dot dl-ok"></span> Running {{ data.pods.healthy }}</span>
+                    <span class="dl-item"><span class="dl-dot dl-warn"></span> Warning {{ data.pods.warning }}</span>
+                    <span class="dl-item"><span class="dl-dot dl-crit"></span> Critical {{ data.pods.critical }}</span>
+                  </div>
+                </div>
+              </div>
+            }
+
+            @if (widget === 'uptime') {
+              <!-- Uptime Card -->
+              @if (uptime) {
+                <div class="uptime-card" [class.uptime-down]="uptime.cluster_down" [class.uptime-ok]="!uptime.cluster_down">
+                  <div class="uptime-dot" [class.dot-up]="!uptime.cluster_down" [class.dot-down]="uptime.cluster_down"></div>
+                  <div class="uptime-info">
+                    <span class="uptime-status">{{ uptime.cluster_down ? 'Cluster Down' : 'Cluster Up' }}</span>
+                    @if (uptime.downtime_hint) {
+                      <span class="uptime-hint">{{ uptime.downtime_hint }}</span>
+                    } @else if (uptime.nodes?.length) {
+                      <span class="uptime-hint">{{ uptime.nodes.length }} nodes · oldest uptime: {{ uptime.nodes[0]?.uptime_human }}</span>
+                    }
+                  </div>
+                  <span class="uptime-day">{{ uptime.day }}</span>
+                </div>
+              }
+            }
+
+            @if (widget === 'events') {
+               <div class="bottom-section">
+                <div class="section-header">
+                  <h2>Recent Events</h2>
+                  <button pButton label="All" class="p-button-text p-button-sm" icon="pi pi-arrow-right" iconPos="right" (click)="router.navigate(['/events'])"></button>
+                </div>
+                <div class="events-card">
+                  @for (event of recentEvents; track $index) {
+                    <div class="event-row">
+                      <div class="event-dot" [class.warn]="event.type === 'Warning'"></div>
+                      <div class="event-content">
+                        <span class="event-reason">{{ event.reason }}</span>
+                        <span class="event-msg">{{ event.message }}</span>
+                      </div>
+                      <code class="event-obj">{{ event.object }}</code>
+                    </div>
+                  }
+                  @if (recentEvents.length === 0) {
+                    <div class="events-empty"><i class="pi pi-check-circle"></i> No recent events</div>
+                  }
+                </div>
+              </div>
+            }
+
+            @if (widget === 'actions') {
+              <div class="bottom-section">
+                <div class="section-header">
+                  <h2>Quick Actions</h2>
+                </div>
+                <div class="actions-grid">
+                  <div class="action-card" (click)="router.navigate(['/ai'])">
+                    <i class="pi pi-sparkles"></i>
+                    <span>AI Summary</span>
+                  </div>
+                  <div class="action-card" (click)="router.navigate(['/terminal'])">
+                    <i class="pi pi-code"></i>
+                    <span>Terminal</span>
+                  </div>
+                  <div class="action-card" (click)="router.navigate(['/runbooks'])">
+                    <i class="pi pi-book"></i>
+                    <span>Runbooks</span>
+                  </div>
+                  <div class="action-card" (click)="router.navigate(['/incident'])">
+                    <i class="pi pi-exclamation-circle"></i>
+                    <span>Incident</span>
+                  </div>
+                  <div class="action-card" (click)="router.navigate(['/secrets'])">
+                    <i class="pi pi-lock"></i>
+                    <span>Secrets</span>
+                  </div>
+                  <div class="action-card" (click)="router.navigate(['/cost'])">
+                    <i class="pi pi-dollar"></i>
+                    <span>Optimize</span>
+                  </div>
+                </div>
+              </div>
             }
           </div>
-        </div>
-
-        <div class="bottom-section">
-          <div class="section-header">
-            <h2>Quick Actions</h2>
-          </div>
-          <div class="actions-grid">
-            <div class="action-card" (click)="router.navigate(['/ai'])">
-              <i class="pi pi-sparkles"></i>
-              <span>AI Summary</span>
-            </div>
-            <div class="action-card" (click)="router.navigate(['/terminal'])">
-              <i class="pi pi-code"></i>
-              <span>Terminal</span>
-            </div>
-            <div class="action-card" (click)="router.navigate(['/runbooks'])">
-              <i class="pi pi-book"></i>
-              <span>Runbooks</span>
-            </div>
-            <div class="action-card" (click)="router.navigate(['/incident'])">
-              <i class="pi pi-exclamation-circle"></i>
-              <span>Incident</span>
-            </div>
-            <div class="action-card" (click)="router.navigate(['/secrets'])">
-              <i class="pi pi-lock"></i>
-              <span>Secrets</span>
-            </div>
-            <div class="action-card" (click)="router.navigate(['/cost'])">
-              <i class="pi pi-dollar"></i>
-              <span>Optimize</span>
-            </div>
-          </div>
-        </div>
+        }
       </div>
     } @else {
       <!-- Skeleton -->
@@ -228,15 +249,42 @@ import { OverviewResponse, KubeEvent } from '../../core/models';
     }
   `,
   styles: [`
+    .widget-item { position: relative; margin-bottom: 24px; padding-left: 28px; }
+    .widget-handle {
+      position: absolute; left: 0; top: 0; bottom: 0; width: 24px;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--text-muted); opacity: 0; transition: opacity 0.2s; cursor: grab;
+    }
+    .widget-item:hover .widget-handle { opacity: 0.5; }
+    .cdk-drag-preview {
+      box-shadow: 0 5px 5px -3px rgba(0, 0, 0, 0.2), 0 8px 10px 1px rgba(0, 0, 0, 0.14), 0 3px 14px 2px rgba(0, 0, 0, 0.12);
+      border-radius: var(--radius); overflow: hidden; background: var(--bg-card);
+    }
+    .cdk-drag-placeholder { opacity: 0.1; }
+    .cdk-drag-animating { transition: transform 250ms cubic-bezier(0, 0, 0.2, 1); }
+    .dashboard-list.cdk-drop-list-dragging .widget-item:not(.cdk-drag-placeholder) { transition: transform 250ms cubic-bezier(0, 0, 0.2, 1); }
+
     /* Hero */
     .hero {
       display: flex;
       align-items: center;
       gap: 20px;
-      padding: 24px 28px;
+      padding: 32px 36px;
       border-radius: var(--radius);
-      margin-bottom: 20px;
+      margin-bottom: 24px;
       position: relative;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle at center, var(--accent-subtle) 0%, transparent 70%);
+      opacity: 0.1;
+      pointer-events: none;
     }
     .hero-healthy { background: linear-gradient(135deg, rgba(34,197,94,0.08), rgba(34,197,94,0.02)); border: 1px solid rgba(34,197,94,0.2); }
     .hero-degraded { background: linear-gradient(135deg, rgba(234,179,8,0.08), rgba(234,179,8,0.02)); border: 1px solid rgba(234,179,8,0.2); }
@@ -288,14 +336,9 @@ import { OverviewResponse, KubeEvent } from '../../core/models';
       margin-bottom: 28px;
     }
     .metric-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
       padding: 20px;
       cursor: pointer;
-      transition: all 0.15s;
     }
-    .metric-card:hover { border-color: var(--border-hover); transform: translateY(-1px); }
     .metric-top { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
     .metric-icon {
       width: 40px; height: 40px; border-radius: 10px;
@@ -331,9 +374,6 @@ import { OverviewResponse, KubeEvent } from '../../core/models';
       margin-bottom: 24px;
     }
     .chart-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
       padding: 16px 20px;
     }
     .chart-header {
@@ -463,12 +503,14 @@ import { OverviewResponse, KubeEvent } from '../../core/models';
 export class DashboardComponent implements OnInit, OnDestroy {
   private api = inject(ApiService);
   private http = inject(HttpClient);
+  private prefs = inject(PreferencesService);
   router = inject(Router);
   data: OverviewResponse | null = null;
   recentEvents: KubeEvent[] = [];
   lastUpdated = '';
   private refreshInterval: any;
   uptime: any = null;
+  widgets: string[] = [];
 
   get podTotal() {
     return (this.data?.pods.healthy || 0) + (this.data?.pods.warning || 0) + (this.data?.pods.critical || 0);
@@ -553,8 +595,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
+    this.widgets = this.prefs.get('dashboardWidgets') || ['hero', 'metrics', 'charts', 'uptime', 'events', 'actions'];
     this.refresh();
     this.refreshInterval = setInterval(() => this.refresh(), 30000);
+  }
+
+  drop(event: CdkDragDrop<string[]>) {
+    moveItemInArray(this.widgets, event.previousIndex, event.currentIndex);
+    this.prefs.set('dashboardWidgets', this.widgets);
   }
 
   ngOnDestroy() {

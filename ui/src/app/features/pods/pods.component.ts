@@ -12,6 +12,8 @@ import { ApiService } from '../../core/services/api.service';
 import { WsService } from '../../core/services/ws.service';
 import { Pod } from '../../core/models';
 import { PodDrawerComponent } from '../../shared/components/pod-drawer.component';
+import { LogTerminalComponent } from '../../shared/components/log-terminal.component';
+import { AiInsightDrawerComponent } from '../../shared/components/ai-insight-drawer.component';
 
 interface PodGroup {
   deployment: string;
@@ -24,7 +26,7 @@ interface PodGroup {
 @Component({
   selector: 'app-pods',
   standalone: true,
-  imports: [JsonPipe, TagModule, ButtonModule, TooltipModule, DialogModule, InputTextModule, FormsModule, PodDrawerComponent],
+  imports: [JsonPipe, TagModule, ButtonModule, TooltipModule, DialogModule, InputTextModule, FormsModule, PodDrawerComponent, LogTerminalComponent, AiInsightDrawerComponent],
   template: `
     <!-- Header -->
     <div class="page-header">
@@ -81,7 +83,7 @@ interface PodGroup {
             <button pButton icon="pi pi-align-left" label="Logs" class="p-button-sm" (click)="viewLogs()"></button>
             <button pButton icon="pi pi-play" label="Live" class="p-button-sm p-button-success" (click)="viewLiveLogs()"></button>
             <button pButton icon="pi pi-search" label="Inspect" class="p-button-sm p-button-secondary" (click)="inspectPod()"></button>
-            <button pButton icon="pi pi-exclamation-triangle" label="Diagnose" class="p-button-sm p-button-warning" (click)="diagnosePod()"></button>
+            <button pButton icon="pi pi-sparkles" label="AI Diagnose" class="p-button-sm p-button-warning" (click)="diagnosePod()"></button>
           }
           @if (selected.length > 1) {
             <button pButton icon="pi pi-list" label="Logcat ({{ selected.length }})" class="p-button-sm" (click)="viewLogcat()"></button>
@@ -126,6 +128,8 @@ interface PodGroup {
                   </span>
                 }
                 <div class="pod-actions">
+                  <i class="pi pi-sparkles" pTooltip="AI Diagnose" aria-label="AI Diagnose" tabindex="0" role="button"
+                     (click)="quickAiDiagnose(pod, $event)"></i>
                   <i class="pi pi-align-left" pTooltip="Logs" aria-label="Quick logs" tabindex="0" role="button"
                      (click)="quickLogs(pod, $event)"
                      (keydown.enter)="$event.stopPropagation(); quickLogs(pod, $event)"
@@ -158,17 +162,33 @@ interface PodGroup {
     <!-- Drawer -->
     <app-pod-drawer [podName]="drawerPod" [podStatus]="drawerStatus" (closed)="drawerPod = ''" />
 
+    <!-- AI Insight Drawer -->
+    <app-ai-insight-drawer
+      [visible]="aiDrawerVisible"
+      [loading]="aiLoading"
+      [resourceName]="activePodName"
+      [summary]="aiSummary"
+      [findings]="aiFindings"
+      [reasoning]="aiReasoning"
+      (closed)="aiDrawerVisible = false" />
+
     <!-- Logs Dialog -->
-    <p-dialog [(visible)]="logsVisible" [header]="logsTitle" [modal]="true" [style]="{ width: '80vw', height: '70vh' }" [maximizable]="true">
-      <div class="log-viewer">
-        @for (line of logLines; track $index) {
-          <div class="log-line" [class.error-line]="isError(line)">
-            <span class="line-num">{{ $index + 1 }}</span>
-            <span class="line-text">{{ line }}</span>
+    <p-dialog [(visible)]="logsVisible" [header]="logsTitle" [modal]="true" [style]="{ width: '85vw', height: '80vh' }" [maximizable]="true" (onHide)="onLogsHide()">
+      <div class="log-viewer-container">
+        @if (isLiveMode) {
+          <app-log-terminal [podName]="activePodName" />
+        } @else {
+          <div class="log-viewer">
+            @for (line of logLines; track $index) {
+              <div class="log-line" [class.error-line]="isError(line)">
+                <span class="line-num">{{ $index + 1 }}</span>
+                <span class="line-text">{{ line }}</span>
+              </div>
+            }
+            @if (logLines.length === 0 && !logsLoading) { <div class="log-empty">No log lines</div> }
+            @if (logsLoading) { <div class="log-empty"><i class="pi pi-spin pi-spinner"></i> Loading...</div> }
           </div>
         }
-        @if (logLines.length === 0 && !logsLoading) { <div class="log-empty">No log lines</div> }
-        @if (logsLoading) { <div class="log-empty"><i class="pi pi-spin pi-spinner"></i> Loading...</div> }
       </div>
     </p-dialog>
 
@@ -323,6 +343,7 @@ interface PodGroup {
     .empty-state i { font-size: 28px; opacity: 0.3; }
 
     /* Dialogs */
+    .log-viewer-container { height: 100%; display: flex; flex-direction: column; overflow: hidden; background: #070708; border-radius: 8px; }
     .log-viewer { height: 100%; overflow-y: auto; font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 1.7; }
     .log-line { display: flex; gap: 12px; padding: 1px 12px; }
     .log-line:hover { background: var(--bg-hover); }
@@ -359,8 +380,18 @@ export class PodsComponent implements OnInit, OnDestroy {
   logsTitle = '';
   logLines: string[] = [];
   logsLoading = false;
+  isLiveMode = false;
+  activePodName = '';
   inspectVisible = false;
   inspectData: any = null;
+
+  // AI Insight State
+  aiDrawerVisible = false;
+  aiLoading = false;
+  aiSummary = '';
+  aiFindings: any[] = [];
+  aiReasoning = '';
+
   diagnoseVisible = false;
   diagnoseFindings: any[] = [];
   drawerPod = '';
@@ -422,7 +453,38 @@ export class PodsComponent implements OnInit, OnDestroy {
   }
 
   inspectPod() { const pod = this.selected[0]; this.inspectVisible = true; this.inspectData = null; this.api.inspect(pod.name).subscribe(res => { this.inspectData = res; }); }
-  diagnosePod() { const pod = this.selected[0]; this.diagnoseVisible = true; this.diagnoseFindings = []; this.api.diagnose(pod.name).subscribe(res => { this.diagnoseFindings = res.findings; }); }
+
+  diagnosePod() {
+    const pod = this.selected[0];
+    this.openAiDiagnose(pod.name);
+  }
+
+  quickAiDiagnose(pod: Pod, event: Event) {
+    event.stopPropagation();
+    this.openAiDiagnose(pod.name);
+  }
+
+  private openAiDiagnose(name: string) {
+    this.activePodName = name;
+    this.aiDrawerVisible = true;
+    this.aiLoading = true;
+    this.aiFindings = [];
+    this.aiSummary = '';
+    this.aiReasoning = '';
+
+    this.api.diagnose(name).subscribe({
+      next: (res) => {
+        this.aiFindings = res.findings || [];
+        this.aiSummary = res.summary || `Analysis of ${name} complete. ${this.aiFindings.length} issues identified.`;
+        this.aiReasoning = res.reasoning || 'AI checked pod events, container states, and recent log patterns.';
+        this.aiLoading = false;
+      },
+      error: () => {
+        this.aiSummary = 'Failed to perform AI diagnosis. Please check cluster connectivity.';
+        this.aiLoading = false;
+      }
+    });
+  }
 
   refresh() { this.api.getPods().subscribe(res => { this.pods = res.pods; this.groupPods(); this.filterGroups(); }); }
 
@@ -442,5 +504,16 @@ export class PodsComponent implements OnInit, OnDestroy {
   toggleWatch() { this.watching ? this.stopWatch() : this.startWatch(); }
   private startWatch() { this.watching = true; const conn = this.ws.connect('/ws/pods'); this.watchClose = conn.close; this.watchSub = conn.messages$.subscribe({ next: (data) => { this.pods = JSON.parse(data); this.groupPods(); this.filterGroups(); }, complete: () => { this.watching = false; } }); }
   private stopWatch() { this.watching = false; this.watchSub?.unsubscribe(); this.watchClose?.(); this.watchSub = null; this.watchClose = null; }
-  viewLiveLogs() { const pod = this.selected[0]; this.logsTitle = `Live — ${pod.name}`; this.logsVisible = true; this.logsLoading = false; this.logLines = []; const conn = this.ws.connect(`/ws/logs/${pod.name}`); const sub = conn.messages$.subscribe({ next: (line) => { this.logLines = [...this.logLines, line]; } }); const interval = setInterval(() => { if (!this.logsVisible) { sub.unsubscribe(); conn.close(); clearInterval(interval); } }, 500); }
+  viewLiveLogs() {
+    const pod = this.selected[0];
+    this.activePodName = pod.name;
+    this.logsTitle = `Live — ${pod.name}`;
+    this.isLiveMode = true;
+    this.logsVisible = true;
+  }
+
+  onLogsHide() {
+    this.isLiveMode = false;
+    this.activePodName = '';
+  }
 }

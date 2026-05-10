@@ -101,6 +101,8 @@ export interface LogsResponse {
 export interface DiagnoseResponse {
   pod: string;
   findings: any[];
+  summary?: string;
+  reasoning?: string;
 }
 
 export interface SearchResult {

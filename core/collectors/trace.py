@@ -113,6 +113,7 @@ def _find_replicasets(dep_name, ns, ctx):
                 and owner.get("name") == dep_name
             ):
                 results.append({
+                    "uid": item["metadata"].get("uid"),
                     "name": item["metadata"]["name"],
                     "replicas": item["status"].get(
                         "replicas", 0
@@ -146,12 +147,15 @@ def _find_pods_by_labels(labels, ns, ctx):
     data = json.loads(r.stdout)
     pods = []
     for item in data.get("items", []):
+        owners = item["metadata"].get("ownerReferences", [])
+        owner_uid = owners[0].get("uid") if owners else None
         pods.append({
             "name": item["metadata"]["name"],
             "status": item["status"].get(
                 "phase", "Unknown"
             ),
             "ip": item["status"].get("podIP", ""),
+            "owner_uid": owner_uid
         })
     return pods
 

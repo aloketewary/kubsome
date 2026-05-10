@@ -219,13 +219,18 @@ interface Message {
       font-size: 12px; flex-shrink: 0;
     }
     .avatar-user { background: var(--accent); color: #fff; }
-    .avatar-ai { background: linear-gradient(135deg, var(--accent-subtle), rgba(168,85,247,0.15)); color: var(--accent); }
+    .avatar-ai {
+      background: linear-gradient(135deg, var(--accent), var(--purple));
+      color: #fff;
+      box-shadow: 0 0 10px rgba(59, 130, 246, 0.4);
+    }
 
     .msg-bubble {
       max-width: 80%;
-      padding: 10px 14px;
-      border-radius: 12px;
+      padding: 14px 18px;
+      border-radius: 18px;
       overflow: visible;
+      box-shadow: var(--shadow);
     }
     .bubble-user {
       background: var(--accent);
@@ -233,10 +238,24 @@ interface Message {
       border-bottom-right-radius: 4px;
     }
     .bubble-ai {
-      background: var(--bg-elevated);
+      background: var(--bg-card);
       border: 1px solid var(--border);
       border-bottom-left-radius: 4px;
       max-width: 90%;
+      position: relative;
+    }
+    .bubble-ai::after {
+      content: '';
+      position: absolute;
+      inset: -1px;
+      border-radius: inherit;
+      padding: 1px;
+      background: linear-gradient(135deg, var(--accent-subtle), transparent 40%, transparent 60%, var(--success-subtle));
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      pointer-events: none;
     }
     .msg-header {
       display: flex;
@@ -289,9 +308,9 @@ interface Message {
 
     /* Input */
     .input-area {
-      padding: 12px 16px;
+      padding: 20px 24px;
       border-top: 1px solid var(--border);
-      background: var(--bg-elevated);
+      background: var(--bg-card);
     }
     .input-container {
       display: flex;
@@ -300,14 +319,19 @@ interface Message {
     }
     .input-container input {
       flex: 1;
-      padding: 10px 14px;
-      background: var(--bg-card);
+      padding: 14px 18px;
+      background: var(--bg-elevated);
       border: 1px solid var(--border);
-      border-radius: 10px;
+      border-radius: 14px;
       color: var(--text);
-      font-size: 13px;
+      font-size: 14px;
       outline: none;
-      transition: border-color 0.15s;
+      transition: all 0.2s ease;
+    }
+    .input-container input:focus {
+      border-color: var(--accent);
+      background: var(--bg-hover);
+      box-shadow: 0 0 0 4px var(--accent-subtle);
     }
     .input-container input:focus { border-color: var(--accent); }
     .input-container input::placeholder { color: var(--text-muted); }

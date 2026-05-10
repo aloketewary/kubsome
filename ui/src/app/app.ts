@@ -30,11 +30,11 @@ import { ErrorToastComponent } from './shared/components/error-toast.component';
     <app-command-palette />
 
     <!-- Topbar -->
-    <header class="topbar">
+    <header class="topbar glass">
       <div class="topbar-left">
-        <div class="logo">
-          <span class="logo-icon">◆</span>
-          <span class="logo-text">Kubsome</span>
+        <div class="workspace-label">
+          <i class="pi pi-th-large"></i>
+          <span>Workspace</span>
         </div>
       </div>
 
@@ -127,8 +127,10 @@ import { ErrorToastComponent } from './shared/components/error-toast.component';
         <app-shell />
       </aside>
       <main class="content">
-        <app-breadcrumb />
-        <router-outlet />
+        <div class="content-inner">
+          <app-breadcrumb />
+          <router-outlet />
+        </div>
       </main>
     </div>
 
@@ -172,20 +174,36 @@ import { ErrorToastComponent } from './shared/components/error-toast.component';
     .topbar {
       position: fixed;
       top: 0;
-      left: 0;
+      left: 240px;
       right: 0;
-      height: 48px;
+      height: 56px;
       display: flex;
       align-items: center;
-      padding: 0 12px;
+      padding: 0 24px;
       background: var(--bg-card);
       border-bottom: 1px solid var(--border);
       z-index: 1000;
-      gap: 8px;
+      gap: 16px;
+      box-sizing: border-box;
     }
     .topbar-left {
       display: flex;
       align-items: center;
+      min-width: 200px;
+    }
+    .workspace-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .workspace-label i {
+      font-size: 14px;
+      color: var(--accent);
     }
     .topbar-right {
       display: flex;
@@ -376,29 +394,38 @@ import { ErrorToastComponent } from './shared/components/error-toast.component';
     .notif-empty i { color: var(--success); }
     .layout {
       display: flex;
-      padding-top: 48px;
-      height: calc(100vh - 24px);
+      height: 100vh;
+    }
+    .content {
+      flex: 1;
+      margin-left: 240px;
+      min-height: 100vh;
+      background: var(--bg);
+      padding-top: 56px; /* topbar height */
+      padding-bottom: 24px; /* statusbar height */
+      box-sizing: border-box;
+    }
+    .content-inner {
+      padding: 24px 32px;
     }
     .sidebar {
-      width: 200px;
+      width: 240px;
       flex-shrink: 0;
       border-right: 1px solid var(--border);
       overflow-y: auto;
       background: var(--bg-card);
-      padding: 8px 6px;
-    }
-    .content {
-      flex: 1;
-      padding: 24px 32px;
-      padding-bottom: 48px;
-      overflow-y: auto;
-      background: var(--bg);
+      padding: 0;
+      z-index: 1001;
+      height: 100vh;
+      position: fixed;
+      top: 0;
+      left: 0;
     }
 
     .status-bar {
       position: fixed;
       bottom: 0;
-      left: 200px;
+      left: 240px;
       right: 0;
       height: 24px;
       display: flex;
@@ -410,6 +437,7 @@ import { ErrorToastComponent } from './shared/components/error-toast.component';
       font-size: 11px;
       color: var(--text-muted);
       z-index: 100;
+      box-sizing: border-box;
     }
     .status-left, .status-right {
       display: flex;

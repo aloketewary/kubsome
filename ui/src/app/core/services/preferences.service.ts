@@ -6,6 +6,7 @@ export interface UserPreferences {
   sidebarFavorites: string[];
   defaultNamespace: string;
   notifications: boolean;
+  dashboardWidgets: string[];
 }
 
 const STORAGE_KEY = 'kubsome_prefs';
@@ -16,6 +17,7 @@ const DEFAULTS: UserPreferences = {
   sidebarFavorites: ['/dashboard', '/pods', '/logs'],
   defaultNamespace: '',
   notifications: true,
+  dashboardWidgets: ['hero', 'metrics', 'charts', 'uptime', 'events', 'actions'],
 };
 
 @Injectable({ providedIn: 'root' })

@@ -1,16 +1,11 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, ElementRef, inject, OnInit, ViewChild, AfterViewInit, OnDestroy } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
 import { TooltipModule } from 'primeng/tooltip';
 import { Select } from 'primeng/select';
-
-interface GraphNode {
-  name: string;
-  kind: string;
-  layer: number;
-}
+import cytoscape from 'cytoscape';
 
 @Component({
   selector: 'app-graph',
@@ -20,79 +15,36 @@ interface GraphNode {
     <div class="page-header">
       <div>
         <h1>Service Map</h1>
-        <p class="subtitle">Resource dependency visualization</p>
+        <p class="subtitle">Interactive resource topology visualization</p>
       </div>
       <div class="controls">
         <p-select [options]="deployments" [(ngModel)]="selectedDep" placeholder="Select deployment..." [style]="{ width: '240px' }" [filter]="true" />
         <button pButton label="Trace" icon="pi pi-sitemap" class="p-button-sm" (click)="trace()" [disabled]="!selectedDep"></button>
+        <button pButton icon="pi pi-expand" class="p-button-outlined p-button-sm" (click)="fit()" pTooltip="Fit to Screen"></button>
       </div>
     </div>
 
-    @if (!traceData && !selectedDep) {
-      <!-- Start State -->
-      <div class="start-state">
-        <div class="start-icon"><i class="pi pi-sitemap"></i></div>
-        <h3>Visualize Dependencies</h3>
-        <p>Select a deployment to trace its resource relationships — services, pods, configmaps, secrets, and ingress routes.</p>
-      </div>
-    }
+    <div class="graph-viewport glass">
+      <div #cyContainer class="cy-container"></div>
 
-    @if (layers.length > 0) {
-      <!-- Legend -->
-      <div class="legend-bar">
-        @for (item of legendItems; track item.kind) {
-          <span class="legend-item">
-            <span class="legend-dot" [style.background]="item.color"></span>
-            {{ item.kind }}
-          </span>
-        }
-      </div>
-
-      <!-- Layered Graph -->
-      <div class="graph-flow">
-        @for (layer of layers; track $index) {
-          <!-- Layer -->
-          <div class="flow-layer">
-            <div class="layer-nodes">
-              @for (node of layer; track node.name) {
-                <div class="flow-node" [class]="'fn-' + node.kind" [pTooltip]="node.kind + ': ' + node.name">
-                  <div class="fn-icon">
-                    <i class="pi" [class]="nodeIcon(node.kind)"></i>
-                  </div>
-                  <div class="fn-info">
-                    <span class="fn-name">{{ shortName(node.name) }}</span>
-                    <span class="fn-kind">{{ node.kind }}</span>
-                  </div>
-                </div>
-              }
-            </div>
+      @if (!traceData && !selectedDep) {
+        <div class="viewport-overlay">
+          <div class="start-state">
+            <div class="start-icon"><i class="pi pi-sitemap"></i></div>
+            <h3>Interactive Topology</h3>
+            <p>Trace resource relationships with a fully interactive map. Drag to reorder, zoom to inspect, and click to explore.</p>
           </div>
+        </div>
+      }
 
-          <!-- Connector between layers -->
-          @if ($index < layers.length - 1) {
-            <div class="flow-connectors">
-              <div class="connector-line"></div>
-              <div class="connector-arrows">
-                @for (n of layers[$index + 1]; track n.name) {
-                  <i class="pi pi-chevron-down"></i>
-                }
-              </div>
-            </div>
-          }
-        }
-      </div>
-
-      <!-- Summary -->
-      <div class="graph-summary">
-        <div class="gs-item"><span class="gs-val">{{ totalNodes }}</span><span class="gs-label">Resources</span></div>
-        <div class="gs-item"><span class="gs-val">{{ layers.length }}</span><span class="gs-label">Layers</span></div>
-        <div class="gs-item"><span class="gs-val">{{ podCount }}</span><span class="gs-label">Pods</span></div>
-      </div>
-    }
-
-    @if (traceData && layers.length === 0) {
-      <div class="empty-state"><i class="pi pi-info-circle"></i> No dependency data for this deployment</div>
-    }
+      <!-- Graph Summary (Float) -->
+      @if (traceData) {
+        <div class="graph-summary-overlay">
+          <div class="gs-item"><span class="gs-val">{{ nodeCount }}</span><span class="gs-label">Nodes</span></div>
+          <div class="gs-item"><span class="gs-val">{{ edgeCount }}</span><span class="gs-label">Edges</span></div>
+        </div>
+      }
+    </div>
   `,
   styles: [`
     .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px; }
@@ -100,10 +52,26 @@ interface GraphNode {
     .subtitle { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
     .controls { display: flex; gap: 8px; align-items: center; }
 
-    /* Start State */
+    .graph-viewport {
+      position: relative;
+      height: calc(100vh - 200px);
+      background: #000;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .cy-container {
+      width: 100%;
+      height: 100%;
+    }
+    .viewport-overlay {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.4); pointer-events: none;
+    }
+
     .start-state {
-      text-align: center; padding: 64px 32px;
-      background: var(--bg-card); border: 1px dashed var(--border); border-radius: var(--radius);
+      text-align: center; padding: 32px; pointer-events: auto;
     }
     .start-icon {
       width: 56px; height: 56px; border-radius: 50%; margin: 0 auto 16px;
@@ -111,93 +79,30 @@ interface GraphNode {
       display: flex; align-items: center; justify-content: center; font-size: 24px;
     }
     .start-state h3 { font-size: 18px; font-weight: 600; margin: 0 0 8px; }
-    .start-state p { font-size: 13px; color: var(--text-secondary); margin: 0; max-width: 400px; margin: 0 auto; line-height: 1.5; }
+    .start-state p { font-size: 13px; color: var(--text-secondary); margin: 0; max-width: 360px; line-height: 1.5; }
 
-    /* Legend */
-    .legend-bar {
-      display: flex; gap: 16px; margin-bottom: 20px;
-      padding: 10px 16px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm);
-    }
-    .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-secondary); }
-    .legend-dot { width: 10px; height: 10px; border-radius: 3px; }
-
-    /* Graph Flow */
-    .graph-flow {
-      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
-      padding: 32px; display: flex; flex-direction: column; align-items: center; gap: 0;
-    }
-    .flow-layer { width: 100%; }
-    .layer-nodes {
-      display: flex; justify-content: center; gap: 12px; flex-wrap: wrap;
-    }
-    .flow-node {
-      display: flex; align-items: center; gap: 10px;
-      padding: 10px 16px; border-radius: 10px;
-      border: 1px solid var(--border); background: var(--bg-elevated);
-      transition: all 0.15s; cursor: default;
-    }
-    .flow-node:hover { border-color: var(--border-hover); transform: translateY(-1px); }
-    .fn-Ingress { border-color: #f472b6; background: rgba(244,114,182,0.06); }
-    .fn-Service { border-color: var(--success); background: var(--success-subtle); }
-    .fn-Deployment { border-color: var(--accent); background: var(--accent-subtle); padding: 14px 20px; }
-    .fn-ReplicaSet { border-color: var(--warning); background: var(--warning-subtle); }
-    .fn-Pod { border-color: var(--purple); background: rgba(168,85,247,0.06); }
-    .fn-ConfigMap, .fn-Secret { border-color: var(--text-muted); }
-
-    .fn-icon {
-      width: 28px; height: 28px; border-radius: 6px;
-      display: flex; align-items: center; justify-content: center; font-size: 13px;
-      background: var(--bg); color: var(--text-secondary);
-    }
-    .fn-Deployment .fn-icon { width: 32px; height: 32px; font-size: 15px; background: var(--accent); color: #fff; }
-    .fn-info { display: flex; flex-direction: column; }
-    .fn-name { font-size: 11px; font-weight: 500; font-family: 'JetBrains Mono', monospace; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .fn-kind { font-size: 9px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
-    .fn-Deployment .fn-name { font-size: 13px; font-weight: 700; }
-
-    /* Connectors */
-    .flow-connectors {
-      display: flex; flex-direction: column; align-items: center; padding: 8px 0;
-    }
-    .connector-line { width: 2px; height: 16px; background: var(--border); }
-    .connector-arrows { display: flex; gap: 24px; color: var(--text-muted); font-size: 10px; }
-
-    /* Summary */
-    .graph-summary {
-      display: flex; gap: 24px; justify-content: center; margin-top: 20px;
-      padding: 12px 20px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm);
+    .graph-summary-overlay {
+      position: absolute; bottom: 20px; left: 20px;
+      display: flex; gap: 20px; padding: 12px 20px;
+      background: rgba(15,15,17,0.8); backdrop-filter: blur(8px);
+      border: 1px solid var(--border); border-radius: var(--radius-sm);
+      pointer-events: none;
     }
     .gs-item { text-align: center; }
-    .gs-val { display: block; font-size: 18px; font-weight: 700; }
-    .gs-label { display: block; font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
-
-    .empty-state {
-      display: flex; align-items: center; justify-content: center; gap: 8px;
-      padding: 48px; color: var(--text-muted); font-size: 13px;
-      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm);
-    }
-    .empty-state i { font-size: 16px; }
-  `],
+    .gs-val { display: block; font-size: 16px; font-weight: 700; color: var(--text); }
+    .gs-label { display: block; font-size: 9px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  `]
 })
-export class GraphComponent implements OnInit {
+export class GraphComponent implements OnInit, OnDestroy {
+  @ViewChild('cyContainer', { static: true }) cyContainer!: ElementRef;
   private http = inject(HttpClient);
+  private cy: cytoscape.Core | null = null;
+
   deployments: string[] = [];
   selectedDep = '';
   traceData: any = null;
-  layers: GraphNode[][] = [];
-
-  legendItems = [
-    { kind: 'Ingress', color: '#f472b6' },
-    { kind: 'Service', color: '#22c55e' },
-    { kind: 'Deployment', color: '#3b82f6' },
-    { kind: 'ReplicaSet', color: '#eab308' },
-    { kind: 'Pod', color: '#a855f7' },
-    { kind: 'ConfigMap', color: '#6b7280' },
-    { kind: 'Secret', color: '#6b7280' },
-  ];
-
-  get totalNodes() { return this.layers.reduce((sum, l) => sum + l.length, 0); }
-  get podCount() { return this.layers.reduce((sum, l) => sum + l.filter(n => n.kind === 'Pod').length, 0); }
+  nodeCount = 0;
+  edgeCount = 0;
 
   ngOnInit() {
     this.http.get<any>('http://localhost:8000/api/deployments').subscribe(res => {
@@ -205,71 +110,121 @@ export class GraphComponent implements OnInit {
     });
   }
 
+  ngOnDestroy() {
+    this.cy?.destroy();
+  }
+
   trace() {
     if (!this.selectedDep) return;
-    this.layers = [];
     this.http.get<any>(`http://localhost:8000/api/trace/${this.selectedDep}`).subscribe(res => {
-      this.traceData = res;
-      this.buildLayers(res.trace || res);
+      this.traceData = res.trace || res;
+      this.renderGraph(this.traceData);
     });
   }
 
-  nodeIcon(kind: string): string {
-    const map: Record<string, string> = {
-      Ingress: 'pi-link', Service: 'pi-globe', Deployment: 'pi-send',
-      ReplicaSet: 'pi-copy', Pod: 'pi-box', ConfigMap: 'pi-file', Secret: 'pi-lock', Node: 'pi-server',
-    };
-    return map[kind] || 'pi-th-large';
+  fit() {
+    this.cy?.fit();
   }
 
-  shortName(name: string): string {
-    return name.length > 24 ? '...' + name.slice(-21) : name;
-  }
+  private renderGraph(data: any) {
+    const elements: cytoscape.ElementDefinition[] = [];
 
-  private buildLayers(data: any) {
-    const layers: GraphNode[][] = [];
+    // Add nodes
+    if (data.ingress) elements.push({ data: { id: 'ingress', label: data.ingress.name || data.ingress, kind: 'Ingress' } });
+    if (data.service) elements.push({ data: { id: 'service', label: data.service.name || data.service, kind: 'Service' } });
+    if (data.deployment) elements.push({ data: { id: 'deployment', label: data.deployment.name || data.deployment, kind: 'Deployment' } });
 
-    // Layer 0: Ingress
-    if (data.ingress) {
-      const name = typeof data.ingress === 'string' ? data.ingress : data.ingress.name;
-      if (name) layers.push([{ name, kind: 'Ingress', layer: 0 }]);
-    }
-
-    // Layer 1: Service
-    const svcName = typeof data.service === 'string' ? data.service : data.service?.name;
-    if (svcName) layers.push([{ name: svcName, kind: 'Service', layer: 1 }]);
-
-    // Layer 2: Deployment
-    const depName = typeof data.deployment === 'string' ? data.deployment : data.deployment?.name;
-    if (depName) layers.push([{ name: depName, kind: 'Deployment', layer: 2 }]);
-
-    // Layer 3: ReplicaSets (active only)
     if (data.replicasets) {
-      const active = data.replicasets.filter((rs: any) => rs.replicas > 0);
-      if (active.length > 0) {
-        layers.push(active.map((rs: any) => ({ name: typeof rs === 'string' ? rs : rs.name, kind: 'ReplicaSet', layer: 3 })));
-      }
+      data.replicasets.forEach((rs: any) => {
+        elements.push({ data: { id: rs.uid || rs.name, label: rs.name, kind: 'ReplicaSet' } });
+      });
     }
 
-    // Layer 4: Pods
-    if (data.pods && data.pods.length > 0) {
-      layers.push(data.pods.map((p: any) => ({ name: typeof p === 'string' ? p : p.name, kind: 'Pod', layer: 4 })));
+    if (data.pods) {
+      data.pods.forEach((p: any) => {
+        elements.push({ data: { id: p.name, label: p.name, kind: 'Pod' } });
+      });
     }
 
-    // Layer 5: ConfigMaps + Secrets (side resources)
-    const sideResources: GraphNode[] = [];
-    if (data.configmaps) {
-      for (const cm of data.configmaps) {
-        sideResources.push({ name: typeof cm === 'string' ? cm : cm.name, kind: 'ConfigMap', layer: 5 });
-      }
-    }
-    if (data.secrets) {
-      for (const s of data.secrets) {
-        sideResources.push({ name: typeof s === 'string' ? s : s.name, kind: 'Secret', layer: 5 });
-      }
-    }
-    if (sideResources.length > 0) layers.push(sideResources);
+    // Add edges
+    if (data.ingress && data.service) elements.push({ data: { source: 'ingress', target: 'service' } });
+    if (data.service && data.deployment) elements.push({ data: { source: 'service', target: 'deployment' } });
 
-    this.layers = layers;
+    if (data.deployment && data.replicasets) {
+      data.replicasets.forEach((rs: any) => {
+        elements.push({ data: { source: 'deployment', target: rs.uid || rs.name } });
+      });
+    }
+
+    if (data.pods) {
+      data.pods.forEach((p: any) => {
+        if (p.owner_uid) {
+          elements.push({ data: { source: p.owner_uid, target: p.name } });
+        } else {
+          // Fallback if no owner (unlikely for deployment pods)
+          if (data.replicasets && data.replicasets.length > 0) {
+            elements.push({ data: { source: data.replicasets[0].uid || data.replicasets[0].name, target: p.name } });
+          }
+        }
+      });
+    }
+
+    this.nodeCount = elements.filter(e => !e.data.source).length;
+    this.edgeCount = elements.filter(e => e.data.source).length;
+
+    this.cy = cytoscape({
+      container: this.cyContainer.nativeElement,
+      elements: elements,
+      style: [
+        {
+          selector: 'node',
+          style: {
+            'label': 'data(label)',
+            'color': '#a1a1aa',
+            'font-size': '10px',
+            'font-family': "'JetBrains Mono', monospace",
+            'text-valign': 'bottom',
+            'text-margin-y': 5,
+            'background-color': '#1c1c21',
+            'border-width': 1,
+            'border-color': '#32323a',
+            'width': 30,
+            'height': 30
+          }
+        },
+        {
+          selector: 'node[kind="Deployment"]',
+          style: {
+            'background-color': '#3b82f6',
+            'border-color': '#60a5fa',
+            'width': 40,
+            'height': 40
+          }
+        },
+        {
+          selector: 'node[kind="Service"]',
+          style: { 'border-color': '#10b981', 'background-color': 'rgba(16, 185, 129, 0.2)' }
+        },
+        {
+          selector: 'node[kind="Pod"]',
+          style: { 'border-color': '#8b5cf6', 'background-color': 'rgba(139, 92, 246, 0.2)' }
+        },
+        {
+          selector: 'edge',
+          style: {
+            'width': 1,
+            'line-color': '#32323a',
+            'target-arrow-color': '#32323a',
+            'target-arrow-shape': 'triangle',
+            'curve-style': 'bezier'
+          }
+        }
+      ],
+      layout: {
+        name: 'breadthfirst',
+        directed: true,
+        padding: 50
+      }
+    });
   }
 }

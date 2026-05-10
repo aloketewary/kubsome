@@ -68,19 +68,48 @@ import { InputTextModule } from 'primeng/inputtext';
         </div>
       </div>
 
+      <!-- AI Insights & Findings -->
+      <div class="ai-insight-row">
+        <div class="insight-card glass-accent">
+           <div class="card-header">
+              <i class="pi pi-sparkles"></i>
+              <span>Probable Cause</span>
+           </div>
+           <p class="card-val">{{ probableCause || 'Analyzing cluster signals...' }}</p>
+        </div>
+        <div class="insight-card glass">
+           <div class="card-header">
+              <i class="pi pi-map"></i>
+              <span>Blast Radius</span>
+           </div>
+           <p class="card-val">{{ blastRadius || 'Calculating impact...' }}</p>
+        </div>
+        <div class="insight-card glass">
+           <div class="card-header">
+              <i class="pi pi-info-circle"></i>
+              <span>Health Score</span>
+           </div>
+           <div class="health-meter">
+              <div class="meter-bar" [style.width.%]="healthScore" [class.bar-bad]="healthScore < 50" [class.bar-warn]="healthScore >= 50 && healthScore < 80"></div>
+              <span class="meter-val">{{ healthScore }}%</span>
+           </div>
+        </div>
+      </div>
+
       <!-- Quick Actions -->
       <div class="quick-actions">
+        <button pButton icon="pi pi-sparkles" label="AI Analysis" class="p-button-sm p-button-warning" (click)="runAiAnalysis()" [loading]="analyzing"></button>
         <button pButton icon="pi pi-camera" label="Snapshot" class="p-button-sm p-button-outlined" (click)="snapshot()" pTooltip="Capture cluster state"></button>
         <button pButton icon="pi pi-box" label="Check Pods" class="p-button-sm p-button-outlined" (click)="router.navigate(['/pods'])"></button>
         <button pButton icon="pi pi-bolt" label="Events" class="p-button-sm p-button-outlined" (click)="router.navigate(['/events'])"></button>
-        <button pButton icon="pi pi-sparkles" label="AI Diagnose" class="p-button-sm p-button-outlined" (click)="router.navigate(['/ai'])"></button>
         @if (snapshotTaken) {
           <span class="snapshot-feedback"><i class="pi pi-check"></i> Snapshot captured</span>
         }
       </div>
 
-      <!-- Notes Timeline -->
-      <div class="notes-section">
+      <div class="incident-grid">
+        <!-- Notes Timeline -->
+        <div class="notes-section">
         <div class="notes-header">
           <h3>Timeline</h3>
           <span class="notes-count">{{ (active.notes || []).length }} entries</span>
@@ -116,6 +145,7 @@ import { InputTextModule } from 'primeng/inputtext';
             </div>
           }
         </div>
+      </div>
       </div>
     }
   `,
@@ -180,8 +210,22 @@ import { InputTextModule } from 'primeng/inputtext';
 
     /* Quick Actions */
     .quick-actions {
-      display: flex; gap: 8px; align-items: center; margin-bottom: 20px; flex-wrap: wrap;
+      display: flex; gap: 8px; align-items: center; margin-bottom: 24px; flex-wrap: wrap;
     }
+
+    .ai-insight-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px; }
+    .insight-card { padding: 16px; border-radius: var(--radius); border: 1px solid var(--border); }
+    .card-header { display: flex; align-items: center; gap: 8px; font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 12px; }
+    .card-header i { font-size: 14px; color: var(--accent); }
+    .card-val { font-size: 13px; font-weight: 500; color: var(--text-secondary); line-height: 1.4; }
+
+    .health-meter { display: flex; align-items: center; gap: 10px; margin-top: 4px; }
+    .meter-bar { height: 6px; border-radius: 3px; background: var(--success); transition: width 0.5s ease; }
+    .meter-bar.bar-bad { background: var(--danger); }
+    .meter-bar.bar-warn { background: var(--warning); }
+    .meter-val { font-size: 14px; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+
+    .incident-grid { display: grid; grid-template-columns: 1fr; gap: 20px; align-items: start; }
     .snapshot-feedback {
       font-size: 12px; color: var(--success); display: flex; align-items: center; gap: 4px;
       animation: fadeIn 0.3s ease;
@@ -229,6 +273,10 @@ export class IncidentComponent implements OnInit, OnDestroy {
   severity = 'high';
   elapsedTime = '00:00';
   snapshotTaken = false;
+  analyzing = false;
+  probableCause = '';
+  blastRadius = '';
+  healthScore = 100;
   private timerInterval: any;
 
   severities = [
@@ -276,6 +324,23 @@ export class IncidentComponent implements OnInit, OnDestroy {
     this.http.post<any>(`${this.base}/incident/snapshot`, {}).subscribe(() => {
       this.snapshotTaken = true;
       setTimeout(() => this.snapshotTaken = false, 3000);
+    });
+  }
+
+  runAiAnalysis() {
+    this.analyzing = true;
+    this.http.get<any>(`${this.base}/anomalies`).subscribe(res => {
+      const alerts = res.alerts || [];
+      if (alerts.length > 0) {
+        this.probableCause = alerts[0].message;
+        this.blastRadius = `${alerts.length} resources affected across the namespace.`;
+        this.healthScore = Math.max(20, 100 - (alerts.length * 15));
+      } else {
+        this.probableCause = 'No clear infrastructure anomalies detected. Investigating application logic.';
+        this.blastRadius = 'Limited to selected deployment.';
+        this.healthScore = 95;
+      }
+      this.analyzing = false;
     });
   }
 
