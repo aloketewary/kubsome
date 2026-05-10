@@ -3,6 +3,7 @@ import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { ContextsResponse } from '../core/models';
 import { PreferencesService } from '../core/services/preferences.service';
+import { ApiService } from '../core/services/api.service';
 import { HelpDialogComponent } from '../shared/components/help-dialog.component';
 
 @Component({
@@ -160,12 +161,28 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
       background: var(--bg-elevated);
       border: 1px solid var(--border);
     }
-    .ctx-dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
+    .context-card {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 12px;
+      margin: 0 8px;
     }
-    .ctx-dot.dot-ok {
+    .cc-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .cc-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
       background: var(--success);
       box-shadow: 0 0 4px var(--success);
     }
@@ -291,6 +308,7 @@ export class ShellComponent implements OnInit {
   @Input() collapsed = false;
   private http = inject(HttpClient);
   private router = inject(Router);
+  private api = inject(ApiService);
 
   helpVisible = false;
   monitorCollapsed = false;
