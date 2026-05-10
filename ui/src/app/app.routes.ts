@@ -28,4 +28,8 @@ export const routes: Routes = [
   { path: 'resources', loadComponent: () => import('./features/resources/resources.component').then(m => m.ResourcesComponent) },
   { path: 'scorecard', loadComponent: () => import('./features/scorecard/scorecard.component').then(m => m.ScorecardComponent) },
   { path: 'cost-estimate', loadComponent: () => import('./features/cost-estimate/cost-estimate.component').then(m => m.CostEstimateComponent) },
+  { path: 'yaml-diff', loadComponent: () => import('./features/yaml-diff/yaml-diff.component').then(m => m.YamlDiffComponent) },
+  { path: 'pins', loadComponent: () => import('./features/pins/pins.component').then(m => m.PinsComponent) },
+  { path: 'watches', loadComponent: () => import('./features/watch-manager/watch-manager.component').then(m => m.WatchManagerComponent) },
+  { path: 'log-correlation', loadComponent: () => import('./features/log-correlation/log-correlation.component').then(m => m.LogCorrelationComponent) },
 ];

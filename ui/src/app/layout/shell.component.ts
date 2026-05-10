@@ -283,12 +283,16 @@ export class ShellComponent implements OnInit {
     { path: '/incident', icon: 'pi pi-exclamation-circle', label: 'Incident' },
     { path: '/graph', icon: 'pi pi-sitemap', label: 'Service Map' },
     { path: '/yaml', icon: 'pi pi-file-edit', label: 'YAML Editor' },
+    { path: '/yaml-diff', icon: 'pi pi-copy', label: 'YAML Diff' },
     { path: '/runbooks', icon: 'pi pi-book', label: 'Runbooks' },
     { path: '/compare', icon: 'pi pi-arrows-h', label: 'Compare' },
   ];
 
   aiItems = [
     { path: '/ai', icon: 'pi pi-sparkles', label: 'AI Assistant' },
+    { path: '/log-correlation', icon: 'pi pi-link', label: 'Log Correlate' },
+    { path: '/pins', icon: 'pi pi-bookmark', label: 'Pins' },
+    { path: '/watches', icon: 'pi pi-eye', label: 'Watches' },
     { path: '/terminal', icon: 'pi pi-code', label: 'Terminal' },
     { path: '/settings', icon: 'pi pi-cog', label: 'Settings' },
   ];
