@@ -18,14 +18,29 @@ def collect_uptime():
     # Check API server reachability
     api_ok = _check_api(ctx)
 
+    if not api_ok:
+        now = datetime.now(timezone.utc)
+        return {
+            "context": ctx,
+            "namespace": ns,
+            "api_reachable": False,
+            "cluster_down": True,
+            "downtime_hint": "Cluster is unreachable",
+            "is_weekend": now.weekday() in (5, 6),
+            "current_time": now.isoformat(),
+            "day": now.strftime("%A"),
+            "nodes": [],
+            "pods": {"total": 0, "running": 0, "down": 0},
+        }
+
     # Get nodes with creation time
     nodes = _get_nodes(ctx)
 
     # Get pod summary
     pods = _get_pod_summary(ctx, ns)
 
-    # Detect if cluster is down (all nodes NotReady or no response)
-    cluster_down = not api_ok or (
+    # Cluster is only down if ALL nodes are NotReady
+    cluster_down = (
         nodes and all(not n["ready"] for n in nodes)
     )
 
@@ -59,14 +74,17 @@ def _check_api(ctx):
     """Check if API server responds."""
     cmd = (
         f"kubectl --context {ctx} "
-        f"cluster-info --request-timeout=5s"
+        f"api-versions --request-timeout=5s"
     )
-    result = subprocess.run(
-        cmd, shell=True,
-        capture_output=True, text=True,
-        timeout=10,
-    )
-    return result.returncode == 0
+    try:
+        result = subprocess.run(
+            cmd, shell=True,
+            capture_output=True, text=True,
+            timeout=8,
+        )
+        return result.returncode == 0
+    except subprocess.TimeoutExpired:
+        return False
 
 
 def _get_nodes(ctx):
@@ -75,11 +93,15 @@ def _get_nodes(ctx):
         f"kubectl --context {ctx} "
         f"get nodes -o json"
     )
-    result = subprocess.run(
-        cmd, shell=True,
-        capture_output=True, text=True,
-        timeout=10,
-    )
+    try:
+        result = subprocess.run(
+            cmd, shell=True,
+            capture_output=True, text=True,
+            timeout=10,
+        )
+    except subprocess.TimeoutExpired:
+        return []
+
     if result.returncode != 0:
         return []
 
@@ -121,11 +143,15 @@ def _get_pod_summary(ctx, ns):
         f"kubectl --context {ctx} "
         f"get pods -n {ns} -o json"
     )
-    result = subprocess.run(
-        cmd, shell=True,
-        capture_output=True, text=True,
-        timeout=10,
-    )
+    try:
+        result = subprocess.run(
+            cmd, shell=True,
+            capture_output=True, text=True,
+            timeout=10,
+        )
+    except subprocess.TimeoutExpired:
+        return {"total": 0, "running": 0, "down": 0}
+
     if result.returncode != 0:
         return {"total": 0, "running": 0, "down": 0}
 

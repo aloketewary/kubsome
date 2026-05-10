@@ -177,7 +177,7 @@ interface Message {
       background: var(--bg); border: 1px solid var(--accent);
       color: var(--accent); font-size: 10px;
       font-family: 'JetBrains Mono', monospace;
-      cursor: pointer; transition: all 0.12s;
+      cursor: pointer; transition: all 0.25s cubic-bezier(0.34,1.56,0.64,1);
       white-space: nowrap; overflow: hidden;
       text-overflow: ellipsis; max-width: 100%;
     }
@@ -210,7 +210,7 @@ interface Message {
       color: var(--text-secondary);
       cursor: pointer;
       text-align: left;
-      transition: all 0.12s;
+      transition: all 0.25s cubic-bezier(0.34,1.56,0.64,1);
     }
     .suggestion:hover {
       border-color: var(--accent);

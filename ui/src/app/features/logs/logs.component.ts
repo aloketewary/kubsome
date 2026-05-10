@@ -14,6 +14,9 @@ import { PageInfoComponent } from '../../shared/components/page-info.component';
   selector: 'app-logs',
   standalone: true,
   imports: [ButtonModule, Select, TooltipModule, FormsModule, InputTextModule, PageInfoComponent],
+  host: {
+    '[class.logs-fullscreen-active]': 'fullscreen',
+  },
   template: `
     <div class="page-header">
       <div>
@@ -42,6 +45,8 @@ import { PageInfoComponent } from '../../shared/components/page-info.component';
         <button pButton icon="pi pi-download" label="Fetch" class="p-button-sm" (click)="fetchLogs()" [disabled]="!selectedPod"></button>
         <button pButton [icon]="streaming ? 'pi pi-stop' : 'pi pi-play'" [label]="streaming ? 'Stop' : 'Live'"
                 [class]="streaming ? 'p-button-sm p-button-danger' : 'p-button-sm p-button-success'" (click)="toggleLive()" [disabled]="!selectedPod"></button>
+        <button pButton [icon]="watching ? 'pi pi-stop-circle' : 'pi pi-sync'" [label]="watching ? 'Unwatch' : 'Watch'"
+                [class]="watching ? 'p-button-sm p-button-warning' : 'p-button-sm p-button-outlined'" (click)="toggleWatch()" [disabled]="!selectedPod"></button>
       </div>
     </div>
 
@@ -80,9 +85,25 @@ import { PageInfoComponent } from '../../shared/components/page-info.component';
     <!-- Log Viewer -->
     <div class="log-container" [class.log-fullscreen]="fullscreen" #logEl>
       @if (fullscreen) {
-        <div class="fs-bar-header">
-          <span class="fs-bar-title"><i class="pi pi-terminal"></i> {{ selectedPod || 'Logs' }}</span>
-          <button class="fs-close-btn" (click)="fullscreen = false"><i class="pi pi-times"></i></button>
+        <div class="fs-header">
+          <div class="fs-left">
+            <i class="pi pi-terminal"></i>
+            <span class="fs-title">{{ selectedPod || 'Logs' }}</span>
+            @if (streaming) { <span class="fs-live-badge"><span class="live-dot"></span> Live</span> }
+            @if (watching) { <span class="fs-watch-badge"><i class="pi pi-sync"></i> Watch {{ watchInterval }}s</span> }
+          </div>
+          <div class="fs-actions">
+            <div class="filter-pills">
+              <button class="fpill" [class.active]="levelFilter === 'all'" (click)="levelFilter = 'all'; filterLines()">All</button>
+              <button class="fpill fpill-err" [class.active]="levelFilter === 'error'" (click)="levelFilter = 'error'; filterLines()">Errors</button>
+              <button class="fpill fpill-warn" [class.active]="levelFilter === 'warn'" (click)="levelFilter = 'warn'; filterLines()">Warn</button>
+            </div>
+            <div class="search-inline">
+              <i class="pi pi-search"></i>
+              <input [(ngModel)]="searchQuery" placeholder="Search..." (ngModelChange)="filterLines()" />
+            </div>
+            <button class="fs-close-btn" (click)="fullscreen = false"><i class="pi pi-times"></i></button>
+          </div>
         </div>
       }
       @if (filteredLines.length > 0) {
@@ -116,16 +137,16 @@ import { PageInfoComponent } from '../../shared/components/page-info.component';
     /* Controls */
     .controls-bar {
       display: flex; align-items: center; justify-content: space-between;
-      padding: 12px 16px; margin-bottom: 12px;
-      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm);
+      padding: 14px 18px; margin-bottom: 12px;
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
     }
     .controls-left, .controls-right { display: flex; align-items: center; gap: 12px; }
     .tail-control { display: flex; align-items: center; gap: 4px; }
     .tail-label { font-size: 11px; color: var(--text-muted); margin-right: 4px; }
     .tail-btn {
-      padding: 3px 8px; border: 1px solid var(--border); border-radius: 4px;
+      padding: 4px 10px; border: 1px solid var(--border); border-radius: 8px;
       background: var(--bg-elevated); color: var(--text-muted); font-size: 11px;
-      cursor: pointer; transition: all 0.12s;
+      cursor: pointer; transition: all 0.2s cubic-bezier(0.34,1.56,0.64,1);
     }
     .tail-btn.active { border-color: var(--accent); background: var(--accent-subtle); color: var(--accent); }
     .tail-btn:hover:not(.active) { border-color: var(--border-hover); color: var(--text); }
@@ -133,9 +154,9 @@ import { PageInfoComponent } from '../../shared/components/page-info.component';
     /* Toolbar */
     .log-toolbar {
       display: flex; align-items: center; justify-content: space-between;
-      padding: 8px 16px; margin-bottom: 0;
+      padding: 10px 18px; margin-bottom: 0;
       background: var(--bg-elevated); border: 1px solid var(--border);
-      border-radius: var(--radius-sm) var(--radius-sm) 0 0; border-bottom: none;
+      border-radius: var(--radius) var(--radius) 0 0; border-bottom: none;
     }
     .toolbar-stats { display: flex; gap: 12px; }
     .stat { font-size: 11px; color: var(--text-muted); }
@@ -168,27 +189,49 @@ import { PageInfoComponent } from '../../shared/components/page-info.component';
     /* Log Container */
     .log-container {
       background: var(--bg-card); border: 1px solid var(--border);
-      border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+      border-radius: 0 0 var(--radius) var(--radius);
       overflow: hidden; transition: all 0.2s;
     }
     .log-container.log-fullscreen {
-      position: fixed; inset: 0; z-index: 9000;
+      position: fixed !important; top: 0 !important; left: 0 !important;
+      height: 100vh !important;
+      z-index: 9999;
       border-radius: 0; border: none;
       display: flex; flex-direction: column;
+      background: #050506;
+      margin: 0; padding: 0;
+      contain: none;
     }
-    .log-fullscreen .log-viewer { max-height: none; flex: 1; }
-    .fs-bar-header {
+    .log-fullscreen .log-viewer { max-height: none; flex: 1; overflow-y: auto; }
+
+    /* Fullscreen Header */
+    .fs-header {
       display: flex; align-items: center; justify-content: space-between;
-      padding: 10px 16px; background: var(--bg-elevated); border-bottom: 1px solid var(--border);
+      padding: 12px 20px; background: rgba(15,15,18,0.95); border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(12px);
     }
-    .fs-bar-title { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
-    .fs-bar-title i { opacity: 0.5; }
+    .fs-left { display: flex; align-items: center; gap: 10px; }
+    .fs-left i { color: var(--text-muted); font-size: 14px; }
+    .fs-title { font-size: 13px; font-weight: 600; }
+    .fs-live-badge {
+      display: flex; align-items: center; gap: 5px;
+      font-size: 10px; font-weight: 600; color: var(--success);
+      padding: 3px 10px; background: var(--success-subtle); border-radius: 20px;
+    }
+    .fs-watch-badge {
+      display: flex; align-items: center; gap: 5px;
+      font-size: 10px; font-weight: 600; color: var(--warning);
+      padding: 3px 10px; background: var(--warning-subtle); border-radius: 20px;
+    }
+    .fs-watch-badge i { font-size: 10px; }
+    .fs-actions { display: flex; align-items: center; gap: 10px; }
     .fs-close-btn {
-      width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--border);
-      background: var(--bg-card); color: var(--text-muted); cursor: pointer;
-      display: flex; align-items: center; justify-content: center; transition: all 0.12s;
+      width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--border);
+      background: var(--bg-elevated); color: var(--text-muted); cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.2s cubic-bezier(0.34,1.56,0.64,1);
     }
-    .fs-close-btn:hover { border-color: var(--danger); color: var(--danger); background: var(--danger-subtle); }
+    .fs-close-btn:hover { border-color: var(--danger); color: var(--danger); background: var(--danger-subtle); transform: scale(1.1); }
     .log-viewer {
       max-height: calc(100vh - 360px); overflow-y: auto; padding: 8px 0;
       font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 1.7;
@@ -233,12 +276,15 @@ export class LogsComponent implements OnInit, OnDestroy {
   filteredLines: string[] = [];
   fetched = false;
   streaming = false;
+  watching = false;
+  watchInterval = 5;
   searchQuery = '';
   levelFilter: 'all' | 'error' | 'warn' = 'all';
   fullscreen = false;
 
   private streamSub: Subscription | null = null;
   private streamClose: (() => void) | null = null;
+  private watchTimer: any = null;
 
   get errorCount() { return this.lines.filter(l => this.isError(l)).length; }
 
@@ -251,7 +297,7 @@ export class LogsComponent implements OnInit, OnDestroy {
     });
   }
 
-  ngOnDestroy() { this.stopStream(); }
+  ngOnDestroy() { this.stopStream(); this.stopWatch(); }
 
   fetchLogs() {
     if (!this.selectedPod) return;
@@ -266,6 +312,7 @@ export class LogsComponent implements OnInit, OnDestroy {
   toggleLive() {
     if (this.streaming) { this.stopStream(); return; }
     if (!this.selectedPod) return;
+    this.stopWatch();
     this.streaming = true;
     this.lines = [];
     this.filteredLines = [];
@@ -278,6 +325,20 @@ export class LogsComponent implements OnInit, OnDestroy {
       }
       setTimeout(() => this.scrollBottom(), 30);
     });
+  }
+
+  toggleWatch() {
+    if (this.watching) { this.stopWatch(); return; }
+    if (!this.selectedPod) return;
+    this.stopStream();
+    this.watching = true;
+    this.fetchLogs();
+    this.watchTimer = setInterval(() => this.fetchLogs(), this.watchInterval * 1000);
+  }
+
+  private stopWatch() {
+    this.watching = false;
+    if (this.watchTimer) { clearInterval(this.watchTimer); this.watchTimer = null; }
   }
 
   filterLines() {

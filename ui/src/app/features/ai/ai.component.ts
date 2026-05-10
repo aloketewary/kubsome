@@ -200,7 +200,7 @@ interface Message {
       font-size: 12px;
       text-align: left;
       cursor: pointer;
-      transition: all 0.12s;
+      transition: all 0.25s cubic-bezier(0.34,1.56,0.64,1);
     }
     .sug-btn:hover {
       border-color: var(--accent);
@@ -284,7 +284,7 @@ interface Message {
       background: var(--bg); border: 1px solid var(--accent);
       color: var(--accent); font-size: 11px;
       font-family: 'JetBrains Mono', monospace;
-      cursor: pointer; transition: all 0.12s;
+      cursor: pointer; transition: all 0.25s cubic-bezier(0.34,1.56,0.64,1);
       white-space: nowrap; overflow: hidden;
       text-overflow: ellipsis; max-width: 100%;
     }
@@ -343,7 +343,7 @@ interface Message {
       width: 38px; height: 38px; border-radius: 10px;
       background: var(--accent); border: none; color: #fff;
       display: flex; align-items: center; justify-content: center;
-      cursor: pointer; transition: all 0.12s; font-size: 14px;
+      cursor: pointer; transition: all 0.25s cubic-bezier(0.34,1.56,0.64,1); font-size: 14px;
     }
     .send-btn:hover { background: var(--accent-hover); }
     .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }

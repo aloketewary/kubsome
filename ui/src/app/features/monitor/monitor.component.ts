@@ -275,7 +275,7 @@ interface MonitorCard {
     .global-strip {
       display: flex; align-items: center; gap: 16px;
       padding: 10px 16px; margin-bottom: 16px;
-      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm);
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
     }
     .gs-item { text-align: center; }
     .gs-val { display: block; font-size: 18px; font-weight: 700; }
@@ -299,7 +299,7 @@ interface MonitorCard {
       padding: 14px; display: flex; flex-direction: column; gap: 10px;
       transition: all 0.15s; cursor: default;
     }
-    .monitor-card:hover { border-color: var(--border-hover); }
+    .monitor-card:hover { border-color: var(--border-hover); transform: translateY(-2px); box-shadow: 0 8px 24px -8px rgba(0,0,0,0.2); }
     .monitor-card[draggable="true"] { cursor: grab; }
     .monitor-card[draggable="true"]:active { cursor: grabbing; opacity: 0.7; }
     .card-healthy { border-left: 3px solid var(--success); }
@@ -431,7 +431,7 @@ interface MonitorCard {
       width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--border);
       background: var(--bg-card); color: var(--text-muted); cursor: pointer;
       display: flex; align-items: center; justify-content: center; font-size: 14px;
-      transition: all 0.12s;
+      transition: all 0.25s cubic-bezier(0.34,1.56,0.64,1);
     }
     .fs-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-subtle); }
     .fs-btn-close:hover { border-color: var(--danger); color: var(--danger); background: var(--danger-subtle); }
@@ -458,9 +458,9 @@ interface MonitorCard {
     .fs-updated { font-size: 10px; color: var(--text-muted); text-align: right; padding-top: 8px; border-top: 1px solid var(--border); }
     .fs-stat {
       flex: 1; text-align: center; padding: 16px 12px; background: var(--bg-card);
-      border-radius: 12px; border: 1px solid var(--border); transition: border-color 0.12s;
+      border-radius: 12px; border: 1px solid var(--border); transition: all 0.25s cubic-bezier(0.34,1.56,0.64,1);
     }
-    .fs-stat:hover { border-color: var(--border-hover); }
+    .fs-stat:hover { border-color: var(--border-hover); transform: translateY(-2px); box-shadow: 0 8px 24px -8px rgba(0,0,0,0.2); }
     .fs-stat-val { display: block; font-size: 28px; font-weight: 700; letter-spacing: -0.02em; }
     .fs-stat-label { display: block; font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.03em; margin-top: 4px; }
     .fs-warn .fs-stat-val { color: var(--warning); }

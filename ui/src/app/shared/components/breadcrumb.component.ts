@@ -56,6 +56,23 @@ export class BreadcrumbComponent {
     '/ai': 'AI Assistant',
     '/terminal': 'Terminal',
     '/search': 'Search',
+    '/settings': 'Settings',
+    '/runbooks': 'Runbooks',
+    '/cost': 'Cost',
+    '/cost-estimate': 'Cost Estimate',
+    '/secrets': 'Secrets',
+    '/scorecard': 'Scorecard',
+    '/compare': 'Compare',
+    '/graph': 'Graph',
+    '/monitor': 'Monitor',
+    '/timeline': 'Timeline',
+    '/contexts': 'Contexts',
+    '/pins': 'Pins',
+    '/watch-manager': 'Watch Manager',
+    '/yaml-diff': 'YAML Diff',
+    '/yaml-editor': 'YAML Editor',
+    '/log-correlation': 'Log Correlation',
+    '/resources': 'Resources',
   };
 
   constructor() {
@@ -64,7 +81,7 @@ export class BreadcrumbComponent {
     ).subscribe((e: any) => {
       const path = e.urlAfterRedirects || e.url;
       const basePath = '/' + path.split('/')[1]?.split('?')[0];
-      const label = this.labels[basePath] || basePath;
+      const label = this.labels[basePath] || this.titleCase(basePath);
 
       // Keep last 3 in trail, avoid duplicates at end
       if (this.trail.length === 0 || this.trail[this.trail.length - 1].path !== basePath) {
@@ -76,5 +93,9 @@ export class BreadcrumbComponent {
 
   go(path: string) {
     this.router.navigate([path]);
+  }
+
+  private titleCase(path: string): string {
+    return path.replace('/', '').replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
   }
 }

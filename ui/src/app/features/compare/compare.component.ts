@@ -130,7 +130,7 @@ import { TagModule } from 'primeng/tag';
 
     .compare-bar {
       display: flex; align-items: center; gap: 12px; margin-bottom: 16px;
-      padding: 14px 16px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm);
+      padding: 14px 16px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
     }
     .ctx-group { display: flex; align-items: center; gap: 8px; }
     .ctx-label { font-size: 11px; font-weight: 700; color: var(--accent); background: var(--accent-subtle); padding: 2px 8px; border-radius: 4px; }
@@ -138,7 +138,7 @@ import { TagModule } from 'primeng/tag';
 
     .summary-strip {
       display: flex; gap: 8px; margin-bottom: 16px;
-      padding: 12px 16px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm);
+      padding: 14px 18px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
     }
     .summary-pill { display: flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 20px; background: var(--bg-elevated); font-size: 12px; }
     .pill-ok { background: var(--success-subtle); }
@@ -182,7 +182,7 @@ import { TagModule } from 'primeng/tag';
     .loading-state { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 40px; color: var(--text-muted); font-size: 13px; }
     .spin { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
-    .error-banner { display: flex; align-items: center; gap: 8px; padding: 12px 16px; background: var(--danger-subtle); border-radius: var(--radius-sm); font-size: 12px; color: var(--danger); margin-bottom: 12px; }
+    .error-banner { display: flex; align-items: center; gap: 8px; padding: 12px 16px; background: var(--danger-subtle); border-radius: var(--radius); font-size: 12px; color: var(--danger); margin-bottom: 12px; }
   `],
 })
 export class CompareComponent implements OnInit {

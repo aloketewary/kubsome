@@ -180,10 +180,10 @@ import { TooltipModule } from 'primeng/tooltip';
     .opt-card {
       display: flex; align-items: flex-start; gap: 12px;
       padding: 14px 16px; background: var(--bg-card);
-      border: 1px solid var(--border); border-radius: var(--radius-sm);
-      transition: border-color 0.12s;
+      border: 1px solid var(--border); border-radius: var(--radius);
+      transition: all 0.25s cubic-bezier(0.34,1.56,0.64,1);
     }
-    .opt-card:hover { border-color: var(--border-hover); }
+    .opt-card:hover { border-color: var(--border-hover); transform: translateY(-2px); box-shadow: 0 8px 24px -8px rgba(0,0,0,0.2); }
     .unused-card { border-left: 3px solid var(--warning); }
 
     .opt-left { display: flex; flex-direction: column; align-items: center; gap: 4px; }

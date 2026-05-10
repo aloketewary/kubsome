@@ -180,9 +180,9 @@ import { PreferencesService } from '../../core/services/preferences.service';
       background: var(--bg-card);
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      transition: border-color 0.12s;
+      transition: all 0.25s cubic-bezier(0.34,1.56,0.64,1);
     }
-    .settings-section:hover { border-color: var(--border-hover); }
+    .settings-section:hover { border-color: var(--border-hover); transform: translateY(-2px); box-shadow: 0 8px 24px -8px rgba(0,0,0,0.2); }
 
     .section-icon {
       width: 36px; height: 36px; border-radius: 10px;
@@ -210,7 +210,7 @@ import { PreferencesService } from '../../core/services/preferences.service';
       display: flex; align-items: center; gap: 5px;
       padding: 6px 12px; border-radius: 6px; border: none;
       background: transparent; color: var(--text-muted);
-      font-size: 12px; cursor: pointer; transition: all 0.12s;
+      font-size: 12px; cursor: pointer; transition: all 0.25s cubic-bezier(0.34,1.56,0.64,1);
     }
     .toggle-btn i { font-size: 12px; }
     .toggle-btn.active { background: var(--bg-card); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
@@ -220,7 +220,7 @@ import { PreferencesService } from '../../core/services/preferences.service';
     .opt-btn {
       padding: 5px 10px; border-radius: 5px; border: none;
       background: transparent; color: var(--text-muted);
-      font-size: 11px; cursor: pointer; transition: all 0.12s;
+      font-size: 11px; cursor: pointer; transition: all 0.25s cubic-bezier(0.34,1.56,0.64,1);
     }
     .opt-btn.active { background: var(--accent); color: #fff; }
     .opt-btn:hover:not(.active) { color: var(--text); }
@@ -295,7 +295,7 @@ import { PreferencesService } from '../../core/services/preferences.service';
       display: flex; align-items: center; gap: 5px;
       font-size: 12px; color: var(--accent);
       padding: 6px 12px; border-radius: 6px;
-      border: 1px solid var(--border); transition: all 0.12s;
+      border: 1px solid var(--border); transition: all 0.25s cubic-bezier(0.34,1.56,0.64,1);
     }
     .about-link:hover { border-color: var(--accent); background: var(--accent-subtle); }
     .about-link i { font-size: 12px; }

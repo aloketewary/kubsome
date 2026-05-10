@@ -39,7 +39,9 @@
         "build": {
           "builder": "@angular/build:application",
           "options": {
+            "outputPath": "dist/ui",
             "browser": "src/main.ts",
+            "ssr": false,
             "polyfills": [
               "zone.js"
             ],

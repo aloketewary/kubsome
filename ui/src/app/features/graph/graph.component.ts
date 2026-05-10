@@ -85,7 +85,7 @@ import cytoscape from 'cytoscape';
       position: absolute; bottom: 20px; left: 20px;
       display: flex; gap: 20px; padding: 12px 20px;
       background: rgba(15,15,17,0.8); backdrop-filter: blur(8px);
-      border: 1px solid var(--border); border-radius: var(--radius-sm);
+      border: 1px solid var(--border); border-radius: var(--radius);
       pointer-events: none;
     }
     .gs-item { text-align: center; }

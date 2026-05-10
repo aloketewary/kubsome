@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { TooltipModule } from 'primeng/tooltip';
+import { ConfirmService } from '../../shared/services/confirm.service';
 
 @Component({
   selector: 'app-pins',
@@ -86,6 +87,7 @@ import { TooltipModule } from 'primeng/tooltip';
 })
 export class PinsComponent implements OnInit {
   private http = inject(HttpClient);
+  private confirmService = inject(ConfirmService);
   pins: any[] = [];
   newName = '';
   newQuery = '';
@@ -110,7 +112,14 @@ export class PinsComponent implements OnInit {
   }
 
   removePin(name: string) {
-    this.http.delete(`http://localhost:8000/api/saved-queries/${name}`).subscribe(() => this.refresh());
+    this.confirmService.confirm({
+      title: 'Remove Pin',
+      message: `Delete saved query "${name}"?`,
+      confirmLabel: 'Delete',
+      severity: 'danger',
+    }).then(ok => {
+      if (ok) this.http.delete(`http://localhost:8000/api/saved-queries/${name}`).subscribe(() => this.refresh());
+    });
   }
 
   runPin(pin: any) {

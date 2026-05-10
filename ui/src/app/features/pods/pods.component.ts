@@ -178,7 +178,7 @@ interface PodGroup {
       (closed)="aiDrawerVisible = false" />
 
     <!-- Logs Dialog -->
-    <p-dialog [(visible)]="logsVisible" [header]="logsTitle" [modal]="true" [style]="{ width: '85vw', height: '80vh' }" [maximizable]="true" (onHide)="onLogsHide()">
+    <p-dialog [(visible)]="logsVisible" [header]="logsTitle" [modal]="true" [maximizable]="true" (onHide)="onLogsHide()" styleClass="logs-dialog">
       <div class="log-viewer-container">
         @if (isLiveMode) {
           <app-log-terminal [podName]="activePodName" />
@@ -242,10 +242,11 @@ interface PodGroup {
       display: flex;
       gap: 8px;
       margin-bottom: 16px;
-      padding: 12px 16px;
+      padding: 14px 18px;
       background: var(--bg-card);
       border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
+      border-radius: var(--radius);
+      backdrop-filter: blur(8px);
     }
     .summary-pill {
       display: flex;
@@ -269,23 +270,25 @@ interface PodGroup {
     /* Action Bar */
     .action-bar {
       display: flex; align-items: center; justify-content: space-between;
-      padding: 10px 16px; margin-bottom: 12px;
-      background: var(--accent-subtle); border: 1px solid var(--accent); border-radius: var(--radius-sm);
+      padding: 12px 18px; margin-bottom: 12px;
+      background: var(--accent-subtle); border: 1px solid var(--accent); border-radius: var(--radius);
+      animation: slideDown 0.3s var(--transition-spring);
     }
+    @keyframes slideDown { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
     .action-count { font-size: 13px; color: var(--accent); }
     .action-buttons { display: flex; gap: 6px; }
 
     /* Groups */
     .pod-group {
       background: var(--bg-card); border: 1px solid var(--border);
-      border-radius: var(--radius); margin-bottom: 8px; overflow: hidden;
-      transition: border-color 0.15s;
+      border-radius: var(--radius); margin-bottom: 10px; overflow: hidden;
+      transition: all 0.25s cubic-bezier(0.34,1.56,0.64,1);
     }
-    .pod-group:hover { border-color: var(--border-hover); }
+    .pod-group:hover { border-color: var(--border-hover); box-shadow: 0 8px 24px -8px rgba(0,0,0,0.2); transform: translateY(-1px); }
     .group-unhealthy { border-left: 3px solid var(--danger); }
     .group-header {
       display: flex; align-items: center; gap: 10px;
-      padding: 10px 16px; cursor: pointer; transition: background 0.1s;
+      padding: 12px 18px; cursor: pointer; transition: background 0.15s;
       outline: none;
     }
     .group-header:focus-visible { background: var(--bg-hover); box-shadow: inset 0 0 0 2px var(--accent); }
@@ -306,12 +309,12 @@ interface PodGroup {
     .group-body { border-top: 1px solid var(--border); }
     .pod-row {
       display: flex; align-items: center; gap: 10px;
-      padding: 8px 16px 8px 36px; cursor: pointer;
-      transition: background 0.1s; position: relative;
+      padding: 10px 18px 10px 36px; cursor: pointer;
+      transition: all 0.15s; position: relative;
       outline: none;
     }
     .pod-row:focus-visible { background: var(--bg-hover); box-shadow: inset 0 0 0 2px var(--accent); }
-    .pod-row:hover { background: var(--bg-hover); }
+    .pod-row:hover { background: var(--bg-hover); transform: translateX(3px); }
     .pod-row:hover .pod-actions { opacity: 1; }
     .pod-row.pod-selected { background: var(--accent-subtle); }
     .pod-row.pod-unhealthy { background: var(--danger-subtle); }
@@ -336,9 +339,9 @@ interface PodGroup {
     }
     .pod-actions i {
       font-size: 13px; color: var(--text-muted); cursor: pointer;
-      padding: 4px; border-radius: 4px; transition: all 0.1s;
+      padding: 5px; border-radius: 8px; transition: all 0.2s cubic-bezier(0.34,1.56,0.64,1);
     }
-    .pod-actions i:hover { color: var(--accent); background: var(--accent-subtle); }
+    .pod-actions i:hover { color: var(--accent); background: var(--accent-subtle); transform: scale(1.15); }
 
     /* Empty */
     .empty-state {

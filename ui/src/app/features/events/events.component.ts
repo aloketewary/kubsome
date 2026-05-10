@@ -133,11 +133,11 @@ import { KubeEvent } from '../../core/models';
     .events-container { display: flex; flex-direction: column; gap: 4px; }
     .event-card {
       display: flex; align-items: flex-start; gap: 12px;
-      padding: 12px 16px;
-      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm);
-      cursor: pointer; transition: all 0.12s;
+      padding: 14px 18px;
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+      cursor: pointer; transition: all 0.25s cubic-bezier(0.34,1.56,0.64,1);
     }
-    .event-card:hover { border-color: var(--border-hover); background: var(--bg-elevated); }
+    .event-card:hover { border-color: var(--border-hover); background: var(--bg-elevated); transform: translateY(-2px); box-shadow: 0 8px 24px -8px rgba(0,0,0,0.2); }
     .event-card.event-warning { border-left: 3px solid var(--warning); }
 
     .event-left { display: flex; flex-direction: column; align-items: center; padding-top: 4px; }
@@ -150,7 +150,7 @@ import { KubeEvent } from '../../core/models';
     .event-reason { font-size: 13px; font-weight: 600; }
     .event-tags { display: flex; gap: 4px; }
     .event-kind {
-      font-size: 10px; padding: 1px 5px; border-radius: 3px;
+      font-size: 10px; padding: 2px 8px; border-radius: 20px;
       background: var(--bg-elevated); color: var(--text-muted);
       text-transform: uppercase; letter-spacing: 0.03em; font-weight: 500;
     }

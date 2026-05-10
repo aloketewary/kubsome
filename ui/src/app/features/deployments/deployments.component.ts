@@ -8,6 +8,7 @@ import { FormsModule } from '@angular/forms';
 import { InputTextModule } from 'primeng/inputtext';
 import { ApiService } from '../../core/services/api.service';
 import { Deployment } from '../../core/models';
+import { ConfirmService } from '../../shared/services/confirm.service';
 import { AiInsightDrawerComponent } from '../../shared/components/ai-insight-drawer.component';
 
 @Component({
@@ -157,7 +158,7 @@ import { AiInsightDrawerComponent } from '../../shared/components/ai-insight-dra
     /* Summary */
     .summary-strip {
       display: flex; gap: 8px; margin-bottom: 16px;
-      padding: 12px 16px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm);
+      padding: 14px 18px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
     }
     .summary-pill { display: flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 20px; background: var(--bg-elevated); font-size: 12px; }
     .pill-ok { background: var(--success-subtle); }
@@ -169,14 +170,14 @@ import { AiInsightDrawerComponent } from '../../shared/components/ai-insight-dra
     .pill-label { color: var(--text-muted); }
 
     /* List */
-    .dep-list { display: flex; flex-direction: column; gap: 6px; }
+    .dep-list { display: flex; flex-direction: column; gap: 8px; }
     .dep-card {
       display: flex; align-items: center; gap: 12px;
-      padding: 14px 16px; background: var(--bg-card);
-      border: 1px solid var(--border); border-radius: var(--radius-sm);
-      transition: all 0.12s;
+      padding: 16px 18px; background: var(--bg-card);
+      border: 1px solid var(--border); border-radius: var(--radius);
+      transition: all 0.25s cubic-bezier(0.34,1.56,0.64,1);
     }
-    .dep-card:hover { border-color: var(--border-hover); }
+    .dep-card:hover { border-color: var(--border-hover); transform: translateY(-2px); box-shadow: 0 8px 24px -8px rgba(0,0,0,0.2); }
     .dep-card:hover .dep-actions { opacity: 1; }
     .dep-degraded { border-left: 3px solid var(--danger); background: var(--danger-subtle); }
 
@@ -218,9 +219,9 @@ import { AiInsightDrawerComponent } from '../../shared/components/ai-insight-dra
       width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--border);
       background: var(--bg-elevated); color: var(--text); font-size: 20px;
       cursor: pointer; display: flex; align-items: center; justify-content: center;
-      transition: all 0.12s;
+      transition: all 0.25s cubic-bezier(0.34,1.56,0.64,1);
     }
-    .scale-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .scale-btn:hover { border-color: var(--accent); color: var(--accent); transform: scale(1.1); }
     .scale-number { font-size: 36px; font-weight: 700; min-width: 60px; text-align: center; }
     .scale-dots-preview { display: flex; gap: 4px; justify-content: center; flex-wrap: wrap; min-height: 20px; }
     .scale-zero-warn { font-size: 12px; color: var(--warning); }
@@ -236,6 +237,7 @@ import { AiInsightDrawerComponent } from '../../shared/components/ai-insight-dra
 export class DeploymentsComponent implements OnInit {
   private api = inject(ApiService);
   private router = inject(Router);
+  private confirmService = inject(ConfirmService);
   deployments: Deployment[] = [];
   filtered: Deployment[] = [];
   searchQuery = '';
@@ -287,15 +289,25 @@ export class DeploymentsComponent implements OnInit {
   }
 
   onRestart(dep: Deployment) {
-    if (confirm(`Restart ${dep.name}?`)) {
-      this.api.restart(dep.name).subscribe(() => this.refresh());
-    }
+    this.confirmService.confirm({
+      title: 'Restart Deployment',
+      message: `This will perform a rolling restart of "${dep.name}". Pods will be recreated.`,
+      confirmLabel: 'Restart',
+      severity: 'warning',
+    }).then(ok => {
+      if (ok) this.api.restart(dep.name).subscribe(() => this.refresh());
+    });
   }
 
   onRollback(dep: Deployment) {
-    if (confirm(`Rollback ${dep.name}?`)) {
-      this.api.rollback(dep.name).subscribe(() => this.refresh());
-    }
+    this.confirmService.confirm({
+      title: 'Rollback Deployment',
+      message: `This will rollback "${dep.name}" to the previous revision. This cannot be undone.`,
+      confirmLabel: 'Rollback',
+      severity: 'danger',
+    }).then(ok => {
+      if (ok) this.api.rollback(dep.name).subscribe(() => this.refresh());
+    });
   }
 
   onScale(dep: Deployment) {
@@ -306,9 +318,18 @@ export class DeploymentsComponent implements OnInit {
   }
 
   confirmScale() {
-    this.api.scale(this.scaleName, this.scaleReplicas).subscribe(() => {
-      this.scaleVisible = false;
-      this.refresh();
+    this.confirmService.confirm({
+      title: 'Scale Deployment',
+      message: `Scale "${this.scaleName}" to ${this.scaleReplicas} replicas?`,
+      confirmLabel: 'Scale',
+      severity: 'warning',
+    }).then(ok => {
+      if (ok) {
+        this.api.scale(this.scaleName, this.scaleReplicas).subscribe(() => {
+          this.scaleVisible = false;
+          this.refresh();
+        });
+      }
     });
   }
 

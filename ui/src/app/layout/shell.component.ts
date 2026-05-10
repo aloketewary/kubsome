@@ -157,7 +157,7 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
       align-items: center;
       gap: 8px;
       padding: 8px 12px;
-      border-radius: var(--radius-sm);
+      border-radius: var(--radius);
       background: var(--bg-elevated);
       border: 1px solid var(--border);
     }
@@ -220,7 +220,7 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
       gap: 10px;
       padding: 8px 12px;
       margin: 1px 8px;
-      border-radius: var(--radius-sm);
+      border-radius: var(--radius);
       font-size: 13px;
       font-weight: 500;
       color: var(--text-secondary);
@@ -268,7 +268,7 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
       border-radius: 4px;
       font-size: 10px;
       opacity: 0;
-      transition: all 0.12s;
+      transition: all 0.25s cubic-bezier(0.34,1.56,0.64,1);
     }
     .fav-row:hover .fav-remove, .nav-row:hover .star-btn { opacity: 0.6; }
     .fav-remove:hover { opacity: 1 !important; color: var(--danger); }

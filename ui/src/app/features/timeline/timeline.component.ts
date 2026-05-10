@@ -105,14 +105,14 @@ import { TooltipModule } from 'primeng/tooltip';
     .time-range { display: flex; gap: 2px; background: var(--bg-elevated); border-radius: 8px; padding: 3px; }
     .range-btn {
       padding: 5px 12px; border: none; border-radius: 6px; font-size: 11px; font-weight: 500;
-      cursor: pointer; background: transparent; color: var(--text-muted); transition: all 0.12s;
+      cursor: pointer; background: transparent; color: var(--text-muted); transition: all 0.25s cubic-bezier(0.34,1.56,0.64,1);
     }
     .range-btn.active { background: var(--accent); color: #fff; }
     .range-btn:hover:not(.active) { color: var(--text); }
 
     /* Activity Strip */
     .activity-strip {
-      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm);
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
       padding: 14px 16px; margin-bottom: 16px;
     }
     .strip-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
@@ -136,7 +136,7 @@ import { TooltipModule } from 'primeng/tooltip';
       display: flex; align-items: center; gap: 5px;
       padding: 5px 12px; border-radius: 6px; border: 1px solid var(--border);
       background: var(--bg-card); font-size: 11px; color: var(--text-muted);
-      cursor: pointer; transition: all 0.12s;
+      cursor: pointer; transition: all 0.25s cubic-bezier(0.34,1.56,0.64,1);
     }
     .filter-btn:hover { border-color: var(--border-hover); color: var(--text); }
     .filter-btn.active { border-color: var(--accent); background: var(--accent-subtle); color: var(--accent); }
@@ -168,10 +168,10 @@ import { TooltipModule } from 'primeng/tooltip';
 
     .tl-card {
       flex: 1; padding: 10px 14px; margin: 4px 0;
-      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm);
-      transition: border-color 0.12s;
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+      transition: all 0.25s cubic-bezier(0.34,1.56,0.64,1);
     }
-    .tl-card:hover { border-color: var(--border-hover); }
+    .tl-card:hover { border-color: var(--border-hover); transform: translateY(-2px); box-shadow: 0 8px 24px -8px rgba(0,0,0,0.2); }
     .tl-item.tl-warning .tl-card { border-left: 3px solid var(--warning); }
     .tl-card-header { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
     .tl-reason { font-size: 13px; font-weight: 600; }

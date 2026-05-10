@@ -1,211 +1,199 @@
-# Kubsome — Development Guidelines
+# Development Guidelines — Kubsome
 
 ## Code Quality Standards
 
-### Python Formatting
-- **Line length**: ~60-70 chars preferred, multi-line strings broken with parentheses
-- **Imports**: Grouped by stdlib → third-party → local, with blank lines between groups
-- **Docstrings**: Module-level triple-quote docstrings for major files; minimal inline comments
-- **Naming**: snake_case for functions/variables, PascalCase not used (no classes in core logic)
-- **String formatting**: f-strings exclusively
-- **Whitespace**: Generous vertical spacing between logical blocks within functions
-
-### TypeScript/Angular Formatting
-- **Components**: Single-file standalone components (template + styles inline)
-- **Imports**: Angular core → third-party → local services → local models
-- **Naming**: camelCase for properties/methods, PascalCase for types/interfaces
-- **Injection**: `inject()` function pattern (not constructor injection)
-
-## Architectural Patterns
-
-### Collector Pattern (Python — core/collectors/)
-All data collection follows this exact pattern:
+### Module Docstrings
+Every module starts with a triple-quoted docstring describing its purpose:
 ```python
-import subprocess
-import json
-from core.context import context
+"""
+Cache — simple TTL cache for kubectl results
+to avoid redundant API server calls.
+"""
+```
 
-def collect_<resource>(param=default):
+### Function Docstrings
+Public functions have concise docstrings explaining behavior:
+```python
+def auto_remediate(pod_name):
+    """
+    Diagnose a pod and attempt automatic remediation.
+    Returns actions taken and results.
+    """
+```
+
+### Empty `__init__.py` Files
+All packages use empty `__init__.py` files — no re-exports or package-level initialization. Imports are always explicit from the specific module.
+
+### Import Style
+- Standard library imports first, then third-party, then local
+- Local imports use relative-style absolute paths: `from core.context import context`
+- Inline imports used for optional/heavy dependencies or circular avoidance:
+```python
+def _handle_tui(cmd, env):
+    try:
+        from tui.app import run_tui
+        run_tui()
+    except ImportError:
+        console.print("[red]textual not installed.[/red]")
+```
+
+## Structural Conventions
+
+### Collector Pattern
+Collectors are pure data functions that run kubectl and return structured dicts/lists:
+```python
+def collect_pods():
     command = (
-        f"kubectl "
-        f"--context {context.current_context} "
-        f"get <resource> "
-        f"-n {context.namespace} "
-        f"-o json"
+        f"kubectl --context {context.current_context} "
+        f"get pods -n {context.namespace} -o json"
     )
-    result = subprocess.run(
-        command,
-        shell=True,
-        capture_output=True,
-        text=True
-    )
+    result = subprocess.run(command, shell=True, capture_output=True, text=True)
     if result.returncode != 0:
         return []
     data = json.loads(result.stdout)
-    items = []
-    for item in data.get("items", []):
-        items.append({...})  # Extract relevant fields
-    return items
+    # Transform to simplified dicts
+    return [{"name": ..., "status": ..., "restarts": ...}]
 ```
-Key conventions:
-- Always use `context.current_context` and `context.namespace`
-- Return empty list `[]` on failure (never raise)
-- Parse JSON output from kubectl
-- Return list of dicts with only needed fields
 
-### Command Dispatch Pattern (Python — core/dispatcher.py)
+### Renderer Pattern
+Renderers accept structured data and produce Rich console output. They never call kubectl:
 ```python
-def _handle_<action>(cmd, env):
-    with loading("Message..."):
-        data = collect_something(cmd["target"])
-    render_something(data)
+def render_inspect(details, events, logs, recommendation):
+    console.print(Panel(info_content, title="[bold]🔍 Pod Info[/bold]", border_style="cyan"))
+```
 
+### Handler Pattern (Dispatcher)
+Handlers follow the signature `_handle_<type>(cmd, env)` and orchestrate collect → render:
+```python
+def _handle_diagnose(cmd, env):
+    target = cmd["target"]
+    with loading(f"Diagnosing {target}..."):
+        data = collect_diagnosis(target)
+    findings = diagnose(data)
+    render_diagnosis(target, findings)
+```
+
+### Command Dict Structure
+Commands are dicts with a `"type"` key and optional parameters:
+```python
+{"type": "logs", "target": "pod-name", "follow": True, "errors": False}
+```
+
+### Handler Registry
+All handlers registered in a flat dict at module bottom:
+```python
 HANDLERS = {
-    "action_name": _handle_action,
+    "pods_table": _handle_pods_table,
+    "diagnose": _handle_diagnose,
+    ...
 }
 ```
-Key conventions:
-- Handler signature: `(cmd: dict, env: str) -> None`
-- Use `loading()` context manager for slow operations
-- Call collector then renderer (never mix concerns)
-- Register in HANDLERS dict at module bottom
 
-### API Route Pattern (Python — api/routes/)
+### API Route Pattern
+FastAPI routes are thin wrappers around collectors:
 ```python
-from fastapi import APIRouter, HTTPException
-from core.context import context
-from core.collectors.<module> import collect_<resource>
+router = APIRouter(tags=["pods"])
 
-router = APIRouter(tags=["<domain>"])
-
-@router.get("/<endpoint>")
-def get_<resource>():
-    return {
-        "context": context.current_context,
-        "namespace": context.namespace,
-        "<resource>": collect_<resource>(),
-    }
-
-@router.post("/<action>/{name}")
-def post_<action>(name: str):
-    success, output = do_action(name)
-    if not success:
-        raise HTTPException(status_code=500, detail="...")
-    return {"<action>ed": name}
+@router.get("/pods")
+def get_pods():
+    pods = collect_pods()
+    return {"context": context.current_context, "namespace": context.namespace, "pods": pods}
 ```
-Key conventions:
-- One router per domain, tagged for OpenAPI grouping
-- GET endpoints return context + namespace + data
-- POST endpoints raise HTTPException on failure
-- Pydantic BaseModel for request bodies
-- Mounted in app.py with `/api` prefix
-
-### Angular Service Pattern (TypeScript — ui/src/app/core/services/)
-```typescript
-@Injectable({ providedIn: 'root' })
-export class ApiService {
-  private http = inject(HttpClient);
-  private base = 'http://localhost:8000/api';
-
-  getResource(): Observable<ResponseType> {
-    return this.http.get<ResponseType>(`${this.base}/resource`);
-  }
-
-  postAction(name: string, body: any): Observable<any> {
-    return this.http.post(`${this.base}/action/${name}`, body);
-  }
-}
-```
-
-### Angular Component Pattern (TypeScript — ui/src/app/features/)
-```typescript
-@Component({
-  selector: 'app-<feature>',
-  standalone: true,
-  imports: [...],
-  template: `...`,
-  styles: [`...`],
-})
-export class FeatureComponent implements OnInit, OnDestroy {
-  private api = inject(ApiService);
-  private ws = inject(WsService);
-
-  // State
-  data: Type[] = [];
-  loading = false;
-
-  ngOnInit() { this.refresh(); }
-  ngOnDestroy() { /* cleanup subscriptions */ }
-
-  refresh() {
-    this.api.getData().subscribe(res => { this.data = res.items; });
-  }
-}
-```
-Key conventions:
-- Standalone components (no NgModules)
-- `inject()` for DI
-- Template uses `@if` / `@for` control flow (Angular 17+ syntax)
-- Inline styles with CSS custom properties (dark theme variables)
-- PrimeNG components for UI elements
-
-## Design Patterns
-
-### Error Handling
-- **Python collectors**: Return empty data on failure, never throw
-- **Python dispatcher**: Catch all exceptions, print `[red]Error: {e}[/red]`
-- **API routes**: Raise `HTTPException` with appropriate status codes
-- **Angular**: Error interceptor handles HTTP errors globally
-
-### State Management
-- **Python**: Global `context` singleton holds current_context + namespace
-- **Angular**: Services hold state, components subscribe to observables
-
-### Real-time Updates
-- WebSocket endpoints at `/ws/<resource>` for live data
-- Angular `WsService` wraps WebSocket connections with RxJS observables
-- Components manage subscription lifecycle in ngOnInit/ngOnDestroy
-
-### Safety Guards
-- Production context detection via string matching ("prd" in context name)
-- Confirmation prompts before destructive operations (rollback, scale)
-- Audit logging for all mutating actions
 
 ## Naming Conventions
 
 ### Files
-- Python: `snake_case.py` — one module per concern
-- TypeScript: `kebab-case.component.ts` — one component per file
+- Snake_case for all Python files
 - Collectors: `core/collectors/<resource>.py`
 - Renderers: `core/renderers/<resource>_renderer.py`
-- Routes: `api/routes/<domain>.py`
-- Features: `ui/src/app/features/<feature>/<feature>.component.ts`
+- API routes: `api/routes/<resource>.py`
 
 ### Functions
 - Collectors: `collect_<resource>()`, `list_<resource>()`, `fetch_<resource>()`
-- Handlers: `_handle_<action>(cmd, env)`
-- Renderers: `render_<thing>(data)`
-- API: `get_<resource>()`, `post_<action>()`
+- Renderers: `render_<view_name>(data, ...)`
+- Handlers: `_handle_<command_type>(cmd, env)` (private, prefixed with underscore)
+- Helpers: `_<descriptive_name>()` (private)
 
-### Command Dicts
+### Variables
+- `ctx` for kubernetes context string
+- `ns` for namespace string
+- `console` as module-level Rich Console instance
+- `context` imported from `core.context` for global state
+
+## Design Patterns
+
+### Fuzzy Resolution Flow
 ```python
-{"type": "action_name", "target": "resource_name", ...extra_params}
+matches = resolve_pod_name(query)  # Returns list of matches
+if not matches:
+    return None
+pod = choose_pod(matches)          # Interactive selection if multiple
+if not pod:
+    return None
+return {"type": "inspect", "target": pod}
 ```
 
-## CSS/Theming (Angular)
-- Dark theme using CSS custom properties
-- Variables: `--bg-card`, `--bg-elevated`, `--bg-hover`, `--border`, `--border-hover`
-- Colors: `--success`, `--warning`, `--danger`, `--accent`
-- Subtle variants: `--success-subtle`, `--danger-subtle`, `--accent-subtle`
-- Typography: `--text-muted`, `--text-secondary`
-- Spacing: `--radius`, `--radius-sm`
-- Monospace: `'JetBrains Mono', monospace` for code/data
+### Safety Guards
+Production detection via context name substring matching:
+```python
+if "prd" in ctx or "prod" in ctx:
+    return {"blocked": True, "reason": "Disabled in production"}
+```
 
-## Package `__init__.py` Files
-- All `__init__.py` files are empty (namespace packages)
-- Imports are explicit at point of use, never re-exported from `__init__.py`
+### Loading Spinner
+Use `with loading("message...")` context manager for long operations:
+```python
+with loading("Fetching cluster overview..."):
+    pods = collect_pods()
+```
 
-## Testing
-- pytest for Python tests in `tests/` directory
-- Karma + Jasmine for Angular tests
-- Test file naming: `test_<module>.py`
+### Error Handling
+- Collectors return empty list/None on failure (never raise)
+- Handlers catch exceptions and print `[red]Error: {e}[/red]`
+- KeyboardInterrupt caught at dispatcher level
+
+### kubectl Command Construction
+Always include `--context` and `-n` namespace:
+```python
+f"kubectl --context {context.current_context} get pods -n {context.namespace} -o json"
+```
+
+### Rich Formatting
+- Panels with emoji titles and colored borders
+- Tables with `border_style="dim"` and `expand=True`
+- Status colors: green=healthy, yellow=warning, red=error, dim=inactive
+- Icons: ✓ success, ✗ failure, ● status dot, ⚠ warning
+
+### Return Value Conventions
+- Collectors return `[]` or `{}` on failure, never raise
+- `resolve_command()` returns `None` if unrecognized (triggers NLP fallback)
+- `resolve_command()` returns either a command dict or a raw kubectl string
+
+## Practices
+
+### Subprocess Usage
+All kubectl calls use `subprocess.run` with `shell=True, capture_output=True, text=True`:
+```python
+result = subprocess.run(command, shell=True, capture_output=True, text=True)
+```
+
+### TTL Caching
+Use `@cached(ttl=5)` decorator for frequently-called kubectl operations to reduce API server load.
+
+### Audit Logging
+All destructive operations call `log_action(action, target)` after success.
+
+### Optional Dependencies
+Features requiring optional packages (textual, etc.) use try/except ImportError with helpful install messages.
+
+### String Formatting
+F-strings used exclusively. Multi-line f-strings broken with parentheses:
+```python
+command = (
+    f"kubectl --context {ctx} "
+    f"get pods -n {ns} -o json"
+)
+```
+
+### Line Length
+Code targets ~70-80 char line width. Long strings split across multiple lines using parenthesized concatenation.

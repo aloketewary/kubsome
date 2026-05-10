@@ -52,7 +52,7 @@ import { Component, Input } from '@angular/core';
       width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--border);
       background: var(--bg-card); color: var(--text-muted); cursor: pointer;
       display: flex; align-items: center; justify-content: center; font-size: 13px;
-      transition: all 0.12s;
+      transition: all 0.25s cubic-bezier(0.34,1.56,0.64,1);
     }
     .info-btn:hover, .info-btn.active { border-color: var(--accent); color: var(--accent); background: var(--accent-subtle); }
 

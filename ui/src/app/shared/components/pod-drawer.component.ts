@@ -216,7 +216,7 @@ import { Subscription } from 'rxjs';
       display: flex; align-items: center; gap: 6px;
       padding: 12px 14px; background: none; border: none;
       border-bottom: 2px solid transparent; color: var(--text-muted);
-      font-size: 12px; cursor: pointer; transition: all 0.12s;
+      font-size: 12px; cursor: pointer; transition: all 0.25s cubic-bezier(0.34,1.56,0.64,1);
     }
     .tab-btn:hover { color: var(--text); }
     .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }

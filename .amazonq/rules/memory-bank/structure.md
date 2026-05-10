@@ -1,152 +1,143 @@
-# Kubsome — Project Structure
+# Project Structure — Kubsome
 
 ## Directory Layout
 
 ```
-kubsome/
-├── main.py                  → Entry point (CLI REPL, serve mode, exec mode)
-├── requirements.txt         → Python dependencies
-├── pyproject.toml           → Package metadata and build config
-├── dev.sh                   → Development server (API + UI hot-reload)
-├── start.sh                 → Production build & serve
-├── Dockerfile               → Container image
-├── deploy/kubsome.yaml      → Kubernetes deployment manifest
-├── pytest.ini               → Test configuration
+kubeasy/
+├── main.py                    → Entry point (CLI, serve, tui, exec modes)
+├── pyproject.toml             → Build config, dependencies, entry points
+├── requirements.txt           → Flat dependency list
+├── Dockerfile                 → Container build
+├── install.sh / dev.sh        → Setup scripts
+├── publish.sh                 → PyPI publish script
+├── pytest.ini                 → Test configuration
 │
-├── core/                    → Kubernetes engine (business logic)
-│   ├── k8s.py              → Base kubectl interaction (get_pods, human_age)
-│   ├── context.py          → Global context state (current_context, namespace)
-│   ├── state.py            → Persistent state management
-│   ├── commands.py         → Command resolution (text → command dict)
-│   ├── dispatcher.py       → Command dispatch (command dict → handler function)
-│   ├── executor.py         → Raw kubectl command execution
-│   ├── completer.py        → Tab completion for CLI
-│   ├── config.py           → Config loading and alias resolution
-│   ├── safety.py           → Production confirmation guards
-│   ├── audit.py            → Action audit logging
-│   ├── plugins.py          → Plugin system loader
-│   ├── health.py           → kubectl health check
-│   ├── healthcheck.py      → Cluster health check runner
-│   ├── history.py          → Command history
-│   ├── spinner.py          → Loading spinner context manager
-│   ├── formatter.py        → Pod table rendering
-│   ├── overview_formatter.py → Overview dashboard rendering
-│   ├── watch_formatter.py  → Live watch view builder
-│   ├── theme.py            → Color theme definitions
-│   ├── banner.py           → Startup banner
-│   ├── export.py           → Report export
-│   ├── notify.py           → Critical alert notifications
-│   ├── bookmarks.py        → Command bookmarks
-│   ├── workflows.py        → Workflow definitions
-│   ├── chaining.py         → Command chaining (&&)
-│   ├── insights.py         → Cluster insights
-│   ├── analyzer.py         → Pod/node/deployment analysis
-│   ├── resolver.py         → Resource name resolution
-│   ├── selector.py         → Interactive selection UI
+├── core/                      → Core engine (Python)
+│   ├── commands.py            → Command resolver (tokenize → command dict)
+│   ├── dispatcher.py          → Maps command types to handler functions (80+ handlers)
+│   ├── executor.py            → Runs raw shell commands
+│   ├── config.py              → User config (~/.kubsome/config.yaml)
+│   ├── context.py             → Kubernetes context state
+│   ├── resolver.py            → Fuzzy name resolution (pods, deployments, cronjobs)
+│   ├── selector.py            → Interactive selection when multiple matches
+│   ├── cache.py               → TTL cache for kubectl calls
+│   ├── safety.py              → Production confirmation guards
+│   ├── audit.py               → Destructive operation logging
+│   ├── remediation.py         → Auto-fix with safety guards
+│   ├── watch_alert.py         → Background condition monitoring
+│   ├── plugins.py             → Plugin loader (~/.kubsome/plugins/)
+│   ├── chaining.py            → Command chaining (&&)
+│   ├── bookmarks.py           → Saved command shortcuts
+│   ├── workflows.py           → Multi-step command sequences
+│   ├── k8s.py                 → Low-level kubectl wrappers
+│   ├── health.py              → kubectl connectivity check
+│   ├── banner.py              → Startup banner
+│   ├── notify.py              → Desktop notifications
+│   ├── version.py             → Update checker
 │   │
-│   ├── collectors/          → Data collection from kubectl
-│   │   ├── pods.py, nodes.py, deployments.py
-│   │   ├── events.py, logs.py, metrics.py
-│   │   ├── inspect.py, diagnosis.py, trace.py
-│   │   ├── rollouts.py, jobs.py, search.py
-│   │   ├── security.py, cost.py, scaling.py
-│   │   ├── network.py, namespace.py, rbac.py
-│   │   ├── services.py, timeline.py, changes.py
-│   │   ├── configs.py, diff.py, labels.py
-│   │   └── multicluster.py, image_pull.py
+│   ├── ai/                    → AI intelligence modules
+│   │   ├── engine.py          → Main AI query handler
+│   │   ├── anomaly.py         → Anomaly detection
+│   │   ├── correlation.py     → Signal correlation
+│   │   ├── explain.py         → Concept explainer
+│   │   ├── suggest.py         → Command suggestions
+│   │   ├── playbooks.py       → 26 remediation runbooks
+│   │   ├── generator.py       → YAML manifest generator
+│   │   └── llm.py             → LLM integration (Ollama)
 │   │
-│   ├── renderers/           → Rich console output formatting
-│   │   ├── *_renderer.py   → One renderer per feature domain
-│   │   └── (21 renderer modules)
+│   ├── nlp/                   → Natural language processing
+│   │   ├── intents.py         → Intent definitions
+│   │   ├── matcher.py         → Query → intent classification
+│   │   └── actions.py         → Intent → command mapping
 │   │
-│   ├── diagnostics/         → Diagnostic engine
-│   │   ├── engine.py       → Core diagnosis logic
+│   ├── collectors/            → 30+ data collectors (kubectl → structured data)
+│   │   ├── pods.py, nodes.py, deployments.py, events.py, logs.py
+│   │   ├── metrics.py, diagnosis.py, trace.py, security.py
+│   │   ├── cost.py, cost_estimate.py, scorecard.py
+│   │   ├── multicluster.py, diff_timeline.py, yaml_diff.py
+│   │   ├── rollouts.py, scaling.py, rbac.py, network.py
+│   │   ├── jobs.py, configs.py, services.py, labels.py
+│   │   ├── changes.py, timeline.py, uptime.py
+│   │   ├── dep_health.py, rollback_preview.py
+│   │   ├── log_correlation.py, search.py, inspect.py
+│   │   └── namespace.py, image_pull.py, diff.py
+│   │
+│   ├── renderers/             → 21 presentation renderers (Rich tables/panels)
+│   │   ├── ai_renderer.py, anomaly_renderer.py
+│   │   ├── cost_renderer.py, diagnosis_renderer.py
+│   │   ├── events_renderer.py, help_renderer.py
+│   │   ├── inspect_renderer.py, logs_renderer.py
+│   │   ├── metrics_renderer.py, ops_renderer.py
+│   │   ├── rollout_renderer.py, scaling_renderer.py
+│   │   ├── trace_renderer.py, services_renderer.py
+│   │   ├── rbac_renderer.py, report_renderer.py
+│   │   ├── compare_renderer.py, describe_renderer.py
+│   │   ├── incident_renderer.py, namespace_renderer.py
+│   │   ├── search_renderer.py, changes_renderer.py
+│   │   └── workflow_renderer.py
+│   │
+│   ├── diagnostics/           → Root cause analysis engine
+│   │   ├── engine.py          → Diagnostic logic
 │   │   └── recommendations.py → Fix recommendations
 │   │
-│   ├── ai/                  → AI/intelligence layer
-│   │   ├── engine.py       → AI query handler
-│   │   ├── nlp.py          → Natural language parsing
-│   │   ├── suggest.py      → Command suggestions
-│   │   ├── anomaly.py      → Anomaly detection
-│   │   ├── correlation.py  → Signal correlation
-│   │   ├── explain.py      → Resource explanation
-│   │   ├── generator.py    → Manifest generation
-│   │   ├── playbooks.py    → Issue playbooks
-│   │   └── llm.py          → LLM integration
-│   │
-│   └── incident/            → Incident management
-│       ├── __init__.py
-│       └── manager.py      → Start/stop/note/snapshot
+│   └── incident/             → Incident tracking
+│       └── manager.py         → Start/stop/note/snapshot
 │
-├── api/                     → FastAPI REST + WebSocket backend
-│   ├── app.py              → FastAPI app setup, CORS, router mounting
-│   ├── serve.py            → Uvicorn server launcher
-│   └── routes/             → Route modules (one per domain)
-│       ├── pods.py, overview.py, contexts.py
-│       ├── events.py, metrics.py, logs.py
-│       ├── deployments.py, diagnostics.py
-│       ├── intelligence.py, terminal.py
-│       ├── operations.py, ws.py (WebSocket)
-│       └── __init__.py
+├── api/                       → FastAPI REST + WebSocket backend
+│   ├── app.py                 → FastAPI app setup, CORS, route registration
+│   ├── serve.py               → Uvicorn launcher
+│   └── routes/                → 13 route modules
+│       ├── pods.py, overview.py, contexts.py, events.py
+│       ├── metrics.py, logs.py, deployments.py
+│       ├── diagnostics.py, intelligence.py
+│       ├── terminal.py, operations.py, describe.py
+│       └── ws.py              → WebSocket endpoint
 │
-├── ui/                      → Angular 20 + PrimeNG web dashboard
-│   ├── src/app/
-│   │   ├── app.ts, app.routes.ts, app.config.ts
-│   │   ├── core/           → Services, interceptors, models
-│   │   │   ├── services/   → api, ws, cache, loading, error, preferences
-│   │   │   ├── interceptors/ → error, loading
-│   │   │   └── models.ts
-│   │   ├── features/       → Feature components (20+ pages)
-│   │   │   ├── dashboard/, pods/, deployments/, logs/
-│   │   │   ├── events/, metrics/, jobs/, rbac/
-│   │   │   ├── network/, incident/, ai/, terminal/
-│   │   │   ├── timeline/, search/, settings/, secrets/
-│   │   │   ├── compare/, cost/, graph/, runbooks/
-│   │   │   ├── namespace/, yaml-editor/
-│   │   │   └── contexts/
-│   │   ├── layout/         → Shell component (sidebar, header)
-│   │   └── shared/         → Reusable components
-│   │       └── components/ → ai-float, command-palette, pod-drawer, etc.
-│   ├── angular.json, package.json, tsconfig.json
-│   └── public/
+├── ui/                        → Angular 20 + PrimeNG Web Dashboard
+│   ├── src/app/               → Angular components and services
+│   ├── angular.json           → Angular CLI config
+│   └── package.json           → Frontend dependencies
 │
-├── tui/                     → Textual terminal UI
-│   ├── __init__.py
-│   └── app.py
+├── tui/                       → Full-screen terminal UI (Textual)
+│   └── app.py                 → TUI application
 │
-├── plugins/                 → Custom command plugins
-│   └── example_health.py
+├── plugins/                   → Plugin examples
+│   └── example_health.py      → Sample plugin
 │
-├── config/                  → Application settings
-│   └── settings.py
+├── config/                    → App settings module
+│   └── settings.py            → Runtime settings
 │
-└── tests/
-    └── test_core.py
+├── deploy/                    → Deployment configs
+│   ├── helm/kubsome/          → Helm chart
+│   └── kubsome.yaml           → Raw Kubernetes manifest
+│
+└── tests/                     → Test suite (114 tests)
+    ├── test_core.py           → Core module tests
+    ├── test_features.py       → Feature integration tests
+    ├── test_nlp_ai.py         → NLP/AI tests
+    ├── test_api.py            → API endpoint tests
+    └── test_v15.py            → Version 1.5 feature tests
 ```
 
 ## Architectural Patterns
 
-### Command Pattern (CLI)
-1. User input → `resolve_command()` → command dict `{"type": "...", "target": "..."}`
-2. Command dict → `dispatch()` → handler function lookup via HANDLERS registry
-3. Handler calls collector → analyzer → renderer
+### Command Resolution Pipeline
+```
+User Input → Alias Expansion → Command Resolver (exact match)
+  → Rule-Based NLP (regex) → Intent Engine (fuzzy classification)
+  → Suggestion Fallback ("Did you mean: pods")
+```
 
-### Layered Architecture
-- **Collectors**: Raw data from kubectl (subprocess → JSON parsing)
-- **Analyzers**: Business logic, health assessment
-- **Renderers**: Rich console output formatting
-- **Dispatchers**: Route commands to appropriate handlers
+### Collector-Renderer Pattern
+- **Collectors** run kubectl commands and return structured dicts
+- **Renderers** take structured data and produce Rich console output
+- **Dispatcher** orchestrates: resolve → collect → render
 
-### API Architecture
-- FastAPI app with domain-based router modules
-- Each route module imports from `core/` collectors/analyzers
-- WebSocket endpoints for real-time streaming (pods, events, logs, shell)
-- CORS configured for local Angular dev server
-- Production: serves Angular build as static files
+### Handler Registry
+The dispatcher uses a flat dict (`HANDLERS`) mapping command type strings to handler functions, enabling easy extension.
 
-### Frontend Architecture
-- Angular 20 standalone components (no NgModules)
-- Feature-based folder structure
-- Core services layer (API, WebSocket, caching, loading state)
-- PrimeNG component library with dark theme
-- Shared components for cross-cutting UI (command palette, toasts, drawers)
+### Fuzzy Resolution
+All resource names go through `resolve_pod_name` / `resolve_deployment_name` which use rapidfuzz for fuzzy matching, then `choose_*` for interactive disambiguation.
+
+### Safety Guards
+Destructive operations (rollback, delete, scale) check environment detection and require confirmation in production contexts.

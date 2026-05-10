@@ -186,7 +186,7 @@ import { InputTextModule } from 'primeng/inputtext';
     /* Summary */
     .summary-strip {
       display: flex; gap: 8px; margin-bottom: 20px;
-      padding: 12px 16px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm);
+      padding: 14px 18px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
     }
     .summary-pill { display: flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 20px; background: var(--bg-elevated); font-size: 12px; }
     .summary-pill i { font-size: 12px; color: var(--text-muted); }
@@ -206,10 +206,10 @@ import { InputTextModule } from 'primeng/inputtext';
     /* Ingress Cards */
     .ingress-list { display: flex; flex-direction: column; gap: 8px; }
     .ingress-card {
-      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm);
-      padding: 16px; transition: border-color 0.12s;
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 16px; transition: all 0.25s cubic-bezier(0.34,1.56,0.64,1);
     }
-    .ingress-card:hover { border-color: var(--border-hover); }
+    .ingress-card:hover { border-color: var(--border-hover); transform: translateY(-2px); box-shadow: 0 8px 24px -8px rgba(0,0,0,0.2); }
     .ing-flow { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
     .flow-node {
       display: flex; align-items: center; gap: 6px;
@@ -227,7 +227,7 @@ import { InputTextModule } from 'primeng/inputtext';
 
     /* DNS Tool */
     .dns-tool {
-      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 16px;
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px;
     }
     .dns-input-row { display: flex; gap: 8px; margin-bottom: 12px; }
     .dns-input-wrap { position: relative; flex: 1; max-width: 300px; }
@@ -258,7 +258,7 @@ import { InputTextModule } from 'primeng/inputtext';
 
     /* Mesh */
     .mesh-card {
-      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 16px;
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px;
     }
     .mesh-active, .mesh-inactive { display: flex; align-items: center; gap: 12px; }
     .mesh-icon {
@@ -274,7 +274,7 @@ import { InputTextModule } from 'primeng/inputtext';
     .empty-state {
       display: flex; align-items: center; justify-content: center; gap: 8px;
       padding: 40px; color: var(--text-muted); font-size: 13px;
-      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm);
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
     }
     .empty-state i { font-size: 16px; opacity: 0.5; }
   `],

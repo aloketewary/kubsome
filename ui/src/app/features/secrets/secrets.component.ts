@@ -181,7 +181,7 @@ import { TooltipModule } from 'primeng/tooltip';
     /* Missing Cards */
     .missing-card {
       background: var(--bg-card); border: 1px solid var(--border); border-left: 3px solid var(--danger);
-      border-radius: var(--radius-sm); padding: 16px; margin-bottom: 10px;
+      border-radius: var(--radius); padding: 16px; margin-bottom: 10px;
     }
     .flow-diagram { display: flex; align-items: center; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
     .flow-step { display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 80px; }
@@ -212,7 +212,7 @@ import { TooltipModule } from 'primeng/tooltip';
       display: flex; align-items: center; gap: 10px;
       padding: 12px 14px; background: var(--bg-card);
       border: 1px solid var(--border); border-left: 3px solid var(--success);
-      border-radius: var(--radius-sm);
+      border-radius: var(--radius);
     }
     .vc-icon {
       width: 28px; height: 28px; border-radius: 6px;
@@ -229,7 +229,7 @@ import { TooltipModule } from 'primeng/tooltip';
     .sa-card {
       display: flex; align-items: center; gap: 10px;
       padding: 10px 14px; background: var(--bg-card);
-      border: 1px solid var(--border); border-radius: var(--radius-sm);
+      border: 1px solid var(--border); border-radius: var(--radius);
     }
     .sa-card.sa-empty { opacity: 0.7; }
     .sa-icon {

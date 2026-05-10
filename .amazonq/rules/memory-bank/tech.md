@@ -1,105 +1,101 @@
-# Kubsome — Technology Stack
+# Technology Stack — Kubsome
 
 ## Languages & Versions
-- **Python 3.9+** — Backend, CLI, core engine
-- **TypeScript 5.8** — Angular frontend
-- **Bash** — Dev/production scripts
+- **Python 3.9+** — Core engine, CLI, API (primary language)
+- **TypeScript 5.8** — Angular Web UI frontend
 
-## Python Dependencies
+## Build System
+- **setuptools** (>=68.0) with `pyproject.toml` — Python packaging
+- **Angular CLI 20** — Frontend build (`ng build`)
+- **pnpm** — Frontend package manager (pnpm-lock.yaml present)
 
-### Core
+## Core Dependencies (Python)
 | Package | Version | Purpose |
 |---------|---------|---------|
-| rich | >=13.0 | Console formatting, tables, panels, Live display |
-| prompt-toolkit | >=3.0 | CLI input with completion and history |
+| rich | >=13.0 | Terminal formatting (tables, panels, colors) |
+| prompt-toolkit | >=3.0 | Interactive CLI input, history, completion |
 | questionary | >=2.0 | Interactive selection prompts |
-| rapidfuzz | >=3.0 | Fuzzy matching for commands/contexts |
+| rapidfuzz | >=3.0 | Fuzzy string matching for resource names |
 | humanize | >=4.0 | Human-readable time/size formatting |
-| pyyaml | >=6.0 | YAML parsing |
+| pyyaml | >=6.0 | YAML config parsing |
+| fastapi | >=0.104.0 | REST API framework |
+| uvicorn[standard] | >=0.24.0 | ASGI server |
 
-### Optional
-| Package | Version | Purpose |
-|---------|---------|---------|
-| textual | >=0.40 | Full-screen TUI (optional: `pip install .[tui]`) |
-| fastapi | >=0.104.0 | REST API framework (optional: `pip install .[api]`) |
-| uvicorn[standard] | >=0.24.0 | ASGI server for FastAPI |
+## Optional Dependencies
+| Extra | Package | Purpose |
+|-------|---------|---------|
+| tui | textual >=0.40 | Full-screen terminal UI |
+| dev | pytest >=7.0, build, twine | Testing and publishing |
 
-### Dev
-| Package | Version | Purpose |
-|---------|---------|---------|
-| pytest | >=7.0 | Testing framework |
-
-## Frontend Dependencies
-
-### Angular 20 Stack
+## Frontend Dependencies (Angular)
 | Package | Version | Purpose |
 |---------|---------|---------|
 | @angular/core | ^20.1.0 | Framework |
-| @angular/router | ^20.1.0 | Routing |
-| @angular/cdk | ^20.2.14 | Component Dev Kit |
-| @angular/animations | ^21.2.12 | Animations |
 | primeng | ^20.4.0 | UI component library |
 | @primeng/themes | ^20.4.0 | PrimeNG theming |
-| primeicons | ^7.0.0 | Icon set |
+| @xterm/xterm | ^6.0.0 | Terminal emulator in browser |
+| cytoscape | ^3.33.3 | Graph visualization |
 | rxjs | ~7.8.0 | Reactive programming |
-| zone.js | ~0.15.0 | Change detection |
 
-### Dev Tools
-| Package | Purpose |
-|---------|---------|
-| @angular/cli ^20.1.4 | Build tooling |
-| @angular/build ^20.1.4 | Build system |
-| typescript ~5.8.2 | Type checking |
-| jasmine-core ~5.8.0 | Test framework |
-| karma ~6.4.0 | Test runner |
-
-## Build System
-- **Python**: setuptools (pyproject.toml)
-- **Frontend**: Angular CLI (`ng build`, `ng serve`)
-- **Package manager**: pip (Python), npm (Node.js)
-
-## External Dependencies
-- **kubectl** — Must be installed and configured with cluster access
-- **metrics-server** — Required for `top` commands
-- **Node.js 18+** — For Angular UI development
+## External Requirements
+- **kubectl** — configured with cluster access (required)
+- **metrics-server** — for `top` commands (optional)
+- **Ollama** — for LLM features (optional, default: local provider)
 
 ## Development Commands
 
+### Python
 ```bash
-# Setup
-python3 -m venv venv && source venv/bin/activate
-pip install -r requirements.txt
-cd ui && npm install && cd ..
+# Install in development mode
+pip install -e ".[dev]"
 
-# Development (both servers)
-./dev.sh                          # API :8000 + UI :3001
+# Run CLI
+python main.py
 
-# Individual servers
-uvicorn api.app:app --reload --port 8000   # API only
-cd ui && npx ng serve --port 3001          # UI only
+# Run API server
+python main.py serve [port]
 
-# CLI
-python3 main.py                   # Interactive REPL
-python3 main.py serve             # Start API server
-python3 main.py serve 9000        # API on custom port
-python3 main.py --exec "pods"     # Single command execution
+# Run TUI
+python main.py tui
 
-# Testing
-pytest                            # Run Python tests
-cd ui && npm test                  # Run Angular tests
+# Run tests
+pytest
 
-# Production
-./start.sh                        # Build UI + serve on single port
+# Build package
+python -m build
+
+# Publish to PyPI
+./publish.sh
 ```
 
-## Configuration
-- `config/settings.py` — Application settings (refresh intervals, etc.)
-- `~/.kubsome/` — User config, plugins, bookmarks, workflows
-- `~/.kube/config` — Kubernetes cluster configuration (standard kubectl)
+### Frontend (ui/)
+```bash
+cd ui
+pnpm install
+pnpm start          # Dev server (localhost:4200)
+pnpm build          # Production build → dist/ui/browser/
+```
 
-## Ports
-| Service | Port | Mode |
-|---------|------|------|
-| FastAPI | 8000 | Dev & Prod |
-| Angular | 3001 | Dev only |
-| Angular | served via FastAPI | Prod (static files) |
+### Docker
+```bash
+docker build -t kubsome .
+docker run -p 8000:8000 -v ~/.kube:/root/.kube kubsome
+```
+
+### Helm
+```bash
+helm install kubsome deploy/helm/kubsome/ -n kubsome --create-namespace
+```
+
+## Project Metadata
+- **Name**: kubsome
+- **Version**: 1.5.0
+- **License**: MIT
+- **Author**: Aloke Tewary
+- **Entry point**: `main:main` (registered as `kubsome` console script)
+- **Python packages included**: core*, config*, tui*, plugins*, api*
+
+## Configuration
+- User config: `~/.kubsome/config.yaml`
+- Plugins directory: `~/.kubsome/plugins/`
+- Bookmarks/workflows stored in `~/.kubsome/`

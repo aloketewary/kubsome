@@ -6,6 +6,7 @@ import { TagModule } from 'primeng/tag';
 import { ButtonModule } from 'primeng/button';
 import { TooltipModule } from 'primeng/tooltip';
 import { InputTextModule } from 'primeng/inputtext';
+import { ConfirmService } from '../../shared/services/confirm.service';
 
 @Component({
   selector: 'app-incident',
@@ -180,7 +181,7 @@ import { InputTextModule } from 'primeng/inputtext';
     .sev-btn {
       padding: 6px 14px; border-radius: 6px; border: 1px solid var(--border);
       background: var(--bg-elevated); color: var(--text-muted); font-size: 12px;
-      cursor: pointer; transition: all 0.12s;
+      cursor: pointer; transition: all 0.25s cubic-bezier(0.34,1.56,0.64,1);
     }
     .sev-btn:hover { border-color: var(--border-hover); color: var(--text); }
     .sev-btn.active.sev-critical { border-color: var(--danger); background: var(--danger-subtle); color: var(--danger); }
@@ -265,6 +266,7 @@ import { InputTextModule } from 'primeng/inputtext';
 })
 export class IncidentComponent implements OnInit, OnDestroy {
   private http = inject(HttpClient);
+  private confirmService = inject(ConfirmService);
   router = inject(Router);
   private base = 'http://localhost:8000/api';
   active: any = null;
@@ -304,12 +306,19 @@ export class IncidentComponent implements OnInit, OnDestroy {
   }
 
   stop() {
-    if (confirm('Resolve this incident? Timeline will be exported.')) {
-      this.http.post<any>(`${this.base}/incident/stop`, {}).subscribe(() => {
-        this.active = null;
-        clearInterval(this.timerInterval);
-      });
-    }
+    this.confirmService.confirm({
+      title: 'Resolve Incident',
+      message: 'This will close the incident and export the timeline. Continue?',
+      confirmLabel: 'Resolve',
+      severity: 'warning',
+    }).then(ok => {
+      if (ok) {
+        this.http.post<any>(`${this.base}/incident/stop`, {}).subscribe(() => {
+          this.active = null;
+          clearInterval(this.timerInterval);
+        });
+      }
+    });
   }
 
   addNote() {

@@ -162,7 +162,42 @@ def _init_config():
 
 def _start_server(args):
     """Start API server (serves UI if built)."""
-    port = int(args[1]) if len(args) > 1 else 8000
+    import shutil
+    from pathlib import Path
+
+    port = 8000
+    no_browser = False
+    clear_cache = False
+
+    for arg in args[1:]:
+        if arg == "--no-browser":
+            no_browser = True
+        elif arg == "--clear-cache":
+            clear_cache = True
+        elif arg.isdigit():
+            port = int(arg)
+
+    if clear_cache:
+        ui_dist = (
+            Path(__file__).parent
+            / "ui" / "dist" / "ui" / "browser"
+        )
+        ui_bundled = (
+            Path(__file__).parent / "api" / "ui_dist"
+        )
+        cleared = False
+        for p in [ui_dist, ui_bundled]:
+            if p.exists():
+                shutil.rmtree(p)
+                cleared = True
+        if cleared:
+            console.print(
+                "[yellow]✓ Cleared UI dist cache[/yellow]"
+            )
+        else:
+            console.print(
+                "[dim]No UI dist cache to clear[/dim]"
+            )
 
     console.print(
         Panel.fit(
@@ -176,7 +211,7 @@ def _start_server(args):
 
     try:
         from api.serve import start
-        start(port=port)
+        start(port=port, no_browser=no_browser)
     except ImportError:
         console.print(
             "[red]API dependencies not installed.[/red]\n"

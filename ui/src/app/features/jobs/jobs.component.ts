@@ -145,7 +145,7 @@ import { TooltipModule } from 'primeng/tooltip';
     /* Summary */
     .summary-strip {
       display: flex; gap: 8px; margin-bottom: 20px;
-      padding: 12px 16px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm);
+      padding: 14px 18px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
     }
     .summary-pill { display: flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 20px; background: var(--bg-elevated); font-size: 12px; }
     .summary-pill i { font-size: 12px; color: var(--text-muted); }
@@ -170,10 +170,10 @@ import { TooltipModule } from 'primeng/tooltip';
     /* CronJob Cards */
     .cj-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; }
     .cj-card {
-      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm);
-      padding: 16px; transition: border-color 0.12s;
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 16px; transition: all 0.25s cubic-bezier(0.34,1.56,0.64,1);
     }
-    .cj-card:hover { border-color: var(--border-hover); }
+    .cj-card:hover { border-color: var(--border-hover); transform: translateY(-2px); box-shadow: 0 8px 24px -8px rgba(0,0,0,0.2); }
     .cj-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
     .cj-name { font-size: 13px; font-weight: 600; }
     .cj-schedule { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
@@ -194,11 +194,11 @@ import { TooltipModule } from 'primeng/tooltip';
     .job-list { display: flex; flex-direction: column; gap: 6px; }
     .job-card {
       display: flex; align-items: center; gap: 12px;
-      padding: 12px 16px; background: var(--bg-card);
-      border: 1px solid var(--border); border-radius: var(--radius-sm);
-      transition: border-color 0.12s;
+      padding: 14px 18px; background: var(--bg-card);
+      border: 1px solid var(--border); border-radius: var(--radius);
+      transition: all 0.25s cubic-bezier(0.34,1.56,0.64,1);
     }
-    .job-card:hover { border-color: var(--border-hover); }
+    .job-card:hover { border-color: var(--border-hover); transform: translateY(-2px); box-shadow: 0 8px 24px -8px rgba(0,0,0,0.2); }
     .job-failed { border-left: 3px solid var(--danger); }
     .job-status-icon {
       width: 32px; height: 32px; border-radius: 8px;
@@ -227,7 +227,7 @@ import { TooltipModule } from 'primeng/tooltip';
     .empty-state {
       display: flex; align-items: center; justify-content: center; gap: 8px;
       padding: 40px; color: var(--text-muted); font-size: 13px;
-      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm);
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
     }
     .empty-state i { font-size: 16px; opacity: 0.5; }
   `],

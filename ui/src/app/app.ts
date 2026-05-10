@@ -12,11 +12,12 @@ import { ToastAlertsComponent } from './shared/components/toast-alerts.component
 import { BreadcrumbComponent } from './shared/components/breadcrumb.component';
 import { ConnectionStatusComponent } from './shared/components/connection-status.component';
 import { ErrorToastComponent } from './shared/components/error-toast.component';
+import { ConfirmDialogComponent } from './shared/components/confirm-dialog.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, Select, FormsModule, ShellComponent, CommandPaletteComponent, AiFloatComponent, ToastAlertsComponent, BreadcrumbComponent, ConnectionStatusComponent, ErrorToastComponent],
+  imports: [RouterOutlet, Select, FormsModule, ShellComponent, CommandPaletteComponent, AiFloatComponent, ToastAlertsComponent, BreadcrumbComponent, ConnectionStatusComponent, ErrorToastComponent, ConfirmDialogComponent],
   template: `
     <!-- Connection Status (top-most) -->
     <app-connection-status />
@@ -117,6 +118,9 @@ import { ErrorToastComponent } from './shared/components/error-toast.component';
 
     <!-- Toast Alerts -->
     <app-toast-alerts />
+
+    <!-- Confirm Dialog -->
+    <app-confirm-dialog />
 
     <!-- Floating AI -->
     <app-ai-float />
@@ -401,15 +405,16 @@ import { ErrorToastComponent } from './shared/components/error-toast.component';
     }
     .content {
       flex: 1;
-      margin-left: 240px;
       min-height: 100vh;
       background: var(--bg);
-      padding-top: 56px; /* topbar height */
-      padding-bottom: 24px; /* statusbar height */
+      padding-top: 56px;
+      padding-bottom: 24px;
       box-sizing: border-box;
+      overflow-y: auto;
+      overflow-x: hidden;
     }
     .content-inner {
-      padding: 24px 32px;
+      padding: 20px 20px;
     }
     .sidebar {
       width: 240px;
@@ -452,13 +457,6 @@ import { ErrorToastComponent } from './shared/components/error-toast.component';
     }
     .collapse-toggle:hover { border-color: var(--accent); color: var(--accent); }
     .sidebar-collapsed .status-bar { left: 48px; }
-    .content {
-      flex: 1;
-      padding: 24px 32px;
-      padding-bottom: 48px;
-      overflow-y: auto;
-      background: var(--bg);
-    }
 
     .status-bar {
       position: fixed;

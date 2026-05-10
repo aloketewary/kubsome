@@ -113,9 +113,9 @@ import { PodMetrics, NodeMetrics } from '../../core/models';
     }
     .node-card {
       background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
-      padding: 16px; transition: border-color 0.15s;
+      padding: 18px; transition: all 0.25s cubic-bezier(0.34,1.56,0.64,1);
     }
-    .node-card:hover { border-color: var(--border-hover); }
+    .node-card:hover { border-color: var(--border-hover); transform: translateY(-2px); box-shadow: 0 8px 24px -8px rgba(0,0,0,0.2); }
     .node-header { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
     .node-header i { font-size: 14px; color: var(--text-muted); }
     .node-name { font-size: 12px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -156,9 +156,9 @@ import { PodMetrics, NodeMetrics } from '../../core/models';
     .pod-list { padding: 4px 0; }
     .pod-metric-row {
       display: flex; align-items: center; gap: 12px;
-      padding: 10px 20px; transition: background 0.1s;
+      padding: 10px 20px; transition: all 0.15s;
     }
-    .pod-metric-row:hover { background: var(--bg-hover); }
+    .pod-metric-row:hover { background: var(--bg-hover); transform: translateX(3px); }
     .pod-rank {
       font-size: 11px; font-weight: 600; color: var(--text-muted);
       width: 20px; text-align: center;
