@@ -37,6 +37,12 @@ def render_help():
     table.add_row("top nodes", "Node resource pressure")
     table.add_row("ns", "Namespace resource summary")
     table.add_row("uptime", "Cluster uptime & availability")
+    table.add_row("correlate <pod1> <pod2> ...", "Multi-pod log correlation")
+    table.add_row("diff-timeline [hours]", "What changed (default 24h)")
+    table.add_row("dep-health <deployment>", "Dependency health map")
+    table.add_row("rollback-preview <deployment>", "Diff before rollback")
+    table.add_row("watch-alert <pod> [crash|restart]", "Background monitor")
+    table.add_row("watch-status", "Show active watches")
 
     # Operations
     table.add_row("", "")

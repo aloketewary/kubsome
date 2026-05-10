@@ -8,17 +8,22 @@ import { Subscription } from 'rxjs';
 import { ApiService } from '../../core/services/api.service';
 import { WsService } from '../../core/services/ws.service';
 import { Pod } from '../../core/models';
+import { PageInfoComponent } from '../../shared/components/page-info.component';
 
 @Component({
   selector: 'app-logs',
   standalone: true,
-  imports: [ButtonModule, Select, TooltipModule, FormsModule, InputTextModule],
+  imports: [ButtonModule, Select, TooltipModule, FormsModule, InputTextModule, PageInfoComponent],
   template: `
     <div class="page-header">
       <div>
         <h1>Logs</h1>
         <p class="subtitle">Pod log viewer</p>
       </div>
+      <app-page-info title="Logs" description="View and stream pod logs. Supports filtering by level and full-text search."
+        [tips]="['Select a pod and click Fetch or Live', 'Live mode streams via WebSocket in real-time', 'Filter by Error/Warn to find issues fast', 'Fullscreen mode for focused debugging']"
+        [commands]="['logs <pod>', 'logs <pod> --follow', 'logs <pod> --errors', 'correlate-logs <pod1> <pod2>']"
+        [shortcuts]="[{key: 'G+L', action: 'Navigate to Logs'}]" />
     </div>
 
     <!-- Controls Bar -->

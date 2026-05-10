@@ -150,4 +150,20 @@ def map_to_command(parsed):
     if intent == "incident_stop":
         return {"type": "incident_stop"}
 
+    # New features
+    if intent == "correlate_logs" and target:
+        return f"correlate {target}"
+
+    if intent == "diff_timeline":
+        return {"type": "diff_timeline", "hours": 24}
+
+    if intent == "dep_health" and target:
+        return f"dep-health {target}"
+
+    if intent == "rollback_preview" and target:
+        return f"rollback-preview {target}"
+
+    if intent == "watch_alert" and target:
+        return f"watch-alert {target} crash"
+
     return None

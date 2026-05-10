@@ -143,3 +143,94 @@ def get_rollback_preview(name: str):
 def get_watch_status():
     from core.watch_alert import get_watcher
     return get_watcher().status()
+
+
+@router.get("/scorecard")
+def get_scorecard():
+    from core.collectors.scorecard import cluster_scorecard
+    return cluster_scorecard()
+
+
+@router.get("/cost-estimate")
+def get_cost_estimate():
+    from core.collectors.cost_estimate import estimate_costs
+    return estimate_costs()
+
+
+@router.post("/remediate/{pod}")
+def post_remediate(pod: str):
+    from core.remediation import auto_remediate
+    return auto_remediate(pod)
+
+
+@router.get("/yaml-diff/{name}")
+def get_yaml_diff(name: str, rev_a: int = None, rev_b: int = None):
+    from core.collectors.yaml_diff import yaml_diff
+    return yaml_diff(name, rev_a, rev_b)
+
+
+@router.get("/saved-queries")
+def get_saved_queries():
+    from core.saved_queries import list_queries
+    return {"queries": list_queries()}
+
+
+@router.post("/saved-queries")
+def post_saved_query(req: dict):
+    from core.saved_queries import save_query
+    name = req.get("name", "")
+    query = req.get("query", "")
+    interval = req.get("interval", 300)
+    if not name or not query:
+        from fastapi import HTTPException
+        raise HTTPException(400, "name and query required")
+    return save_query(name, query, interval)
+
+
+@router.delete("/saved-queries/{name}")
+def delete_saved_query(name: str):
+    from core.saved_queries import remove_query
+    if not remove_query(name):
+        from fastapi import HTTPException
+        raise HTTPException(404, "Query not found")
+    return {"deleted": name}
+
+
+@router.post("/watch-alert")
+def post_watch_alert(req: dict):
+    from core.watch_alert import (
+        get_watcher, pod_crash_condition,
+        pod_restart_condition, pod_count_condition
+    )
+
+    target = req.get("target", "")
+    condition = req.get("condition", "crash")
+
+    if not target:
+        from fastapi import HTTPException
+        raise HTTPException(400, "target required")
+
+    watcher = get_watcher()
+    conditions = {
+        "crash": pod_crash_condition(target),
+        "restart": pod_restart_condition(target, 5),
+        "count": pod_count_condition(target, 1),
+    }
+
+    check_fn = conditions.get(condition, conditions["crash"])
+    name = f"{target}-{condition}"
+    watcher.add(name, check_fn, interval=30)
+    watcher.start()
+
+    return {
+        "added": name,
+        "condition": condition,
+        "target": target,
+    }
+
+
+@router.delete("/watch-alert/{name}")
+def delete_watch_alert(name: str):
+    from core.watch_alert import get_watcher
+    get_watcher().remove(name)
+    return {"removed": name}
