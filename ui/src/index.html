@@ -9,7 +9,7 @@
   <style>
     body {
       margin: 0;
-      background: #09090b;
+      background: #070708;
     }
     .app-loader {
       position: fixed;
@@ -19,16 +19,16 @@
       align-items: center;
       justify-content: center;
       gap: 16px;
-      background: #09090b;
+      background: #070708;
       z-index: 9999;
     }
     .app-loader .spinner {
       width: 32px;
       height: 32px;
-      border: 3px solid #27272a;
+      border: 3px solid #202024;
       border-top-color: #3b82f6;
       border-radius: 50%;
-      animation: spin 0.7s linear infinite;
+      animation: spin 0.7s cubic-bezier(0.4, 0, 0.2, 1) infinite;
     }
     .app-loader .loader-text {
       font-family: -apple-system, BlinkMacSystemFont, sans-serif;

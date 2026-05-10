@@ -10,10 +10,16 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
   standalone: true,
   imports: [RouterLink, RouterLinkActive, HelpDialogComponent],
   template: `
-    <div class="ctx-block">
-      <div class="ctx-dot" [class.dot-ok]="clusterOk" [class.dot-bad]="!clusterOk"></div>
-      <div class="ctx-info">
-        <span class="ctx-name">{{ currentContext }}</span>
+    <div class="sidebar-header">
+      <div class="logo-area">
+        <i class="pi pi-box logo-icon"></i>
+        <span class="logo-text">Kubsome</span>
+      </div>
+      <div class="ctx-block glass">
+        <div class="ctx-dot" [class.dot-ok]="clusterOk" [class.dot-bad]="!clusterOk"></div>
+        <div class="ctx-info">
+          <span class="ctx-name">{{ currentContext }}</span>
+        </div>
       </div>
     </div>
 
@@ -114,11 +120,33 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
   `,
   styles: [`
     :host { display: flex; flex-direction: column; height: calc(100vh - 48px - 24px); }
+    .sidebar-header {
+      padding: 20px 12px 16px;
+    }
+    .logo-area {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 16px;
+      padding-left: 8px;
+    }
+    .logo-icon {
+      font-size: 20px;
+      color: var(--accent);
+    }
+    .logo-text {
+      font-weight: 800;
+      font-size: 18px;
+      letter-spacing: -0.02em;
+    }
     .ctx-block {
       display: flex;
       align-items: center;
-      gap: 6px;
-      padding: 8px 10px 12px;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: var(--radius-sm);
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
     }
     .ctx-dot {
       width: 7px;
@@ -164,22 +192,26 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
     .nav-item {
       display: flex;
       align-items: center;
-      gap: 8px;
-      padding: 6px 10px;
-      border-radius: 6px;
-      font-size: 12px;
+      gap: 10px;
+      padding: 8px 12px;
+      margin: 1px 8px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 500;
       color: var(--text-secondary);
       cursor: pointer;
-      transition: all 0.1s ease;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
       text-decoration: none;
     }
     .nav-item:hover {
       background: var(--bg-hover);
       color: var(--text);
+      transform: translateX(2px);
     }
     .nav-item.active {
       background: var(--accent-subtle);
       color: var(--accent);
+      box-shadow: inset 2px 0 0 var(--accent);
     }
     .nav-item i {
       font-size: 13px;
