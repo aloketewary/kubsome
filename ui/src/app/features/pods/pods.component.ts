@@ -41,7 +41,7 @@ interface PodGroup {
           <span class="watch-dot" [class.pulsing]="watching"></span>
           {{ watching ? 'Live' : 'Watch' }}
         </button>
-        <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="refresh()" pTooltip="Refresh"></button>
+        <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="refresh()" pTooltip="Refresh" aria-label="Refresh"></button>
       </div>
     </div>
 
@@ -86,7 +86,7 @@ interface PodGroup {
           @if (selected.length > 1) {
             <button pButton icon="pi pi-list" label="Logcat ({{ selected.length }})" class="p-button-sm" (click)="viewLogcat()"></button>
           }
-          <button pButton icon="pi pi-times" class="p-button-sm p-button-text" (click)="clearSelection()"></button>
+          <button pButton icon="pi pi-times" class="p-button-sm p-button-text" (click)="clearSelection()" aria-label="Clear Selection"></button>
         </div>
       </div>
     }
@@ -94,7 +94,8 @@ interface PodGroup {
     <!-- Groups -->
     @for (group of filteredGroups; track group.deployment) {
       <div class="pod-group" [class.group-unhealthy]="group.unhealthyCount > 0">
-        <div class="group-header" (click)="group.expanded = !group.expanded">
+        <div class="group-header" (click)="group.expanded = !group.expanded" tabindex="0" role="button" aria-label="Toggle deployment group"
+             (keydown.enter)="group.expanded = !group.expanded" (keydown.space)="$event.preventDefault(); group.expanded = !group.expanded">
           <i class="pi" [class.pi-chevron-down]="group.expanded" [class.pi-chevron-right]="!group.expanded"></i>
           <span class="group-name">{{ group.deployment }}</span>
           <div class="group-health-bar">
@@ -107,13 +108,15 @@ interface PodGroup {
           }
           @if (group.pods.length > 1) {
             <button pButton icon="pi pi-check-square" class="p-button-text p-button-sm select-all-btn" pTooltip="Select all for logcat"
-                    (click)="selectGroup(group, $event)"></button>
+                    (click)="selectGroup(group, $event)" aria-label="Select all pods in group"></button>
           }
         </div>
         @if (group.expanded) {
           <div class="group-body">
             @for (pod of group.pods; track pod.name) {
-              <div class="pod-row" [class.pod-selected]="isSelected(pod)" [class.pod-unhealthy]="!isHealthy(pod)" (click)="togglePod(pod, group)">
+              <div class="pod-row" [class.pod-selected]="isSelected(pod)" [class.pod-unhealthy]="!isHealthy(pod)"
+                   (click)="togglePod(pod, group)" tabindex="0" role="button" aria-label="Select pod"
+                   (keydown.enter)="togglePod(pod, group)" (keydown.space)="$event.preventDefault(); togglePod(pod, group)">
                 <div class="pod-status-dot" [class.dot-running]="pod.status === 'Running'" [class.dot-pending]="pod.status === 'Pending'" [class.dot-error]="pod.status !== 'Running' && pod.status !== 'Pending'"></div>
                 <span class="pod-name mono" (click)="openDrawer(pod, $event)" [pTooltip]="pod.name">{{ shortName(pod.name) }}</span>
                 <p-tag [value]="pod.status" [severity]="statusSeverity(pod.status)" />
@@ -123,8 +126,14 @@ interface PodGroup {
                   </span>
                 }
                 <div class="pod-actions">
-                  <i class="pi pi-align-left" pTooltip="Logs" (click)="quickLogs(pod, $event)"></i>
-                  <i class="pi pi-ellipsis-h" pTooltip="Details" (click)="openDrawer(pod, $event)"></i>
+                  <i class="pi pi-align-left" pTooltip="Logs" aria-label="Quick logs" tabindex="0" role="button"
+                     (click)="quickLogs(pod, $event)"
+                     (keydown.enter)="$event.stopPropagation(); quickLogs(pod, $event)"
+                     (keydown.space)="$event.preventDefault(); $event.stopPropagation(); quickLogs(pod, $event)"></i>
+                  <i class="pi pi-ellipsis-h" pTooltip="Details" aria-label="View details" tabindex="0" role="button"
+                     (click)="openDrawer(pod, $event)"
+                     (keydown.enter)="$event.stopPropagation(); openDrawer(pod, $event)"
+                     (keydown.space)="$event.preventDefault(); $event.stopPropagation(); openDrawer(pod, $event)"></i>
                 </div>
               </div>
             }
@@ -252,7 +261,9 @@ interface PodGroup {
     .group-header {
       display: flex; align-items: center; gap: 10px;
       padding: 10px 16px; cursor: pointer; transition: background 0.1s;
+      outline: none;
     }
+    .group-header:focus-visible { background: var(--bg-hover); box-shadow: inset 0 0 0 2px var(--accent); }
     .group-header:hover { background: var(--bg-hover); }
     .group-header > i { color: var(--text-muted); font-size: 11px; width: 12px; }
     .group-name { font-size: 13px; font-weight: 600; }
@@ -272,7 +283,9 @@ interface PodGroup {
       display: flex; align-items: center; gap: 10px;
       padding: 8px 16px 8px 36px; cursor: pointer;
       transition: background 0.1s; position: relative;
+      outline: none;
     }
+    .pod-row:focus-visible { background: var(--bg-hover); box-shadow: inset 0 0 0 2px var(--accent); }
     .pod-row:hover { background: var(--bg-hover); }
     .pod-row:hover .pod-actions { opacity: 1; }
     .pod-row.pod-selected { background: var(--accent-subtle); }
