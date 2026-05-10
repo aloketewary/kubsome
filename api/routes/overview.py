@@ -50,7 +50,7 @@ def get_overview_for(ctx: str, ns: str):
     import json
 
     # Pods
-    r = subprocess.run(f"kubectl --context {ctx} get pods -n {ns} -o json", shell=True, capture_output=True, text=True)
+    r = subprocess.run(["kubectl", "--context", ctx, "get", "pods", "-n", ns, "-o", "json"], capture_output=True, text=True)
     pods = []
     if r.returncode == 0:
         pods = json.loads(r.stdout).get("items", [])
@@ -63,7 +63,7 @@ def get_overview_for(ctx: str, ns: str):
     }
 
     # Nodes
-    r = subprocess.run(f"kubectl --context {ctx} get nodes -o json", shell=True, capture_output=True, text=True)
+    r = subprocess.run(["kubectl", "--context", ctx, "get", "nodes", "-o", "json"], capture_output=True, text=True)
     nodes = []
     if r.returncode == 0:
         nodes = json.loads(r.stdout).get("items", [])
@@ -75,7 +75,7 @@ def get_overview_for(ctx: str, ns: str):
     }
 
     # Deployments
-    r = subprocess.run(f"kubectl --context {ctx} get deployments -n {ns} -o json", shell=True, capture_output=True, text=True)
+    r = subprocess.run(["kubectl", "--context", ctx, "get", "deployments", "-n", ns, "-o", "json"], capture_output=True, text=True)
     deps = []
     if r.returncode == 0:
         deps = json.loads(r.stdout).get("items", [])
@@ -87,7 +87,7 @@ def get_overview_for(ctx: str, ns: str):
     }
 
     # Events
-    r = subprocess.run(f"kubectl --context {ctx} get events -n {ns} --sort-by=.lastTimestamp -o json", shell=True, capture_output=True, text=True)
+    r = subprocess.run(["kubectl", "--context", ctx, "get", "events", "-n", ns, "--sort-by=.lastTimestamp", "-o", "json"], capture_output=True, text=True)
     events = []
     if r.returncode == 0:
         for item in json.loads(r.stdout).get("items", [])[-50:]:

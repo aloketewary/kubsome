@@ -51,12 +51,12 @@ def post_rollback(name: str):
 
 @router.post("/scale/{name}")
 def post_scale(name: str, req: ScaleRequest):
-    cmd = (
-        f"kubectl --context {context.current_context} "
-        f"scale deployment/{name} "
-        f"--replicas={req.replicas} -n {context.namespace}"
-    )
-    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+    cmd = [
+        "kubectl", "--context", str(context.current_context),
+        "scale", f"deployment/{name}",
+        f"--replicas={req.replicas}", "-n", str(context.namespace)
+    ]
+    result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
         raise HTTPException(status_code=500, detail=result.stderr.strip())
     return {"scaled": name, "replicas": req.replicas}
