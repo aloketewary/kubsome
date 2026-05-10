@@ -67,15 +67,20 @@ interface PaletteItem {
       padding-top: 20vh;
     }
     .palette {
-      width: 560px;
-      max-height: 420px;
+      width: 640px;
+      max-height: 480px;
       background: var(--bg-card);
       border: 1px solid var(--border-hover);
-      border-radius: 16px;
-      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
+      border-radius: 20px;
+      box-shadow: 0 32px 100px rgba(0, 0, 0, 0.8);
       overflow: hidden;
       display: flex;
       flex-direction: column;
+      animation: palette-in 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    @keyframes palette-in {
+      from { opacity: 0; transform: scale(0.98) translateY(-10px); }
+      to { opacity: 1; transform: scale(1) translateY(0); }
     }
     .palette-input-wrap {
       display: flex;
@@ -116,14 +121,16 @@ interface PaletteItem {
     .palette-item {
       display: flex;
       align-items: center;
-      gap: 12px;
-      padding: 10px 12px;
-      border-radius: 8px;
+      gap: 14px;
+      padding: 12px 16px;
+      border-radius: 12px;
       cursor: pointer;
-      transition: background 0.08s;
+      transition: all 0.1s ease;
+      margin-bottom: 2px;
     }
     .palette-item.active {
       background: var(--bg-hover);
+      transform: translateX(4px);
     }
     .palette-item i {
       font-size: 14px;
