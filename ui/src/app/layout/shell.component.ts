@@ -169,18 +169,14 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
       background: var(--success);
       box-shadow: 0 0 4px var(--success);
     }
-    .ctx-dot.dot-bad {
-      background: var(--danger);
-      box-shadow: 0 0 4px var(--danger);
-      animation: ctx-pulse 1.5s infinite;
+    .logo-icon {
+      font-size: 20px;
+      color: var(--accent);
     }
-    @keyframes ctx-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
-    .ctx-name {
-      font-size: 10px;
-      color: var(--text-secondary);
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+    .logo-text {
+      font-weight: 800;
+      font-size: 18px;
+      letter-spacing: -0.02em;
     }
     .nav-section {
       margin-bottom: 8px;
@@ -296,8 +292,6 @@ export class ShellComponent implements OnInit {
   private http = inject(HttpClient);
   private router = inject(Router);
 
-  currentContext = '...';
-  clusterOk = true;
   helpVisible = false;
   monitorCollapsed = false;
   opsCollapsed = false;
@@ -379,13 +373,6 @@ export class ShellComponent implements OnInit {
 
   ngOnInit() {
     this.loadFavorites();
-    this.http.get<ContextsResponse>('http://localhost:8000/api/contexts').subscribe(res => {
-      this.currentContext = res.current ?? 'none';
-    });
-    this.http.get<any>('http://localhost:8000/api/uptime').subscribe({
-      next: (res) => { this.clusterOk = res.api_reachable && !res.cluster_down; },
-      error: () => { this.clusterOk = false; },
-    });
   }
   private allItems = [
     { path: '/dashboard', icon: 'pi pi-objects-column', label: 'Dashboard' },
