@@ -1180,6 +1180,174 @@ def _handle_watch_status(cmd, env):
     console.print(Panel("\n".join(lines), title="[bold]👁 Watch Status[/bold]", border_style="cyan"))
 
 
+def _handle_scorecard(cmd, env):
+    from core.collectors.scorecard import cluster_scorecard
+
+    with loading("Generating cluster scorecard..."):
+        data = cluster_scorecard()
+
+    grade = data["overall_grade"]
+    score = data["overall_score"]
+    grade_color = "green" if grade in ("A", "B") else "yellow" if grade == "C" else "red"
+
+    lines = [
+        f"[bold]Overall: [{grade_color}]{grade}[/{grade_color}] ({score}/100)[/bold]\n",
+        f"[dim]{data['summary']}[/dim]\n",
+    ]
+
+    for cat, info in data["categories"].items():
+        g = info["grade"]
+        gc = "green" if g in ("A", "B") else "yellow" if g == "C" else "red"
+        lines.append(f"  [{gc}]{g}[/{gc}] {cat.title():15} ({info['score']}/100)")
+        for issue in info["issues"]:
+            lines.append(f"     [dim]• {issue}[/dim]")
+
+    if data["recommendations"]:
+        lines.append("\n[bold]Recommendations:[/bold]")
+        for rec in data["recommendations"][:5]:
+            lines.append(f"  → {rec['issue']}")
+            lines.append(f"    [cyan]{rec['action']}[/cyan]")
+
+    console.print(Panel("\n".join(lines), title="[bold]🏆 Cluster Scorecard[/bold]", border_style=grade_color))
+
+
+def _handle_cost_estimate(cmd, env):
+    from core.collectors.cost_estimate import estimate_costs
+
+    with loading("Estimating costs..."):
+        data = estimate_costs()
+
+    if not data["deployments"]:
+        console.print("[dim]No deployments found[/dim]")
+        return
+
+    from rich.table import Table
+    table = Table(show_header=True, border_style="dim", expand=True)
+    table.add_column("Deployment")
+    table.add_column("Replicas", justify="center")
+    table.add_column("CPU", justify="right")
+    table.add_column("Memory", justify="right")
+    table.add_column("$/pod/mo", justify="right")
+    table.add_column("$/total/mo", justify="right", style="bold")
+
+    for d in data["deployments"][:15]:
+        table.add_row(
+            d["name"], str(d["replicas"]),
+            d["cpu_request"], d["memory_request"],
+            f"${d['cost_per_pod']:.2f}",
+            f"${d['cost_total']:.2f}",
+        )
+
+    console.print(Panel(table, title=f"[bold]💰 Cost Estimate — ${data['total']:.2f}/month[/bold]", border_style="green"))
+    console.print(f"[dim]{data['pricing']['note']}[/dim]")
+
+
+def _handle_remediate(cmd, env):
+    from core.remediation import auto_remediate
+    from core.resolver import resolve_pod_name
+    from core.selector import choose_pod
+
+    target = cmd["target"]
+    matches = resolve_pod_name(target)
+    if matches:
+        target = choose_pod(matches) or target
+
+    with loading(f"Auto-remediating {target}..."):
+        data = auto_remediate(target)
+
+    if data.get("blocked"):
+        console.print(f"[yellow]⚠ {data['reason']}[/yellow]")
+        if data.get("suggestion"):
+            console.print(f"[dim]{data['suggestion']}[/dim]")
+        return
+
+    if data["result"] == "healthy":
+        console.print(f"[green]✓ {data['message']}[/green]")
+        return
+
+    if data["actions"]:
+        for a in data["actions"]:
+            icon = "[green]✓[/green]" if a["success"] else "[red]✗[/red]"
+            console.print(f"  {icon} {a['action']}")
+            if a["output"]:
+                console.print(f"    [dim]{a['output'][:100]}[/dim]")
+    else:
+        console.print("[yellow]Manual intervention required[/yellow]")
+        if data.get("playbooks"):
+            console.print(f"[dim]Suggested playbooks: {', '.join(data['playbooks'])}[/dim]")
+
+
+def _handle_yaml_diff(cmd, env):
+    from core.collectors.yaml_diff import yaml_diff
+    from core.resolver import resolve_deployment_name
+    from core.selector import choose_deployment
+
+    target = cmd["target"]
+    matches = resolve_deployment_name(target)
+    if matches:
+        target = choose_deployment(matches) or target
+
+    with loading(f"Comparing revisions for {target}..."):
+        data = yaml_diff(target)
+
+    if not data.get("available"):
+        console.print(f"[red]{data.get('reason', 'Cannot diff')}[/red]")
+        return
+
+    if data["total_changes"] == 0:
+        console.print("[dim]No differences between revisions[/dim]")
+        return
+
+    lines = [
+        f"[green]+{data['additions']}[/green] "
+        f"[red]-{data['deletions']}[/red] changes\n"
+    ]
+    for line in data["diff_lines"][:60]:
+        if line.startswith("+") and not line.startswith("+++"):
+            lines.append(f"[green]{line}[/green]")
+        elif line.startswith("-") and not line.startswith("---"):
+            lines.append(f"[red]{line}[/red]")
+        elif line.startswith("@@"):
+            lines.append(f"[cyan]{line}[/cyan]")
+        else:
+            lines.append(f"[dim]{line}[/dim]")
+
+    console.print(Panel("\n".join(lines), title=f"[bold]YAML Diff: {target}[/bold]", border_style="cyan"))
+
+
+def _handle_save_query(cmd, env):
+    from core.saved_queries import save_query
+
+    name = cmd.get("name", "")
+    query = cmd.get("query", "")
+    if not name:
+        console.print("[red]Usage: pin <name> <query>[/red]")
+        return
+    if not query:
+        console.print("[red]Usage: pin <name> <query>[/red]")
+        return
+
+    save_query(name, query)
+    console.print(f"[green]✓ Pinned:[/green] {name} → [cyan]{query}[/cyan]")
+
+
+def _handle_list_queries(cmd, env):
+    from core.saved_queries import list_queries
+
+    queries = list_queries()
+    if not queries:
+        console.print("[dim]No pinned queries. Use: pin <name> <query>[/dim]")
+        return
+
+    lines = [f"[bold]Pinned Queries ({len(queries)}):[/bold]\n"]
+    for q in queries:
+        lines.append(f"  ● [cyan]{q['name']}[/cyan] → {q['query']}")
+        if q.get("last_run"):
+            lines.append(f"    [dim]Last run: {q['last_run'][:16]}[/dim]")
+
+    console.print(Panel("\n".join(lines), title="[bold]📌 Saved Queries[/bold]", border_style="cyan"))
+
+
 # Handler registry
 HANDLERS = {
     "pods_table": _handle_pods_table,
@@ -1263,4 +1431,10 @@ HANDLERS = {
     "rollback_preview": _handle_rollback_preview,
     "watch_alert": _handle_watch_alert,
     "watch_status": _handle_watch_status,
+    "scorecard": _handle_scorecard,
+    "cost_estimate": _handle_cost_estimate,
+    "remediate": _handle_remediate,
+    "yaml_diff": _handle_yaml_diff,
+    "save_query": _handle_save_query,
+    "list_queries": _handle_list_queries,
 }

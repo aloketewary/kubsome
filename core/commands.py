@@ -639,6 +639,34 @@ def resolve_command(user_input: str):
     if cmd == "watch-status":
         return {"type": "watch_status"}
 
+    # Scorecard
+    if cmd == "scorecard":
+        return {"type": "scorecard"}
+
+    # Cost estimate
+    if cmd == "cost-estimate":
+        return {"type": "cost_estimate"}
+
+    # Auto-remediate
+    if cmd == "fix" and len(tokens) > 1:
+        return {"type": "remediate", "target": tokens[1]}
+
+    # YAML diff
+    if cmd == "yaml-diff" and len(tokens) > 1:
+        return {"type": "yaml_diff", "target": tokens[1]}
+
+    # Save query
+    if cmd == "pin" and len(tokens) > 1:
+        return {
+            "type": "save_query",
+            "name": tokens[1],
+            "query": " ".join(tokens[2:]) if len(tokens) > 2 else "",
+        }
+
+    # List saved queries
+    if cmd == "pins":
+        return {"type": "list_queries"}
+
     # describe <resource> <name>
     if cmd == "describe":
         if len(tokens) < 3:
