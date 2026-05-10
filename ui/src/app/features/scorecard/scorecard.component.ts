@@ -2,11 +2,12 @@ import { Component, inject, OnInit } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
+import { PageInfoComponent } from '../../shared/components/page-info.component';
 
 @Component({
   selector: 'app-scorecard',
   standalone: true,
-  imports: [ButtonModule, TagModule],
+  imports: [ButtonModule, TagModule, PageInfoComponent],
   template: `
     <div class="page-header">
       <div>
@@ -14,6 +15,9 @@ import { TagModule } from 'primeng/tag';
         <p class="subtitle">Health grade across availability, stability, resources & operations</p>
       </div>
       <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="refresh()"></button>
+      <app-page-info title="Scorecard" description="Cluster health graded A-F across availability, stability, resources, and operations. Refreshes on demand."
+        [tips]="['Grade A-B = healthy, C = fair, D-F = needs attention', 'Click Refresh to re-evaluate', 'Recommendations link to CLI commands']"
+        [commands]="['scorecard', 'check', 'security']" />
     </div>
 
     @if (data) {

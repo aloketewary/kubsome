@@ -2,11 +2,12 @@ import { Component, inject, OnInit } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { ButtonModule } from 'primeng/button';
 import { TooltipModule } from 'primeng/tooltip';
+import { PageInfoComponent } from '../../shared/components/page-info.component';
 
 @Component({
   selector: 'app-cost-estimate',
   standalone: true,
-  imports: [ButtonModule, TooltipModule],
+  imports: [ButtonModule, TooltipModule, PageInfoComponent],
   template: `
     <div class="page-header">
       <div>
@@ -14,6 +15,9 @@ import { TooltipModule } from 'primeng/tooltip';
         <p class="subtitle">Estimated monthly spend based on resource requests</p>
       </div>
       <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="refresh()"></button>
+      <app-page-info title="Cost Estimation" description="Estimated monthly spend per deployment based on CPU and memory resource requests."
+        [tips]="['Based on AWS on-demand pricing (~$30/vCPU, ~$4/GB)', 'Sorted by highest cost first', 'Reduce cost by right-sizing: optimize command']"
+        [commands]="['cost-estimate', 'optimize', 'top pods']" />
     </div>
 
     @if (data) {
