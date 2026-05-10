@@ -128,7 +128,7 @@ interface Message {
     .chat-layout {
       display: flex;
       flex-direction: column;
-      height: calc(100vh - 180px);
+      height: calc(100vh - 220px);
       background: var(--bg-card);
       border: 1px solid var(--border);
       border-radius: var(--radius);

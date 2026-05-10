@@ -103,3 +103,43 @@ def get_overview_for(ctx: str, ns: str):
         "pods": pod_health, "nodes": node_health, "deployments": dep_health,
         "events": events,
     }
+
+
+@router.get("/uptime")
+def get_uptime():
+    from core.collectors.uptime import collect_uptime
+    return collect_uptime()
+
+
+@router.get("/diff-timeline")
+def get_diff_timeline(hours: int = 24):
+    from core.collectors.diff_timeline import collect_diff_timeline
+    return collect_diff_timeline(hours)
+
+
+@router.post("/correlate-logs")
+def post_correlate_logs(req: dict):
+    from core.collectors.log_correlation import correlate_logs
+    pods = req.get("pods", [])
+    tail = req.get("tail", 50)
+    if not pods:
+        return {"error": "No pods specified"}
+    return correlate_logs(pods, tail)
+
+
+@router.get("/dep-health/{name}")
+def get_dep_health(name: str):
+    from core.collectors.dep_health import dependency_health
+    return dependency_health(name)
+
+
+@router.get("/rollback-preview/{name}")
+def get_rollback_preview(name: str):
+    from core.collectors.rollback_preview import rollback_preview
+    return rollback_preview(name)
+
+
+@router.get("/watch-status")
+def get_watch_status():
+    from core.watch_alert import get_watcher
+    return get_watcher().status()

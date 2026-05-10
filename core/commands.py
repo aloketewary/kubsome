@@ -586,6 +586,10 @@ def resolve_command(user_input: str):
             f"get nodes"
         )
 
+    # Uptime
+    if cmd == "uptime":
+        return {"type": "uptime"}
+
     # describe <resource> <name>
     if cmd == "describe":
         if len(tokens) < 3:

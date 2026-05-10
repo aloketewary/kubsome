@@ -72,10 +72,10 @@ interface Message {
   styles: [`
     .ai-fab {
       position: fixed;
-      bottom: 24px;
+      bottom: 32px;
       right: 24px;
-      width: 48px;
-      height: 48px;
+      width: 44px;
+      height: 44px;
       border-radius: 50%;
       background: var(--accent);
       color: #fff;
@@ -84,22 +84,24 @@ interface Message {
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 20px;
+      font-size: 18px;
       box-shadow: 0 4px 20px rgba(59, 130, 246, 0.4);
       transition: transform 0.2s, box-shadow 0.2s;
-      z-index: 900;
+      z-index: 800;
     }
     .ai-fab:hover {
-      transform: scale(1.1);
+      transform: scale(1.08);
       box-shadow: 0 6px 28px rgba(59, 130, 246, 0.5);
     }
 
     .ai-panel {
       position: fixed;
-      bottom: 24px;
+      bottom: 32px;
       right: 24px;
-      width: 380px;
-      height: 480px;
+      width: 360px;
+      max-width: calc(100vw - 240px);
+      height: 460px;
+      max-height: calc(100vh - 100px);
       background: var(--bg-card);
       border: 1px solid var(--border);
       border-radius: 16px;
@@ -107,7 +109,7 @@ interface Message {
       display: flex;
       flex-direction: column;
       overflow: hidden;
-      z-index: 900;
+      z-index: 800;
     }
 
     .panel-header {

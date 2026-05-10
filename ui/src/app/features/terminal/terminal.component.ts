@@ -124,7 +124,7 @@ interface TermLine {
   `,
   styles: [`
     .terminal {
-      height: calc(100vh - 48px - 56px);
+      height: calc(100vh - 48px - 80px);
       display: flex;
       flex-direction: column;
       background: var(--bg);

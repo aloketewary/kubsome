@@ -11,7 +11,7 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
   imports: [RouterLink, RouterLinkActive, HelpDialogComponent],
   template: `
     <div class="ctx-block">
-      <div class="ctx-dot"></div>
+      <div class="ctx-dot" [class.dot-ok]="clusterOk" [class.dot-bad]="!clusterOk"></div>
       <div class="ctx-info">
         <span class="ctx-name">{{ currentContext }}</span>
       </div>
@@ -113,7 +113,7 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
     }
   `,
   styles: [`
-    :host { display: flex; flex-direction: column; height: calc(100vh - 48px); }
+    :host { display: flex; flex-direction: column; height: calc(100vh - 48px - 24px); }
     .ctx-block {
       display: flex;
       align-items: center;
@@ -121,12 +121,20 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
       padding: 8px 10px 12px;
     }
     .ctx-dot {
-      width: 6px;
-      height: 6px;
+      width: 7px;
+      height: 7px;
       border-radius: 50%;
+    }
+    .ctx-dot.dot-ok {
       background: var(--success);
       box-shadow: 0 0 4px var(--success);
     }
+    .ctx-dot.dot-bad {
+      background: var(--danger);
+      box-shadow: 0 0 4px var(--danger);
+      animation: ctx-pulse 1.5s infinite;
+    }
+    @keyframes ctx-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
     .ctx-name {
       font-size: 10px;
       color: var(--text-secondary);
@@ -242,6 +250,7 @@ export class ShellComponent implements OnInit {
   private router = inject(Router);
 
   currentContext = '...';
+  clusterOk = true;
   helpVisible = false;
   monitorCollapsed = false;
   opsCollapsed = false;
@@ -319,6 +328,10 @@ export class ShellComponent implements OnInit {
     this.loadFavorites();
     this.http.get<ContextsResponse>('http://localhost:8000/api/contexts').subscribe(res => {
       this.currentContext = res.current ?? 'none';
+    });
+    this.http.get<any>('http://localhost:8000/api/uptime').subscribe({
+      next: (res) => { this.clusterOk = res.api_reachable && !res.cluster_down; },
+      error: () => { this.clusterOk = false; },
     });
   }
   private allItems = [

@@ -185,7 +185,7 @@ import { Pod } from '../../core/models';
     }
     .fs-close-btn:hover { border-color: var(--danger); color: var(--danger); background: var(--danger-subtle); }
     .log-viewer {
-      max-height: calc(100vh - 320px); overflow-y: auto; padding: 8px 0;
+      max-height: calc(100vh - 360px); overflow-y: auto; padding: 8px 0;
       font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 1.7;
     }
     .log-line { display: flex; gap: 0; padding: 0 12px; align-items: flex-start; }

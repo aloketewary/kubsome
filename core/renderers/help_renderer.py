@@ -36,6 +36,7 @@ def render_help():
     table.add_row("top pods", "Pod CPU/memory usage")
     table.add_row("top nodes", "Node resource pressure")
     table.add_row("ns", "Namespace resource summary")
+    table.add_row("uptime", "Cluster uptime & availability")
 
     # Operations
     table.add_row("", "")

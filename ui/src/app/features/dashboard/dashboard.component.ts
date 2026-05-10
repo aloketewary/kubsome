@@ -1,5 +1,6 @@
 import { Component, inject, OnInit, OnDestroy } from '@angular/core';
 import { Router } from '@angular/router';
+import { HttpClient } from '@angular/common/http';
 import { TagModule } from 'primeng/tag';
 import { ButtonModule } from 'primeng/button';
 import { ApiService } from '../../core/services/api.service';
@@ -143,6 +144,22 @@ import { OverviewResponse, KubeEvent } from '../../core/models';
           </div>
         </div>
       </div>
+
+      <!-- Uptime Card -->
+      @if (uptime) {
+        <div class="uptime-card" [class.uptime-down]="uptime.cluster_down" [class.uptime-ok]="!uptime.cluster_down">
+          <div class="uptime-dot" [class.dot-up]="!uptime.cluster_down" [class.dot-down]="uptime.cluster_down"></div>
+          <div class="uptime-info">
+            <span class="uptime-status">{{ uptime.cluster_down ? 'Cluster Down' : 'Cluster Up' }}</span>
+            @if (uptime.downtime_hint) {
+              <span class="uptime-hint">{{ uptime.downtime_hint }}</span>
+            } @else if (uptime.nodes?.length) {
+              <span class="uptime-hint">{{ uptime.nodes.length }} nodes · oldest uptime: {{ uptime.nodes[0]?.uptime_human }}</span>
+            }
+          </div>
+          <span class="uptime-day">{{ uptime.day }}</span>
+        </div>
+      }
 
       <!-- Two-column layout: Events + Actions -->
       <div class="bottom-grid">
@@ -360,9 +377,25 @@ import { OverviewResponse, KubeEvent } from '../../core/models';
 
     @media (max-width: 768px) { .charts-row { grid-template-columns: 1fr; } }
 
+    /* Uptime Card */
+    .uptime-card {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 16px; margin-bottom: 16px;
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm);
+    }
+    .uptime-ok { border-left: 3px solid var(--success); }
+    .uptime-down { border-left: 3px solid var(--danger); }
+    .uptime-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .dot-up { background: var(--success); box-shadow: 0 0 6px var(--success); }
+    .dot-down { background: var(--danger); animation: blink 1.5s infinite; }
+    @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+    .uptime-info { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+    .uptime-status { font-size: 13px; font-weight: 600; }
+    .uptime-hint { font-size: 11px; color: var(--text-muted); }
+    .uptime-day { font-size: 11px; color: var(--text-muted); padding: 3px 8px; background: var(--bg-elevated); border-radius: 4px; }
+
     .bottom-grid {
-      display: grid;
-      grid-template-columns: 1.4fr 1fr;
+      grid-template-columns: 1fr;
       gap: 16px;
     }
     .section-header {
@@ -377,6 +410,8 @@ import { OverviewResponse, KubeEvent } from '../../core/models';
       border: 1px solid var(--border);
       border-radius: var(--radius);
       overflow: hidden;
+      max-height: 280px;
+      overflow-y: auto;
     }
     .event-row {
       display: flex; align-items: center; gap: 10px;
@@ -420,71 +455,20 @@ import { OverviewResponse, KubeEvent } from '../../core/models';
 
     @media (max-width: 900px) {
       .metrics-grid { grid-template-columns: 1fr; }
-      /* Charts */
-    .charts-row {
-      display: grid;
-      grid-template-columns: 1.5fr 1fr;
-      gap: 14px;
-      margin-bottom: 24px;
-    }
-    .chart-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 16px 20px;
-    }
-    .chart-header {
-      display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;
-    }
-    .chart-header h3 { font-size: 13px; font-weight: 600; margin: 0; }
-    .chart-hint { font-size: 10px; color: var(--text-muted); }
-
-    /* Bar Chart */
-    .bar-chart {
-      display: flex; align-items: flex-end; gap: 3px; height: 80px;
-    }
-    .chart-bar-wrap { flex: 1; height: 100%; display: flex; align-items: flex-end; }
-    .chart-bar {
-      width: 100%; border-radius: 3px 3px 0 0; background: var(--accent); opacity: 0.5;
-      transition: all 0.2s; cursor: crosshair; min-height: 3px;
-    }
-    .chart-bar:hover { opacity: 0.9; }
-    .chart-bar.bar-high { background: var(--danger); opacity: 0.7; }
-    .chart-bar.bar-med { background: var(--warning); opacity: 0.6; }
-
-    /* Donut Chart */
-    .donut-chart { position: relative; width: 120px; height: 120px; margin: 0 auto 12px; }
-    .donut-svg { width: 100%; height: 100%; transform: rotate(-90deg); }
-    .donut-bg { fill: none; stroke: var(--bg-elevated); stroke-width: 4; }
-    .donut-ok { fill: none; stroke: var(--success); stroke-width: 4; stroke-linecap: round; }
-    .donut-warn { fill: none; stroke: var(--warning); stroke-width: 4; stroke-linecap: round; }
-    .donut-crit { fill: none; stroke: var(--danger); stroke-width: 4; stroke-linecap: round; }
-    .donut-center {
-      position: absolute; inset: 0; display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-    }
-    .donut-total { font-size: 22px; font-weight: 700; }
-    .donut-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; }
-    .donut-legend { display: flex; justify-content: center; gap: 12px; }
-    .dl-item { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text-secondary); }
-    .dl-dot { width: 6px; height: 6px; border-radius: 50%; }
-    .dl-ok { background: var(--success); }
-    .dl-warn { background: var(--warning); }
-    .dl-crit { background: var(--danger); }
-
-    @media (max-width: 768px) { .charts-row { grid-template-columns: 1fr; } }
-
-    .bottom-grid { grid-template-columns: 1fr; }
+      .charts-row { grid-template-columns: 1fr; }
+      .actions-grid { grid-template-columns: 1fr; }
     }
   `],
 })
 export class DashboardComponent implements OnInit, OnDestroy {
   private api = inject(ApiService);
+  private http = inject(HttpClient);
   router = inject(Router);
   data: OverviewResponse | null = null;
   recentEvents: KubeEvent[] = [];
   lastUpdated = '';
   private refreshInterval: any;
+  uptime: any = null;
 
   get podTotal() {
     return (this.data?.pods.healthy || 0) + (this.data?.pods.warning || 0) + (this.data?.pods.critical || 0);
@@ -547,8 +531,24 @@ export class DashboardComponent implements OnInit, OnDestroy {
   goToPods() { this.router.navigate(['/pods']); }
 
   refresh() {
-    this.api.getOverview().subscribe(res => (this.data = res));
-    this.api.getEvents(5).subscribe(res => (this.recentEvents = res.events));
+    this.api.getOverview().subscribe({
+      next: (res) => (this.data = res),
+      error: () => {
+        this.data = {
+          pods: { healthy: 0, warning: 0, critical: 0 },
+          nodes: { healthy: 0, warning: 0 },
+          deployments: { healthy: 0, unavailable: 0 },
+        } as any;
+      },
+    });
+    this.api.getEvents(5).subscribe({
+      next: (res) => (this.recentEvents = res.events),
+      error: () => (this.recentEvents = []),
+    });
+    this.http.get<any>('http://localhost:8000/api/uptime').subscribe({
+      next: (res) => (this.uptime = res),
+      error: () => (this.uptime = { api_reachable: false, cluster_down: true, downtime_hint: 'API unreachable', day: new Date().toLocaleDateString('en', { weekday: 'long' }) }),
+    });
     this.lastUpdated = new Date().toLocaleTimeString();
   }
 

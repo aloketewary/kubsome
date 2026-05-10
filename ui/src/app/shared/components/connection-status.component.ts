@@ -11,7 +11,7 @@ import { ButtonModule } from 'primeng/button';
       <div class="offline-banner">
         <div class="offline-content">
           <i class="pi pi-wifi-off"></i>
-          <span class="offline-title">API Disconnected</span>
+          <span class="offline-title">▲ API Disconnected</span>
           <span class="offline-detail">Cannot reach localhost:8000 — retrying...</span>
           <button pButton label="Retry" icon="pi pi-refresh" class="p-button-sm p-button-outlined" (click)="checkConnection()"></button>
         </div>

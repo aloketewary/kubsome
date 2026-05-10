@@ -81,6 +81,7 @@ import { ErrorToastComponent } from './shared/components/error-toast.component';
           </button>
         }
         @if (showNotifications) {
+          <div class="notif-backdrop" (click)="showNotifications = false"></div>
           <div class="notif-panel">
             <div class="notif-header">
               <span>Alerts ({{ anomalyCount }})</span>
@@ -135,13 +136,14 @@ import { ErrorToastComponent } from './shared/components/error-toast.component';
     <footer class="status-bar">
       <div class="status-left">
         <span class="status-dot connected"></span>
-        <span>API Connected</span>
+        <span>{{ currentContext }}</span>
+        <span class="status-sep">/</span>
+        <span>{{ currentNamespace }}</span>
       </div>
       <div class="status-right">
         <span class="shortcut-hint">⌘K Search</span>
         <span class="shortcut-hint">G+D Dashboard</span>
         <span class="shortcut-hint">H Help</span>
-        <span class="shortcut-hint">Made in India</span>
       </div>
     </footer>
   `,
@@ -223,16 +225,16 @@ import { ErrorToastComponent } from './shared/components/error-toast.component';
     .scope-item {
       display: flex;
       align-items: center;
-      gap: 2px;
+      gap: 4px;
     }
     .scope-dot {
-      width: 6px; height: 6px; border-radius: 50%;
+      width: 7px; height: 7px; border-radius: 50%;
     }
     .scope-dot.dot-healthy { background: var(--success); box-shadow: 0 0 4px var(--success); }
     .scope-dot.dot-degraded { background: var(--warning); box-shadow: 0 0 4px var(--warning); }
     .scope-dot.dot-critical { background: var(--danger); box-shadow: 0 0 4px var(--danger); }
     .scope-key {
-      font-size: 9px;
+      font-size: 10px;
       font-weight: 600;
       color: var(--text-muted);
       text-transform: uppercase;
@@ -241,7 +243,7 @@ import { ErrorToastComponent } from './shared/components/error-toast.component';
     .scope-sep {
       font-size: 14px;
       color: var(--border-hover);
-      margin: 0 1px;
+      margin: 0 2px;
     }
 
     /* Cluster health badge */
@@ -325,6 +327,9 @@ import { ErrorToastComponent } from './shared/components/error-toast.component';
       justify-content: center;
     }
 
+    .notif-backdrop {
+      position: fixed; inset: 0; z-index: 1999;
+    }
     .notif-panel {
       position: absolute; top: 48px; right: 12px;
       width: 320px; max-height: 400px;
@@ -372,7 +377,7 @@ import { ErrorToastComponent } from './shared/components/error-toast.component';
     .layout {
       display: flex;
       padding-top: 48px;
-      height: 100vh;
+      height: calc(100vh - 24px);
     }
     .sidebar {
       width: 200px;
@@ -384,8 +389,8 @@ import { ErrorToastComponent } from './shared/components/error-toast.component';
     }
     .content {
       flex: 1;
-      padding: 32px;
-      padding-bottom: 56px;
+      padding: 24px 32px;
+      padding-bottom: 48px;
       overflow-y: auto;
       background: var(--bg);
     }
@@ -402,15 +407,16 @@ import { ErrorToastComponent } from './shared/components/error-toast.component';
       padding: 0 12px;
       background: var(--bg-card);
       border-top: 1px solid var(--border);
-      font-size: 10px;
+      font-size: 11px;
       color: var(--text-muted);
       z-index: 100;
     }
     .status-left, .status-right {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
     }
+    .status-sep { color: var(--border-hover); }
     .status-dot {
       width: 6px;
       height: 6px;

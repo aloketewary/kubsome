@@ -953,6 +953,69 @@ def _render_get(output):
 
     console.print(table)
 
+def _handle_uptime(cmd, env):
+    from core.collectors.uptime import collect_uptime
+
+    with loading("Checking cluster uptime..."):
+        data = collect_uptime()
+
+    if not data["api_reachable"]:
+        border = "red"
+        status = "[bold red]⬤ UNREACHABLE[/bold red]"
+    elif data["cluster_down"]:
+        border = "yellow"
+        status = "[bold yellow]⬤ DOWN[/bold yellow]"
+    else:
+        border = "green"
+        status = "[bold green]⬤ UP[/bold green]"
+
+    info = (
+        f"[bold cyan]Context:[/bold cyan]  "
+        f"{data['context']}\n"
+        f"[bold cyan]Status:[/bold cyan]   {status}\n"
+        f"[bold cyan]Day:[/bold cyan]      "
+        f"{data['day']}\n"
+    )
+
+    if data["downtime_hint"]:
+        info += (
+            f"\n[yellow]⚠ {data['downtime_hint']}"
+            f"[/yellow]\n"
+        )
+
+    if data["nodes"]:
+        info += f"\n[bold]Nodes ({len(data['nodes'])}):[/bold]\n"
+        for n in data["nodes"]:
+            icon = (
+                "[green]●[/green]"
+                if n["ready"]
+                else "[red]●[/red]"
+            )
+            info += (
+                f"  {icon} {n['name']}  "
+                f"uptime: {n['uptime_human']}\n"
+            )
+
+    pods = data["pods"]
+    if pods["total"] > 0:
+        info += (
+            f"\n[bold]Pods:[/bold] "
+            f"{pods['running']}/{pods['total']} running"
+        )
+        if pods["down"] > 0:
+            info += (
+                f"  [red]({pods['down']} down)[/red]"
+            )
+
+    console.print(
+        Panel(
+            info,
+            title="[bold]⏱ Cluster Uptime[/bold]",
+            border_style=border,
+        )
+    )
+
+
 # Handler registry
 HANDLERS = {
     "pods_table": _handle_pods_table,
@@ -1029,4 +1092,5 @@ HANDLERS = {
     "deps": _handle_deps,
     "dns": _handle_dns,
     "kubectl_pretty": _handle_kubectl_pretty,
+    "uptime": _handle_uptime,
 }
