@@ -121,7 +121,7 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
     }
   `,
   styles: [`
-    :host { display: flex; flex-direction: column; height: calc(100vh - 48px - 24px); overflow: hidden; }
+    :host { display: flex; flex-direction: column; height: calc(100vh - 48px - 24px); overflow-y: auto; overflow-x: hidden; }
     :host-context(.rail) .nav-label { display: none; }
     :host-context(.rail) .nav-item span { display: none; }
     :host-context(.rail) .nav-item kbd { display: none; }
