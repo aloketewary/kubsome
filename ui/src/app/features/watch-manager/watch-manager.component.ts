@@ -53,7 +53,13 @@ import { TagModule } from 'primeng/tag';
         <div class="empty">
           <i class="pi pi-eye"></i>
           <p>No active watches</p>
-          <span class="empty-hint">Use CLI: <code>watch-alert payment crash</code></span>
+          <span class="empty-hint">Add a watch using the CLI:</span>
+          <div class="cmd-examples">
+            <code>watch-alert payment crash</code>
+            <code>watch-alert billing restart</code>
+            <code>watch-alert gateway count</code>
+          </div>
+          <span class="empty-hint">Watches monitor in background and send desktop notifications</span>
         </div>
       }
     } @else {
@@ -94,7 +100,8 @@ import { TagModule } from 'primeng/tag';
     .empty { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 60px; color: var(--text-muted); }
     .empty i { font-size: 28px; opacity: 0.3; }
     .empty-hint { font-size: 12px; }
-    .empty-hint code { background: var(--bg-elevated); padding: 2px 6px; border-radius: 4px; font-size: 11px; }
+    .cmd-examples { display: flex; flex-direction: column; gap: 4px; margin: 8px 0; }
+    .cmd-examples code { background: var(--bg-elevated); padding: 6px 12px; border-radius: 6px; font-size: 11px; border: 1px solid var(--border); }
     .loading { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 60px; color: var(--text-muted); }
     .spin { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }

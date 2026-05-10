@@ -30,17 +30,18 @@ def list_role_bindings():
         for item in data.get("items", []):
             subjects = item.get("subjects", [])
             role = item.get("roleRef", {})
-
-            for subj in subjects:
-                bindings.append({
-                    "binding": item["metadata"]["name"],
-                    "scope": "Namespace",
-                    "role": role.get("name", ""),
-                    "role_kind": role.get("kind", ""),
-                    "subject": subj.get("name", ""),
-                    "subject_kind": subj.get("kind", ""),
-                    "namespace": subj.get("namespace", ns),
-                })
+            subj_str = ", ".join(
+                f"{s.get('kind', '')}:{s.get('name', '')}"
+                for s in subjects
+            )
+            bindings.append({
+                "name": item["metadata"]["name"],
+                "kind": "RoleBinding",
+                "role": role.get("name", ""),
+                "role_kind": role.get("kind", ""),
+                "subjects": subj_str,
+                "namespace": ns,
+            })
 
     # ClusterRoleBindings (that reference this namespace's SAs)
     cmd2 = (
@@ -58,20 +59,26 @@ def list_role_bindings():
             subjects = item.get("subjects", [])
             role = item.get("roleRef", {})
 
-            for subj in subjects:
-                if (
-                    subj.get("namespace") == ns
-                    or subj.get("kind") == "Group"
-                ):
-                    bindings.append({
-                        "binding": item["metadata"]["name"],
-                        "scope": "Cluster",
-                        "role": role.get("name", ""),
-                        "role_kind": role.get("kind", ""),
-                        "subject": subj.get("name", ""),
-                        "subject_kind": subj.get("kind", ""),
-                        "namespace": subj.get("namespace", "*"),
-                    })
+            relevant = [
+                s for s in subjects
+                if s.get("namespace") == ns
+                or s.get("kind") == "Group"
+            ]
+            if not relevant:
+                continue
+
+            subj_str = ", ".join(
+                f"{s.get('kind', '')}:{s.get('name', '')}"
+                for s in relevant
+            )
+            bindings.append({
+                "name": item["metadata"]["name"],
+                "kind": "ClusterRoleBinding",
+                "role": role.get("name", ""),
+                "role_kind": role.get("kind", ""),
+                "subjects": subj_str,
+                "namespace": "*",
+            })
 
     return bindings
 
