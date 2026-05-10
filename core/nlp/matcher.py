@@ -11,14 +11,17 @@ from rapidfuzz import fuzz, process
 
 from core.nlp.intents import INTENTS
 
-# Compiled regex for performance and cleaner logic
-REGEX_INTENTS = {
+# Raw regex patterns
+_REGEX_INTENTS_RAW = {
     "scale": [
         r"scale (\S+) to (\d+)",
         r"set (\S+) replicas? to (\d+)",
     ],
     "logs": [
-        r"(?:show|get|view)?\s*(?:me\s+)?(?:the\s+)?logs?\s+(?:for\s+|of\s+)?(\S+)",
+        (
+            r"(?:show|get|view)?\s*(?:me\s+)?(?:the\s+)?logs?\s+"
+            r"(?:for\s+|of\s+)?(\S+)"
+        ),
     ],
     "restart": [
         r"restart\s+(?:the\s+)?(\S+)",
@@ -57,7 +60,10 @@ REGEX_INTENTS = {
         r"(?:diagnose|debug|troubleshoot)\s+(?:the\s+)?(\S+)",
     ],
     "describe": [
-        r"(?:describe|details? (?:of|for))\s+(?:pod\s+|deploy(?:ment)?\s+)?(\S+)",
+        (
+            r"(?:describe|details? (?:of|for))\s+"
+            r"(?:pod\s+|deploy(?:ment)?\s+)?(\S+)"
+        ),
     ],
     "delete": [
         r"(?:delete|remove|kill)\s+(?:pod\s+)?(\S+)",
@@ -85,6 +91,83 @@ REGEX_INTENTS = {
     ],
 }
 
+# Compiled regex for performance
+REGEX_INTENTS = {
+    intent: [re.compile(p) for p in patterns]
+    for intent, patterns in _REGEX_INTENTS_RAW.items()
+}
+
+# Module-level constants for performance
+PRIORITY_CHECK = [
+    ("unhealthy", "unhealthy"),
+    ("how many", "count_pods"),
+    ("count ", "count_pods"),
+    ("number of", "count_pods"),
+    ("is it safe", "is_safe"),
+    ("safe to", "is_safe"),
+    ("what changed", "what_changed"),
+    ("anomal", "anomalies"),
+    ("why is", "why_failing"),
+    ("why ", "why_failing"),
+    ("is ", "health_check"),
+]
+
+_CONTEXTUAL_PRONOUNS_LIST = [
+    "it", "this", "that", "the pod", "the deployment", "the service"
+]
+CONTEXTUAL_PRONOUNS = sorted(
+    _CONTEXTUAL_PRONOUNS_LIST,
+    key=len, reverse=True
+)
+
+SKIP_WORDS = {
+    "why", "is", "the", "my", "a", "an",
+    "show", "get", "list", "me", "all",
+    "pod", "pods", "deployment", "deploy", "deployments",
+    "service", "svc", "services", "node", "nodes",
+    "please", "can", "you", "what",
+    "how", "many", "which", "are",
+    "failing", "crashing", "running",
+    "healthy", "unhealthy", "down",
+    "broken", "stuck", "pending",
+    "restarting", "consuming", "consumes",
+    "more", "cpu", "memory", "oom",
+    "safely", "safe", "to", "in", "last", "hour",
+    "high", "restart", "restarts", "matching",
+    "resource", "consumers", "hog", "usage", "pods",
+    "anomalies", "detected", "any", "changes", "recently",
+    "happened",
+}
+
+# Pre-compiled regex for extraction
+GENERAL_ENTITY_RE = [
+    re.compile(
+        r"(?:why is|diagnose|inspect|trace|"
+        r"restart|rollback|logs for|logs of|"
+        r"logs|describe|check|health of|"
+        r"status of|exec|shell into|"
+        r"delete|netcheck)\s+(?:the\s+)?"
+        r"(?:pod\s+|deploy\s+)?"
+        r"([a-z0-9\-\.]+)"
+    )
+]
+
+RESOURCE_NAME_RE = re.compile(r"^[a-z0-9\-\.]+$")
+_COUNT_PODS_PAT = (
+    r"(?:how many|count|number of)\s+"
+    r"(?:pods? matching\s+)?([a-z0-9\-\.]+)"
+)
+COUNT_PODS_RE = re.compile(_COUNT_PODS_PAT)
+IS_SAFE_RE = re.compile(r"safe to (\w+)\s+(\S+)")
+
+# Flattened intents for faster fuzzy matching
+FLATTENED_INTENTS = []
+for intent, phrases in INTENTS.items():
+    for phrase in phrases:
+        FLATTENED_INTENTS.append((phrase, intent))
+
+FLATTENED_PHRASES = [x[0] for x in FLATTENED_INTENTS]
+
 
 def detect_intent(query):
     """
@@ -96,46 +179,38 @@ def detect_intent(query):
     # 1. Regex Matchers (Fast & High Confidence)
     for intent, patterns in REGEX_INTENTS.items():
         for pattern in patterns:
-            if re.match(pattern, lower):
+            if pattern.match(lower):
                 return intent, 100
 
     # 2. Priority keyword checks (Exact intent signals)
-    priority = [
-        ("unhealthy", "unhealthy"),
-        ("how many", "count_pods"),
-        ("count ", "count_pods"),
-        ("number of", "count_pods"),
-        ("is it safe", "is_safe"),
-        ("safe to", "is_safe"),
-        ("what changed", "what_changed"),
-        ("anomal", "anomalies"),
-        ("why is", "why_failing"),
-        ("why ", "why_failing"),
-        ("is ", "health_check"),
-    ]
-    for keyword, intent in priority:
+    for keyword, intent in PRIORITY_CHECK:
         if keyword in lower:
             return intent, 95
 
     # 3. Fuzzy Matching (Fallback)
+    # Optimization: Use flattened phrases for a single process call.
+    # We check top 3 matches to preserve substring boost logic.
+    results = process.extract(
+        lower,
+        FLATTENED_PHRASES,
+        scorer=fuzz.token_sort_ratio,
+        limit=3
+    )
+
+    if not results:
+        return None, 0
+
     best_intent = None
     best_score = 0
 
-    # Optimization: pre-calculate phrases if this gets slow, but for now it's fine.
-    # We use token_sort_ratio for better handling of word order
-    for intent, phrases in INTENTS.items():
-        # Use rapidfuzz.process.extractOne to find the best match in phrases
-        result = process.extractOne(lower, phrases, scorer=fuzz.token_sort_ratio)
-        if result:
-            phrase, score, _ = result
-            if phrase in lower:
-                score = max(score, 90)
+    for phrase, score, index in results:
+        # Check for substring boost (heuristic from original logic)
+        if phrase in lower:
+            score = max(score, 90)
 
-            if score > best_score:
-                best_score = score
-                best_intent = intent
-                if score >= 90: # Early exit for high confidence
-                    break
+        if score > best_score:
+            best_score = score
+            best_intent = FLATTENED_INTENTS[index][1]
 
     if best_score < 55:
         return None, 0
@@ -153,21 +228,17 @@ def extract_entities(query, intent):
     entities = {}
 
     # Handle pronouns/contextual references
-    contextual_pronouns = ["it", "this", "that", "the pod", "the deployment", "the service"]
-    # Sort by length descending to match longer phrases first
-    contextual_pronouns.sort(key=len, reverse=True)
-
-    for pronoun in contextual_pronouns:
+    for pronoun in CONTEXTUAL_PRONOUNS:
         if pronoun in lower and context.last_target:
             entities["target"] = context.last_target
-            # Replace the pronoun in lower so subsequent logic doesn't pick it up as a target
+            # Replace the pronoun in lower
             lower = lower.replace(pronoun, context.last_target)
             break
 
     # 1. Try extracting from Regex first (most accurate)
     if intent in REGEX_INTENTS:
         for pattern in REGEX_INTENTS[intent]:
-            m = re.match(pattern, lower)
+            m = pattern.match(lower)
             if m:
                 if intent == "scale":
                     entities["target"] = m.group(1)
@@ -186,26 +257,6 @@ def extract_entities(query, intent):
     # 2. Fallback to general extraction logic
     tokens = [t.strip("?.,!") for t in lower.split()]
 
-    # Skip words that are never targets
-    skip = {
-        "why", "is", "the", "my", "a", "an",
-        "show", "get", "list", "me", "all",
-        "pod", "pods", "deployment", "deploy", "deployments",
-        "service", "svc", "services", "node", "nodes",
-        "please", "can", "you", "what",
-        "how", "many", "which", "are",
-        "failing", "crashing", "running",
-        "healthy", "unhealthy", "down",
-        "broken", "stuck", "pending",
-        "restarting", "consuming", "consumes",
-        "more", "cpu", "memory", "oom",
-        "safely", "safe", "to", "in", "last", "hour",
-        "high", "restart", "restarts", "matching",
-        "resource", "consumers", "hog", "usage", "pods",
-        "anomalies", "detected", "any", "changes", "recently",
-        "happened", "what",
-    }
-
     if intent in (
         "diagnose", "inspect", "trace",
         "logs", "restart", "rollback",
@@ -214,47 +265,38 @@ def extract_entities(query, intent):
     ):
         # Specific patterns to ignore common adjectives used as targets
         if intent == "diagnose" and ("restart" in tokens or "high" in tokens):
-             # This is handled as a general high-restart check in the AI engine
-             return entities
+            # This is handled as a general high-restart check in the AI engine
+            return entities
 
         # Look after key phrases with regex
-        patterns = [
-            r"(?:why is|diagnose|inspect|trace|"
-            r"restart|rollback|logs for|logs of|"
-            r"logs|describe|check|health of|"
-            r"status of|exec|shell into|"
-            r"delete|netcheck)\s+(?:the\s+)?"
-            r"(?:pod\s+|deploy\s+)?"
-            r"([a-z0-9\-\.]+)",
-        ]
-        for p in patterns:
-            m = re.search(p, lower)
+        for p in GENERAL_ENTITY_RE:
+            m = p.search(lower)
             if m:
                 candidate = m.group(1).strip("?.,!")
-                if candidate not in skip:
+                if candidate not in SKIP_WORDS:
                     entities["target"] = candidate
                     return entities
 
         # Target: first non-skip word that looks like a resource name
         for token in tokens:
-            if token not in skip and len(token) > 1:
+            if token not in SKIP_WORDS and len(token) > 1:
                 # Basic check for kubernetes resource name format
-                if re.match(r"^[a-z0-9\-\.]+$", token):
-                    # Final check: don't pick 'high' or 'restart' if it's likely a general query
+                if RESOURCE_NAME_RE.match(token):
+                    # Final check: don't pick 'high' or 'restart'
                     if token in {"high", "restart"}:
-                         continue
+                        continue
                     entities["target"] = token
                     break
 
     elif intent == "count_pods":
-        m = re.search(r"(?:how many|count|number of)\s+(?:pods? matching\s+)?([a-z0-9\-\.]+)", lower)
+        m = COUNT_PODS_RE.search(lower)
         if m:
             candidate = m.group(1).strip("?.,!")
-            if candidate not in skip:
+            if candidate not in SKIP_WORDS:
                 entities["target"] = candidate
 
     elif intent == "is_safe":
-        m = re.search(r"safe to (\w+)\s+(\S+)", lower)
+        m = IS_SAFE_RE.search(lower)
         if m:
             entities["action"] = m.group(1)
             entities["target"] = m.group(2)
