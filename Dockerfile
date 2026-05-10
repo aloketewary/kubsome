@@ -27,9 +27,10 @@ COPY config/ config/
 COPY plugins/ plugins/
 COPY tui/ tui/
 COPY main.py .
+COPY pyproject.toml .
 
 # UI build output
-COPY --from=ui-build /app/ui/dist/ui/browser ui/dist/ui/browser/
+COPY --from=ui-build /app/ui/dist/ui/browser api/ui_dist/
 
 EXPOSE 8000
 

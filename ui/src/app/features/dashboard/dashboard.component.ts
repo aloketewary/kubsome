@@ -14,29 +14,97 @@ import { OverviewResponse, KubeEvent } from '../../core/models';
   imports: [TagModule, ButtonModule, DragDropModule],
   template: `
     @if (data) {
-      <div cdkDropList class="dashboard-list" (cdkDropListDropped)="drop($event)">
-        @for (widget of widgets; track widget) {
-          <div class="widget-item" cdkDrag>
-            <div class="widget-handle" cdkDragHandle title="Drag to reorder">
-              <i class="pi pi-ellipsis-v"></i><i class="pi pi-ellipsis-v"></i>
+      <!-- Hero Status Banner -->
+      <div class="hero glass" [class]="'hero-' + overallHealth">
+        <div class="hero-ring">
+          <svg viewBox="0 0 36 36" class="ring-svg">
+            <path class="ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+            <path class="ring-fill" [attr.stroke-dasharray]="healthPct + ', 100'" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+          </svg>
+          <span class="ring-value">{{ healthPct }}%</span>
+        </div>
+        <div class="hero-info">
+          <h1 class="hero-title">{{ overallHealth === 'healthy' ? 'All Systems Operational' : overallHealth === 'degraded' ? 'Degraded Performance' : 'Critical Issues Detected' }}</h1>
+          <p class="hero-sub">{{ data.pods.healthy + data.nodes.healthy + data.deployments.healthy }} / {{ podTotal + nodeTotal + depTotal }} resources healthy</p>
+          <span class="hero-time">Updated {{ lastUpdated }}</span>
+        </div>
+        <button pButton icon="pi pi-refresh" class="p-button-text p-button-sm hero-refresh" (click)="refresh()"></button>
+      </div>
+
+      <!-- Critical Alert Banner -->
+      @if ((data.pods.critical) > 0 || data.nodes.warning > 0) {
+        <div class="alert-banner">
+          <i class="pi pi-exclamation-triangle"></i>
+          <span>
+            @if ((data.pods.critical) > 0) { {{ data.pods.critical }} pod(s) in critical state. }
+            @if (data.nodes.warning > 0) { {{ data.nodes.warning }} node(s) not ready. }
+          </span>
+          <button pButton label="Investigate" icon="pi pi-arrow-right" iconPos="right" class="p-button-sm p-button-text" (click)="goToPods()"></button>
+        </div>
+      }
+
+      <!-- Metric Cards -->
+      <div class="metrics-grid">
+        <div class="metric-card p-card" (click)="goToPods()">
+          <div class="metric-top">
+            <div class="metric-icon pods"><i class="pi pi-box"></i></div>
+            <div class="metric-numbers">
+              <span class="metric-value">{{ data.pods.healthy }}</span>
+              <span class="metric-of">/ {{ podTotal }}</span>
+            </div>
+          </div>
+          <div class="metric-label">Pods Running</div>
+          <div class="metric-bar">
+            <div class="bar-segment bar-ok" [style.width.%]="pct(data.pods.healthy, podTotal)"></div>
+            <div class="bar-segment bar-warn" [style.width.%]="pct(data.pods.warning, podTotal)"></div>
+            <div class="bar-segment bar-crit" [style.width.%]="pct(data.pods.critical, podTotal)"></div>
+          </div>
+          <div class="metric-legend">
+            @if ((data.pods.warning) > 0) { <span class="legend-item warn">{{ data.pods.warning }} warning</span> }
+            @if ((data.pods.critical) > 0) { <span class="legend-item crit">{{ data.pods.critical }} critical</span> }
+            @if ((data.pods.warning) === 0 && (data.pods.critical) === 0) { <span class="legend-item ok">All healthy</span> }
+          </div>
+        </div>
+
+        <div class="metric-card p-card" (click)="router.navigate(['/metrics'])">
+          <div class="metric-top">
+            <div class="metric-icon nodes"><i class="pi pi-server"></i></div>
+            <div class="metric-numbers">
+              <span class="metric-value">{{ data.nodes.healthy }}</span>
+              <span class="metric-of">/ {{ nodeTotal }}</span>
+            </div>
+          </div>
+          <div class="metric-label">Nodes Ready</div>
+          <div class="metric-bar">
+            <div class="bar-segment bar-ok" [style.width.%]="pct(data.nodes.healthy, nodeTotal)"></div>
+            <div class="bar-segment bar-warn" [style.width.%]="pct(data.nodes.warning, nodeTotal)"></div>
+          </div>
+          <div class="metric-legend">
+            @if (data.nodes.warning > 0) { <span class="legend-item warn">{{ data.nodes.warning }} not ready</span> }
+            @else { <span class="legend-item ok">All ready</span> }
+          </div>
+        </div>
+
+        <div class="metric-card p-card" (click)="router.navigate(['/deployments'])">
+          <div class="metric-top">
+            <div class="metric-icon deploys"><i class="pi pi-send"></i></div>
+            <div class="metric-numbers">
+              <span class="metric-value">{{ data.deployments.healthy }}</span>
+              <span class="metric-of">/ {{ depTotal }}</span>
             </div>
 
-            @if (widget === 'hero') {
-              <!-- Hero Status Banner -->
-              <div class="hero glass" [class]="'hero-' + overallHealth">
-                <div class="hero-ring">
-                  <svg viewBox="0 0 36 36" class="ring-svg">
-                    <path class="ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                    <path class="ring-fill" [attr.stroke-dasharray]="healthPct + ', 100'" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                  </svg>
-                  <span class="ring-value">{{ healthPct }}%</span>
-                </div>
-                <div class="hero-info">
-                  <h1 class="hero-title">{{ overallHealth === 'healthy' ? 'All Systems Operational' : overallHealth === 'degraded' ? 'Degraded Performance' : 'Critical Issues Detected' }}</h1>
-                  <p class="hero-sub">{{ data.pods.healthy + data.nodes.healthy + data.deployments.healthy }} / {{ podTotal + nodeTotal + depTotal }} resources healthy</p>
-                  <span class="hero-time">Updated {{ lastUpdated }}</span>
-                </div>
-                <button pButton icon="pi pi-refresh" class="p-button-text p-button-sm hero-refresh" (click)="refresh()"></button>
+      <!-- Charts Row -->
+      <div class="charts-row">
+        <!-- Activity Bar Chart -->
+        <div class="chart-card p-card">
+          <div class="chart-header">
+            <h3>Event Activity</h3>
+            <span class="chart-hint">Last {{ recentEvents.length }} events</span>
+          </div>
+          <div class="bar-chart">
+            @for (bar of activityBars; track $index) {
+              <div class="chart-bar-wrap">
+                <div class="chart-bar" [style.height.%]="bar" [class.bar-high]="bar > 70" [class.bar-med]="bar > 40 && bar <= 70" [attr.title]="Math.round(bar) + '%'"></div>
               </div>
 
               <!-- Critical Alert Banner -->
@@ -52,29 +120,30 @@ import { OverviewResponse, KubeEvent } from '../../core/models';
               }
             }
 
-            @if (widget === 'metrics') {
-              <!-- Metric Cards -->
-              <div class="metrics-grid">
-                <div class="metric-card p-card" (click)="goToPods()">
-                  <div class="metric-top">
-                    <div class="metric-icon pods"><i class="pi pi-box"></i></div>
-                    <div class="metric-numbers">
-                      <span class="metric-value">{{ data.pods.healthy }}</span>
-                      <span class="metric-of">/ {{ podTotal }}</span>
-                    </div>
-                  </div>
-                  <div class="metric-label">Pods Running</div>
-                  <div class="metric-bar">
-                    <div class="bar-segment bar-ok" [style.width.%]="pct(data.pods.healthy, podTotal)"></div>
-                    <div class="bar-segment bar-warn" [style.width.%]="pct(data.pods.warning, podTotal)"></div>
-                    <div class="bar-segment bar-crit" [style.width.%]="pct(data.pods.critical, podTotal)"></div>
-                  </div>
-                  <div class="metric-legend">
-                    @if ((data.pods.warning) > 0) { <span class="legend-item warn">{{ data.pods.warning }} warning</span> }
-                    @if ((data.pods.critical) > 0) { <span class="legend-item crit">{{ data.pods.critical }} critical</span> }
-                    @if ((data.pods.warning) === 0 && (data.pods.critical) === 0) { <span class="legend-item ok">All healthy</span> }
-                  </div>
-                </div>
+        <!-- Pod Status Donut -->
+        <div class="chart-card p-card">
+          <div class="chart-header">
+            <h3>Pod Distribution</h3>
+          </div>
+          <div class="donut-chart">
+            <svg viewBox="0 0 42 42" class="donut-svg">
+              <circle class="donut-bg" cx="21" cy="21" r="15.9" />
+              <circle class="donut-ok" cx="21" cy="21" r="15.9" [attr.stroke-dasharray]="podRunningDash" stroke-dashoffset="25" />
+              <circle class="donut-warn" cx="21" cy="21" r="15.9" [attr.stroke-dasharray]="podWarnDash" [attr.stroke-dashoffset]="podWarnOffset" />
+              <circle class="donut-crit" cx="21" cy="21" r="15.9" [attr.stroke-dasharray]="podCritDash" [attr.stroke-dashoffset]="podCritOffset" />
+            </svg>
+            <div class="donut-center">
+              <span class="donut-total">{{ podTotal }}</span>
+              <span class="donut-label">pods</span>
+            </div>
+          </div>
+          <div class="donut-legend">
+            <span class="dl-item"><span class="dl-dot dl-ok"></span> Running {{ data.pods.healthy }}</span>
+            <span class="dl-item"><span class="dl-dot dl-warn"></span> Warning {{ data.pods.warning }}</span>
+            <span class="dl-item"><span class="dl-dot dl-crit"></span> Critical {{ data.pods.critical }}</span>
+          </div>
+        </div>
+      </div>
 
                 <div class="metric-card p-card" (click)="router.navigate(['/metrics'])">
                   <div class="metric-top">

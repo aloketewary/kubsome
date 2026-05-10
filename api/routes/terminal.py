@@ -58,6 +58,12 @@ def exec_command(req: CommandRequest):
         cmd = _rebuild_command(cmd, req.selection)
         return _run_kubsome(cmd)
 
+    # Handle watch commands in-process (singleton must live in API server)
+    if cmd.startswith("watch-alert "):
+        return _handle_watch_alert_api(cmd)
+    if cmd == "watch-status":
+        return _handle_watch_status_api()
+
     # Direct kubectl passthrough
     if cmd.startswith("kubectl") or cmd.startswith("k "):
         actual = cmd.replace("k ", "kubectl ", 1) if cmd.startswith("k ") else cmd
@@ -180,3 +186,59 @@ def _run(command: str, timeout: int = 15, cwd: str = None):
         return {"output": f"Command timed out after {timeout}s", "exit_code": 1}
     except Exception as e:
         return {"output": f"Error: {str(e)}", "exit_code": 1}
+
+
+def _handle_watch_alert_api(cmd: str):
+    """Handle watch-alert in the API server process."""
+    from core.watch_alert import (
+        get_watcher, pod_crash_condition,
+        pod_restart_condition, pod_count_condition
+    )
+
+    tokens = cmd.split()
+    target = tokens[1] if len(tokens) > 1 else ""
+    condition = tokens[2] if len(tokens) > 2 else "crash"
+
+    if not target:
+        return {"output": "Usage: watch-alert <pod> [crash|restart|count]", "exit_code": 1}
+
+    watcher = get_watcher()
+    conditions = {
+        "crash": pod_crash_condition(target),
+        "restart": pod_restart_condition(target, 5),
+        "count": pod_count_condition(target, 1),
+    }
+
+    check_fn = conditions.get(condition, conditions["crash"])
+    name = f"{target}-{condition}"
+    watcher.add(name, check_fn, interval=30)
+    watcher.start()
+
+    return {
+        "output": (
+            f"✓ Watching: {target} (condition: {condition})\n"
+            f"  Checking every 30s. Notification on trigger.\n"
+            f"  Run: watch-status to see all watches"
+        ),
+        "exit_code": 0,
+    }
+
+
+def _handle_watch_status_api():
+    """Handle watch-status in the API server process."""
+    from core.watch_alert import get_watcher
+
+    status = get_watcher().status()
+    if not status["watches"]:
+        return {
+            "output": "No active watches. Use: watch-alert <pod> [crash|restart|count]",
+            "exit_code": 0,
+        }
+
+    lines = [f"Active Watches ({len(status['watches'])}):\n"]
+    for w in status["watches"]:
+        icon = "🔔" if w["triggered"] else "●"
+        lines.append(f"  {icon} {w['name']} — alerts: {w['alert_count']}")
+
+    lines.append(f"\nBackground: {'running' if status['running'] else 'stopped'}")
+    return {"output": "\n".join(lines), "exit_code": 0}

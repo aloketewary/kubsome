@@ -3,6 +3,7 @@ import { ButtonModule } from 'primeng/button';
 import { TooltipModule } from 'primeng/tooltip';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/services/api.service';
+import { PageInfoComponent } from '../../shared/components/page-info.component';
 
 interface Message {
   role: 'user' | 'ai';
@@ -15,7 +16,7 @@ interface Message {
 @Component({
   selector: 'app-ai',
   standalone: true,
-  imports: [ButtonModule, TooltipModule, FormsModule],
+  imports: [ButtonModule, TooltipModule, FormsModule, PageInfoComponent],
   template: `
     <div class="page-header">
       <div>
@@ -24,6 +25,9 @@ interface Message {
       </div>
       @if (messages.length > 0) {
         <button pButton icon="pi pi-trash" label="Clear" class="p-button-text p-button-sm" (click)="clearHistory()" pTooltip="Clear conversation"></button>
+        <app-page-info title="AI Assistant" description="Ask natural language questions about your cluster. AI analyzes pods, events, metrics, and logs to answer."
+          [tips]="['Type naturally: why is payment failing?', 'When multiple pods match, click to select one', 'AI correlates logs + events + metrics for diagnosis', 'Works offline — no external API needed']"
+          [commands]="['why is <pod> failing', 'how many <name> pods running', 'summarize cluster health', 'is it safe to restart <dep>']" />
       }
     </div>
 

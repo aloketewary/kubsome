@@ -12,8 +12,7 @@ import { ApiService } from '../../core/services/api.service';
 import { WsService } from '../../core/services/ws.service';
 import { Pod } from '../../core/models';
 import { PodDrawerComponent } from '../../shared/components/pod-drawer.component';
-import { LogTerminalComponent } from '../../shared/components/log-terminal.component';
-import { AiInsightDrawerComponent } from '../../shared/components/ai-insight-drawer.component';
+import { PageInfoComponent } from '../../shared/components/page-info.component';
 
 interface PodGroup {
   deployment: string;
@@ -26,7 +25,7 @@ interface PodGroup {
 @Component({
   selector: 'app-pods',
   standalone: true,
-  imports: [JsonPipe, TagModule, ButtonModule, TooltipModule, DialogModule, InputTextModule, FormsModule, PodDrawerComponent, LogTerminalComponent, AiInsightDrawerComponent],
+  imports: [JsonPipe, TagModule, ButtonModule, TooltipModule, DialogModule, InputTextModule, FormsModule, PodDrawerComponent, PageInfoComponent],
   template: `
     <!-- Header -->
     <div class="page-header">
@@ -44,6 +43,10 @@ interface PodGroup {
           {{ watching ? 'Live' : 'Watch' }}
         </button>
         <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="refresh()" pTooltip="Refresh" aria-label="Refresh"></button>
+        <app-page-info title="Pods" description="View all pods grouped by deployment. Click a pod to inspect, select multiple for logcat."
+          [tips]="['Click pod name to open detail drawer', 'Select multiple pods for combined logs', 'Red border = unhealthy deployment', 'Watch mode streams live updates']"
+          [commands]="['pods', 'pods watch', 'inspect <pod>', 'diagnose <pod>', 'logs <pod>']"
+          [shortcuts]="[{key: 'G+P', action: 'Navigate to Pods'}]" />
       </div>
     </div>
 

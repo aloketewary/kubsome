@@ -1,4 +1,4 @@
-import { Component, OnInit, HostListener, inject } from '@angular/core';
+import { Component, OnInit, HostListener, inject, Input } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { ContextsResponse } from '../core/models';
@@ -11,21 +11,18 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
   standalone: true,
   imports: [RouterLink, RouterLinkActive, HelpDialogComponent],
   template: `
-    <div class="sidebar-header">
+    <div class="sidebar-header" [class.header-mini]="collapsed">
       <div class="logo-area">
         <i class="pi pi-box logo-icon"></i>
-        <span class="logo-text">Kubsome</span>
+        @if (!collapsed) { <span class="logo-text">Kubsome</span> }
       </div>
-
-      <div class="context-card">
-        <div class="cc-row">
-          <span class="cc-dot"></span>
-          <span class="cc-value">{{ currentContext }}</span>
-        </div>
-        <div class="cc-row ns-row">
-          <i class="pi pi-tag"></i>
-          <span class="cc-value">{{ currentNamespace }}</span>
-        </div>
+      <div class="ctx-block" [class.glass]="!collapsed">
+        <div class="ctx-dot" [class.dot-ok]="clusterOk" [class.dot-bad]="!clusterOk"></div>
+        @if (!collapsed) {
+          <div class="ctx-info">
+            <span class="ctx-name">{{ currentContext }}</span>
+          </div>
+        }
       </div>
     </div>
 
@@ -125,11 +122,19 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
     }
   `,
   styles: [`
-    :host { display: flex; flex-direction: column; height: calc(100vh - 48px - 24px); }
+    :host { display: flex; flex-direction: column; height: calc(100vh - 48px - 24px); overflow-y: auto; overflow-x: hidden; }
+    :host-context(.rail) .nav-label { display: none; }
+    :host-context(.rail) .nav-item span { display: none; }
+    :host-context(.rail) .nav-item kbd { display: none; }
+    :host-context(.rail) .nav-item { justify-content: center; padding: 8px; margin: 1px 2px; }
+    :host-context(.rail) .nav-item i { margin: 0; }
+    :host-context(.rail) .fav-remove, :host-context(.rail) .star-btn { display: none; }
+    :host-context(.rail) .nav-footer .nav-item span { display: none; }
+    :host-context(.rail) .header-mini { padding: 12px 4px 8px; }
+    :host-context(.rail) .logo-area { justify-content: center; }
+    :host-context(.rail) .ctx-block { justify-content: center; padding: 6px; }
     .sidebar-header {
       padding: 20px 12px 16px;
-      border-bottom: 1px solid var(--border);
-      margin-bottom: 12px;
     }
     .logo-area {
       display: flex;
@@ -137,6 +142,24 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
       gap: 8px;
       margin-bottom: 16px;
       padding-left: 8px;
+    }
+    .logo-icon {
+      font-size: 20px;
+      color: var(--accent);
+    }
+    .logo-text {
+      font-weight: 800;
+      font-size: 18px;
+      letter-spacing: -0.02em;
+    }
+    .ctx-block {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: var(--radius-sm);
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
     }
     .context-card {
       background: var(--bg-elevated);
@@ -163,12 +186,6 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
       background: var(--success);
       box-shadow: 0 0 4px var(--success);
     }
-    .ns-row {
-      margin-top: 4px;
-      color: var(--text-muted);
-      font-weight: 400;
-    }
-    .ns-row i { font-size: 10px; }
     .logo-icon {
       font-size: 20px;
       color: var(--accent);
@@ -210,6 +227,8 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
       cursor: pointer;
       transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
       text-decoration: none;
+      overflow: hidden;
+      white-space: nowrap;
     }
     .nav-item:hover {
       background: var(--bg-hover);
@@ -286,12 +305,10 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
   `],
 })
 export class ShellComponent implements OnInit {
+  @Input() collapsed = false;
   private http = inject(HttpClient);
   private router = inject(Router);
   private api = inject(ApiService);
-
-  currentContext = '...';
-  currentNamespace = '...';
 
   helpVisible = false;
   monitorCollapsed = false;
@@ -309,7 +326,9 @@ export class ShellComponent implements OnInit {
     { path: '/metrics', icon: 'pi pi-chart-bar', label: 'Metrics' },
     { path: '/namespace', icon: 'pi pi-th-large', label: 'Namespace' },
     { path: '/timeline', icon: 'pi pi-history', label: 'Timeline' },
+    { path: '/scorecard', icon: 'pi pi-trophy', label: 'Scorecard' },
     { path: '/cost', icon: 'pi pi-dollar', label: 'Optimization' },
+    { path: '/cost-estimate', icon: 'pi pi-calculator', label: 'Cost' },
   ];
 
   opsItems = [
@@ -323,12 +342,16 @@ export class ShellComponent implements OnInit {
     { path: '/incident', icon: 'pi pi-exclamation-circle', label: 'Incident' },
     { path: '/graph', icon: 'pi pi-sitemap', label: 'Service Map' },
     { path: '/yaml', icon: 'pi pi-file-edit', label: 'YAML Editor' },
+    { path: '/yaml-diff', icon: 'pi pi-copy', label: 'YAML Diff' },
     { path: '/runbooks', icon: 'pi pi-book', label: 'Runbooks' },
     { path: '/compare', icon: 'pi pi-arrows-h', label: 'Compare' },
   ];
 
   aiItems = [
     { path: '/ai', icon: 'pi pi-sparkles', label: 'AI Assistant' },
+    { path: '/log-correlation', icon: 'pi pi-link', label: 'Log Correlate' },
+    { path: '/pins', icon: 'pi pi-bookmark', label: 'Pins' },
+    { path: '/watches', icon: 'pi pi-eye', label: 'Watches' },
     { path: '/terminal', icon: 'pi pi-code', label: 'Terminal' },
     { path: '/settings', icon: 'pi pi-cog', label: 'Settings' },
   ];
@@ -368,8 +391,6 @@ export class ShellComponent implements OnInit {
 
   ngOnInit() {
     this.loadFavorites();
-    this.api.getContexts().subscribe(res => this.currentContext = res.current || '...');
-    this.api.getNamespaces().subscribe(res => this.currentNamespace = res.current || '...');
   }
   private allItems = [
     { path: '/dashboard', icon: 'pi pi-objects-column', label: 'Dashboard' },

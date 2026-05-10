@@ -1016,6 +1016,338 @@ def _handle_uptime(cmd, env):
     )
 
 
+def _handle_correlate_logs(cmd, env):
+    from core.collectors.log_correlation import correlate_logs
+    from core.resolver import resolve_pod_name
+    from core.selector import choose_pod
+
+    pods = cmd.get("pods", [])
+    resolved = []
+    for p in pods:
+        matches = resolve_pod_name(p)
+        if matches:
+            resolved.append(choose_pod(matches) or matches[0])
+        else:
+            resolved.append(p)
+
+    with loading(f"Correlating logs from {len(resolved)} pods..."):
+        data = correlate_logs(resolved, tail=50)
+
+    if not data["entries"]:
+        console.print("[dim]No log entries found[/dim]")
+        return
+
+    from rich.table import Table
+    table = Table(show_header=True, border_style="dim", expand=True)
+    table.add_column("Time", width=12, style="dim")
+    table.add_column("Pod", width=18, style="cyan")
+    table.add_column("Message")
+
+    for entry in data["entries"][-80:]:
+        ts = entry["timestamp"][-12:] if entry["timestamp"] else ""
+        style = "red" if entry["level"] == "error" else "yellow" if entry["level"] == "warn" else ""
+        table.add_row(ts, entry["pod"], f"[{style}]{entry['message']}[/{style}]" if style else entry["message"])
+
+    console.print(Panel(table, title=f"[bold]Log Correlation ({data['total']} entries)[/bold]", border_style="cyan"))
+
+
+def _handle_diff_timeline(cmd, env):
+    from core.collectors.diff_timeline import collect_diff_timeline
+
+    hours = cmd.get("hours", 24)
+    with loading(f"Scanning changes in last {hours}h..."):
+        data = collect_diff_timeline(hours)
+
+    if not data["changes"]:
+        console.print("[green]No changes detected[/green]")
+        return
+
+    lines = [f"[bold]{data['total']} changes in last {hours}h:[/bold]\n"]
+    icons = {
+        "image_changes": "📦", "scaling": "⚖️",
+        "restarts": "🔄", "new_deployments": "🆕",
+        "deletions": "🗑️", "config_changes": "⚙️",
+        "other": "•",
+    }
+    for category, events in data["changes"].items():
+        icon = icons.get(category, "•")
+        label = category.replace("_", " ").title()
+        lines.append(f"  {icon} [bold]{label}[/bold] ({len(events)})")
+        for ev in events[:5]:
+            lines.append(f"     [dim]{ev['name']}[/dim] — {ev['message'][:60]}")
+
+    console.print(Panel("\n".join(lines), title="[bold]📅 Diff Timeline[/bold]", border_style="cyan"))
+
+
+def _handle_dep_health(cmd, env):
+    from core.collectors.dep_health import dependency_health
+    from core.resolver import resolve_deployment_name
+    from core.selector import choose_deployment
+
+    target = cmd["target"]
+    matches = resolve_deployment_name(target)
+    if matches:
+        target = choose_deployment(matches) or target
+
+    with loading(f"Mapping dependencies for {target}..."):
+        data = dependency_health(target)
+
+    lines = [f"[bold]{target}[/bold] dependency health:\n"]
+    for node in data["nodes"]:
+        icon = "[green]●[/green]" if node["healthy"] else "[red]●[/red]"
+        lines.append(f"  {icon} {node['name']} [{node['type']}] — {node['detail']}")
+
+    if data["root_cause"]:
+        lines.append(f"\n[bold red]⚠ Likely root cause:[/bold red]")
+        lines.append(f"  {data['root_cause']['suggestion']}")
+
+    console.print(Panel("\n".join(lines), title="[bold]🔗 Dependency Health[/bold]", border_style="cyan"))
+
+
+def _handle_rollback_preview(cmd, env):
+    from core.collectors.rollback_preview import rollback_preview
+    from core.resolver import resolve_deployment_name
+    from core.selector import choose_deployment
+
+    target = cmd["target"]
+    matches = resolve_deployment_name(target)
+    if matches:
+        target = choose_deployment(matches) or target
+
+    with loading(f"Fetching rollback preview for {target}..."):
+        data = rollback_preview(target)
+
+    if not data["available"]:
+        console.print(f"[red]{data.get('reason', 'Cannot preview')}[/red]")
+        return
+
+    if not data["has_changes"]:
+        console.print(f"[dim]No differences between current and previous revision[/dim]")
+        return
+
+    from rich.table import Table
+    table = Table(show_header=True, border_style="dim")
+    table.add_column("Field", style="cyan")
+    table.add_column("Current", style="red")
+    table.add_column("Rollback To", style="green")
+
+    for diff in data["diffs"]:
+        table.add_row(diff["field"], diff["current"][:50], diff["rollback_to"][:50])
+
+    console.print(Panel(table, title=f"[bold]↩ Rollback Preview: {target}[/bold]", border_style="yellow"))
+
+
+def _handle_watch_alert(cmd, env):
+    from core.watch_alert import (
+        get_watcher, pod_crash_condition,
+        pod_restart_condition, pod_count_condition
+    )
+
+    target = cmd["target"]
+    condition = cmd.get("condition", "crash")
+    watcher = get_watcher()
+
+    conditions = {
+        "crash": pod_crash_condition(target),
+        "restart": pod_restart_condition(target, 5),
+        "count": pod_count_condition(target, 1),
+    }
+
+    check_fn = conditions.get(condition, conditions["crash"])
+    name = f"{target}-{condition}"
+    watcher.add(name, check_fn, interval=30)
+    watcher.start()
+
+    console.print(f"[green]✓ Watching:[/green] {target} (condition: {condition})")
+    console.print(f"[dim]  Checking every 30s. Desktop notification on trigger.[/dim]")
+    console.print(f"[dim]  Run: watch-status to see all watches[/dim]")
+
+
+def _handle_watch_status(cmd, env):
+    from core.watch_alert import get_watcher
+
+    status = get_watcher().status()
+    if not status["watches"]:
+        console.print("[dim]No active watches. Use: watch-alert <pod> [crash|restart|count][/dim]")
+        return
+
+    lines = [f"[bold]Active Watches ({len(status['watches'])}):[/bold]\n"]
+    for w in status["watches"]:
+        icon = "[red]🔔[/red]" if w["triggered"] else "[green]●[/green]"
+        lines.append(f"  {icon} {w['name']} — alerts: {w['alert_count']}")
+
+    lines.append(f"\n[dim]Background: {'running' if status['running'] else 'stopped'}[/dim]")
+    console.print(Panel("\n".join(lines), title="[bold]👁 Watch Status[/bold]", border_style="cyan"))
+
+
+def _handle_scorecard(cmd, env):
+    from core.collectors.scorecard import cluster_scorecard
+
+    with loading("Generating cluster scorecard..."):
+        data = cluster_scorecard()
+
+    grade = data["overall_grade"]
+    score = data["overall_score"]
+    grade_color = "green" if grade in ("A", "B") else "yellow" if grade == "C" else "red"
+
+    lines = [
+        f"[bold]Overall: [{grade_color}]{grade}[/{grade_color}] ({score}/100)[/bold]\n",
+        f"[dim]{data['summary']}[/dim]\n",
+    ]
+
+    for cat, info in data["categories"].items():
+        g = info["grade"]
+        gc = "green" if g in ("A", "B") else "yellow" if g == "C" else "red"
+        lines.append(f"  [{gc}]{g}[/{gc}] {cat.title():15} ({info['score']}/100)")
+        for issue in info["issues"]:
+            lines.append(f"     [dim]• {issue}[/dim]")
+
+    if data["recommendations"]:
+        lines.append("\n[bold]Recommendations:[/bold]")
+        for rec in data["recommendations"][:5]:
+            lines.append(f"  → {rec['issue']}")
+            lines.append(f"    [cyan]{rec['action']}[/cyan]")
+
+    console.print(Panel("\n".join(lines), title="[bold]🏆 Cluster Scorecard[/bold]", border_style=grade_color))
+
+
+def _handle_cost_estimate(cmd, env):
+    from core.collectors.cost_estimate import estimate_costs
+
+    with loading("Estimating costs..."):
+        data = estimate_costs()
+
+    if not data["deployments"]:
+        console.print("[dim]No deployments found[/dim]")
+        return
+
+    from rich.table import Table
+    table = Table(show_header=True, border_style="dim", expand=True)
+    table.add_column("Deployment")
+    table.add_column("Replicas", justify="center")
+    table.add_column("CPU", justify="right")
+    table.add_column("Memory", justify="right")
+    table.add_column("$/pod/mo", justify="right")
+    table.add_column("$/total/mo", justify="right", style="bold")
+
+    for d in data["deployments"][:15]:
+        table.add_row(
+            d["name"], str(d["replicas"]),
+            d["cpu_request"], d["memory_request"],
+            f"${d['cost_per_pod']:.2f}",
+            f"${d['cost_total']:.2f}",
+        )
+
+    console.print(Panel(table, title=f"[bold]💰 Cost Estimate — ${data['total']:.2f}/month[/bold]", border_style="green"))
+    console.print(f"[dim]{data['pricing']['note']}[/dim]")
+
+
+def _handle_remediate(cmd, env):
+    from core.remediation import auto_remediate
+    from core.resolver import resolve_pod_name
+    from core.selector import choose_pod
+
+    target = cmd["target"]
+    matches = resolve_pod_name(target)
+    if matches:
+        target = choose_pod(matches) or target
+
+    with loading(f"Auto-remediating {target}..."):
+        data = auto_remediate(target)
+
+    if data.get("blocked"):
+        console.print(f"[yellow]⚠ {data['reason']}[/yellow]")
+        if data.get("suggestion"):
+            console.print(f"[dim]{data['suggestion']}[/dim]")
+        return
+
+    if data["result"] == "healthy":
+        console.print(f"[green]✓ {data['message']}[/green]")
+        return
+
+    if data["actions"]:
+        for a in data["actions"]:
+            icon = "[green]✓[/green]" if a["success"] else "[red]✗[/red]"
+            console.print(f"  {icon} {a['action']}")
+            if a["output"]:
+                console.print(f"    [dim]{a['output'][:100]}[/dim]")
+    else:
+        console.print("[yellow]Manual intervention required[/yellow]")
+        if data.get("playbooks"):
+            console.print(f"[dim]Suggested playbooks: {', '.join(data['playbooks'])}[/dim]")
+
+
+def _handle_yaml_diff(cmd, env):
+    from core.collectors.yaml_diff import yaml_diff
+    from core.resolver import resolve_deployment_name
+    from core.selector import choose_deployment
+
+    target = cmd["target"]
+    matches = resolve_deployment_name(target)
+    if matches:
+        target = choose_deployment(matches) or target
+
+    with loading(f"Comparing revisions for {target}..."):
+        data = yaml_diff(target)
+
+    if not data.get("available"):
+        console.print(f"[red]{data.get('reason', 'Cannot diff')}[/red]")
+        return
+
+    if data["total_changes"] == 0:
+        console.print("[dim]No differences between revisions[/dim]")
+        return
+
+    lines = [
+        f"[green]+{data['additions']}[/green] "
+        f"[red]-{data['deletions']}[/red] changes\n"
+    ]
+    for line in data["diff_lines"][:60]:
+        if line.startswith("+") and not line.startswith("+++"):
+            lines.append(f"[green]{line}[/green]")
+        elif line.startswith("-") and not line.startswith("---"):
+            lines.append(f"[red]{line}[/red]")
+        elif line.startswith("@@"):
+            lines.append(f"[cyan]{line}[/cyan]")
+        else:
+            lines.append(f"[dim]{line}[/dim]")
+
+    console.print(Panel("\n".join(lines), title=f"[bold]YAML Diff: {target}[/bold]", border_style="cyan"))
+
+
+def _handle_save_query(cmd, env):
+    from core.saved_queries import save_query
+
+    name = cmd.get("name", "")
+    query = cmd.get("query", "")
+    if not name:
+        console.print("[red]Usage: pin <name> <query>[/red]")
+        return
+    if not query:
+        console.print("[red]Usage: pin <name> <query>[/red]")
+        return
+
+    save_query(name, query)
+    console.print(f"[green]✓ Pinned:[/green] {name} → [cyan]{query}[/cyan]")
+
+
+def _handle_list_queries(cmd, env):
+    from core.saved_queries import list_queries
+
+    queries = list_queries()
+    if not queries:
+        console.print("[dim]No pinned queries. Use: pin <name> <query>[/dim]")
+        return
+
+    lines = [f"[bold]Pinned Queries ({len(queries)}):[/bold]\n"]
+    for q in queries:
+        lines.append(f"  ● [cyan]{q['name']}[/cyan] → {q['query']}")
+        if q.get("last_run"):
+            lines.append(f"    [dim]Last run: {q['last_run'][:16]}[/dim]")
+
+    console.print(Panel("\n".join(lines), title="[bold]📌 Saved Queries[/bold]", border_style="cyan"))
+
+
 # Handler registry
 HANDLERS = {
     "pods_table": _handle_pods_table,
@@ -1093,4 +1425,16 @@ HANDLERS = {
     "dns": _handle_dns,
     "kubectl_pretty": _handle_kubectl_pretty,
     "uptime": _handle_uptime,
+    "correlate_logs": _handle_correlate_logs,
+    "diff_timeline": _handle_diff_timeline,
+    "dep_health": _handle_dep_health,
+    "rollback_preview": _handle_rollback_preview,
+    "watch_alert": _handle_watch_alert,
+    "watch_status": _handle_watch_status,
+    "scorecard": _handle_scorecard,
+    "cost_estimate": _handle_cost_estimate,
+    "remediate": _handle_remediate,
+    "yaml_diff": _handle_yaml_diff,
+    "save_query": _handle_save_query,
+    "list_queries": _handle_list_queries,
 }
