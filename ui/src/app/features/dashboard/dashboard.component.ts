@@ -13,7 +13,7 @@ import { OverviewResponse, KubeEvent } from '../../core/models';
   template: `
     @if (data) {
       <!-- Hero Status Banner -->
-      <div class="hero" [class]="'hero-' + overallHealth">
+      <div class="hero glass" [class]="'hero-' + overallHealth">
         <div class="hero-ring">
           <svg viewBox="0 0 36 36" class="ring-svg">
             <path class="ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
@@ -43,7 +43,7 @@ import { OverviewResponse, KubeEvent } from '../../core/models';
 
       <!-- Metric Cards -->
       <div class="metrics-grid">
-        <div class="metric-card" (click)="goToPods()">
+        <div class="metric-card p-card" (click)="goToPods()">
           <div class="metric-top">
             <div class="metric-icon pods"><i class="pi pi-box"></i></div>
             <div class="metric-numbers">
@@ -64,7 +64,7 @@ import { OverviewResponse, KubeEvent } from '../../core/models';
           </div>
         </div>
 
-        <div class="metric-card" (click)="router.navigate(['/metrics'])">
+        <div class="metric-card p-card" (click)="router.navigate(['/metrics'])">
           <div class="metric-top">
             <div class="metric-icon nodes"><i class="pi pi-server"></i></div>
             <div class="metric-numbers">
@@ -83,7 +83,7 @@ import { OverviewResponse, KubeEvent } from '../../core/models';
           </div>
         </div>
 
-        <div class="metric-card" (click)="router.navigate(['/deployments'])">
+        <div class="metric-card p-card" (click)="router.navigate(['/deployments'])">
           <div class="metric-top">
             <div class="metric-icon deploys"><i class="pi pi-send"></i></div>
             <div class="metric-numbers">
@@ -106,7 +106,7 @@ import { OverviewResponse, KubeEvent } from '../../core/models';
       <!-- Charts Row -->
       <div class="charts-row">
         <!-- Activity Bar Chart -->
-        <div class="chart-card">
+        <div class="chart-card p-card">
           <div class="chart-header">
             <h3>Event Activity</h3>
             <span class="chart-hint">Last {{ recentEvents.length }} events</span>
@@ -121,7 +121,7 @@ import { OverviewResponse, KubeEvent } from '../../core/models';
         </div>
 
         <!-- Pod Status Donut -->
-        <div class="chart-card">
+        <div class="chart-card p-card">
           <div class="chart-header">
             <h3>Pod Distribution</h3>
           </div>
@@ -233,10 +233,22 @@ import { OverviewResponse, KubeEvent } from '../../core/models';
       display: flex;
       align-items: center;
       gap: 20px;
-      padding: 24px 28px;
+      padding: 32px 36px;
       border-radius: var(--radius);
-      margin-bottom: 20px;
+      margin-bottom: 24px;
       position: relative;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle at center, var(--accent-subtle) 0%, transparent 70%);
+      opacity: 0.1;
+      pointer-events: none;
     }
     .hero-healthy { background: linear-gradient(135deg, rgba(34,197,94,0.08), rgba(34,197,94,0.02)); border: 1px solid rgba(34,197,94,0.2); }
     .hero-degraded { background: linear-gradient(135deg, rgba(234,179,8,0.08), rgba(234,179,8,0.02)); border: 1px solid rgba(234,179,8,0.2); }
@@ -288,14 +300,9 @@ import { OverviewResponse, KubeEvent } from '../../core/models';
       margin-bottom: 28px;
     }
     .metric-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
       padding: 20px;
       cursor: pointer;
-      transition: all 0.15s;
     }
-    .metric-card:hover { border-color: var(--border-hover); transform: translateY(-1px); }
     .metric-top { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
     .metric-icon {
       width: 40px; height: 40px; border-radius: 10px;
@@ -331,9 +338,6 @@ import { OverviewResponse, KubeEvent } from '../../core/models';
       margin-bottom: 24px;
     }
     .chart-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
       padding: 16px 20px;
     }
     .chart-header {
