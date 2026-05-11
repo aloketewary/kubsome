@@ -88,3 +88,21 @@ def get_namespaces_for(ctx: str):
     raw = result.stdout.strip().strip("'")
     namespaces = sorted([ns for ns in raw.split() if ns])
     return {"namespaces": namespaces}
+
+
+@router.get("/ns-for-context")
+def get_ns_for_context(ctx: str = ""):
+    """Get namespaces for a context using query param (handles special chars)."""
+    import subprocess
+    if not ctx:
+        return {"namespaces": []}
+    result = subprocess.run(
+        ["kubectl", "--context", ctx, "get", "namespaces",
+         "-o", "jsonpath={.items[*].metadata.name}"],
+        capture_output=True, text=True, timeout=10,
+    )
+    if result.returncode != 0:
+        return {"namespaces": [], "error": result.stderr.strip() or "Failed"}
+    raw = result.stdout.strip().strip("'")
+    namespaces = sorted([ns for ns in raw.split() if ns])
+    return {"namespaces": namespaces}

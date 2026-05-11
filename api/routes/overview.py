@@ -179,6 +179,36 @@ def get_apps_for(ctx: str, ns: str):
     }
 
 
+@router.get("/monitor/apps")
+def get_monitor_apps(ctx: str = "", ns: str = ""):
+    """List deployments using query params (handles special chars in context)."""
+    import subprocess
+    import json
+    if not ctx or not ns:
+        return {"deployments": []}
+    r = subprocess.run(
+        ["kubectl", "--context", ctx, "get", "deployments", "-n", ns, "-o", "json"],
+        capture_output=True, text=True
+    )
+    if r.returncode != 0:
+        return {"deployments": []}
+    items = json.loads(r.stdout).get("items", [])
+    return {
+        "deployments": [
+            {"name": d["metadata"]["name"]}
+            for d in items
+        ]
+    }
+
+
+@router.get("/monitor/overview")
+def get_monitor_overview(ctx: str = "", ns: str = "", app: str = ""):
+    """Monitor overview using query params (handles special chars)."""
+    if not ctx or not ns:
+        return {"error": "ctx and ns required"}
+    return get_overview_for(ctx, ns, app or None)
+
+
 @router.get("/uptime")
 def get_uptime():
     from core.collectors.uptime import collect_uptime

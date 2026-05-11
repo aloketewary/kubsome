@@ -635,7 +635,7 @@ export class MonitorComponent implements OnInit, OnDestroy {
     card.apps = [];
     card.namespaces = [];
     card.data = null;
-    this.http.get<any>(`/api/namespaces/${encodeURIComponent(card.context)}`).subscribe({
+    this.http.get<any>('/api/ns-for-context', { params: { ctx: card.context } }).subscribe({
       next: (res) => {
         card.namespaces = res.namespaces || [];
         if (res.error) {
@@ -650,7 +650,7 @@ export class MonitorComponent implements OnInit, OnDestroy {
     card.app = '';
     card.apps = [];
     if (!card.context || !card.namespace) return;
-    this.http.get<any>(`/api/list-apps/${encodeURIComponent(card.context)}/${encodeURIComponent(card.namespace)}`).subscribe({
+    this.http.get<any>('/api/monitor/apps', { params: { ctx: card.context, ns: card.namespace } }).subscribe({
       next: (res) => {
         card.apps = (res.deployments || []).map((d: any) => d.name);
       },
@@ -668,12 +668,9 @@ export class MonitorComponent implements OnInit, OnDestroy {
   fetchCardData(card: MonitorCard) {
     if (!card.context || !card.namespace) return;
     card.loading = true;
-    const ctx = encodeURIComponent(card.context);
-    const ns = encodeURIComponent(card.namespace);
-    const url = card.app
-      ? `/api/overview/${ctx}/${ns}?app=${encodeURIComponent(card.app)}`
-      : `/api/overview/${ctx}/${ns}`;
-    this.http.get<any>(url).subscribe({
+    const params: any = { ctx: card.context, ns: card.namespace };
+    if (card.app) params.app = card.app;
+    this.http.get<any>('/api/monitor/overview', { params }).subscribe({
       next: (res) => {
         card.data = res;
         card.events = res.events || [];
@@ -823,11 +820,11 @@ export class MonitorComponent implements OnInit, OnDestroy {
           if (card.context && card.namespace) {
             const savedNs = card.namespace;
             const savedApp = card.app;
-            this.http.get<any>(`/api/namespaces/${encodeURIComponent(card.context)}`).subscribe({
+            this.http.get<any>('/api/ns-for-context', { params: { ctx: card.context } }).subscribe({
               next: (res) => {
                 card.namespaces = res.namespaces || [];
                 card.namespace = savedNs;
-                this.http.get<any>(`/api/list-apps/${encodeURIComponent(card.context)}/${encodeURIComponent(savedNs)}`).subscribe({
+                this.http.get<any>('/api/monitor/apps', { params: { ctx: card.context, ns: savedNs } }).subscribe({
                   next: (appsRes) => {
                     card.apps = (appsRes.deployments || []).map((d: any) => d.name);
                     card.app = savedApp;
