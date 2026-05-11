@@ -167,8 +167,15 @@ import { KubeEvent } from '../../core/models';
       line-height: 1.5;
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
       transition: all 0.2s;
+      cursor: pointer;
+    }
+    .event-message::after {
+      content: ' ▸';
+      color: var(--text-muted);
+      font-size: 10px;
     }
     .event-message.expanded { white-space: normal; overflow: visible; }
+    .event-message.expanded::after { content: ' ▾'; }
     .event-time {
       font-size: 10px; color: var(--text-muted); margin-top: 4px;
       font-family: 'JetBrains Mono', monospace; display: block;

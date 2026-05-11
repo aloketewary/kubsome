@@ -216,8 +216,8 @@ export class MetricsComponent implements OnInit {
   cpuPct(pod: PodMetrics): number { return Math.min(Math.round((pod.cpu_millicores / this.maxCpu) * 100), 100); }
   memPct(pod: PodMetrics): number { return Math.min(Math.round((pod.memory_mb / this.maxMem) * 100), 100); }
 
-  cpuColor(pct: number): string { return pct > 80 ? 'color-crit' : pct > 50 ? 'color-warn' : 'color-ok'; }
-  memColor(pct: number): string { return pct > 80 ? 'color-crit' : pct > 50 ? 'color-warn' : 'color-ok'; }
+  cpuColor(pct: number): string { return (!pct || isNaN(pct)) ? 'color-ok' : pct > 80 ? 'color-crit' : pct > 50 ? 'color-warn' : 'color-ok'; }
+  memColor(pct: number): string { return (!pct || isNaN(pct)) ? 'color-ok' : pct > 80 ? 'color-crit' : pct > 50 ? 'color-warn' : 'color-ok'; }
 
   shortName(name: string): string { return name.length > 45 ? '...' + name.slice(-42) : name; }
 }

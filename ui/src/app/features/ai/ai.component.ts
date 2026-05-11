@@ -1,9 +1,18 @@
-import { Component, inject, ViewChild, ElementRef, AfterViewChecked } from '@angular/core';
+import { Component, inject, ViewChild, ElementRef, AfterViewChecked, Pipe, PipeTransform } from '@angular/core';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { ButtonModule } from 'primeng/button';
 import { TooltipModule } from 'primeng/tooltip';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/services/api.service';
 import { PageInfoComponent } from '../../shared/components/page-info.component';
+
+@Pipe({ name: 'safeHtml', standalone: true })
+export class SafeHtmlPipe implements PipeTransform {
+  private sanitizer = inject(DomSanitizer);
+  transform(value: string): SafeHtml {
+    return this.sanitizer.bypassSecurityTrustHtml(value);
+  }
+}
 
 interface Message {
   role: 'user' | 'ai';
@@ -20,7 +29,7 @@ interface Message {
 @Component({
   selector: 'app-ai',
   standalone: true,
-  imports: [ButtonModule, TooltipModule, FormsModule, PageInfoComponent],
+  imports: [ButtonModule, TooltipModule, FormsModule, PageInfoComponent, SafeHtmlPipe],
   template: `
     <div class="page-header">
       <div>
@@ -97,7 +106,7 @@ interface Message {
                 <div class="msg-title">{{ msg.title }}</div>
               }
               @if (msg.html) {
-                <div class="msg-content" [innerHTML]="msg.html"></div>
+                <div class="msg-content" [innerHTML]="msg.html | safeHtml"></div>
               } @else {
                 <div class="msg-content">{{ msg.text }}</div>
               }

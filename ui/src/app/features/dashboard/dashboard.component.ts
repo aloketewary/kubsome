@@ -3,13 +3,14 @@ import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { TagModule } from 'primeng/tag';
 import { ButtonModule } from 'primeng/button';
+import { TooltipModule } from 'primeng/tooltip';
 import { ApiService } from '../../core/services/api.service';
 import { OverviewResponse, KubeEvent } from '../../core/models';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [TagModule, ButtonModule],
+  imports: [TagModule, ButtonModule, TooltipModule],
   template: `
     @if (data) {
       <!-- Hero -->
@@ -32,7 +33,7 @@ import { OverviewResponse, KubeEvent } from '../../core/models';
           </div>
           <div class="hero-actions">
             <span class="hero-time">{{ lastUpdated }}</span>
-            <button class="refresh-btn" (click)="refresh()" title="Refresh"><i class="pi pi-refresh"></i></button>
+            <button class="refresh-btn" [class.spinning]="refreshing" (click)="refresh()" title="Refresh"><i class="pi pi-refresh"></i></button>
           </div>
         </div>
       </div>
@@ -119,7 +120,7 @@ import { OverviewResponse, KubeEvent } from '../../core/models';
             </div>
             <div class="uptime-info">
               <span class="uptime-title">{{ uptime?.cluster_down ? 'Cluster Down' : 'Cluster Operational' }}</span>
-              <span class="uptime-ctx">{{ uptime?.context }}</span>
+              <span class="uptime-ctx" [pTooltip]="uptime?.context" tooltipPosition="bottom" (click)="copyContext()">{{ uptime?.context }}</span>
             </div>
             <div class="uptime-stats">
               @if (uptime?.nodes?.length && !uptime?.cluster_down) {
@@ -263,6 +264,9 @@ import { OverviewResponse, KubeEvent } from '../../core/models';
       position: absolute; inset: 0; z-index: 0;
       background: linear-gradient(135deg, rgba(15,15,20,0.9), rgba(20,20,30,0.85));
     }
+    :host-context([data-theme="light"]) .hero-mesh {
+      background: linear-gradient(135deg, rgba(241,245,249,0.95), rgba(226,232,240,0.9));
+    }
     .hero-orb {
       position: absolute; border-radius: 50%; filter: blur(60px); opacity: 0.5;
       animation: orbFloat 8s ease-in-out infinite alternate;
@@ -308,19 +312,28 @@ import { OverviewResponse, KubeEvent } from '../../core/models';
       font-size: 15px; font-weight: 800; letter-spacing: -0.02em;
       color: #fff;
     }
+    :host-context([data-theme="light"]) .ring-value { color: var(--text); }
 
     .hero-info { flex: 1; }
     .hero-title { font-size: 24px; font-weight: 800; letter-spacing: -0.03em; margin: 0; color: #fff; }
+    :host-context([data-theme="light"]) .hero-title { color: var(--text); }
     .hero-sub { font-size: 13px; color: rgba(255,255,255,0.55); margin: 6px 0 0; font-weight: 400; }
+    :host-context([data-theme="light"]) .hero-sub { color: var(--text-secondary); }
     .hero-actions { display: flex; align-items: center; gap: 12px; }
     .hero-time { font-size: 11px; color: rgba(255,255,255,0.35); font-variant-numeric: tabular-nums; }
+    :host-context([data-theme="light"]) .hero-time { color: var(--text-muted); }
     .refresh-btn {
       width: 36px; height: 36px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.1);
       background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.7);
       cursor: pointer; display: flex; align-items: center; justify-content: center;
       transition: all 0.2s cubic-bezier(0.34,1.56,0.64,1);
     }
+    :host-context([data-theme="light"]) .refresh-btn {
+      border-color: var(--border); background: var(--bg-elevated); color: var(--text-muted);
+    }
     .refresh-btn:hover { background: rgba(255,255,255,0.12); transform: scale(1.1) rotate(45deg); border-color: rgba(255,255,255,0.2); }
+    .refresh-btn.spinning i { animation: spin 0.8s linear infinite; }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
     /* Alert Banner */
     .alert-banner {
@@ -433,7 +446,8 @@ import { OverviewResponse, KubeEvent } from '../../core/models';
     .uptime-title { font-size: 14px; font-weight: 700; }
     .uptime-up .uptime-title { color: var(--success); }
     .uptime-down .uptime-title { color: var(--danger); }
-    .uptime-ctx { font-size: 11px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .uptime-ctx { font-size: 11px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+    .uptime-ctx:hover { color: var(--accent); }
 
     .uptime-stats { display: flex; gap: 20px; flex-shrink: 0; }
     .ustat { display: flex; flex-direction: column; align-items: center; gap: 1px; }
@@ -617,6 +631,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   data: OverviewResponse | null = null;
   recentEvents: KubeEvent[] = [];
   lastUpdated = '';
+  refreshing = false;
   private refreshInterval: any;
   uptime: any = null;
 
@@ -691,6 +706,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   refresh() {
+    this.refreshing = true;
     this.api.getOverview().subscribe({
       next: (res) => (this.data = res),
       error: () => {
@@ -702,8 +718,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
       },
     });
     this.api.getEvents(5).subscribe({
-      next: (res) => (this.recentEvents = res.events),
-      error: () => (this.recentEvents = []),
+      next: (res) => { this.recentEvents = res.events; this.refreshing = false; },
+      error: () => { this.recentEvents = []; this.refreshing = false; },
     });
     this.http.get<any>('http://localhost:8000/api/uptime').subscribe({
       next: (res) => (this.uptime = res),
@@ -719,6 +735,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
       },
     });
     this.lastUpdated = new Date().toLocaleTimeString();
+  }
+
+  copyContext() {
+    if (this.uptime?.context) {
+      navigator.clipboard.writeText(this.uptime.context);
+    }
   }
 
   ngOnInit() {

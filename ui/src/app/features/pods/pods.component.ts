@@ -336,9 +336,11 @@ interface PodGroup {
     }
     .pod-restarts.high { color: var(--danger); font-weight: 600; }
     .pod-actions {
-      display: flex; gap: 6px; opacity: 0; transition: opacity 0.15s;
+      display: flex; gap: 6px; opacity: 0.4; transition: opacity 0.15s;
       margin-left: auto;
     }
+    .pod-row:hover .pod-actions { opacity: 1; }
+    @media (hover: none) { .pod-actions { opacity: 1; } }
     .pod-actions i {
       font-size: 13px; color: var(--text-muted); cursor: pointer;
       padding: 5px; border-radius: 8px; transition: all 0.2s cubic-bezier(0.34,1.56,0.64,1);
@@ -353,7 +355,7 @@ interface PodGroup {
     .empty-state i { font-size: 28px; opacity: 0.3; }
 
     /* Dialogs */
-    .log-viewer-container { height: 100%; display: flex; flex-direction: column; overflow: hidden; background: #070708; border-radius: 8px; }
+    .log-viewer-container { height: 100%; display: flex; flex-direction: column; overflow: hidden; background: var(--bg-elevated); border-radius: 8px; }
     .log-viewer { height: 100%; overflow-y: auto; font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 1.7; }
     .log-line { display: flex; gap: 12px; padding: 1px 12px; }
     .log-line:hover { background: var(--bg-hover); }

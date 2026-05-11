@@ -14,6 +14,7 @@ interface RunbookStep {
   paramValue?: string;
   done: boolean;
   output?: string;
+  outputExpanded?: boolean;
   loading?: boolean;
 }
 
@@ -152,10 +153,13 @@ interface Runbook {
               }
 
               @if (step.output) {
-                <div class="step-output">
+                <div class="step-output" [class.output-expanded]="step.outputExpanded">
                   <div class="output-header">
                     <span>Output</span>
-                    <button pButton icon="pi pi-copy" class="p-button-sm p-button-text p-button-rounded" (click)="copyCmd(step.output!)"></button>
+                    <div class="output-actions">
+                      <button pButton icon="pi pi-copy" class="p-button-sm p-button-text p-button-rounded" (click)="copyCmd(step.output!)"></button>
+                      <button pButton [icon]="step.outputExpanded ? 'pi pi-chevron-up' : 'pi pi-chevron-down'" class="p-button-sm p-button-text p-button-rounded" (click)="step.outputExpanded = !step.outputExpanded"></button>
+                    </div>
                   </div>
                   <pre>{{ step.output }}</pre>
                 </div>
@@ -302,6 +306,8 @@ interface Runbook {
       padding: 10px 12px; margin: 0; white-space: pre-wrap;
       max-height: 150px; overflow-y: auto; color: var(--text-secondary);
     }
+    .step-output.output-expanded pre { max-height: none; }
+    .output-actions { display: flex; gap: 2px; }
 
     /* Completion */
     .completion-card {

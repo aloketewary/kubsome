@@ -198,7 +198,7 @@ import { PageInfoComponent } from '../../shared/components/page-info.component';
       z-index: 9999;
       border-radius: 0; border: none;
       display: flex; flex-direction: column;
-      background: #050506;
+      background: var(--bg);
       margin: 0; padding: 0;
       contain: none;
     }
@@ -207,7 +207,7 @@ import { PageInfoComponent } from '../../shared/components/page-info.component';
     /* Fullscreen Header */
     .fs-header {
       display: flex; align-items: center; justify-content: space-between;
-      padding: 12px 20px; background: rgba(15,15,18,0.95); border-bottom: 1px solid var(--border);
+      padding: 12px 20px; background: var(--bg-card); border-bottom: 1px solid var(--border);
       backdrop-filter: blur(12px);
     }
     .fs-left { display: flex; align-items: center; gap: 10px; }
@@ -233,9 +233,10 @@ import { PageInfoComponent } from '../../shared/components/page-info.component';
     }
     .fs-close-btn:hover { border-color: var(--danger); color: var(--danger); background: var(--danger-subtle); transform: scale(1.1); }
     .log-viewer {
-      max-height: calc(100vh - 360px); overflow-y: auto; padding: 8px 0;
+      flex: 1; overflow-y: auto; padding: 8px 0;
       font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 1.7;
       color: var(--text);
+      max-height: calc(100vh - 320px);
     }
     .log-line { display: flex; gap: 0; padding: 0 12px; align-items: flex-start; }
     .log-line:hover { background: var(--bg-hover); }
