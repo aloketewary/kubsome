@@ -3,7 +3,7 @@ import { Observable, Subject } from 'rxjs';
 
 @Injectable({ providedIn: 'root' })
 export class WsService {
-  private wsBase = 'ws://localhost:8000';
+  private wsBase = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}`;
 
   connect(path: string): { messages$: Observable<string>; send: (msg: string) => void; close: () => void } {
     const subject = new Subject<string>();

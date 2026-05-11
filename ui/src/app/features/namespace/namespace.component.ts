@@ -251,7 +251,7 @@ export class NamespaceComponent implements OnInit {
 
   load() {
     this.data = null;
-    this.http.get<any>('http://localhost:8000/api/ns-overview').subscribe(res => {
+    this.http.get<any>('/api/ns-overview').subscribe(res => {
       this.data = res;
       this.resourceList = Object.entries(res.resources || {}).map(([type, count]) => ({
         type,

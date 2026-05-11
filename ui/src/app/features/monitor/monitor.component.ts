@@ -499,7 +499,7 @@ export class MonitorComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
-    this.http.get<any>('http://localhost:8000/api/contexts').subscribe(res => {
+    this.http.get<any>('/api/contexts').subscribe(res => {
       this.contexts = (res.contexts || []).map((c: any) => c.name);
     });
     this.loadSavedCards();
@@ -547,7 +547,7 @@ export class MonitorComponent implements OnInit, OnDestroy {
     if (!card.context) return;
     card.namespace = '';
     card.data = null;
-    this.http.get<any>(`http://localhost:8000/api/namespaces/${card.context}`).subscribe({
+    this.http.get<any>(`/api/namespaces/${card.context}`).subscribe({
       next: (res) => {
         card.namespaces = res.namespaces || [];
         if (res.error) {
@@ -568,7 +568,7 @@ export class MonitorComponent implements OnInit, OnDestroy {
   fetchCardData(card: MonitorCard) {
     if (!card.context || !card.namespace) return;
     card.loading = true;
-    this.http.get<any>(`http://localhost:8000/api/overview/${card.context}/${card.namespace}`).subscribe({
+    this.http.get<any>(`/api/overview/${card.context}/${card.namespace}`).subscribe({
       next: (res) => {
         card.data = res;
         card.events = res.events || [];
@@ -647,7 +647,7 @@ export class MonitorComponent implements OnInit, OnDestroy {
           if (card.context && card.namespace) {
             // Fetch namespaces without clearing saved namespace
             const savedNs = card.namespace;
-            this.http.get<any>(`http://localhost:8000/api/namespaces/${card.context}`).subscribe({
+            this.http.get<any>(`/api/namespaces/${card.context}`).subscribe({
               next: (res) => {
                 card.namespaces = res.namespaces || [];
                 card.namespace = savedNs;

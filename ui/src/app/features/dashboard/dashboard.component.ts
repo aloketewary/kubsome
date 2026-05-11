@@ -721,7 +721,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       next: (res) => { this.recentEvents = res.events; this.refreshing = false; },
       error: () => { this.recentEvents = []; this.refreshing = false; },
     });
-    this.http.get<any>('http://localhost:8000/api/uptime').subscribe({
+    this.http.get<any>('/api/uptime').subscribe({
       next: (res) => (this.uptime = res),
       error: () => {
         // If overview data shows healthy resources, cluster is up

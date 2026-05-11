@@ -266,7 +266,7 @@ export class SecretsComponent implements OnInit {
 
   load() {
     this.data = null;
-    this.http.get<any>('http://localhost:8000/api/image-pull-secrets').subscribe(res => {
+    this.http.get<any>('/api/image-pull-secrets').subscribe(res => {
       this.data = res;
       this.saEntries = Object.entries(res.service_account_secrets || {}).map(
         ([name, secrets]) => ({ name, secrets: secrets as string[] })

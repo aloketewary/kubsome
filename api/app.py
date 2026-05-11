@@ -43,6 +43,11 @@ def health():
     return {"status": "ok"}
 
 
+@app.get("/api/version")
+def version():
+    return {"version": "1.7.3"}
+
+
 # Serve Angular build in production
 # Priority: 1) dev build (ui/dist/ui/browser) — always freshest
 #           2) bundled in package (api/ui_dist)

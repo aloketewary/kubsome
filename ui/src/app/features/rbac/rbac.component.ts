@@ -211,7 +211,7 @@ export class RbacComponent implements OnInit {
   ngOnInit() { this.load(); }
 
   load() {
-    this.http.get<any>('http://localhost:8000/api/rbac').subscribe(res => {
+    this.http.get<any>('/api/rbac').subscribe(res => {
       this.bindings = res.bindings || [];
       this.applyFilter();
     });

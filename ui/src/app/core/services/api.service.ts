@@ -18,7 +18,7 @@ import {
 @Injectable({ providedIn: 'root' })
 export class ApiService {
   private http = inject(HttpClient);
-  private base = 'http://localhost:8000/api';
+  private base = '/api';
 
   // Pods
   getPods(): Observable<PodsResponse> {

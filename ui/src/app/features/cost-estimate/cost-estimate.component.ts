@@ -99,7 +99,7 @@ export class CostEstimateComponent implements OnInit {
   ngOnInit() { this.refresh(); }
 
   refresh() {
-    this.http.get<any>('http://localhost:8000/api/cost-estimate').subscribe({
+    this.http.get<any>('/api/cost-estimate').subscribe({
       next: (res) => (this.data = res),
       error: () => (this.data = { deployments: [], total: 0, pricing: { note: 'Error' } }),
     });

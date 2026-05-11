@@ -104,7 +104,7 @@ export class YamlDiffComponent implements OnInit {
   loading = false;
 
   ngOnInit() {
-    this.http.get<any>('http://localhost:8000/api/deployments').subscribe(res => {
+    this.http.get<any>('/api/deployments').subscribe(res => {
       this.deployments = (res.deployments || []).map((d: any) => d.name);
     });
   }
@@ -113,7 +113,7 @@ export class YamlDiffComponent implements OnInit {
     if (!this.selected) return;
     this.loading = true;
     this.data = null;
-    this.http.get<any>(`http://localhost:8000/api/yaml-diff/${this.selected}`).subscribe({
+    this.http.get<any>(`/api/yaml-diff/${this.selected}`).subscribe({
       next: (res) => { this.data = res; this.loading = false; },
       error: () => { this.data = { available: false, reason: 'Failed to fetch diff' }; this.loading = false; },
     });

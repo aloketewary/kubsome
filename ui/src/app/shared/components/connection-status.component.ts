@@ -68,7 +68,7 @@ export class ConnectionStatusComponent implements OnInit, OnDestroy {
   }
 
   checkConnection() {
-    this.http.get('http://localhost:8000/health').subscribe({
+    this.http.get('/api/health').subscribe({
       next: () => (this.connected = true),
       error: () => (this.connected = false),
     });

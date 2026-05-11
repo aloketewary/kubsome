@@ -393,11 +393,11 @@ export class ShellComponent implements OnInit {
 
   ngOnInit() {
     this.loadFavorites();
-    this.http.get<any>('http://localhost:8000/api/contexts').subscribe({
+    this.http.get<any>('/api/contexts').subscribe({
       next: (res) => { this.currentContext = res.current ?? 'none'; },
       error: () => {},
     });
-    this.http.get<any>('http://localhost:8000/api/uptime').subscribe({
+    this.http.get<any>('/api/uptime').subscribe({
       next: (res) => { this.clusterOk = res.api_reachable && !res.cluster_down; },
       error: () => { this.clusterOk = false; },
     });

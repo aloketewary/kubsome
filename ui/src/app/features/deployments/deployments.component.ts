@@ -76,9 +76,9 @@ import { AiInsightDrawerComponent } from '../../shared/components/ai-insight-dra
           <!-- Actions (visible on hover) -->
           <div class="dep-actions">
             <button pButton icon="pi pi-sparkles" label="AI Diagnose" class="p-button-sm p-button-text p-button-warning" (click)="aiDiagnose(dep)"></button>
-            <button pButton icon="pi pi-replay" label="Restart" class="p-button-sm p-button-text" (click)="onRestart(dep)"></button>
-            <button pButton icon="pi pi-undo" label="Rollback" class="p-button-sm p-button-text" (click)="onRollback(dep)"></button>
-            <button pButton icon="pi pi-arrows-v" label="Scale" class="p-button-sm p-button-text" (click)="onScale(dep)"></button>
+            <button pButton icon="pi pi-replay" label="Restart" class="p-button-sm p-button-text" (click)="onRestart(dep)" [disabled]="operating"></button>
+            <button pButton icon="pi pi-undo" label="Rollback" class="p-button-sm p-button-text" (click)="onRollback(dep)" [disabled]="operating"></button>
+            <button pButton icon="pi pi-arrows-v" label="Scale" class="p-button-sm p-button-text" (click)="onScale(dep)" [disabled]="operating"></button>
             <button pButton icon="pi pi-history" class="p-button-sm p-button-text" pTooltip="History" (click)="viewRollout(dep)"></button>
             <button pButton icon="pi pi-box" class="p-button-sm p-button-text" pTooltip="Pods" (click)="viewPods(dep)"></button>
           </div>
@@ -198,7 +198,9 @@ import { AiInsightDrawerComponent } from '../../shared/components/ai-insight-dra
     .replica-label { font-size: 11px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
 
     /* Actions */
-    .dep-actions { display: flex; gap: 2px; opacity: 0; transition: opacity 0.15s; flex-shrink: 0; }
+    .dep-actions { display: flex; gap: 2px; opacity: 0.4; transition: opacity 0.15s; flex-shrink: 0; }
+    .dep-card:hover .dep-actions { opacity: 1; }
+    @media (hover: none) { .dep-actions { opacity: 1; } }
 
     /* Dialogs */
     .rollout-section { margin-bottom: 16px; }
@@ -258,6 +260,7 @@ export class DeploymentsComponent implements OnInit {
   aiSummary = '';
   aiFindings: any[] = [];
   aiReasoning = '';
+  operating = false;
 
   Math = Math;
 
@@ -295,7 +298,7 @@ export class DeploymentsComponent implements OnInit {
       confirmLabel: 'Restart',
       severity: 'warning',
     }).then(ok => {
-      if (ok) this.api.restart(dep.name).subscribe(() => this.refresh());
+      if (ok) { this.operating = true; this.api.restart(dep.name).subscribe({ next: () => { this.operating = false; this.refresh(); }, error: () => { this.operating = false; } }); }
     });
   }
 
@@ -306,7 +309,7 @@ export class DeploymentsComponent implements OnInit {
       confirmLabel: 'Rollback',
       severity: 'danger',
     }).then(ok => {
-      if (ok) this.api.rollback(dep.name).subscribe(() => this.refresh());
+      if (ok) { this.operating = true; this.api.rollback(dep.name).subscribe({ next: () => { this.operating = false; this.refresh(); }, error: () => { this.operating = false; } }); }
     });
   }
 

@@ -213,7 +213,7 @@ import { Select } from 'primeng/select';
 })
 export class YamlEditorComponent {
   private http = inject(HttpClient);
-  private base = 'http://localhost:8000/api';
+  private base = '/api';
 
   kinds = ['Deployment', 'Service', 'ConfigMap', 'Secret', 'Ingress', 'CronJob', 'HPA'];
   kind = '';

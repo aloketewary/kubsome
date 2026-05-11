@@ -95,14 +95,14 @@ export class PinsComponent implements OnInit {
   ngOnInit() { this.refresh(); }
 
   refresh() {
-    this.http.get<any>('http://localhost:8000/api/saved-queries').subscribe(res => {
+    this.http.get<any>('/api/saved-queries').subscribe(res => {
       this.pins = res.queries || [];
     });
   }
 
   addPin() {
     if (!this.newName || !this.newQuery) return;
-    this.http.post<any>('http://localhost:8000/api/saved-queries', {
+    this.http.post<any>('/api/saved-queries', {
       name: this.newName, query: this.newQuery, interval: 300,
     }).subscribe(() => {
       this.newName = '';
@@ -118,12 +118,12 @@ export class PinsComponent implements OnInit {
       confirmLabel: 'Delete',
       severity: 'danger',
     }).then(ok => {
-      if (ok) this.http.delete(`http://localhost:8000/api/saved-queries/${name}`).subscribe(() => this.refresh());
+      if (ok) this.http.delete(`/api/saved-queries/${name}`).subscribe(() => this.refresh());
     });
   }
 
   runPin(pin: any) {
-    this.http.post<any>('http://localhost:8000/api/ai', { query: pin.query }).subscribe(res => {
+    this.http.post<any>('/api/ai', { query: pin.query }).subscribe(res => {
       pin.last_result = res.answer || JSON.stringify(res);
       pin.last_run = new Date().toISOString();
     });

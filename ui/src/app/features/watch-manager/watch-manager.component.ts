@@ -114,7 +114,7 @@ export class WatchManagerComponent implements OnInit {
   ngOnInit() { this.refresh(); }
 
   refresh() {
-    this.http.get<any>('http://localhost:8000/api/watch-status').subscribe({
+    this.http.get<any>('/api/watch-status').subscribe({
       next: (res) => (this.status = res),
       error: () => (this.status = { running: false, watches: [] }),
     });

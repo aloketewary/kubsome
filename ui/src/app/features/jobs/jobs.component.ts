@@ -245,8 +245,8 @@ export class JobsComponent implements OnInit {
   ngOnInit() { this.load(); }
 
   load() {
-    this.http.get<any>('http://localhost:8000/api/cronjobs').subscribe(r => this.cronjobs = (r.cronjobs || []).map((c: any) => ({ ...c, triggered: false })));
-    this.http.get<any>('http://localhost:8000/api/jobs').subscribe(r => {
+    this.http.get<any>('/api/cronjobs').subscribe(r => this.cronjobs = (r.cronjobs || []).map((c: any) => ({ ...c, triggered: false })));
+    this.http.get<any>('/api/jobs').subscribe(r => {
       this.jobs = r.jobs || [];
       this.sortedJobs = [...this.jobs].sort((a, b) => {
         const order: Record<string, number> = { failed: 0, running: 1, pending: 2, complete: 3 };
@@ -256,7 +256,7 @@ export class JobsComponent implements OnInit {
   }
 
   trigger(cj: any) {
-    this.http.post<any>(`http://localhost:8000/api/trigger/${cj.name}`, {}).subscribe(() => {
+    this.http.post<any>(`/api/trigger/${cj.name}`, {}).subscribe(() => {
       cj.triggered = true;
       setTimeout(() => cj.triggered = false, 3000);
     });

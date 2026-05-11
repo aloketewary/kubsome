@@ -281,7 +281,7 @@ interface TermLine {
       color: var(--accent);
     }
 
-    .input-row { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+    .input-row { display: flex; align-items: center; gap: 8px; margin-top: 4px; padding: 6px 0; border-top: 1px solid var(--border); }
     .term-input {
       flex: 1;
       background: transparent;
@@ -330,9 +330,13 @@ export class TerminalComponent implements AfterViewChecked {
   }
 
   constructor() {
-    this.http.get<any>('http://localhost:8000/api/contexts').subscribe(res => {
-      this.context = res.current ?? 'none';
-      this.namespace = res.namespace;
+    this.refreshContext();
+  }
+
+  private refreshContext() {
+    this.http.get<any>('/api/contexts').subscribe({
+      next: res => { this.context = res.current ?? 'none'; this.namespace = res.namespace; },
+      error: () => { this.context = 'unreachable'; this.namespace = '—'; },
     });
   }
 
@@ -356,7 +360,7 @@ export class TerminalComponent implements AfterViewChecked {
     const body: any = { command: cmd };
     if (selection) body.selection = selection;
 
-    this.http.post<any>('http://localhost:8000/api/exec', body).subscribe({
+    this.http.post<any>('/api/exec', body).subscribe({
       next: (res) => {
         if (res.needs_selection) {
           // Show selection UI
@@ -369,6 +373,7 @@ export class TerminalComponent implements AfterViewChecked {
           if (res.output) { this.lines.push({ type: res.exit_code === 0 ? 'output' : 'error', text: res.output }); }
           this.loading = false;
           this.shouldScroll = true;
+          this.refreshContext();
         }
       },
       error: () => {
@@ -457,7 +462,7 @@ export class TerminalComponent implements AfterViewChecked {
     // Debounce: wait 200ms after last keystroke
     if (this.debounceTimer) clearTimeout(this.debounceTimer);
     this.debounceTimer = setTimeout(() => {
-      this.http.get<any>(`http://localhost:8000/api/completions?q=${encodeURIComponent(query)}`).subscribe({
+      this.http.get<any>(`/api/completions?q=${encodeURIComponent(query)}`).subscribe({
         next: (res) => {
           this.completions = res.completions || [];
           this.showCompletions = this.completions.length > 0 && this.currentCmd.trim().length > 0;

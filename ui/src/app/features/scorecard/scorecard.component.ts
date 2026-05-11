@@ -93,6 +93,8 @@ import { PageInfoComponent } from '../../shared/components/page-info.component';
     .grade-C { background: linear-gradient(135deg, rgba(234,179,8,0.06), transparent); border-color: rgba(234,179,8,0.3); }
     .grade-D { background: linear-gradient(135deg, rgba(239,68,68,0.04), transparent); border-color: rgba(239,68,68,0.2); }
     .grade-F { background: linear-gradient(135deg, rgba(239,68,68,0.08), transparent); border-color: rgba(239,68,68,0.3); }
+    .grade-hero:not(.grade-A):not(.grade-B):not(.grade-C):not(.grade-D):not(.grade-F) { border-color: var(--border); }
+    .grade-hero:not(.grade-A):not(.grade-B):not(.grade-C):not(.grade-D):not(.grade-F) .ring-fill { stroke: var(--text-muted); }
 
     .grade-ring { position: relative; width: 80px; height: 80px; flex-shrink: 0; }
     .grade-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
@@ -143,7 +145,7 @@ export class ScorecardComponent implements OnInit {
   ngOnInit() { this.refresh(); }
 
   refresh() {
-    this.http.get<any>('http://localhost:8000/api/scorecard').subscribe({
+    this.http.get<any>('/api/scorecard').subscribe({
       next: (res) => {
         this.data = res;
         this.categories = Object.entries(res.categories || {}).map(([key, data]) => ({ key, data }));

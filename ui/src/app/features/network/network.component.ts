@@ -290,8 +290,8 @@ export class NetworkComponent implements OnInit {
   ngOnInit() { this.load(); }
 
   load() {
-    this.http.get<any>('http://localhost:8000/api/ingress').subscribe(r => this.ingresses = r.ingresses || []);
-    this.http.get<any>('http://localhost:8000/api/mesh').subscribe(r => {
+    this.http.get<any>('/api/ingress').subscribe(r => this.ingresses = r.ingresses || []);
+    this.http.get<any>('/api/mesh').subscribe(r => {
       this.meshDetected = r.detected || false;
       this.meshType = r.type || '';
     });
@@ -300,6 +300,6 @@ export class NetworkComponent implements OnInit {
   lookupDns() {
     if (!this.dnsQuery.trim()) return;
     this.dnsResult = null;
-    this.http.get<any>(`http://localhost:8000/api/dns/${this.dnsQuery}`).subscribe(r => this.dnsResult = r);
+    this.http.get<any>(`/api/dns/${this.dnsQuery}`).subscribe(r => this.dnsResult = r);
   }
 }

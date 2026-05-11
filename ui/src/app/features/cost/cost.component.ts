@@ -291,11 +291,11 @@ export class CostComponent implements OnInit {
 
   load() {
     this.loaded = false;
-    this.http.get<any>('http://localhost:8000/api/optimize').subscribe(res => {
+    this.http.get<any>('/api/optimize').subscribe(res => {
       this.recommendations = res.recommendations || [];
       this.loaded = true;
     });
-    this.http.get<any>('http://localhost:8000/api/unused').subscribe(res => {
+    this.http.get<any>('/api/unused').subscribe(res => {
       this.unused = res.resources || [];
     });
   }

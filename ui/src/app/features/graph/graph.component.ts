@@ -105,7 +105,7 @@ export class GraphComponent implements OnInit, OnDestroy {
   edgeCount = 0;
 
   ngOnInit() {
-    this.http.get<any>('http://localhost:8000/api/deployments').subscribe(res => {
+    this.http.get<any>('/api/deployments').subscribe(res => {
       this.deployments = (res.deployments || []).map((d: any) => d.name);
     });
   }
@@ -116,7 +116,7 @@ export class GraphComponent implements OnInit, OnDestroy {
 
   trace() {
     if (!this.selectedDep) return;
-    this.http.get<any>(`http://localhost:8000/api/trace/${this.selectedDep}`).subscribe(res => {
+    this.http.get<any>(`/api/trace/${this.selectedDep}`).subscribe(res => {
       this.traceData = res.trace || res;
       this.renderGraph(this.traceData);
     });

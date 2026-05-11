@@ -292,7 +292,7 @@ export class ResourcesComponent implements OnInit {
     this.loading = true;
     this.error = '';
     this.describeData = null;
-    this.http.get<any>(`http://localhost:8000/api/get/${this.selectedType}`).subscribe({
+    this.http.get<any>(`/api/get/${this.selectedType}`).subscribe({
       next: (res) => {
         this.loading = false;
         const items = res.data?.items || [];
@@ -326,7 +326,7 @@ export class ResourcesComponent implements OnInit {
   describeItem(name: string) {
     this.loading = true;
     this.error = '';
-    this.http.get<any>(`http://localhost:8000/api/describe/${this.selectedType}/${name}`).subscribe({
+    this.http.get<any>(`/api/describe/${this.selectedType}/${name}`).subscribe({
       next: (res) => {
         this.loading = false;
         this.describeData = res;

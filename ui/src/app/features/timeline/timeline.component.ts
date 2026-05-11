@@ -223,7 +223,7 @@ export class TimelineComponent implements OnInit {
   }
 
   load() {
-    this.http.get<any>(`http://localhost:8000/api/timeline?minutes=${this.selectedRange}`).subscribe(res => {
+    this.http.get<any>(`/api/timeline?minutes=${this.selectedRange}`).subscribe(res => {
       this.events = res.events || [];
       this.filteredEvents = this.events;
       this.buildHeatmap();

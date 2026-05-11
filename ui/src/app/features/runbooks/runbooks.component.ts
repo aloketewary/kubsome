@@ -330,7 +330,7 @@ export class RunbooksComponent implements OnInit {
   get currentStepIndex() { return this.activeRunbook?.steps.findIndex(s => !s.done) ?? -1; }
 
   ngOnInit() {
-    this.http.get<any>('http://localhost:8000/api/playbooks').subscribe({
+    this.http.get<any>('/api/playbooks').subscribe({
       next: (res) => {
         const icons: Record<string, string> = {
           CrashLoopBackOff: 'pi pi-exclamation-triangle',
@@ -441,7 +441,7 @@ export class RunbooksComponent implements OnInit {
 
     if (!cmd) { this.markDone(index); return; }
     step.loading = true;
-    this.http.post<any>('http://localhost:8000/api/exec', { command: cmd }).subscribe({
+    this.http.post<any>('/api/exec', { command: cmd }).subscribe({
       next: (res) => { step.output = res.output || '(no output)'; step.done = true; step.loading = false; },
       error: () => { step.output = 'Error executing command'; step.loading = false; },
     });

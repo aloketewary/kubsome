@@ -268,7 +268,7 @@ export class IncidentComponent implements OnInit, OnDestroy {
   private http = inject(HttpClient);
   private confirmService = inject(ConfirmService);
   router = inject(Router);
-  private base = 'http://localhost:8000/api';
+  private base = '/api';
   active: any = null;
   title = '';
   noteText = '';

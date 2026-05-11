@@ -1,5 +1,6 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
 import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
 import { TooltipModule } from 'primeng/tooltip';
@@ -115,7 +116,7 @@ import { PreferencesService } from '../../core/services/preferences.service';
             <div class="about-logo">◆</div>
             <div class="about-tagline">
               <span class="about-name">Kubsome</span>
-              <span class="about-version">v1.0.0</span>
+              <span class="about-version">v{{ appVersion }}</span>
             </div>
           </div>
 
@@ -155,7 +156,7 @@ import { PreferencesService } from '../../core/services/preferences.service';
           </div>
 
           <div class="about-links">
-            <a href="http://localhost:8000/docs" target="_blank" class="about-link">
+            <a href="/docs" target="_blank" class="about-link">
               <i class="pi pi-external-link"></i> API Docs
             </a>
             <a href="https://github.com/aloketewary/kubsome" target="_blank" class="about-link">
@@ -301,8 +302,17 @@ import { PreferencesService } from '../../core/services/preferences.service';
     .about-link i { font-size: 12px; }
   `],
 })
-export class SettingsComponent {
+export class SettingsComponent implements OnInit {
   prefs = inject(PreferencesService);
+  private http = inject(HttpClient);
+  appVersion = '...';
+
+  ngOnInit() {
+    this.http.get<any>('/api/version').subscribe({
+      next: (res) => this.appVersion = res.version || '1.7.2',
+      error: () => this.appVersion = '1.7.2',
+    });
+  }
 
   refreshOptions = [
     { label: '10s', value: 10000 },

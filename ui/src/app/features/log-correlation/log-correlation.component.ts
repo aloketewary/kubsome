@@ -100,7 +100,7 @@ export class LogCorrelationComponent implements OnInit {
   private colors = ['#3b82f6', '#22c55e', '#eab308', '#a855f7', '#ef4444', '#06b6d4', '#f97316', '#ec4899'];
 
   ngOnInit() {
-    this.http.get<any>('http://localhost:8000/api/pods').subscribe(res => {
+    this.http.get<any>('/api/pods').subscribe(res => {
       this.podOptions = (res.pods || []).map((p: any) => ({ label: p.name, value: p.name }));
     });
   }
@@ -109,7 +109,7 @@ export class LogCorrelationComponent implements OnInit {
     if (this.selectedPods.length < 2) return;
     this.loading = true;
     this.data = null;
-    this.http.post<any>('http://localhost:8000/api/correlate-logs', {
+    this.http.post<any>('/api/correlate-logs', {
       pods: this.selectedPods, tail: 100,
     }).subscribe({
       next: (res) => { this.data = res; this.loading = false; },
