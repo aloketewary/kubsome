@@ -15,6 +15,7 @@ router = APIRouter(tags=["deployments"])
 
 class ScaleRequest(BaseModel):
     replicas: int
+    relative: bool = False
 
 
 @router.get("/deployments")
@@ -51,12 +52,23 @@ def post_rollback(name: str):
 
 @router.post("/scale/{name}")
 def post_scale(name: str, req: ScaleRequest):
+    replicas = req.replicas
+    if req.relative:
+        # Get current replica count
+        get_cmd = [
+            "kubectl", "--context", str(context.current_context),
+            "get", f"deployment/{name}", "-n", str(context.namespace),
+            "-o", "jsonpath={.spec.replicas}"
+        ]
+        r = subprocess.run(get_cmd, capture_output=True, text=True)
+        current = int(r.stdout.strip()) if r.returncode == 0 and r.stdout.strip().isdigit() else 1
+        replicas = max(0, current + req.replicas)
     cmd = [
         "kubectl", "--context", str(context.current_context),
         "scale", f"deployment/{name}",
-        f"--replicas={req.replicas}", "-n", str(context.namespace)
+        f"--replicas={replicas}", "-n", str(context.namespace)
     ]
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
         raise HTTPException(status_code=500, detail=result.stderr.strip())
-    return {"scaled": name, "replicas": req.replicas}
+    return {"scaled": name, "replicas": replicas}
