@@ -2,8 +2,10 @@ import subprocess
 import json
 
 from core.context import context
+from core.cache import cached
 
 
+@cached(ttl=5)
 def collect_deployments():
 
     command = (

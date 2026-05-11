@@ -3,8 +3,10 @@ import json
 import re
 
 from core.context import context
+from core.cache import cached
 
 
+@cached(ttl=5)
 def top_pods():
     command = (
         f"kubectl "
@@ -44,6 +46,7 @@ def top_pods():
     )
 
 
+@cached(ttl=5)
 def top_nodes():
     command = (
         f"kubectl "
