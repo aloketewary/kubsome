@@ -189,7 +189,7 @@ interface PodGroup {
       (closed)="aiDrawerVisible = false" />
 
     <!-- Logs Dialog -->
-    <p-dialog [(visible)]="logsVisible" [header]="logsTitle" [modal]="true" [maximizable]="true" (onHide)="onLogsHide()" styleClass="logs-dialog">
+    <p-dialog [(visible)]="logsVisible" [header]="logsTitle" [modal]="true" [maximizable]="true" (onHide)="onLogsHide()" styleClass="logs-dialog" [appendTo]="'body'">
       <div class="log-viewer-container">
         @if (isLiveMode) {
           <app-log-terminal [podName]="activePodName" />
@@ -209,12 +209,12 @@ interface PodGroup {
     </p-dialog>
 
     <!-- Inspect Dialog -->
-    <p-dialog [(visible)]="inspectVisible" header="Pod Inspection" [modal]="true" [style]="{ width: '70vw' }">
+    <p-dialog [(visible)]="inspectVisible" header="Pod Inspection" [modal]="true" [style]="{ width: '70vw' }" [appendTo]="'body'">
       <pre class="inspect-output">{{ inspectData | json }}</pre>
     </p-dialog>
 
     <!-- Diagnose Dialog -->
-    <p-dialog [(visible)]="diagnoseVisible" header="Diagnosis" [modal]="true" [style]="{ width: '60vw' }">
+    <p-dialog [(visible)]="diagnoseVisible" header="Diagnosis" [modal]="true" [style]="{ width: '60vw' }" [appendTo]="'body'">
       @if (diagnoseFindings.length > 0) {
         @for (f of diagnoseFindings; track $index) {
           <div class="finding" [class]="'finding-' + f.severity">

@@ -8,7 +8,7 @@ import { DrawerModule } from 'primeng/drawer';
   standalone: true,
   imports: [TagModule, ButtonModule, DrawerModule],
   template: `
-    <p-drawer [(visible)]="visible" position="right" [style]="{ width: '450px', background: 'var(--bg-card)', borderLeft: '1px solid var(--border)' }" (onHide)="closed.emit()">
+    <p-drawer [(visible)]="visible" position="right" [appendTo]="'body'" [modal]="true" [style]="{ width: '450px' }" (onHide)="closed.emit()">
       <ng-template pTemplate="header">
         <div class="drawer-header">
           <i class="pi pi-sparkles ai-icon"></i>

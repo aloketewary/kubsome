@@ -104,7 +104,7 @@ import { AiInsightDrawerComponent } from '../../shared/components/ai-insight-dra
     </div>
 
     <!-- Rollout Dialog -->
-    <p-dialog [(visible)]="rolloutVisible" [header]="'Rollout — ' + rolloutName" [modal]="true" [style]="{ width: '600px' }">
+    <p-dialog [(visible)]="rolloutVisible" [header]="'Rollout — ' + rolloutName" [modal]="true" [style]="{ width: '600px' }" [appendTo]="'body'">
       @if (rolloutData) {
         <div class="rollout-section">
           <h4>Status</h4>
@@ -120,7 +120,7 @@ import { AiInsightDrawerComponent } from '../../shared/components/ai-insight-dra
     </p-dialog>
 
     <!-- Scale Dialog -->
-    <p-dialog [(visible)]="scaleVisible" header="Scale Deployment" [modal]="true" [style]="{ width: '420px' }">
+    <p-dialog [(visible)]="scaleVisible" header="Scale Deployment" [modal]="true" [style]="{ width: '420px' }" [appendTo]="'body'">
       <div class="scale-form">
         <div class="scale-header">
           <code>{{ scaleName }}</code>
