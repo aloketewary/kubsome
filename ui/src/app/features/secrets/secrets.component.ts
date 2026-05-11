@@ -3,13 +3,18 @@ import { HttpClient } from '@angular/common/http';
 import { TagModule } from 'primeng/tag';
 import { ButtonModule } from 'primeng/button';
 import { TooltipModule } from 'primeng/tooltip';
+import { SpotlightComponent } from '../../shared/components/spotlight.component';
 
 @Component({
   selector: 'app-secrets',
   standalone: true,
-  imports: [TagModule, ButtonModule, TooltipModule],
+  imports: [TagModule, ButtonModule, TooltipModule, SpotlightComponent],
   template: `
-    <div class="page-header">
+    <app-spotlight id="secrets" title="Secrets & ConfigMaps" icon="pi pi-key"
+      description="View and manage secrets and config maps."
+      [capabilities]="['Secret listing', 'Base64 decode', 'ConfigMap viewer']" [compact]="true" />
+
+        <div class="page-header">
       <div>
         <h1>Pull Secrets</h1>
         <p class="subtitle">Image registry credential verification</p>

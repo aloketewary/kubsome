@@ -3,13 +3,18 @@ import { HttpClient } from '@angular/common/http';
 import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
 import { PageInfoComponent } from '../../shared/components/page-info.component';
+import { SpotlightComponent } from '../../shared/components/spotlight.component';
 
 @Component({
   selector: 'app-scorecard',
   standalone: true,
-  imports: [ButtonModule, TagModule, PageInfoComponent],
+  imports: [ButtonModule, TagModule, PageInfoComponent, SpotlightComponent],
   template: `
-    <div class="page-header">
+    <app-spotlight id="scorecard" title="Cluster Scorecard" icon="pi pi-star"
+      description="A-F health grade across reliability, performance, security."
+      [capabilities]="['4-dimension scoring', 'A-F grades', 'Improvement suggestions']" [compact]="true" />
+
+        <div class="page-header">
       <div>
         <h1>Cluster Scorecard</h1>
         <p class="subtitle">Health grade across availability, stability, resources & operations</p>

@@ -3,13 +3,18 @@ import { HttpClient } from '@angular/common/http';
 import { TagModule } from 'primeng/tag';
 import { ButtonModule } from 'primeng/button';
 import { TooltipModule } from 'primeng/tooltip';
+import { SpotlightComponent } from '../../shared/components/spotlight.component';
 
 @Component({
   selector: 'app-jobs',
   standalone: true,
-  imports: [TagModule, ButtonModule, TooltipModule],
+  imports: [TagModule, ButtonModule, TooltipModule, SpotlightComponent],
   template: `
-    <div class="page-header">
+    <app-spotlight id="jobs" title="Jobs & CronJobs" icon="pi pi-clock"
+      description="View and manage Jobs and CronJobs. Trigger manual runs."
+      [capabilities]="['CronJob scheduling', 'Manual trigger', 'Completion status']" [compact]="true" />
+
+        <div class="page-header">
       <div>
         <h1>Jobs</h1>
         <p class="subtitle">Scheduled tasks and batch workloads</p>

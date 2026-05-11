@@ -2,13 +2,18 @@ import { Component, inject, OnInit } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
+import { SpotlightComponent } from '../../shared/components/spotlight.component';
 
 @Component({
   selector: 'app-watch-manager',
   standalone: true,
-  imports: [ButtonModule, TagModule],
+  imports: [ButtonModule, TagModule, SpotlightComponent],
   template: `
-    <div class="page-header">
+    <app-spotlight id="watch-manager" title="Watch Manager" icon="pi pi-eye"
+      description="Manage background watchers that trigger alerts."
+      [capabilities]="['Condition monitoring', 'Crash detection', 'Alert notifications']" [compact]="true" />
+
+        <div class="page-header">
       <div>
         <h1>Watch Manager</h1>
         <p class="subtitle">Background condition monitors</p>

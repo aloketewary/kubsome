@@ -8,13 +8,18 @@ import { ButtonModule } from 'primeng/button';
 import { TooltipModule } from 'primeng/tooltip';
 import { InputTextModule } from 'primeng/inputtext';
 import { ConfirmService } from '../../shared/services/confirm.service';
+import { SpotlightComponent } from '../../shared/components/spotlight.component';
 
 @Component({
   selector: 'app-incident',
   standalone: true,
-  imports: [FormsModule, SlicePipe, TagModule, ButtonModule, TooltipModule, InputTextModule],
+  imports: [FormsModule, SlicePipe, TagModule, ButtonModule, TooltipModule, InputTextModule, SpotlightComponent],
   template: `
-    <div class="page-header">
+    <app-spotlight id="incident" title="Incident Tracking" icon="pi pi-exclamation-circle"
+      description="Track production incidents with timeline, notes, and snapshots."
+      [capabilities]="['Timeline with notes', 'Cluster snapshots', 'AI analysis', 'Export reports']" [compact]="true" />
+
+        <div class="page-header">
       <div>
         <h1>Incident</h1>
         <p class="subtitle">Track and document production issues</p>

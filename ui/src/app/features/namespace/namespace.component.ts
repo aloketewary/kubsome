@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { TagModule } from 'primeng/tag';
 import { ButtonModule } from 'primeng/button';
+import { SpotlightComponent } from '../../shared/components/spotlight.component';
 
 interface ResourceItem {
   type: string;
@@ -15,9 +16,13 @@ interface ResourceItem {
 @Component({
   selector: 'app-namespace',
   standalone: true,
-  imports: [TagModule, ButtonModule],
+  imports: [TagModule, ButtonModule, SpotlightComponent],
   template: `
-    <div class="page-header">
+    <app-spotlight id="namespace" title="Namespace Overview" icon="pi pi-folder"
+      description="Summary of resources in the current namespace."
+      [capabilities]="['Resource counts', 'Service listing', 'ConfigMap overview']" [compact]="true" />
+
+        <div class="page-header">
       <div>
         <h1>Namespace</h1>
         <p class="subtitle">Resource inventory for <strong>{{ data?.namespace || '...' }}</strong></p>

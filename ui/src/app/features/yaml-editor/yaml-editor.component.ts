@@ -5,13 +5,18 @@ import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
 import { TooltipModule } from 'primeng/tooltip';
 import { Select } from 'primeng/select';
+import { SpotlightComponent } from '../../shared/components/spotlight.component';
 
 @Component({
   selector: 'app-yaml-editor',
   standalone: true,
-  imports: [FormsModule, ButtonModule, TagModule, TooltipModule, Select],
+  imports: [FormsModule, ButtonModule, TagModule, TooltipModule, Select, SpotlightComponent],
   template: `
-    <div class="page-header">
+    <app-spotlight id="yaml-editor" title="YAML Editor" icon="pi pi-code"
+      description="Edit and apply Kubernetes manifests."
+      [capabilities]="['Syntax highlighting', 'Apply to cluster', 'Template generation']" [compact]="true" />
+
+        <div class="page-header">
       <div>
         <h1>YAML Editor</h1>
         <p class="subtitle">Create and apply Kubernetes manifests</p>

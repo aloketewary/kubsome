@@ -3,13 +3,18 @@ import { HttpClient } from '@angular/common/http';
 import { ButtonModule } from 'primeng/button';
 import { TooltipModule } from 'primeng/tooltip';
 import { PageInfoComponent } from '../../shared/components/page-info.component';
+import { SpotlightComponent } from '../../shared/components/spotlight.component';
 
 @Component({
   selector: 'app-cost-estimate',
   standalone: true,
-  imports: [ButtonModule, TooltipModule, PageInfoComponent],
+  imports: [ButtonModule, TooltipModule, PageInfoComponent, SpotlightComponent],
   template: `
-    <div class="page-header">
+    <app-spotlight id="cost-estimate" title="Cost Estimation" icon="pi pi-dollar"
+      description="Estimated monthly spend per deployment based on resource requests."
+      [capabilities]="['Per-deployment cost', 'CPU/memory pricing', 'Right-sizing tips']" [compact]="true" />
+
+        <div class="page-header">
       <div>
         <h1>Cost Estimation</h1>
         <p class="subtitle">Estimated monthly spend based on resource requests</p>

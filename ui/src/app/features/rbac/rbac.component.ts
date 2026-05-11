@@ -5,13 +5,18 @@ import { ButtonModule } from 'primeng/button';
 import { TooltipModule } from 'primeng/tooltip';
 import { FormsModule } from '@angular/forms';
 import { InputTextModule } from 'primeng/inputtext';
+import { SpotlightComponent } from '../../shared/components/spotlight.component';
 
 @Component({
   selector: 'app-rbac',
   standalone: true,
-  imports: [TagModule, ButtonModule, TooltipModule, FormsModule, InputTextModule],
+  imports: [TagModule, ButtonModule, TooltipModule, FormsModule, InputTextModule, SpotlightComponent],
   template: `
-    <div class="page-header">
+    <app-spotlight id="rbac" title="RBAC" icon="pi pi-lock"
+      description="View role bindings and access control configuration."
+      [capabilities]="['Role bindings', 'Service accounts', 'Permission overview']" [compact]="true" />
+
+        <div class="page-header">
       <div>
         <h1>RBAC</h1>
         <p class="subtitle">Access control bindings</p>

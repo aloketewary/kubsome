@@ -4,13 +4,18 @@ import { FormsModule } from '@angular/forms';
 import { Select } from 'primeng/select';
 import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
+import { SpotlightComponent } from '../../shared/components/spotlight.component';
 
 @Component({
   selector: 'app-compare',
   standalone: true,
-  imports: [FormsModule, Select, ButtonModule, TagModule],
+  imports: [FormsModule, Select, ButtonModule, TagModule, SpotlightComponent],
   template: `
-    <div class="page-header">
+    <app-spotlight id="compare" title="Multi-Cluster Compare" icon="pi pi-arrows-h"
+      description="Compare resources across clusters or namespaces to detect drift."
+      [capabilities]="['Side-by-side comparison', 'Drift detection', 'Resource mismatch highlighting']" [compact]="true" />
+
+        <div class="page-header">
       <div>
         <h1>Compare</h1>
         <p class="subtitle">Drift detection between environments</p>

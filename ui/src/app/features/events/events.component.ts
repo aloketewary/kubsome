@@ -7,13 +7,18 @@ import { Subscription } from 'rxjs';
 import { ApiService } from '../../core/services/api.service';
 import { WsService } from '../../core/services/ws.service';
 import { KubeEvent } from '../../core/models';
+import { SpotlightComponent } from '../../shared/components/spotlight.component';
 
 @Component({
   selector: 'app-events',
   standalone: true,
-  imports: [TagModule, ButtonModule, TooltipModule, FormsModule],
+  imports: [TagModule, ButtonModule, TooltipModule, FormsModule, SpotlightComponent],
   template: `
-    <!-- Header -->
+    <app-spotlight id="events" title="Cluster Events" icon="pi pi-bolt"
+      description="Real-time Kubernetes events. Filter by type to spot issues."
+      [capabilities]="['Live event stream', 'Warning/Normal filter', 'Object grouping']" [compact]="true" />
+
+        <!-- Header -->
     <div class="page-header">
       <div>
         <h1>Events</h1>

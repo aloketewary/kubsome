@@ -3,13 +3,18 @@ import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { Select } from 'primeng/select';
 import { ButtonModule } from 'primeng/button';
+import { SpotlightComponent } from '../../shared/components/spotlight.component';
 
 @Component({
   selector: 'app-yaml-diff',
   standalone: true,
-  imports: [FormsModule, Select, ButtonModule],
+  imports: [FormsModule, Select, ButtonModule, SpotlightComponent],
   template: `
-    <div class="page-header">
+    <app-spotlight id="yaml-diff" title="YAML Diff" icon="pi pi-file-edit"
+      description="Compare YAML revisions side-by-side."
+      [capabilities]="['Side-by-side diff', 'Revision history', 'Change highlighting']" [compact]="true" />
+
+        <div class="page-header">
       <div>
         <h1>YAML Diff</h1>
         <p class="subtitle">Side-by-side revision comparison</p>

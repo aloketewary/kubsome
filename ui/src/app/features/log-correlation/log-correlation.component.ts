@@ -4,13 +4,18 @@ import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { MultiSelect } from 'primeng/multiselect';
 import { TooltipModule } from 'primeng/tooltip';
+import { SpotlightComponent } from '../../shared/components/spotlight.component';
 
 @Component({
   selector: 'app-log-correlation',
   standalone: true,
-  imports: [FormsModule, ButtonModule, MultiSelect, TooltipModule],
+  imports: [FormsModule, ButtonModule, MultiSelect, TooltipModule, SpotlightComponent],
   template: `
-    <div class="page-header">
+    <app-spotlight id="log-correlation" title="Log Correlation" icon="pi pi-list"
+      description="Merge logs from multiple pods into a unified timeline."
+      [capabilities]="['Multi-pod merge', 'Timestamp sorting', 'Error highlighting']" [compact]="true" />
+
+        <div class="page-header">
       <div>
         <h1>Log Correlation</h1>
         <p class="subtitle">Merged timeline from multiple pods</p>

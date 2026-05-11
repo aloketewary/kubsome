@@ -5,6 +5,7 @@ import { TooltipModule } from 'primeng/tooltip';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/services/api.service';
 import { PageInfoComponent } from '../../shared/components/page-info.component';
+import { SpotlightComponent } from '../../shared/components/spotlight.component';
 
 @Pipe({ name: 'safeHtml', standalone: true })
 export class SafeHtmlPipe implements PipeTransform {
@@ -29,9 +30,13 @@ interface Message {
 @Component({
   selector: 'app-ai',
   standalone: true,
-  imports: [ButtonModule, TooltipModule, FormsModule, PageInfoComponent, SafeHtmlPipe],
+  imports: [ButtonModule, TooltipModule, FormsModule, PageInfoComponent, SafeHtmlPipe, SpotlightComponent],
   template: `
-    <div class="page-header">
+    <app-spotlight id="ai" title="AI Assistant" icon="pi pi-sparkles"
+      description="Ask natural language questions about your cluster. Get explanations, suggestions, and generated manifests."
+      [capabilities]="['Natural language queries', 'Root cause explanations', 'YAML generation', 'Command suggestions']" [compact]="true" />
+
+        <div class="page-header">
       <div>
         <h1>AI Assistant</h1>
         <p class="subtitle">Natural language cluster intelligence</p>

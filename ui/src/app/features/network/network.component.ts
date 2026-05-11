@@ -6,13 +6,18 @@ import { TagModule } from 'primeng/tag';
 import { ButtonModule } from 'primeng/button';
 import { TooltipModule } from 'primeng/tooltip';
 import { InputTextModule } from 'primeng/inputtext';
+import { SpotlightComponent } from '../../shared/components/spotlight.component';
 
 @Component({
   selector: 'app-network',
   standalone: true,
-  imports: [FormsModule, JsonPipe, TagModule, ButtonModule, TooltipModule, InputTextModule],
+  imports: [FormsModule, JsonPipe, TagModule, ButtonModule, TooltipModule, InputTextModule, SpotlightComponent],
   template: `
-    <div class="page-header">
+    <app-spotlight id="network" title="Network" icon="pi pi-globe"
+      description="Inspect network policies, services, and connectivity."
+      [capabilities]="['Network policies', 'Service endpoints', 'Ingress routes', 'DNS debug']" [compact]="true" />
+
+        <div class="page-header">
       <div>
         <h1>Network</h1>
         <p class="subtitle">Ingress routing, DNS, and service mesh</p>

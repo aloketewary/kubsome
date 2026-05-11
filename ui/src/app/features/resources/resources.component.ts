@@ -6,13 +6,18 @@ import { Select } from 'primeng/select';
 import { InputTextModule } from 'primeng/inputtext';
 import { TooltipModule } from 'primeng/tooltip';
 import { TagModule } from 'primeng/tag';
+import { SpotlightComponent } from '../../shared/components/spotlight.component';
 
 @Component({
   selector: 'app-resources',
   standalone: true,
-  imports: [FormsModule, ButtonModule, Select, InputTextModule, TooltipModule, TagModule],
+  imports: [FormsModule, ButtonModule, Select, InputTextModule, TooltipModule, TagModule, SpotlightComponent],
   template: `
-    <!-- Header -->
+    <app-spotlight id="resources" title="Resources" icon="pi pi-database"
+      description="Browse all Kubernetes resource types with describe views."
+      [capabilities]="['Multi-resource browser', 'Describe view', 'YAML output']" [compact]="true" />
+
+        <!-- Header -->
     <div class="page-header">
       <div>
         <h1>Resources</h1>

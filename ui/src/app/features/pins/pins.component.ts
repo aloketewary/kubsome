@@ -5,13 +5,18 @@ import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { TooltipModule } from 'primeng/tooltip';
 import { ConfirmService } from '../../shared/services/confirm.service';
+import { SpotlightComponent } from '../../shared/components/spotlight.component';
 
 @Component({
   selector: 'app-pins',
   standalone: true,
-  imports: [FormsModule, ButtonModule, InputTextModule, TooltipModule],
+  imports: [FormsModule, ButtonModule, InputTextModule, TooltipModule, SpotlightComponent],
   template: `
-    <div class="page-header">
+    <app-spotlight id="pins" title="Saved Queries" icon="pi pi-bookmark"
+      description="Pin frequently used commands for quick access."
+      [capabilities]="['Save commands', 'Quick re-run', 'Custom intervals']" [compact]="true" />
+
+        <div class="page-header">
       <div>
         <h1>Pinned Queries</h1>
         <p class="subtitle">Saved commands for quick access & monitoring</p>

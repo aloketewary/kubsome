@@ -10,13 +10,18 @@ import { ApiService } from '../../core/services/api.service';
 import { Deployment } from '../../core/models';
 import { ConfirmService } from '../../shared/services/confirm.service';
 import { AiInsightDrawerComponent } from '../../shared/components/ai-insight-drawer.component';
+import { SpotlightComponent } from '../../shared/components/spotlight.component';
 
 @Component({
   selector: 'app-deployments',
   standalone: true,
-  imports: [TagModule, ButtonModule, TooltipModule, DialogModule, FormsModule, InputTextModule, AiInsightDrawerComponent],
+  imports: [TagModule, ButtonModule, TooltipModule, DialogModule, FormsModule, InputTextModule, AiInsightDrawerComponent, SpotlightComponent],
   template: `
-    <div class="page-header">
+    <app-spotlight id="deployments" title="Deployments" icon="pi pi-send"
+      description="Manage deployments with rollout history, scaling, and rollback."
+      [capabilities]="['Rolling restart/rollback', 'Visual replica scaling', 'Rollout history', 'AI diagnosis']" [compact]="true" />
+
+        <div class="page-header">
       <div>
         <h1>Deployments</h1>
         <p class="subtitle">{{ deployments.length }} deployments in namespace</p>

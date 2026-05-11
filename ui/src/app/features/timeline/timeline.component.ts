@@ -3,13 +3,18 @@ import { HttpClient } from '@angular/common/http';
 import { TagModule } from 'primeng/tag';
 import { ButtonModule } from 'primeng/button';
 import { TooltipModule } from 'primeng/tooltip';
+import { SpotlightComponent } from '../../shared/components/spotlight.component';
 
 @Component({
   selector: 'app-timeline',
   standalone: true,
-  imports: [TagModule, ButtonModule, TooltipModule],
+  imports: [TagModule, ButtonModule, TooltipModule, SpotlightComponent],
   template: `
-    <div class="page-header">
+    <app-spotlight id="timeline" title="Timeline" icon="pi pi-history"
+      description="Chronological view of cluster changes and events."
+      [capabilities]="['Change timeline', 'Event correlation', 'Time-range filtering']" [compact]="true" />
+
+        <div class="page-header">
       <div>
         <h1>Timeline</h1>
         <p class="subtitle">Cluster activity stream</p>

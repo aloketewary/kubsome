@@ -3,13 +3,18 @@ import { HttpClient } from '@angular/common/http';
 import { TagModule } from 'primeng/tag';
 import { ButtonModule } from 'primeng/button';
 import { TooltipModule } from 'primeng/tooltip';
+import { SpotlightComponent } from '../../shared/components/spotlight.component';
 
 @Component({
   selector: 'app-cost',
   standalone: true,
-  imports: [TagModule, ButtonModule, TooltipModule],
+  imports: [TagModule, ButtonModule, TooltipModule, SpotlightComponent],
   template: `
-    <div class="page-header">
+    <app-spotlight id="cost" title="Cost Analysis" icon="pi pi-chart-line"
+      description="Analyze resource costs and identify optimization opportunities."
+      [capabilities]="['Utilization analysis', 'Over-provisioned detection', 'Optimization tips']" [compact]="true" />
+
+        <div class="page-header">
       <div>
         <h1>Optimization</h1>
         <p class="subtitle">Resource efficiency and waste detection</p>

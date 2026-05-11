@@ -6,13 +6,18 @@ import { TagModule } from 'primeng/tag';
 import { TooltipModule } from 'primeng/tooltip';
 import { Select } from 'primeng/select';
 import cytoscape from 'cytoscape';
+import { SpotlightComponent } from '../../shared/components/spotlight.component';
 
 @Component({
   selector: 'app-graph',
   standalone: true,
-  imports: [FormsModule, ButtonModule, TagModule, TooltipModule, Select],
+  imports: [FormsModule, ButtonModule, TagModule, TooltipModule, Select, SpotlightComponent],
   template: `
-    <div class="page-header">
+    <app-spotlight id="graph" title="Resource Graph" icon="pi pi-sitemap"
+      description="Visualize relationships between pods, services, and deployments."
+      [capabilities]="['Interactive graph', 'Service-to-pod mapping', 'Relationship tracing']" [compact]="true" />
+
+        <div class="page-header">
       <div>
         <h1>Service Map</h1>
         <p class="subtitle">Interactive resource topology visualization</p>

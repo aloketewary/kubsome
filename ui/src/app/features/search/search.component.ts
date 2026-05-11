@@ -5,13 +5,18 @@ import { TagModule } from 'primeng/tag';
 import { TableModule } from 'primeng/table';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/services/api.service';
+import { SpotlightComponent } from '../../shared/components/spotlight.component';
 
 @Component({
   selector: 'app-search',
   standalone: true,
-  imports: [CardModule, InputTextModule, TagModule, TableModule, FormsModule],
+  imports: [CardModule, InputTextModule, TagModule, TableModule, FormsModule, SpotlightComponent],
   template: `
-    <div class="header">
+    <app-spotlight id="search" title="Search" icon="pi pi-search"
+      description="Search across all resource types with fuzzy matching."
+      [capabilities]="['Cross-resource search', 'Fuzzy matching', 'Quick navigation']" [compact]="true" />
+
+        <div class="header">
       <h2>Search</h2>
     </div>
 

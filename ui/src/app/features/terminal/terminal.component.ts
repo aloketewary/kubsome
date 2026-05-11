@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { ButtonModule } from 'primeng/button';
 import { TooltipModule } from 'primeng/tooltip';
+import { SpotlightComponent } from '../../shared/components/spotlight.component';
 
 interface TermLine {
   type: 'input' | 'output' | 'error' | 'system';
@@ -12,9 +13,13 @@ interface TermLine {
 @Component({
   selector: 'app-terminal',
   standalone: true,
-  imports: [FormsModule, ButtonModule, TooltipModule],
+  imports: [FormsModule, ButtonModule, TooltipModule, SpotlightComponent],
   template: `
-    <div class="terminal" (click)="focusInput()">
+    <app-spotlight id="terminal" title="Terminal" icon="pi pi-terminal"
+      description="Interactive shell into pods directly from the browser."
+      [capabilities]="['In-browser shell', 'Pod exec', 'Auto shell detection']" [compact]="true" />
+
+        <div class="terminal" (click)="focusInput()">
       <!-- Terminal Toolbar -->
       <div class="term-toolbar">
         <div class="toolbar-left">

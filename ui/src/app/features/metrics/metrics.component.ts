@@ -4,13 +4,18 @@ import { ButtonModule } from 'primeng/button';
 import { TooltipModule } from 'primeng/tooltip';
 import { ApiService } from '../../core/services/api.service';
 import { PodMetrics, NodeMetrics } from '../../core/models';
+import { SpotlightComponent } from '../../shared/components/spotlight.component';
 
 @Component({
   selector: 'app-metrics',
   standalone: true,
-  imports: [TagModule, ButtonModule, TooltipModule],
+  imports: [TagModule, ButtonModule, TooltipModule, SpotlightComponent],
   template: `
-    <div class="page-header">
+    <app-spotlight id="metrics" title="Metrics" icon="pi pi-chart-bar"
+      description="CPU and memory usage for pods and nodes."
+      [capabilities]="['Pod CPU/memory', 'Node pressure', 'Sortable tables']" [compact]="true" />
+
+        <div class="page-header">
       <div>
         <h1>Metrics</h1>
         <p class="subtitle">Resource consumption across cluster</p>
