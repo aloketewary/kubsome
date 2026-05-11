@@ -235,24 +235,28 @@ import { PageInfoComponent } from '../../shared/components/page-info.component';
     .log-viewer {
       max-height: calc(100vh - 360px); overflow-y: auto; padding: 8px 0;
       font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 1.7;
+      color: var(--text);
     }
     .log-line { display: flex; gap: 0; padding: 0 12px; align-items: flex-start; }
     .log-line:hover { background: var(--bg-hover); }
-    .line-num { color: var(--text-muted); min-width: 32px; text-align: right; user-select: none; opacity: 0.4; padding-right: 8px; }
+    .line-num { color: var(--text-muted); min-width: 32px; text-align: right; user-select: none; opacity: 0.5; padding-right: 8px; }
     .line-level {
       min-width: 36px; font-size: 9px; font-weight: 600; text-transform: uppercase;
       padding: 1px 0; text-align: center; letter-spacing: 0.03em;
     }
-    .line-text { white-space: pre-wrap; word-break: break-all; padding-left: 8px; }
+    .line-text { white-space: pre-wrap; word-break: break-all; padding-left: 8px; color: var(--text); }
 
     /* Level colors */
     .log-line.level-error { background: var(--danger-subtle); }
     .log-line.level-error .line-level { color: var(--danger); }
     .log-line.level-error .line-text { color: var(--danger); }
     .log-line.level-warn .line-level { color: var(--warning); }
+    .log-line.level-warn .line-text { color: var(--text); }
     .log-line.level-info .line-level { color: var(--text-muted); }
+    .log-line.level-info .line-text { color: var(--text); }
     .log-line.level-debug .line-level { color: var(--accent); }
-    .log-line.level-default .line-text { color: var(--text-secondary); }
+    .log-line.level-debug .line-text { color: var(--text-secondary); }
+    .log-line.level-default .line-text { color: var(--text); }
 
     .log-empty {
       display: flex; flex-direction: column; align-items: center; gap: 8px;
