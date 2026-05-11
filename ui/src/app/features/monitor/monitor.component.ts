@@ -6,6 +6,7 @@ import { Select } from 'primeng/select';
 import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
 import { TooltipModule } from 'primeng/tooltip';
+import { DialogModule } from 'primeng/dialog';
 
 interface ActionEntry {
   time: string;
@@ -38,7 +39,7 @@ interface MonitorCard {
 @Component({
   selector: 'app-monitor',
   standalone: true,
-  imports: [FormsModule, SlicePipe, Select, ButtonModule, TagModule, TooltipModule],
+  imports: [FormsModule, SlicePipe, Select, ButtonModule, TagModule, TooltipModule, DialogModule],
   template: `
     <div class="page-header">
       <div>
@@ -84,7 +85,7 @@ interface MonitorCard {
             <div class="mc-badge" [class]="'badge-' + cardHealth(card)">{{ cardHealth(card) }}</div>
             <span class="mc-title">{{ card.context ? (card.context | slice:0:20) : 'New Card' }} / {{ card.namespace || '...' }}{{ card.app ? ' / ' + card.app : '' }}</span>
             <div class="mc-toolbar-actions">
-              <button pButton icon="pi pi-expand" class="p-button-text p-button-sm p-button-rounded" pTooltip="Full screen" (click)="card.fullscreen = true"></button>
+              <button pButton icon="pi pi-expand" class="p-button-text p-button-sm p-button-rounded" pTooltip="Full screen" (click)="openFsDialog(card)"></button>
               <button pButton icon="pi pi-cog" class="p-button-text p-button-sm p-button-rounded" pTooltip="Configure" (click)="card.configuring = !card.configuring"></button>
               <button pButton icon="pi pi-refresh" class="p-button-text p-button-sm p-button-rounded" pTooltip="Refresh" (click)="fetchCardData(card)"></button>
               <button pButton icon="pi pi-times" class="p-button-text p-button-sm p-button-rounded p-button-danger" pTooltip="Remove" (click)="removeCard(card.id)"></button>
@@ -225,159 +226,90 @@ interface MonitorCard {
         </div>
       }
 
-    <!-- Fullscreen Modal -->
-    @for (card of cards; track card.id) {
-      @if (card.fullscreen && card.data) {
-        <div class="fs-overlay" (click)="card.fullscreen = false">
-          <div class="fs-modal" (click)="$event.stopPropagation()">
-            <div class="fs-header">
-              <div class="fs-title">
-                <span class="fs-badge" [class]="'badge-' + cardHealth(card)">{{ cardHealth(card) }}</span>
-                <h2>{{ card.context }} / {{ card.namespace }}{{ card.app ? ' / ' + card.app : '' }}</h2>
-                @if (card.alertEnabled) {
-                  <span class="fs-alert-indicator" [class.alert-triggered]="healthPct(card) < card.alertThreshold">
-                    <i class="pi pi-bell"></i> {{ healthPct(card) < card.alertThreshold ? 'ALERT' : 'OK' }}
-                  </span>
+    <!-- Fullscreen Dialog -->
+    <p-dialog [(visible)]="fsVisible" [modal]="true" [maximizable]="true" [header]="fsCard?.context + ' / ' + fsCard?.namespace + (fsCard?.app ? ' / ' + fsCard?.app : '')" styleClass="fullscreen-dialog" [appendTo]="'body'" (onHide)="closeFsDialog()">
+      @if (fsCard?.data) {
+        <div class="fsd-body">
+          <!-- Health Row -->
+          <div class="fsd-health-row">
+            <div class="fsd-ring-wrap">
+              <svg viewBox="0 0 36 36">
+                <path class="ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                <path class="ring-fill" [class]="ringClass(fsCard!)" [attr.stroke-dasharray]="healthPct(fsCard!) + ', 100'" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+              </svg>
+              <span class="fsd-ring-val">{{ healthPct(fsCard!) }}%</span>
+            </div>
+            <div class="fsd-stats">
+              <div class="fsd-stat"><span class="fsd-stat-val">{{ fsCard!.data.pods?.healthy || 0 }}</span><span class="fsd-stat-label">Running</span></div>
+              <div class="fsd-stat fsd-warn"><span class="fsd-stat-val">{{ fsCard!.data.pods?.warning || 0 }}</span><span class="fsd-stat-label">Warning</span></div>
+              <div class="fsd-stat fsd-crit"><span class="fsd-stat-val">{{ fsCard!.data.pods?.critical || 0 }}</span><span class="fsd-stat-label">Critical</span></div>
+              <div class="fsd-stat"><span class="fsd-stat-val">{{ fsCard!.data.deployments?.healthy || 0 }}/{{ (fsCard!.data.deployments?.healthy || 0) + (fsCard!.data.deployments?.unavailable || 0) }}</span><span class="fsd-stat-label">Deploys</span></div>
+            </div>
+          </div>
+
+          <!-- Actions -->
+          @if (fsCard!.app) {
+            <div class="fsd-actions">
+              <button pButton icon="pi pi-refresh" label="Restart" class="p-button-sm p-button-outlined" (click)="restartApp(fsCard!)"></button>
+              <button pButton icon="pi pi-minus" label="Scale Down" class="p-button-sm p-button-outlined" (click)="scaleDown(fsCard!)"></button>
+              <button pButton icon="pi pi-plus" label="Scale Up" class="p-button-sm p-button-outlined" (click)="scaleUp(fsCard!)"></button>
+              <button pButton icon="pi pi-sync" label="Refresh" class="p-button-sm p-button-text" (click)="fetchCardData(fsCard!)"></button>
+            </div>
+          }
+
+          <!-- Activity Histogram -->
+          <div class="fsd-section">
+            <div class="fsd-section-header">
+              <h4>Activity</h4>
+              <span class="fsd-hint">{{ fsCard!.events.length }} events · {{ fsCard!.actionLog.length }} actions</span>
+            </div>
+            <div class="fsd-histogram">
+              @for (bar of fsCard!.activityBars; track $index) {
+                <div class="fsd-hbar" [style.height.%]="bar" [class.fsd-hbar-high]="bar > 70" [class.fsd-hbar-med]="bar > 40 && bar <= 70"></div>
+              }
+            </div>
+          </div>
+
+          <!-- Action Log -->
+          @if (fsCard!.actionLog.length > 0) {
+            <div class="fsd-section">
+              <h4>Action Log</h4>
+              <div class="fsd-action-list">
+                @for (entry of fsCard!.actionLog.slice().reverse(); track $index) {
+                  <div class="fsd-al-row">
+                    <span class="fsd-al-dot" [class.al-restart]="entry.action === 'restart'" [class.al-scale-up]="entry.action === 'scale-up'" [class.al-scale-down]="entry.action === 'scale-down'"></span>
+                    <span class="fsd-al-action">{{ entry.action }}</span>
+                    <span class="fsd-al-target">{{ entry.target }}</span>
+                    <span class="fsd-al-time">{{ entry.time }}</span>
+                  </div>
                 }
-                @if (card.lastUpdated) {
-                  <span class="fs-time">{{ card.lastUpdated }}</span>
-                }
-              </div>
-              <div class="fs-header-actions">
-                @if (card.app) {
-                  <button class="fs-btn" (click)="restartApp(card)" title="Restart">
-                    <i class="pi pi-refresh"></i>
-                  </button>
-                  <button class="fs-btn" (click)="scaleDown(card)" title="Scale Down">
-                    <i class="pi pi-minus"></i>
-                  </button>
-                  <button class="fs-btn" (click)="scaleUp(card)" title="Scale Up">
-                    <i class="pi pi-plus"></i>
-                  </button>
-                }
-                <button class="fs-btn" (click)="fetchCardData(card)" title="Refresh">
-                  <i class="pi pi-sync"></i>
-                </button>
-                <button class="fs-btn fs-btn-close" (click)="card.fullscreen = false" title="Close">
-                  <i class="pi pi-times"></i>
-                </button>
               </div>
             </div>
-            <div class="fs-body">
-              <!-- Health Overview -->
-              <div class="fs-health-row">
-                <div class="fs-ring-wrap">
-                  <svg viewBox="0 0 36 36" class="fs-ring-svg">
-                    <path class="ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                    <path class="ring-fill" [class]="ringClass(card)" [attr.stroke-dasharray]="healthPct(card) + ', 100'" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                  </svg>
-                  <span class="fs-ring-val">{{ healthPct(card) }}%</span>
-                </div>
-                <div class="fs-stats">
-                  <div class="fs-stat"><span class="fs-stat-val">{{ card.data.pods?.healthy || 0 }}</span><span class="fs-stat-label">Running</span></div>
-                  <div class="fs-stat fs-warn"><span class="fs-stat-val">{{ card.data.pods?.warning || 0 }}</span><span class="fs-stat-label">Warning</span></div>
-                  <div class="fs-stat fs-crit"><span class="fs-stat-val">{{ card.data.pods?.critical || 0 }}</span><span class="fs-stat-label">Critical</span></div>
-                  <div class="fs-stat"><span class="fs-stat-val">{{ (card.data.nodes?.healthy || 0) }}/{{ (card.data.nodes?.healthy || 0) + (card.data.nodes?.warning || 0) }}</span><span class="fs-stat-label">Nodes</span></div>
-                  <div class="fs-stat"><span class="fs-stat-val">{{ card.data.deployments?.healthy || 0 }}/{{ (card.data.deployments?.healthy || 0) + (card.data.deployments?.unavailable || 0) }}</span><span class="fs-stat-label">Deployments</span></div>
-                </div>
-              </div>
+          }
 
-              <!-- Alert Threshold -->
-              @if (card.alertEnabled) {
-                <div class="fs-alert-section" [class.fs-alert-triggered]="healthPct(card) < card.alertThreshold">
-                  <div class="fs-alert-bar">
-                    <div class="fs-alert-fill" [style.width.%]="healthPct(card)"></div>
-                    <div class="fs-alert-threshold" [style.left.%]="card.alertThreshold"></div>
-                  </div>
-                  <span class="fs-alert-label">Health {{ healthPct(card) }}% · Threshold {{ card.alertThreshold }}%</span>
+          <!-- Events -->
+          <div class="fsd-section">
+            <div class="fsd-section-header">
+              <h4>Events</h4>
+              <span class="fsd-hint">{{ fsCard!.events.length }}</span>
+            </div>
+            <div class="fsd-events">
+              @for (ev of fsCard!.events; track $index) {
+                <div class="fsd-ev">
+                  <span class="fsd-ev-dot" [class.fsd-ev-warn]="ev.type === 'Warning'"></span>
+                  <span class="fsd-ev-reason">{{ ev.reason }}</span>
+                  <span class="fsd-ev-obj">{{ ev.object }}</span>
+                  <span class="fsd-ev-msg">{{ ev.message }}</span>
                 </div>
               }
-
-              <!-- Deployment Progress -->
-              <div class="fs-section">
-                <h4>Deployment Health</h4>
-                <div class="fs-dep-bar">
-                  <div class="fs-dep-fill" [style.width.%]="depPct(card)"></div>
-                </div>
-                <span class="fs-dep-label">{{ card.data.deployments?.healthy || 0 }} available / {{ (card.data.deployments?.healthy || 0) + (card.data.deployments?.unavailable || 0) }} total</span>
-              </div>
-
-              <!-- Activity -->
-              <div class="fs-section">
-                <div class="fs-section-header">
-                  <h4>Activity (last hour)</h4>
-                  <span class="fs-section-hint">{{ card.events.length }} total events</span>
-                </div>
-                <div class="fs-activity">
-                  @for (bar of card.activityBars; track $index) {
-                    <div class="fs-bar" [style.height.%]="bar" [class.fs-bar-high]="bar > 70" [class.fs-bar-med]="bar > 40 && bar <= 70" [attr.title]="Math.round(bar) + '%'"></div>
-                  }
-                </div>
-                <div class="fs-activity-legend">
-                  <span class="fs-leg"><span class="fs-leg-dot fs-leg-low"></span> Low</span>
-                  <span class="fs-leg"><span class="fs-leg-dot fs-leg-med"></span> Medium</span>
-                  <span class="fs-leg"><span class="fs-leg-dot fs-leg-high"></span> High</span>
-                </div>
-              </div>
-
-              <!-- Events -->
-              <div class="fs-section">
-                <div class="fs-section-header">
-                  <h4>Recent Events</h4>
-                  <span class="fs-section-hint">{{ card.events.length }} events</span>
-                </div>
-                <div class="fs-events">
-                  @for (ev of card.events; track $index) {
-                    <div class="fs-ev">
-                      <span class="fs-ev-dot" [class.fs-ev-warn]="ev.type === 'Warning'"></span>
-                      <span class="fs-ev-reason">{{ ev.reason }}</span>
-                      <span class="fs-ev-obj">{{ ev.object }}</span>
-                      <span class="fs-ev-msg">{{ ev.message }}</span>
-                    </div>
-                  }
-                  @if (card.events.length === 0) {
-                    <div class="fs-ev-empty">No recent events</div>
-                  }
-                </div>
-              </div>
-
-              <!-- Action History -->
-              @if (card.actionLog.length > 0) {
-                <div class="fs-section">
-                  <div class="fs-section-header">
-                    <h4>Action History</h4>
-                    <span class="fs-section-hint">{{ card.actionLog.length }} actions</span>
-                  </div>
-                  <div class="fs-action-histogram">
-                    @for (entry of card.actionLog; track $index) {
-                      <div class="fs-hist-bar" [class.hist-restart]="entry.action === 'restart'" [class.hist-scale-up]="entry.action === 'scale-up'" [class.hist-scale-down]="entry.action === 'scale-down'" [pTooltip]="entry.action + ' ' + entry.target + ' at ' + entry.time"></div>
-                    }
-                  </div>
-                  <div class="fs-hist-legend">
-                    <span class="fs-leg"><span class="fs-leg-dot" style="background:var(--warning)"></span> Restart</span>
-                    <span class="fs-leg"><span class="fs-leg-dot" style="background:var(--success)"></span> Scale Up</span>
-                    <span class="fs-leg"><span class="fs-leg-dot" style="background:var(--accent)"></span> Scale Down</span>
-                  </div>
-                  <div class="fs-action-list">
-                    @for (entry of card.actionLog.slice().reverse(); track $index) {
-                      <div class="fs-action-entry">
-                        <span class="fs-ae-dot" [class.ae-restart]="entry.action === 'restart'" [class.ae-scale-up]="entry.action === 'scale-up'" [class.ae-scale-down]="entry.action === 'scale-down'"></span>
-                        <span class="fs-ae-action">{{ entry.action }}</span>
-                        <span class="fs-ae-target">{{ entry.target }}</span>
-                        <span class="fs-ae-time">{{ entry.time }}</span>
-                      </div>
-                    }
-                  </div>
-                </div>
+              @if (fsCard!.events.length === 0) {
+                <div class="fsd-empty">No events</div>
               }
-
-              <!-- Updated -->
-              <div class="fs-updated">Last updated: {{ card.lastUpdated || 'never' }}</div>
             </div>
           </div>
         </div>
       }
-    }
+    </p-dialog>
     </div>
   `,
   styles: [`
@@ -554,124 +486,50 @@ interface MonitorCard {
     .empty-page h3 { font-size: 18px; font-weight: 600; margin: 0; }
     .empty-page p { font-size: 13px; color: var(--text-secondary); margin: 0; max-width: 320px; }
 
-    /* Fullscreen Modal */
-    .fs-overlay {
-      position: fixed; inset: 0; background: var(--bg);
-      z-index: 9000; display: flex; flex-direction: column;
+    /* Dialog Fullscreen */
+    .fsd-body { display: flex; flex-direction: column; gap: 20px; }
+    .fsd-health-row { display: flex; align-items: center; gap: 20px; }
+    .fsd-ring-wrap { position: relative; width: 80px; height: 80px; flex-shrink: 0; }
+    .fsd-ring-wrap svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+    .fsd-ring-val { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 700; }
+    .fsd-stats { display: flex; gap: 10px; flex: 1; }
+    .fsd-stat {
+      flex: 1; text-align: center; padding: 12px 8px; background: var(--bg-elevated);
+      border-radius: 8px; border: 1px solid var(--border);
     }
-    .fs-modal {
-      width: 100%; height: 100%;
-      background: var(--bg); display: flex; flex-direction: column; overflow: hidden;
-    }
-    .fs-header {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 16px 24px; border-bottom: 1px solid var(--border); background: var(--bg-elevated);
-    }
-    .fs-title { display: flex; align-items: center; gap: 10px; flex: 1; }
-    .fs-title h2 { font-size: 18px; font-weight: 700; margin: 0; }
-    .fs-time { font-size: 10px; color: var(--text-muted); margin-left: 8px; }
-    .fs-badge { font-size: 9px; font-weight: 700; padding: 3px 8px; border-radius: 4px; text-transform: uppercase; }
-    .fs-header-actions { display: flex; gap: 6px; }
-    .fs-btn {
-      width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--border);
-      background: var(--bg-card); color: var(--text-muted); cursor: pointer;
-      display: flex; align-items: center; justify-content: center; font-size: 14px;
-      transition: all 0.25s cubic-bezier(0.34,1.56,0.64,1);
-    }
-    .fs-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-subtle); }
-    .fs-btn-close:hover { border-color: var(--danger); color: var(--danger); background: var(--danger-subtle); }
-    .fs-alert-indicator {
-      font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 4px;
-      background: var(--success-subtle); color: var(--success);
-    }
-    .fs-alert-indicator.alert-triggered {
-      background: var(--danger-subtle); color: var(--danger); animation: pulse 1.5s infinite;
-    }
-    .fs-alert-section {
-      padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-elevated);
-    }
-    .fs-alert-section.fs-alert-triggered { border-color: var(--danger); background: var(--danger-subtle); }
-    .fs-alert-bar {
-      position: relative; height: 8px; border-radius: 4px; background: var(--bg); overflow: visible; margin-bottom: 8px;
-    }
-    .fs-alert-fill {
-      height: 100%; border-radius: 4px; background: var(--success); transition: width 0.4s;
-    }
-    .fs-alert-triggered .fs-alert-fill { background: var(--danger); }
-    .fs-alert-threshold {
-      position: absolute; top: -3px; width: 2px; height: 14px;
-      background: var(--warning); border-radius: 1px;
-    }
-    .fs-alert-label { font-size: 11px; color: var(--text-muted); }
-    .fs-body { padding: 24px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 24px; }
-    .fs-health-row { display: flex; align-items: center; gap: 24px; }
-    .fs-ring-wrap { position: relative; width: 90px; height: 90px; flex-shrink: 0; }
-    .fs-ring-svg { width: 100%; height: 100%; transform: rotate(-90deg); }
-    .fs-ring-val { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; }
-    .fs-stats { display: flex; gap: 12px; flex: 1; }
-    .fs-dep-bar { height: 6px; border-radius: 3px; background: var(--bg-elevated); overflow: hidden; margin-bottom: 6px; }
-    .fs-dep-fill { height: 100%; background: var(--success); border-radius: 3px; transition: width 0.4s; }
-    .fs-dep-label { font-size: 11px; color: var(--text-muted); }
-    .fs-section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-    .fs-section-header h4 { margin: 0; }
-    .fs-section-hint { font-size: 10px; color: var(--text-muted); }
-    .fs-bar.fs-bar-med { background: var(--warning); opacity: 0.5; }
-    .fs-activity-legend { display: flex; gap: 12px; margin-top: 8px; }
-    .fs-leg { display: flex; align-items: center; gap: 4px; font-size: 10px; color: var(--text-muted); }
-    .fs-leg-dot { width: 8px; height: 8px; border-radius: 2px; }
-    .fs-leg-low { background: var(--accent); opacity: 0.5; }
-    .fs-leg-med { background: var(--warning); opacity: 0.6; }
-    .fs-leg-high { background: var(--danger); opacity: 0.7; }
-    .fs-ev-empty { text-align: center; padding: 20px; color: var(--text-muted); font-size: 12px; }
-
-    /* Action History (fullscreen) */
-    .fs-action-histogram {
-      display: flex; align-items: flex-end; gap: 3px; height: 40px; padding: 8px 0;
-    }
-    .fs-hist-bar {
-      flex: 1; min-width: 8px; border-radius: 2px 2px 0 0; cursor: crosshair;
-      transition: all 0.15s;
-    }
-    .fs-hist-bar.hist-restart { height: 100%; background: var(--warning); opacity: 0.7; }
-    .fs-hist-bar.hist-scale-up { height: 70%; background: var(--success); opacity: 0.7; }
-    .fs-hist-bar.hist-scale-down { height: 50%; background: var(--accent); opacity: 0.7; }
-    .fs-hist-bar:hover { opacity: 1; transform: scaleY(1.1); }
-    .fs-hist-legend { display: flex; gap: 12px; margin: 6px 0 12px; }
-    .fs-action-list { display: flex; flex-direction: column; gap: 4px; max-height: 150px; overflow-y: auto; }
-    .fs-action-entry {
-      display: flex; align-items: center; gap: 8px; padding: 6px 10px;
-      border-radius: 6px; font-size: 12px;
-    }
-    .fs-action-entry:hover { background: var(--bg-hover); }
-    .fs-ae-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
-    .ae-restart { background: var(--warning); }
-    .ae-scale-up { background: var(--success); }
-    .ae-scale-down { background: var(--accent); }
-    .fs-ae-action { font-weight: 500; min-width: 80px; }
-    .fs-ae-target { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-muted); flex: 1; }
-    .fs-ae-time { font-size: 10px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
-    .fs-updated { font-size: 10px; color: var(--text-muted); text-align: right; padding-top: 8px; border-top: 1px solid var(--border); }
-    .fs-stat {
-      flex: 1; text-align: center; padding: 16px 12px; background: var(--bg-card);
-      border-radius: 12px; border: 1px solid var(--border); transition: all 0.25s cubic-bezier(0.34,1.56,0.64,1);
-    }
-    .fs-stat:hover { border-color: var(--border-hover); transform: translateY(-2px); box-shadow: 0 8px 24px -8px rgba(0,0,0,0.2); }
-    .fs-stat-val { display: block; font-size: 28px; font-weight: 700; letter-spacing: -0.02em; }
-    .fs-stat-label { display: block; font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.03em; margin-top: 4px; }
-    .fs-warn .fs-stat-val { color: var(--warning); }
-    .fs-crit .fs-stat-val { color: var(--danger); }
-    .fs-section h4 { font-size: 13px; font-weight: 600; color: var(--text-secondary); margin: 0; }
-    .fs-activity { display: flex; align-items: flex-end; gap: 2px; height: 80px; padding: 8px 0; }
-    .fs-bar { flex: 1; min-height: 3px; border-radius: 2px 2px 0 0; background: var(--accent); opacity: 0.5; }
-    .fs-bar.fs-bar-high { background: var(--danger); opacity: 0.7; }
-    .fs-events { display: flex; flex-direction: column; gap: 4px; max-height: 250px; overflow-y: auto; }
-    .fs-ev { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 6px; font-size: 12px; }
-    .fs-ev:hover { background: var(--bg-hover); }
-    .fs-ev-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
-    .fs-ev-dot.fs-ev-warn { background: var(--warning); }
-    .fs-ev-reason { font-weight: 500; min-width: 80px; }
-    .fs-ev-obj { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-muted); min-width: 120px; }
-    .fs-ev-msg { flex: 1; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .fsd-stat-val { display: block; font-size: 22px; font-weight: 700; }
+    .fsd-stat-label { display: block; font-size: 9px; color: var(--text-muted); text-transform: uppercase; margin-top: 2px; }
+    .fsd-warn .fsd-stat-val { color: var(--warning); }
+    .fsd-crit .fsd-stat-val { color: var(--danger); }
+    .fsd-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .fsd-section { }
+    .fsd-section h4 { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; margin: 0 0 8px; }
+    .fsd-section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+    .fsd-section-header h4 { margin: 0; }
+    .fsd-hint { font-size: 10px; color: var(--text-muted); }
+    .fsd-histogram { display: flex; align-items: flex-end; gap: 2px; height: 60px; padding: 4px 0; }
+    .fsd-hbar { flex: 1; min-height: 3px; border-radius: 2px 2px 0 0; background: var(--accent); opacity: 0.5; }
+    .fsd-hbar.fsd-hbar-high { background: var(--danger); opacity: 0.7; }
+    .fsd-hbar.fsd-hbar-med { background: var(--warning); opacity: 0.6; }
+    .fsd-action-list { display: flex; flex-direction: column; gap: 3px; max-height: 180px; overflow-y: auto; }
+    .fsd-al-row { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-radius: 6px; font-size: 12px; }
+    .fsd-al-row:hover { background: var(--bg-hover); }
+    .fsd-al-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+    .al-restart { background: var(--warning); }
+    .al-scale-up { background: var(--success); }
+    .al-scale-down { background: var(--accent); }
+    .fsd-al-action { font-weight: 500; min-width: 70px; font-size: 11px; }
+    .fsd-al-target { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-muted); flex: 1; }
+    .fsd-al-time { font-size: 10px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+    .fsd-events { display: flex; flex-direction: column; gap: 3px; max-height: 200px; overflow-y: auto; }
+    .fsd-ev { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-radius: 6px; font-size: 12px; }
+    .fsd-ev:hover { background: var(--bg-hover); }
+    .fsd-ev-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+    .fsd-ev-dot.fsd-ev-warn { background: var(--warning); }
+    .fsd-ev-reason { font-weight: 500; min-width: 80px; font-size: 11px; }
+    .fsd-ev-obj { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-muted); min-width: 100px; }
+    .fsd-ev-msg { flex: 1; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }
+    .fsd-empty { text-align: center; padding: 16px; color: var(--text-muted); font-size: 12px; }
     @media (max-width: 768px) { .monitor-grid { grid-template-columns: 1fr; } }
   `],
 })
@@ -680,6 +538,8 @@ export class MonitorComponent implements OnInit, OnDestroy {
   contexts: string[] = [];
   cards: MonitorCard[] = [];
   Math = Math;
+  fsVisible = false;
+  fsCard: MonitorCard | null = null;
   private idCounter = 0;
   private cardTimers = new Map<number, any>();
   private dragIndex = -1;
@@ -881,8 +741,17 @@ export class MonitorComponent implements OnInit, OnDestroy {
   }
 
   diagnoseCard(card: MonitorCard) {
-    // Navigate to pods page filtered by namespace
     window.location.href = `/pods?filter=${card.namespace}`;
+  }
+
+  openFsDialog(card: MonitorCard) {
+    this.fsCard = card;
+    this.fsVisible = true;
+  }
+
+  closeFsDialog() {
+    this.fsVisible = false;
+    this.fsCard = null;
   }
 
   private triggerAlert(card: MonitorCard) {
