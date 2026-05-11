@@ -84,8 +84,14 @@ export class ApiService {
   }
 
   // Logs
-  getLogs(pod: string, tail = 100, errors = false): Observable<LogsResponse> {
-    return this.http.get<LogsResponse>(`${this.base}/logs/${pod}`, { params: { tail, errors } });
+  getLogs(pod: string, tail = 100, errors = false, container?: string): Observable<LogsResponse> {
+    const params: any = { tail, errors };
+    if (container) params.container = container;
+    return this.http.get<LogsResponse>(`${this.base}/logs/${pod}`, { params });
+  }
+
+  getContainers(pod: string): Observable<{ pod: string; containers: string[] }> {
+    return this.http.get<{ pod: string; containers: string[] }>(`${this.base}/logs/${pod}/containers`);
   }
 
   // Diagnostics

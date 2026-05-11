@@ -7,17 +7,10 @@ from core.cache import cached
 
 @cached(ttl=5)
 def collect_pods():
-    """Collect pod summary data using custom-columns for speed."""
+    """Collect pod summary data with labels."""
     cmd = (
         f"kubectl --context {context.current_context} "
-        f"get pods -n {context.namespace} "
-        f"-o jsonpath='"
-        f'{{range .items}}'
-        f'{{.metadata.name}}\t'
-        f'{{.status.phase}}\t'
-        f'{{range .status.containerStatuses}}'
-        f'{{.restartCount}}{{end}}\n'
-        f"{{end}}'"
+        f"get pods -n {context.namespace} -o json"
     )
 
     result = subprocess.run(
@@ -25,23 +18,26 @@ def collect_pods():
         capture_output=True, text=True
     )
 
-    if result.returncode != 0 or not result.stdout.strip("'").strip():
+    if result.returncode != 0 or not result.stdout.strip():
         return []
 
+    data = json.loads(result.stdout)
     pods = []
-    for line in result.stdout.strip("'").strip().split("\n"):
-        if not line.strip():
-            continue
-        parts = line.split("\t")
-        if len(parts) < 2:
-            continue
-        name = parts[0]
-        status = parts[1]
-        restarts = int(parts[2]) if len(parts) > 2 and parts[2].isdigit() else 0
+    for item in data.get("items", []):
+        meta = item.get("metadata", {})
+        status = item.get("status", {})
+        name = meta.get("name", "")
+        phase = status.get("phase", "Unknown")
+        restarts = 0
+        for cs in status.get("containerStatuses", []):
+            restarts += cs.get("restartCount", 0)
+        labels = meta.get("labels", {})
+        label_values = list(labels.values()) if labels else []
         pods.append({
             "name": name,
-            "status": status,
+            "status": phase,
             "restarts": restarts,
+            "labels": label_values,
         })
 
     return pods

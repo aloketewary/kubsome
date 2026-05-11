@@ -2,6 +2,7 @@ import { Component, inject, OnInit, OnDestroy } from '@angular/core';
 import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
+import { SlicePipe } from '@angular/common';
 import { TagModule } from 'primeng/tag';
 import { ButtonModule } from 'primeng/button';
 import { TooltipModule } from 'primeng/tooltip';
@@ -11,7 +12,7 @@ import { ConfirmService } from '../../shared/services/confirm.service';
 @Component({
   selector: 'app-incident',
   standalone: true,
-  imports: [FormsModule, TagModule, ButtonModule, TooltipModule, InputTextModule],
+  imports: [FormsModule, SlicePipe, TagModule, ButtonModule, TooltipModule, InputTextModule],
   template: `
     <div class="page-header">
       <div>

@@ -39,13 +39,18 @@ app.include_router(ws.router)
 
 
 @app.get("/health")
+def health_root():
+    return {"status": "ok"}
+
+
+@app.get("/api/health")
 def health():
     return {"status": "ok"}
 
 
 @app.get("/api/version")
 def version():
-    return {"version": "1.7.5"}
+    return {"version": "1.7.6"}
 
 
 # Serve Angular build in production
@@ -58,10 +63,9 @@ _dev_build = _project_dir / "ui" / "dist" / "ui" / "browser"
 _bundled = _api_dir / "ui_dist"
 
 # If dev build exists and is newer, sync to api/ui_dist
-if _dev_build.exists():
+if _dev_build.exists() and (_dev_build / "index.html").exists():
     import shutil
     if _bundled.exists():
-        # Compare timestamps to detect if rebuild happened
         dev_mtime = (_dev_build / "index.html").stat().st_mtime
         bundled_mtime = (_bundled / "index.html").stat().st_mtime if (_bundled / "index.html").exists() else 0
         if dev_mtime > bundled_mtime:

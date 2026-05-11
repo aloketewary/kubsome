@@ -2,6 +2,7 @@ export interface Pod {
   name: string;
   status: string;
   restarts: number;
+  labels?: string[];
 }
 
 export interface PodsResponse {

@@ -33,7 +33,11 @@ import { PageInfoComponent } from '../../shared/components/page-info.component';
     <div class="controls-bar">
       <div class="controls-left">
         <p-select [options]="podOptions" [(ngModel)]="selectedPod" placeholder="Select pod..."
-                  [style]="{ width: '280px' }" [filter]="true" optionLabel="label" optionValue="value" />
+                  [style]="{ width: '240px' }" [filter]="true" optionLabel="label" optionValue="value" (ngModelChange)="onPodChange()" />
+        @if (containerOptions.length > 1) {
+          <p-select [options]="containerOptions" [(ngModel)]="selectedContainer" placeholder="All containers"
+                    [style]="{ width: '180px' }" optionLabel="label" optionValue="value" [showClear]="true" />
+        }
         <div class="tail-control">
           <span class="tail-label">Lines:</span>
           @for (t of tailOptions; track t) {
@@ -274,7 +278,9 @@ export class LogsComponent implements OnInit, OnDestroy {
   @ViewChild('logEl') logEl!: ElementRef;
 
   podOptions: { label: string; value: string }[] = [];
+  containerOptions: { label: string; value: string }[] = [];
   selectedPod = '';
+  selectedContainer: string | null = null;
   tailSize = 200;
   tailOptions = [50, 100, 200, 500];
   lines: string[] = [];
@@ -304,10 +310,19 @@ export class LogsComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() { this.stopStream(); this.stopWatch(); }
 
+  onPodChange() {
+    this.selectedContainer = null;
+    this.containerOptions = [];
+    if (!this.selectedPod) return;
+    this.api.getContainers(this.selectedPod).subscribe(res => {
+      this.containerOptions = res.containers.map(c => ({ label: c, value: c }));
+    });
+  }
+
   fetchLogs() {
     if (!this.selectedPod) return;
     this.stopStream();
-    this.api.getLogs(this.selectedPod, this.tailSize, this.levelFilter === 'error').subscribe(res => {
+    this.api.getLogs(this.selectedPod, this.tailSize, this.levelFilter === 'error', this.selectedContainer || undefined).subscribe(res => {
       this.lines = res.lines;
       this.fetched = true;
       this.filterLines();
@@ -321,7 +336,8 @@ export class LogsComponent implements OnInit, OnDestroy {
     this.streaming = true;
     this.lines = [];
     this.filteredLines = [];
-    const conn = this.ws.connect(`/ws/logs/${this.selectedPod}`);
+    const containerParam = this.selectedContainer ? `?container=${this.selectedContainer}` : '';
+    const conn = this.ws.connect(`/ws/logs/${this.selectedPod}${containerParam}`);
     this.streamClose = conn.close;
     this.streamSub = conn.messages$.subscribe(line => {
       this.lines.push(line);

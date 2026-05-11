@@ -16,14 +16,16 @@ router = APIRouter(tags=["websocket"])
 
 
 @router.websocket("/ws/logs/{pod}")
-async def ws_logs(websocket: WebSocket, pod: str):
-    """Stream live logs from a pod."""
+async def ws_logs(websocket: WebSocket, pod: str, container: str = None):
+    """Stream live logs from a pod (optionally a specific container)."""
     await websocket.accept()
 
     cmd = (
         f"kubectl --context {context.current_context} "
         f"logs {pod} -n {context.namespace} --follow --tail=20"
     )
+    if container:
+        cmd += f" -c {container}"
 
     process = subprocess.Popen(
         cmd, shell=True,

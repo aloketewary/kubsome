@@ -124,28 +124,37 @@ interface PodGroup {
               <div class="pod-row" [class.pod-selected]="isSelected(pod)" [class.pod-unhealthy]="!isHealthy(pod)"
                    (click)="togglePod(pod, group)" tabindex="0" role="button" aria-label="Select pod"
                    (keydown.enter)="togglePod(pod, group)" (keydown.space)="$event.preventDefault(); togglePod(pod, group)">
-                <div class="pod-status-dot" [class.dot-running]="pod.status === 'Running'" [class.dot-pending]="pod.status === 'Pending'" [class.dot-error]="pod.status !== 'Running' && pod.status !== 'Pending'"></div>
-                <span class="pod-name mono" (click)="openDrawer(pod, $event)" [pTooltip]="pod.name">{{ shortName(pod.name) }}</span>
-                <p-tag [value]="pod.status" [severity]="statusSeverity(pod.status)" />
-                @if (pod.restarts > 0) {
-                  <span class="pod-restarts" [class.high]="pod.restarts > 5" [pTooltip]="pod.restarts + ' restarts'">
-                    ↻ {{ pod.restarts }}
-                  </span>
-                }
-                <div class="pod-actions">
-                  <i class="pi pi-sparkles" pTooltip="AI Diagnose" aria-label="AI Diagnose" tabindex="0" role="button"
-                     (click)="quickAiDiagnose(pod, $event)"
-                     (keydown.enter)="$event.stopPropagation(); quickAiDiagnose(pod, $event)"
-                     (keydown.space)="$event.preventDefault(); $event.stopPropagation(); quickAiDiagnose(pod, $event)"></i>
-                  <i class="pi pi-align-left" pTooltip="Logs" aria-label="Quick logs" tabindex="0" role="button"
-                     (click)="quickLogs(pod, $event)"
-                     (keydown.enter)="$event.stopPropagation(); quickLogs(pod, $event)"
-                     (keydown.space)="$event.preventDefault(); $event.stopPropagation(); quickLogs(pod, $event)"></i>
-                  <i class="pi pi-ellipsis-h" pTooltip="Details" aria-label="View details" tabindex="0" role="button"
-                     (click)="openDrawer(pod, $event)"
-                     (keydown.enter)="$event.stopPropagation(); openDrawer(pod, $event)"
-                     (keydown.space)="$event.preventDefault(); $event.stopPropagation(); openDrawer(pod, $event)"></i>
+                <div class="pod-main">
+                  <div class="pod-status-dot" [class.dot-running]="pod.status === 'Running'" [class.dot-pending]="pod.status === 'Pending'" [class.dot-error]="pod.status !== 'Running' && pod.status !== 'Pending'"></div>
+                  <span class="pod-name mono" (click)="openDrawer(pod, $event)" [pTooltip]="pod.name">{{ shortName(pod.name) }}</span>
+                  <p-tag [value]="pod.status" [severity]="statusSeverity(pod.status)" />
+                  @if (pod.restarts > 0) {
+                    <span class="pod-restarts" [class.high]="pod.restarts > 5" [pTooltip]="pod.restarts + ' restarts'">
+                      ↻ {{ pod.restarts }}
+                    </span>
+                  }
+                  <div class="pod-actions">
+                    <i class="pi pi-sparkles" pTooltip="AI Diagnose" aria-label="AI Diagnose" tabindex="0" role="button"
+                       (click)="quickAiDiagnose(pod, $event)"
+                       (keydown.enter)="$event.stopPropagation(); quickAiDiagnose(pod, $event)"
+                       (keydown.space)="$event.preventDefault(); $event.stopPropagation(); quickAiDiagnose(pod, $event)"></i>
+                    <i class="pi pi-align-left" pTooltip="Logs" aria-label="Quick logs" tabindex="0" role="button"
+                       (click)="quickLogs(pod, $event)"
+                       (keydown.enter)="$event.stopPropagation(); quickLogs(pod, $event)"
+                       (keydown.space)="$event.preventDefault(); $event.stopPropagation(); quickLogs(pod, $event)"></i>
+                    <i class="pi pi-ellipsis-h" pTooltip="Details" aria-label="View details" tabindex="0" role="button"
+                       (click)="openDrawer(pod, $event)"
+                       (keydown.enter)="$event.stopPropagation(); openDrawer(pod, $event)"
+                       (keydown.space)="$event.preventDefault(); $event.stopPropagation(); openDrawer(pod, $event)"></i>
+                  </div>
                 </div>
+                @if (pod.labels && pod.labels.length > 0) {
+                  <div class="pod-labels">
+                    @for (lbl of pod.labels; track $index) {
+                      <span class="pod-label-chip">{{ lbl }}</span>
+                    }
+                  </div>
+                }
               </div>
             }
           </div>
@@ -310,10 +319,13 @@ interface PodGroup {
     /* Pod Rows */
     .group-body { border-top: 1px solid var(--border); }
     .pod-row {
-      display: flex; align-items: center; gap: 10px;
+      display: flex; flex-direction: column; gap: 4px;
       padding: 10px 18px 10px 36px; cursor: pointer;
       transition: all 0.15s; position: relative;
       outline: none;
+    }
+    .pod-main {
+      display: flex; align-items: center; gap: 10px; width: 100%;
     }
     .pod-row:focus-visible { background: var(--bg-hover); box-shadow: inset 0 0 0 2px var(--accent); }
     .pod-row:hover { background: var(--bg-hover); transform: translateX(3px); }
@@ -346,6 +358,16 @@ interface PodGroup {
       padding: 5px; border-radius: 8px; transition: all 0.2s cubic-bezier(0.34,1.56,0.64,1);
     }
     .pod-actions i:hover { color: var(--accent); background: var(--accent-subtle); transform: scale(1.15); }
+
+    /* Pod Labels */
+    .pod-labels {
+      display: flex; flex-wrap: wrap; gap: 4px; padding-left: 18px;
+    }
+    .pod-label-chip {
+      font-size: 10px; padding: 1px 7px; border-radius: 4px;
+      background: var(--bg-elevated); border: 1px solid var(--border);
+      color: var(--text-muted); font-family: 'JetBrains Mono', monospace;
+    }
 
     /* Empty */
     .empty-state {
