@@ -16,7 +16,7 @@ interface Message {
   template: `
     <!-- Floating trigger button -->
     @if (!open) {
-      <button class="ai-fab" (click)="open = true" title="AI Assistant">
+      <button class="ai-fab" (click)="open = true" title="AI Assistant" aria-label="Open AI Assistant">
         <i class="pi pi-sparkles"></i>
       </button>
     }
@@ -26,7 +26,7 @@ interface Message {
       <div class="ai-panel">
         <div class="panel-header">
           <span class="panel-title"><i class="pi pi-sparkles"></i> AI Assistant</span>
-          <button class="panel-close" (click)="open = false"><i class="pi pi-minus"></i></button>
+          <button class="panel-close" (click)="open = false" aria-label="Close AI Assistant"><i class="pi pi-minus"></i></button>
         </div>
 
         <div class="panel-messages">

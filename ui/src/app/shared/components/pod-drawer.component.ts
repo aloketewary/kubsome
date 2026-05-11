@@ -27,7 +27,10 @@ import { Subscription } from 'rxjs';
           </div>
           <div class="header-name">
             <code>{{ podName }}</code>
-            <i class="pi pi-copy copy-icon" pTooltip="Copy name" (click)="copyName()"></i>
+            <i class="pi pi-copy copy-icon" pTooltip="Copy name" (click)="copyName()"
+               aria-label="Copy pod name" tabindex="0" role="button"
+               (keydown.enter)="$event.stopPropagation(); copyName()"
+               (keydown.space)="$event.preventDefault(); $event.stopPropagation(); copyName()"></i>
           </div>
           @if (podMeta) {
             <div class="header-meta">

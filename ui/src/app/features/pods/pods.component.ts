@@ -134,7 +134,9 @@ interface PodGroup {
                 }
                 <div class="pod-actions">
                   <i class="pi pi-sparkles" pTooltip="AI Diagnose" aria-label="AI Diagnose" tabindex="0" role="button"
-                     (click)="quickAiDiagnose(pod, $event)"></i>
+                     (click)="quickAiDiagnose(pod, $event)"
+                     (keydown.enter)="$event.stopPropagation(); quickAiDiagnose(pod, $event)"
+                     (keydown.space)="$event.preventDefault(); $event.stopPropagation(); quickAiDiagnose(pod, $event)"></i>
                   <i class="pi pi-align-left" pTooltip="Logs" aria-label="Quick logs" tabindex="0" role="button"
                      (click)="quickLogs(pod, $event)"
                      (keydown.enter)="$event.stopPropagation(); quickLogs(pod, $event)"
