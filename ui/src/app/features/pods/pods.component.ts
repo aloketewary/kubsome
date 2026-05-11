@@ -155,9 +155,8 @@ interface PodGroup {
           @if (group.commonLabels.length > 0) {
             <div class="group-footer">
               @for (lbl of group.commonLabels; track lbl.key) {
-                <span class="label-pair">
+                <span class="label-pair" [pTooltip]="lbl.key + '=' + lbl.value">
                   <span class="label-key">{{ lbl.key }}</span>
-                  <span class="label-arrow">→</span>
                   <span class="label-value">{{ lbl.value }}</span>
                 </span>
               }
@@ -286,9 +285,11 @@ interface PodGroup {
     /* Action Bar */
     .action-bar {
       display: flex; align-items: center; justify-content: space-between;
-      padding: 12px 18px; margin-bottom: 12px;
+      padding: 12px 18px;
       background: var(--accent-subtle); border: 1px solid var(--accent); border-radius: var(--radius);
       animation: slideDown 0.3s var(--transition-spring);
+      position: sticky; top: 0; z-index: 100;
+      backdrop-filter: blur(12px);
     }
     @keyframes slideDown { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
     .action-count { font-size: 13px; color: var(--accent); }
@@ -371,10 +372,12 @@ interface PodGroup {
     }
     .label-pair {
       display: inline-flex; align-items: center; gap: 4px;
-      font-size: 11px; font-family: 'JetBrains Mono', monospace;
+      font-size: 10px; font-family: 'JetBrains Mono', monospace;
+      padding: 2px 8px; border-radius: 4px;
+      background: var(--bg-card); border: 1px solid var(--border);
+      cursor: default;
     }
-    .label-key { color: var(--text-muted); font-weight: 600; }
-    .label-arrow { color: var(--border-hover); font-size: 10px; }
+    .label-key { color: var(--text-muted); }
     .label-value { color: var(--accent); }
 
     /* Empty */

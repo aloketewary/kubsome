@@ -32,12 +32,14 @@ def collect_pods():
         for cs in status.get("containerStatuses", []):
             restarts += cs.get("restartCount", 0)
         labels = meta.get("labels", {})
-        label_values = list(labels.values()) if labels else []
+        label_pairs = [
+            f"{k}={v}" for k, v in labels.items()
+        ] if labels else []
         pods.append({
             "name": name,
             "status": phase,
             "restarts": restarts,
-            "labels": label_values,
+            "labels": label_pairs,
         })
 
     return pods
