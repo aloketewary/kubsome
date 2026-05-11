@@ -9,6 +9,9 @@ interface RunbookStep {
   title: string;
   description: string;
   command?: string;
+  commandTemplate?: string;
+  paramName?: string;
+  paramValue?: string;
   done: boolean;
   output?: string;
   loading?: boolean;
@@ -120,17 +123,24 @@ interface Runbook {
               </div>
               <p class="step-desc">{{ step.description }}</p>
 
-              @if (step.command) {
+              @if (step.command || step.commandTemplate) {
                 <div class="step-command">
-                  <code>{{ step.command }}</code>
-                  <button pButton icon="pi pi-copy" class="p-button-sm p-button-text p-button-rounded" pTooltip="Copy" (click)="copyCmd(step.command!)"></button>
+                  <code>{{ step.commandTemplate || step.command }}</code>
+                  <button pButton icon="pi pi-copy" class="p-button-sm p-button-text p-button-rounded" pTooltip="Copy" (click)="copyCmd(step.command || step.commandTemplate!)"></button>
+                </div>
+              }
+
+              @if (step.paramName && !step.done && i === currentStepIndex) {
+                <div class="step-param">
+                  <label>{{ step.paramName }}:</label>
+                  <input [(ngModel)]="step.paramValue" [placeholder]="'Enter ' + step.paramName + '...'" (keyup.enter)="runStep(i)" />
                 </div>
               }
 
               @if (!step.done && i === currentStepIndex) {
                 <div class="step-actions">
-                  @if (step.command) {
-                    <button pButton label="Run" icon="pi pi-play" class="p-button-sm" (click)="runStep(i)" [disabled]="step.loading"></button>
+                  @if (step.command || step.commandTemplate) {
+                    <button pButton label="Run" icon="pi pi-play" class="p-button-sm" (click)="runStep(i)" [disabled]="step.loading || (!!step.paramName && !step.paramValue)"></button>
                   }
                   <button pButton label="Mark Done" icon="pi pi-check" class="p-button-sm p-button-outlined" (click)="markDone(i)"></button>
                   <button pButton label="Skip" class="p-button-sm p-button-text" (click)="markDone(i)"></button>
@@ -260,6 +270,22 @@ interface Runbook {
     .step-command code { font-family: 'JetBrains Mono', monospace; font-size: 11px; flex: 1; color: var(--accent); }
 
     .step-actions { display: flex; gap: 6px; margin-bottom: 8px; }
+    .step-param {
+      display: flex; align-items: center; gap: 8px;
+      margin-bottom: 10px;
+    }
+    .step-param label {
+      font-size: 11px; font-weight: 600; color: var(--text-muted);
+      text-transform: uppercase; letter-spacing: 0.03em; white-space: nowrap;
+    }
+    .step-param input {
+      flex: 1; padding: 8px 12px;
+      background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 6px;
+      color: var(--text); font-size: 12px; font-family: 'JetBrains Mono', monospace;
+      outline: none; transition: border-color 0.2s;
+    }
+    .step-param input:focus { border-color: var(--accent); }
+    .step-param input::placeholder { color: var(--text-muted); }
     .step-loading { font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
 
     .step-output {
@@ -327,6 +353,8 @@ export class RunbooksComponent implements OnInit {
           EtcdSlow: 'pi pi-database',
           GracefulShutdown: 'pi pi-power-off',
           RBAC: 'pi pi-users',
+          FailedToRetrieveImagePullSecret: 'pi pi-key',
+          FailedGetScale: 'pi pi-chart-line',
         };
         const colors: Record<string, string> = {
           CrashLoopBackOff: '#ef4444', ImagePullBackOff: '#f97316', OOMKilled: '#ef4444',
@@ -338,6 +366,7 @@ export class RunbooksComponent implements OnInit {
           ServiceUnavailable: '#ef4444', ConfigMapChange: '#3b82f6', HighRestarts: '#f97316',
           IngressNotWorking: '#eab308', JobFailing: '#a855f7', EtcdSlow: '#ef4444',
           GracefulShutdown: '#eab308', RBAC: '#3b82f6',
+          FailedToRetrieveImagePullSecret: '#f97316', FailedGetScale: '#a855f7',
         };
         const severities: Record<string, string> = {
           CrashLoopBackOff: 'Critical', ImagePullBackOff: 'High', OOMKilled: 'Critical',
@@ -349,6 +378,7 @@ export class RunbooksComponent implements OnInit {
           ServiceUnavailable: 'Critical', ConfigMapChange: 'Medium', HighRestarts: 'High',
           IngressNotWorking: 'High', JobFailing: 'Medium', EtcdSlow: 'Critical',
           GracefulShutdown: 'Medium', RBAC: 'Medium',
+          FailedToRetrieveImagePullSecret: 'High', FailedGetScale: 'High',
         };
         this.runbooks = (res.playbooks || []).map((pb: any) => ({
           id: pb.id,
@@ -358,21 +388,34 @@ export class RunbooksComponent implements OnInit {
           color: colors[pb.id] || '#3b82f6',
           severity: severities[pb.id] || 'Medium',
           estimatedTime: `${pb.steps.length * 2} min`,
-          steps: pb.steps.map((s: string) => ({
-            title: s.replace(/\[\/?[^\]]+\]/g, '').trim(),
-            description: '',
-            command: this.extractCommand(s),
-            done: false,
-          })),
+          steps: pb.steps.map((s: string) => {
+            const extracted = this.extractCommand(s);
+            return {
+              title: s.replace(/\[\/?[^\]]+\]/g, '').trim(),
+              description: '',
+              command: extracted.command,
+              commandTemplate: extracted.commandTemplate,
+              paramName: extracted.paramName,
+              paramValue: '',
+              done: false,
+            };
+          }),
         }));
       },
       error: () => {},
     });
   }
 
-  private extractCommand(step: string): string | undefined {
+  private extractCommand(step: string): { command?: string; commandTemplate?: string; paramName?: string } {
     const match = step.match(/\[cyan\](.+?)\[\/cyan\]/);
-    return match ? match[1] : undefined;
+    if (!match) return {};
+    const raw = match[1];
+    // Detect placeholders like <pod>, <deployment>, <dep>, <name>, <node>
+    const paramMatch = raw.match(/<(pod|deployment|dep|name|node|service|cj|namespace)>/);
+    if (paramMatch) {
+      return { commandTemplate: raw, paramName: paramMatch[1] };
+    }
+    return { command: raw };
   }
 
   runbooks: Runbook[] = [];
@@ -383,9 +426,16 @@ export class RunbooksComponent implements OnInit {
 
   runStep(index: number) {
     const step = this.activeRunbook!.steps[index];
-    if (!step.command) { this.markDone(index); return; }
+    let cmd = step.command;
+
+    // Resolve parameterized command
+    if (!cmd && step.commandTemplate && step.paramValue) {
+      cmd = step.commandTemplate.replace(/<(pod|deployment|dep|name|node|service|cj|namespace)>/g, step.paramValue);
+    }
+
+    if (!cmd) { this.markDone(index); return; }
     step.loading = true;
-    this.http.post<any>('http://localhost:8000/api/exec', { command: step.command }).subscribe({
+    this.http.post<any>('http://localhost:8000/api/exec', { command: cmd }).subscribe({
       next: (res) => { step.output = res.output || '(no output)'; step.done = true; step.loading = false; },
       error: () => { step.output = 'Error executing command'; step.loading = false; },
     });

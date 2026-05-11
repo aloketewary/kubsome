@@ -445,4 +445,4 @@ class TestPlaybooks:
 
     def test_playbook_count(self):
         from core.ai.playbooks import PLAYBOOKS
-        assert len(PLAYBOOKS) == 26
+        assert len(PLAYBOOKS) == 28

@@ -42,8 +42,10 @@ def handle_ai_query(query):
     if intent == "why_failing":
         return _why_query(query, target)
 
-    if intent == "diagnose" and not target:
-        return _high_restart_pods()
+    if intent == "diagnose":
+        if not target:
+            return _high_restart_pods()
+        return _why_query(query, target)
 
     if intent == "summarize":
         return _summarize_cluster()
@@ -67,7 +69,18 @@ def handle_ai_query(query):
         return _health_check(query, target)
 
     if intent == "is_safe":
-        # Fallback to general explanation if not handled by safety logic
+        return _why_query(query, target)
+
+    if intent == "inspect" and target:
+        return _why_query(query, target)
+
+    if intent == "logs" and target:
+        return _pod_logs_summary(target)
+
+    if intent == "trace" and target:
+        return _why_query(query, target)
+
+    if intent == "describe" and target:
         return _why_query(query, target)
 
     # Fallback
@@ -203,11 +216,18 @@ def _why_query(query, target=None):
 
     # Fetch logs for error detection
     logs = pod_logs(pod_name, tail=50)
-    log_errors = [l for l in logs if any(x in l.lower() for x in ["error", "fail", "exception", "fatal", "panic"])]
+    log_errors = [
+        l for l in logs
+        if any(x in l.lower() for x in [
+            "error", "fail", "exception", "fatal", "panic"
+        ])
+    ]
 
     # Fetch events
     events = pod_events(pod_name)
-    warning_events = [e for e in events if e["type"] == "Warning"]
+    warning_events = [
+        e for e in events if e["type"] == "Warning"
+    ]
 
     findings = diagnose(data)
 
@@ -232,38 +252,216 @@ def _why_query(query, target=None):
     lines = [f"[bold]Analysis for {pod_name}:[/bold]\n"]
 
     if critical:
-        lines.append("[bold red]Root Causes:[/bold red]")
+        lines.append("[bold red]⛔ Root Causes:[/bold red]")
         for f in critical:
             lines.append(
                 f"  ❌ {f['title']}\n"
-                f"     {f['detail']}\n"
+                f"     {_truncate(f['detail'], 120)}\n"
                 f"     [dim]→ {f['action']}[/dim]"
             )
 
     if warnings:
-        lines.append("\n[bold yellow]Warnings:[/bold yellow]")
+        lines.append("\n[bold yellow]⚠ Warnings:[/bold yellow]")
         for f in warnings:
             lines.append(
                 f"  ⚠️  {f['title']}\n"
                 f"     [dim]→ {f['action']}[/dim]"
             )
 
-    # Add evidence from logs/events
+    # Add evidence from logs
     if log_errors:
-        lines.append("\n[bold red]Evidence from Logs:[/bold red]")
+        lines.append(
+            f"\n[bold red]📋 Log Evidence "
+            f"({len(log_errors)} errors):[/bold red]"
+        )
         for l in log_errors[:3]:
-            lines.append(f"  [dim]{l.strip()}[/dim]")
+            lines.append(
+                f"  [dim]{_truncate(l.strip(), 100)}[/dim]"
+            )
 
+    # Add summarized events
     if warning_events:
-        lines.append("\n[bold yellow]Recent Warning Events:[/bold yellow]")
-        for e in warning_events[:3]:
-            lines.append(f"  ⚠️  {e['reason']}: {e['message']}")
+        lines.append(
+            _format_warning_events(warning_events)
+        )
+
+    # Suggested next steps
+    lines.append("\n[bold]💡 Next Steps:[/bold]")
+    lines.extend(_suggest_actions(critical, warnings))
 
     return {
         "title": f"🤖 Why is {target} failing?",
         "content": "\n".join(lines),
         "severity": "critical" if critical else "warning",
     }
+
+
+def _truncate(text, max_len=100):
+    """Truncate text to max_len with ellipsis."""
+    if len(text) <= max_len:
+        return text
+    return text[:max_len - 3] + "..."
+
+
+def _format_warning_events(warning_events):
+    """Summarize warning events intelligently."""
+    # Deduplicate by reason
+    by_reason = {}
+    for e in warning_events:
+        reason = e["reason"]
+        if reason not in by_reason:
+            by_reason[reason] = []
+        by_reason[reason].append(e)
+
+    lines = [
+        f"\n[bold yellow]📡 Warning Events "
+        f"({len(warning_events)}):[/bold yellow]"
+    ]
+
+    for reason, evts in by_reason.items():
+        count_label = (
+            f" (×{len(evts)})" if len(evts) > 1 else ""
+        )
+        lines.append(
+            f"  ⚠️  [yellow]{reason}[/yellow]{count_label}"
+        )
+        # Summarize the message instead of dumping raw
+        msg = evts[0]["message"]
+        summary = _summarize_event_message(reason, msg)
+        lines.append(f"     {summary}")
+
+    return "\n".join(lines)
+
+
+def _summarize_event_message(reason, message):
+    """Extract key info from verbose event messages."""
+    import re
+
+    if reason == "FailedScheduling":
+        # Extract key constraints from scheduling message
+        parts = []
+        # Check for insufficient resources
+        insuf = re.findall(
+            r"(\d+) Insufficient (\w+)", message
+        )
+        for count, resource in insuf:
+            parts.append(
+                f"[red]{count} node(s) insufficient "
+                f"{resource}[/red]"
+            )
+        # Count tainted nodes
+        taints = re.findall(
+            r"(\d+) node\(s\) had untolerated taint "
+            r"\{workload: ([^}]+)\}",
+            message
+        )
+        if taints:
+            total_tainted = sum(int(t[0]) for t in taints)
+            taint_names = [t[1] for t in taints[:3]]
+            more = (
+                f" +{len(taints) - 3} more"
+                if len(taints) > 3 else ""
+            )
+            parts.append(
+                f"{total_tainted} node(s) tainted "
+                f"[dim]({', '.join(taint_names)}"
+                f"{more})[/dim]"
+            )
+        # Check for other conditions
+        not_ready = re.search(
+            r"(\d+) node\(s\) had untolerated taint "
+            r"\{node.kubernetes.io/not-ready",
+            message
+        )
+        if not_ready:
+            parts.append(
+                f"{not_ready.group(1)} node(s) not ready"
+            )
+        # Total nodes
+        total = re.search(
+            r"0/(\d+) nodes are available", message
+        )
+        if total:
+            parts.insert(
+                0,
+                f"[bold]0/{total.group(1)} nodes "
+                f"available[/bold]"
+            )
+
+        if parts:
+            return "\n     ".join(parts)
+        return _truncate(message, 120)
+
+    if reason == "BackOff":
+        return _truncate(message, 120)
+
+    if reason == "FailedMount":
+        return _truncate(message, 120)
+
+    if reason == "FailedToRetrieveImagePullSecret":
+        return "Image pull secret not found or inaccessible"
+
+    if reason == "FailedGetScale":
+        return _truncate(message, 120)
+
+    # Default: truncate long messages
+    return _truncate(message, 120)
+
+
+def _suggest_actions(critical, warnings):
+    """Generate actionable next steps from findings."""
+    actions = []
+    seen = set()
+
+    for f in critical + warnings:
+        title_lower = f["title"].lower()
+        if "schedul" in title_lower and "scheduling" not in seen:
+            seen.add("scheduling")
+            actions.append(
+                "  → Check node capacity: "
+                "[cyan]capacity[/cyan]"
+            )
+            actions.append(
+                "  → Review taints/tolerations in "
+                "deployment spec"
+            )
+        elif "oom" in title_lower and "oom" not in seen:
+            seen.add("oom")
+            actions.append(
+                "  → Increase memory limits or "
+                "optimize app memory"
+            )
+            actions.append(
+                "  → Check usage: "
+                "[cyan]top pods[/cyan]"
+            )
+        elif "crash" in title_lower and "crash" not in seen:
+            seen.add("crash")
+            actions.append(
+                "  → Check logs: "
+                "[cyan]logs <pod>[/cyan]"
+            )
+            actions.append(
+                "  → Review startup probes"
+            )
+        elif "image" in title_lower and "image" not in seen:
+            seen.add("image")
+            actions.append(
+                "  → Verify image exists and "
+                "pull secrets are configured"
+            )
+
+    if not actions:
+        actions.append(
+            "  → Run [cyan]inspect <pod>[/cyan] "
+            "for full details"
+        )
+        actions.append(
+            "  → Check [cyan]events[/cyan] "
+            "for cluster-wide issues"
+        )
+
+    return actions
 
 
 def _summarize_cluster():
@@ -637,6 +835,57 @@ def _anomaly_check():
         "title": "🤖 Anomalies",
         "content": "\n".join(lines),
         "severity": "critical" if critical else "warning",
+    }
+
+
+def _pod_logs_summary(target):
+    """Show recent log errors for a pod."""
+    matches = resolve_pod_name(target)
+    if not matches:
+        return {
+            "title": "🤖 Logs",
+            "content": f"No pods matching '{target}' found.",
+            "severity": "warning",
+        }
+
+    pod_name = matches[0]
+    logs = pod_logs(pod_name, tail=30)
+
+    if not logs or not logs.strip():
+        return {
+            "title": f"🤖 Logs: {pod_name}",
+            "content": "No recent logs available.",
+            "severity": "info",
+        }
+
+    lines_list = logs.strip().split("\n")
+    errors = [
+        l for l in lines_list
+        if any(x in l.lower() for x in [
+            "error", "fail", "exception", "fatal", "panic"
+        ])
+    ]
+
+    content_lines = [
+        f"[bold]{pod_name}[/bold] — last {len(lines_list)} lines\n"
+    ]
+
+    if errors:
+        content_lines.append(
+            f"[red]{len(errors)} error lines found:[/red]\n"
+        )
+        for e in errors[:5]:
+            content_lines.append(f"  [dim]{e.strip()[:100]}[/dim]")
+    else:
+        content_lines.append("[green]No errors in recent logs.[/green]")
+        content_lines.append("\n[dim]Last 3 lines:[/dim]")
+        for l in lines_list[-3:]:
+            content_lines.append(f"  [dim]{l.strip()[:100]}[/dim]")
+
+    return {
+        "title": f"🤖 Logs: {pod_name}",
+        "content": "\n".join(content_lines),
+        "severity": "warning" if errors else "info",
     }
 
 

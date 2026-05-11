@@ -17,7 +17,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:3001"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -44,24 +44,45 @@ def health():
 
 
 # Serve Angular build in production
-# Check dev build first, then bundled ui_dist (pip install)
-ui_dist = (
-    Path(__file__).parent.parent
-    / "ui" / "dist" / "ui" / "browser"
-)
+# Priority: 1) dev build (ui/dist/ui/browser)
+#           2) bundled in package (api/ui_dist)
+#           3) auto-copy from dev build to api/ui_dist
+_api_dir = Path(__file__).parent
+_project_dir = _api_dir.parent
+
+ui_dist = _project_dir / "ui" / "dist" / "ui" / "browser"
 if not ui_dist.exists():
-    ui_dist = Path(__file__).parent / "ui_dist"
+    ui_dist = _api_dir / "ui_dist"
+
+# Auto-copy dev build to api/ui_dist if it exists but ui_dist doesn't
+if not ui_dist.exists():
+    _dev_build = _project_dir / "ui" / "dist" / "ui" / "browser"
+    if _dev_build.exists():
+        import shutil
+        _dest = _api_dir / "ui_dist"
+        shutil.copytree(_dev_build, _dest)
+        ui_dist = _dest
 
 if ui_dist.exists():
-    from fastapi.responses import FileResponse
+    # Mount static assets (js, css, images) with proper MIME types
+    app.mount(
+        "/app",
+        StaticFiles(directory=str(ui_dist), html=True),
+        name="spa",
+    )
+else:
+    from fastapi.responses import JSONResponse
 
     @app.get("/app")
-    def serve_spa_root():
-        return FileResponse(ui_dist / "index.html")
-
     @app.get("/app/{path:path}")
-    def serve_spa(path: str):
-        file_path = ui_dist / path
-        if file_path.is_file():
-            return FileResponse(file_path)
-        return FileResponse(ui_dist / "index.html")
+    def no_ui(path: str = ""):
+        return JSONResponse(
+            status_code=503,
+            content={
+                "error": "UI not built",
+                "message": (
+                    "Run 'cd ui && pnpm build' to build the "
+                    "web dashboard, then restart the server."
+                ),
+            },
+        )

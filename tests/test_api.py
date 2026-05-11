@@ -202,7 +202,7 @@ class TestPlaybooksEndpoint:
         response = client.get("/api/playbooks")
         assert response.status_code == 200
         data = response.json()
-        assert len(data["playbooks"]) == 26
+        assert len(data["playbooks"]) == 28
 
     def test_get_single_playbook(self):
         response = client.get("/api/playbook/CrashLoopBackOff")

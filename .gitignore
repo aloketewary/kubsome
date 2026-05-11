@@ -15,6 +15,7 @@ venv/
 ui/node_modules/
 ui/dist/
 ui/.angular/
+api/ui_dist/
 
 # IDE
 .idea/

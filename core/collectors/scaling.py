@@ -14,6 +14,9 @@ def list_hpa():
     ns = context.namespace
     ctx = context.current_context
 
+    if not ctx:
+        return []
+
     cmd = (
         f"kubectl --context {ctx} "
         f"get hpa -n {ns} -o json"
@@ -24,10 +27,13 @@ def list_hpa():
         capture_output=True, text=True
     )
 
-    if r.returncode != 0:
+    if r.returncode != 0 or not r.stdout.strip():
         return []
 
-    data = json.loads(r.stdout)
+    try:
+        data = json.loads(r.stdout)
+    except (json.JSONDecodeError, ValueError):
+        return []
     hpas = []
 
     for item in data.get("items", []):

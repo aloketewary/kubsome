@@ -68,15 +68,66 @@ def post_ai(req: AiRequest):
         return clarification
 
     response = handle_ai_query(req.query)
-    # Strip Rich markup tags for API consumers
     content = response.get("content", "")
-    content = re.sub(r'\[/?[^\]]+\]', '', content)
+
+    # Convert Rich markup to HTML for the UI
+    html = _rich_to_html(content)
+
+    # Also provide plain text fallback
+    plain = re.sub(r'\[/?[^\]]+\]', '', content)
+
     return {
         "title": response.get("title", "").replace("🤖 ", ""),
-        "answer": content,
+        "answer": plain,
+        "html": html,
         "severity": response.get("severity", "info"),
         "last_target": context.last_target
     }
+
+
+def _rich_to_html(content: str) -> str:
+    """Convert Rich markup to HTML for web UI rendering."""
+    import re
+
+    html = content
+
+    # Escape HTML entities first
+    html = html.replace("&", "&amp;")
+    html = html.replace("<", "&lt;")
+    html = html.replace(">", "&gt;")
+
+    # Bold
+    html = re.sub(
+        r'\[bold(?:\s+\w+)?\](.*?)\[/bold(?:\s+\w+)?\]',
+        r'<strong>\1</strong>', html
+    )
+    html = re.sub(
+        r'\[bold\](.*?)\[/bold\]',
+        r'<strong>\1</strong>', html
+    )
+
+    # Colors → spans with class
+    color_map = {
+        "red": "clr-red",
+        "green": "clr-green",
+        "yellow": "clr-yellow",
+        "cyan": "clr-cyan",
+        "dim": "clr-dim",
+    }
+    for color, cls in color_map.items():
+        # [red]...[/red] and [bold red]...[/bold red]
+        html = re.sub(
+            rf'\[(?:bold )?{color}\](.*?)\[/(?:bold )?{color}\]',
+            rf'<span class="{cls}">\1</span>', html
+        )
+
+    # Remove any remaining Rich tags
+    html = re.sub(r'\[/?[^\]]+\]', '', html)
+
+    # Convert newlines to <br>
+    html = html.replace("\n", "<br>")
+
+    return html
 
 
 def _check_ambiguity(query: str, parsed=None):
@@ -95,6 +146,10 @@ def _check_ambiguity(query: str, parsed=None):
             r"diagnose (\S+)",
             r"inspect (\S+)",
             r"logs for (\S+)",
+            r"logs of (\S+)",
+            r"trace (\S+)",
+            r"describe (\S+)",
+            r"what'?s wrong with (\S+)",
         ]
 
         for pattern in patterns:

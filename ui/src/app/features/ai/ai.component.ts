@@ -8,9 +8,13 @@ import { PageInfoComponent } from '../../shared/components/page-info.component';
 interface Message {
   role: 'user' | 'ai';
   text: string;
+  html?: string;
   time: string;
+  severity?: string;
+  title?: string;
   options?: string[];
   originalQuery?: string;
+  copied?: boolean;
 }
 
 @Component({
@@ -79,11 +83,24 @@ interface Message {
               <i class="pi" [class]="msg.role === 'user' ? 'pi-user' : 'pi-sparkles'"></i>
             </div>
             <div class="msg-bubble" [class]="'bubble-' + msg.role">
+              <button class="copy-btn" [class.copied]="msg.copied" (click)="copyMessage(msg)" [pTooltip]="msg.copied ? 'Copied!' : 'Copy'" tooltipPosition="top">
+                <i class="pi" [class]="msg.copied ? 'pi-check' : 'pi-copy'"></i>
+              </button>
               <div class="msg-header">
                 <span class="msg-name">{{ msg.role === 'user' ? 'You' : 'Kubsome AI' }}</span>
+                @if (msg.role === 'ai' && msg.severity && msg.severity !== 'info') {
+                  <span class="severity-badge" [class]="'sev-' + msg.severity">{{ msg.severity }}</span>
+                }
                 <span class="msg-time">{{ msg.time }}</span>
               </div>
-              <div class="msg-content">{{ msg.text }}</div>
+              @if (msg.role === 'ai' && msg.title) {
+                <div class="msg-title">{{ msg.title }}</div>
+              }
+              @if (msg.html) {
+                <div class="msg-content" [innerHTML]="msg.html"></div>
+              } @else {
+                <div class="msg-content">{{ msg.text }}</div>
+              }
               @if (msg.options && msg.options.length > 0) {
                 <div class="msg-options">
                   @for (opt of msg.options; track opt) {
@@ -235,7 +252,35 @@ interface Message {
       border-radius: 18px;
       overflow: visible;
       box-shadow: var(--shadow);
+      position: relative;
     }
+    .copy-btn {
+      position: absolute;
+      top: 8px;
+      right: 10px;
+      width: 26px; height: 26px;
+      border-radius: 6px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      font-size: 12px;
+      opacity: 0;
+      transition: all 0.2s ease;
+    }
+    .msg-bubble:hover .copy-btn { opacity: 1; }
+    .copy-btn:hover {
+      background: var(--bg-elevated);
+      color: var(--text);
+    }
+    .copy-btn.copied {
+      opacity: 1;
+      color: var(--success, #22c55e);
+    }
+    .bubble-user .copy-btn { color: rgba(255,255,255,0.6); }
+    .bubble-user .copy-btn:hover { background: rgba(255,255,255,0.15); color: #fff; }
+    .bubble-user .copy-btn.copied { color: #bbf7d0; }
     .bubble-user {
       background: var(--accent);
       color: #fff;
@@ -269,12 +314,34 @@ interface Message {
     }
     .msg-name { font-size: 10px; font-weight: 600; opacity: 0.7; text-transform: uppercase; letter-spacing: 0.03em; }
     .msg-time { font-size: 9px; opacity: 0.5; }
+    .msg-title {
+      font-size: 14px;
+      font-weight: 700;
+      margin: 4px 0 8px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .severity-badge {
+      font-size: 9px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    .sev-critical { background: rgba(239,68,68,0.15); color: #ef4444; }
+    .sev-warning { background: rgba(234,179,8,0.15); color: #eab308; }
+    .sev-healthy { background: rgba(34,197,94,0.15); color: #22c55e; }
     .msg-content {
       font-size: 13px;
-      line-height: 1.6;
-      white-space: pre-wrap;
+      line-height: 1.7;
       word-break: break-word;
     }
+    .msg-content :is(.clr-red) { color: var(--danger, #ef4444); }
+    .msg-content :is(.clr-green) { color: var(--success, #22c55e); }
+    .msg-content :is(.clr-yellow) { color: var(--warning, #eab308); }
+    .msg-content :is(.clr-cyan) { color: var(--accent, #06b6d4); font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+    .msg-content :is(.clr-dim) { opacity: 0.6; font-size: 12px; }
     .msg-options {
       display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px;
       padding-top: 10px; border-top: 1px solid var(--border);
@@ -411,7 +478,14 @@ export class AiComponent implements AfterViewChecked {
           });
         } else {
           const text = res.answer || res.summary || JSON.stringify(res, null, 2);
-          this.messages.push({ role: 'ai', text, time: this.now() });
+          this.messages.push({
+            role: 'ai',
+            text,
+            html: res.html || undefined,
+            title: res.title || undefined,
+            severity: res.severity || 'info',
+            time: this.now(),
+          });
         }
         this.loading = false;
         this.shouldScroll = true;
@@ -437,7 +511,7 @@ export class AiComponent implements AfterViewChecked {
     // Replace the ambiguous target with the selected option
     const words = original.split(' ');
     // Find and replace the fuzzy target
-    const skip = new Set(['why', 'is', 'how', 'many', 'pod', 'pods', 'the', 'my', 'failing', 'crashing', 'running', 'consuming', 'cpu', 'memory', 'more', 'check', 'diagnose', 'inspect', 'logs', 'for', 'of', 'healthy', 'status', 'what', 'wrong', 'with']);
+    const skip = new Set(['why', 'is', 'how', 'many', 'pod', 'pods', 'the', 'my', 'failing', 'crashing', 'running', 'consuming', 'cpu', 'memory', 'more', 'check', 'diagnose', 'inspect', 'logs', 'for', 'of', 'healthy', 'status', 'what', "what's", 'whats', 'wrong', 'with', 'show', 'me', 'get', 'describe', 'trace', 'debug', 'troubleshoot', 'analyze', 'investigate']);
     let replaced = false;
     const refined = words.map(w => {
       if (!replaced && !skip.has(w.toLowerCase().replace('?', ''))) {
@@ -449,6 +523,14 @@ export class AiComponent implements AfterViewChecked {
 
     this.query = replaced ? refined : `${original} ${option}`;
     this.ask();
+  }
+
+  copyMessage(msg: Message) {
+    const text = msg.text || '';
+    navigator.clipboard.writeText(text).then(() => {
+      msg.copied = true;
+      setTimeout(() => msg.copied = false, 2000);
+    });
   }
 
   private scrollToBottom() {
