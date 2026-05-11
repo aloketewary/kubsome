@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
@@ -6,6 +6,8 @@ import { TooltipModule } from 'primeng/tooltip';
 import { TagModule } from 'primeng/tag';
 import { InputTextModule } from 'primeng/inputtext';
 import { PageInfoComponent } from '../../shared/components/page-info.component';
+import { WsService } from '../../core/services/ws.service';
+import { Subscription } from 'rxjs';
 
 interface GatewayEntry {
   deployment: string;
@@ -45,9 +47,26 @@ interface GatewayEntry {
           <i class="pi pi-search"></i>
           <input pInputText [(ngModel)]="searchQuery" placeholder="Filter..." (ngModelChange)="filter()" />
         </div>
-        <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="refresh()" pTooltip="Refresh"></button>
-        <app-page-info title="Gateway Monitor" description="Deployment-level resource metrics with HPA status, CPU/memory usage, and pod readiness."
-          [tips]="['Red rows indicate pods not ready', 'HPA columns show target vs current utilization', 'CPU values in millicores, memory in Mi']"
+
+        <!-- Refresh Interval Config -->
+        <div class="interval-config">
+          <span class="interval-label">Refresh</span>
+          <div class="interval-btns">
+            @for (opt of intervalOptions; track opt.value) {
+              <button class="int-btn" [class.active]="refreshInterval === opt.value" (click)="setInterval(opt.value)">{{ opt.label }}</button>
+            }
+          </div>
+        </div>
+
+        <!-- Live indicator -->
+        <button pButton [class]="streaming ? 'p-button-danger p-button-sm' : 'p-button-outlined p-button-sm'" (click)="toggleStream()">
+          <span class="live-dot" [class.pulsing]="streaming"></span>
+          {{ streaming ? 'Live' : 'Connect' }}
+        </button>
+
+        <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="manualRefresh()" pTooltip="Manual refresh"></button>
+        <app-page-info title="Gateway Monitor" description="Deployment-level resource metrics with HPA status, CPU/memory usage, and pod readiness. Streams via WebSocket."
+          [tips]="['Red rows indicate pods not ready', 'HPA columns show target/current utilization', 'CPU values in millicores, memory in Mi', 'Change refresh interval while live']"
           [commands]="['top pods', 'top nodes', 'overview']" />
       </div>
     </div>
@@ -74,6 +93,12 @@ interface GatewayEntry {
         <span class="pill-val">{{ totalCpuUsage }}</span>
         <span class="pill-label">CPU cores used</span>
       </div>
+      @if (lastUpdated) {
+        <div class="summary-pill pill-time">
+          <i class="pi pi-clock"></i>
+          <span class="pill-label">{{ lastUpdated }}</span>
+        </div>
+      }
     </div>
 
     <!-- Table -->
@@ -164,18 +189,42 @@ interface GatewayEntry {
     @if (filtered.length === 0 && searchQuery) {
       <div class="empty-state"><i class="pi pi-search"></i> No deployments matching "{{ searchQuery }}"</div>
     }
-    @if (loading) {
+    @if (loading && entries.length === 0) {
       <div class="empty-state"><i class="pi pi-spin pi-spinner"></i> Loading...</div>
     }
   `,
   styles: [`
-    .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; }
+    .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 12px; }
     .page-header h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.03em; }
     .subtitle { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
-    .header-actions { display: flex; align-items: center; gap: 8px; }
+    .header-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
     .search-wrap { position: relative; }
     .search-wrap i { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 12px; }
-    .search-wrap input { padding-left: 30px !important; width: 180px; }
+    .search-wrap input { padding-left: 30px !important; width: 160px; }
+
+    /* Interval Config */
+    .interval-config {
+      display: flex; align-items: center; gap: 6px;
+      padding: 4px 8px; border-radius: 8px;
+      background: var(--bg-elevated); border: 1px solid var(--border);
+    }
+    .interval-label { font-size: 10px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+    .interval-btns { display: flex; gap: 2px; }
+    .int-btn {
+      padding: 4px 8px; border: 1px solid transparent; border-radius: 4px;
+      background: none; color: var(--text-muted); font-size: 11px; font-weight: 500;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .int-btn:hover { color: var(--text); background: var(--bg-hover); }
+    .int-btn.active { border-color: var(--accent); background: var(--accent-subtle); color: var(--accent); font-weight: 700; }
+
+    /* Live dot */
+    .live-dot {
+      width: 8px; height: 8px; border-radius: 50%; background: var(--text-muted);
+      display: inline-block; margin-right: 6px;
+    }
+    .live-dot.pulsing { background: var(--danger); animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
 
     /* Summary */
     .summary-strip {
@@ -185,6 +234,8 @@ interface GatewayEntry {
     .summary-pill { display: flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 20px; background: var(--bg-elevated); font-size: 12px; }
     .pill-ok { background: var(--success-subtle); }
     .pill-bad { background: var(--danger-subtle); }
+    .pill-time { margin-left: auto; }
+    .pill-time i { font-size: 11px; color: var(--text-muted); }
     .pill-dot { width: 6px; height: 6px; border-radius: 50%; }
     .dot-ok { background: var(--success); }
     .dot-bad { background: var(--danger); }
@@ -275,26 +326,91 @@ interface GatewayEntry {
     }
   `]
 })
-export class GatewayMonitorComponent implements OnInit {
+export class GatewayMonitorComponent implements OnInit, OnDestroy {
   private http = inject(HttpClient);
+  private ws = inject(WsService);
 
   entries: GatewayEntry[] = [];
   filtered: GatewayEntry[] = [];
   searchQuery = '';
   loading = false;
+  streaming = false;
+  lastUpdated = '';
+  refreshInterval = 10;
   private sortField = '';
   private sortAsc = true;
+  private wsSub: Subscription | null = null;
+  private wsSend: ((msg: string) => void) | null = null;
+  private wsClose: (() => void) | null = null;
+
+  intervalOptions = [
+    { label: '5s', value: 5 },
+    { label: '10s', value: 10 },
+    { label: '30s', value: 30 },
+    { label: '60s', value: 60 },
+  ];
 
   get totalPods() { return this.entries.reduce((s, e) => s + e.pods, 0); }
   get totalNotReady() { return this.entries.reduce((s, e) => s + e.pods_not_ready, 0); }
   get totalCpuUsage() { return this.entries.reduce((s, e) => s + e.cpu_usage_sum, 0).toFixed(1); }
 
-  ngOnInit() { this.refresh(); }
+  ngOnInit() { this.startStream(); }
+  ngOnDestroy() { this.stopStream(); }
 
-  refresh() {
+  toggleStream() {
+    this.streaming ? this.stopStream() : this.startStream();
+  }
+
+  setInterval(val: number) {
+    this.refreshInterval = val;
+    if (this.streaming && this.wsSend) {
+      this.wsSend(JSON.stringify({ interval: val }));
+    }
+  }
+
+  startStream() {
+    this.streaming = true;
+    this.loading = true;
+    const conn = this.ws.connect('/ws/gateway-monitor');
+    this.wsSend = conn.send;
+    this.wsClose = conn.close;
+
+    // Send initial config
+    setTimeout(() => {
+      conn.send(JSON.stringify({ interval: this.refreshInterval }));
+    }, 100);
+
+    this.wsSub = conn.messages$.subscribe({
+      next: (data) => {
+        this.entries = JSON.parse(data);
+        this.filter();
+        this.loading = false;
+        this.lastUpdated = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      },
+      complete: () => { this.streaming = false; },
+      error: () => { this.streaming = false; this.loading = false; },
+    });
+  }
+
+  stopStream() {
+    this.streaming = false;
+    this.wsSub?.unsubscribe();
+    this.wsClose?.();
+    this.wsSub = null;
+    this.wsSend = null;
+    this.wsClose = null;
+  }
+
+  manualRefresh() {
+    if (this.streaming) return;
     this.loading = true;
     this.http.get<any>('/api/gateway-monitor').subscribe({
-      next: (res) => { this.entries = res.entries || []; this.filter(); this.loading = false; },
+      next: (res) => {
+        this.entries = res.entries || [];
+        this.filter();
+        this.loading = false;
+        this.lastUpdated = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      },
       error: () => { this.loading = false; },
     });
   }

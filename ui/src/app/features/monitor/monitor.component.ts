@@ -7,6 +7,12 @@ import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
 import { TooltipModule } from 'primeng/tooltip';
 
+interface ActionEntry {
+  time: string;
+  action: string;
+  target: string;
+}
+
 interface MonitorCard {
   id: number;
   context: string;
@@ -26,6 +32,7 @@ interface MonitorCard {
   refreshInterval: number;
   alertEnabled: boolean;
   alertThreshold: number;
+  actionLog: ActionEntry[];
 }
 
 @Component({
@@ -185,6 +192,19 @@ interface MonitorCard {
                 }
               </div>
             }
+
+            <!-- Action Log -->
+            @if (card.actionLog.length > 0) {
+              <div class="mc-action-log">
+                @for (entry of card.actionLog.slice(-3).reverse(); track $index) {
+                  <div class="action-entry">
+                    <span class="action-icon" [class.action-restart]="entry.action === 'restart'" [class.action-scale]="entry.action.startsWith('scale')">●</span>
+                    <span class="action-text">{{ entry.target }} {{ entry.action }}</span>
+                    <span class="action-time">{{ entry.time }}</span>
+                  </div>
+                }
+              </div>
+            }
           } @else if (card.loading) {
             <div class="mc-state"><div class="spin"></div> Loading...</div>
           } @else if (card.data?.error) {
@@ -320,6 +340,36 @@ interface MonitorCard {
                   }
                 </div>
               </div>
+
+              <!-- Action History -->
+              @if (card.actionLog.length > 0) {
+                <div class="fs-section">
+                  <div class="fs-section-header">
+                    <h4>Action History</h4>
+                    <span class="fs-section-hint">{{ card.actionLog.length }} actions</span>
+                  </div>
+                  <div class="fs-action-histogram">
+                    @for (entry of card.actionLog; track $index) {
+                      <div class="fs-hist-bar" [class.hist-restart]="entry.action === 'restart'" [class.hist-scale-up]="entry.action === 'scale-up'" [class.hist-scale-down]="entry.action === 'scale-down'" [pTooltip]="entry.action + ' ' + entry.target + ' at ' + entry.time"></div>
+                    }
+                  </div>
+                  <div class="fs-hist-legend">
+                    <span class="fs-leg"><span class="fs-leg-dot" style="background:var(--warning)"></span> Restart</span>
+                    <span class="fs-leg"><span class="fs-leg-dot" style="background:var(--success)"></span> Scale Up</span>
+                    <span class="fs-leg"><span class="fs-leg-dot" style="background:var(--accent)"></span> Scale Down</span>
+                  </div>
+                  <div class="fs-action-list">
+                    @for (entry of card.actionLog.slice().reverse(); track $index) {
+                      <div class="fs-action-entry">
+                        <span class="fs-ae-dot" [class.ae-restart]="entry.action === 'restart'" [class.ae-scale-up]="entry.action === 'scale-up'" [class.ae-scale-down]="entry.action === 'scale-down'"></span>
+                        <span class="fs-ae-action">{{ entry.action }}</span>
+                        <span class="fs-ae-target">{{ entry.target }}</span>
+                        <span class="fs-ae-time">{{ entry.time }}</span>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
 
               <!-- Updated -->
               <div class="fs-updated">Last updated: {{ card.lastUpdated || 'never' }}</div>
@@ -462,6 +512,20 @@ interface MonitorCard {
       width: 48px; padding: 4px 6px; border: 1px solid var(--border); border-radius: 4px;
       background: var(--bg-card); color: var(--text); font-size: 11px; text-align: center;
     }
+
+    /* Action Log (card) */
+    .mc-action-log {
+      padding-top: 6px; border-top: 1px solid var(--border);
+      display: flex; flex-direction: column; gap: 3px;
+    }
+    .action-entry {
+      display: flex; align-items: center; gap: 6px; font-size: 10px;
+    }
+    .action-icon { font-size: 8px; color: var(--text-muted); }
+    .action-icon.action-restart { color: var(--warning); }
+    .action-icon.action-scale { color: var(--success); }
+    .action-text { flex: 1; color: var(--text-secondary); }
+    .action-time { color: var(--text-muted); font-family: 'JetBrains Mono', monospace; font-size: 9px; }
     .mc-mini-activity { padding-top: 6px; }
     .mini-label { font-size: 9px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; display: block; margin-bottom: 3px; }
     .mini-chart { display: flex; align-items: flex-end; gap: 1px; height: 24px; }
@@ -559,6 +623,33 @@ interface MonitorCard {
     .fs-leg-med { background: var(--warning); opacity: 0.6; }
     .fs-leg-high { background: var(--danger); opacity: 0.7; }
     .fs-ev-empty { text-align: center; padding: 20px; color: var(--text-muted); font-size: 12px; }
+
+    /* Action History (fullscreen) */
+    .fs-action-histogram {
+      display: flex; align-items: flex-end; gap: 3px; height: 40px; padding: 8px 0;
+    }
+    .fs-hist-bar {
+      flex: 1; min-width: 8px; border-radius: 2px 2px 0 0; cursor: crosshair;
+      transition: all 0.15s;
+    }
+    .fs-hist-bar.hist-restart { height: 100%; background: var(--warning); opacity: 0.7; }
+    .fs-hist-bar.hist-scale-up { height: 70%; background: var(--success); opacity: 0.7; }
+    .fs-hist-bar.hist-scale-down { height: 50%; background: var(--accent); opacity: 0.7; }
+    .fs-hist-bar:hover { opacity: 1; transform: scaleY(1.1); }
+    .fs-hist-legend { display: flex; gap: 12px; margin: 6px 0 12px; }
+    .fs-action-list { display: flex; flex-direction: column; gap: 4px; max-height: 150px; overflow-y: auto; }
+    .fs-action-entry {
+      display: flex; align-items: center; gap: 8px; padding: 6px 10px;
+      border-radius: 6px; font-size: 12px;
+    }
+    .fs-action-entry:hover { background: var(--bg-hover); }
+    .fs-ae-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+    .ae-restart { background: var(--warning); }
+    .ae-scale-up { background: var(--success); }
+    .ae-scale-down { background: var(--accent); }
+    .fs-ae-action { font-weight: 500; min-width: 80px; }
+    .fs-ae-target { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-muted); flex: 1; }
+    .fs-ae-time { font-size: 10px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
     .fs-updated { font-size: 10px; color: var(--text-muted); text-align: right; padding-top: 8px; border-top: 1px solid var(--border); }
     .fs-stat {
       flex: 1; text-align: center; padding: 16px 12px; background: var(--bg-card);
@@ -619,7 +710,7 @@ export class MonitorComponent implements OnInit, OnDestroy {
       loading: false, data: null, events: [], activityBars: [],
       expanded: true, configuring: true, fullscreen: false, refreshInterval: 60,
       lastUpdated: '', namespaces: [], apps: [], order: this.cards.length,
-      alertEnabled: false, alertThreshold: 70,
+      alertEnabled: false, alertThreshold: 70, actionLog: [],
     };
     this.cards.push(card);
     this.saveCards();
@@ -756,6 +847,7 @@ export class MonitorComponent implements OnInit, OnDestroy {
   restartApp(card: MonitorCard) {
     if (!card.app) return;
     this.http.post<any>(`/api/restart/${card.app}`, {}).subscribe(() => {
+      this.logAction(card, 'restart');
       setTimeout(() => this.fetchCardData(card), 3000);
     });
   }
@@ -763,6 +855,7 @@ export class MonitorComponent implements OnInit, OnDestroy {
   scaleDown(card: MonitorCard) {
     if (!card.app) return;
     this.http.post<any>(`/api/scale/${card.app}`, { replicas: -1, relative: true }).subscribe(() => {
+      this.logAction(card, 'scale-down');
       setTimeout(() => this.fetchCardData(card), 2000);
     });
   }
@@ -770,8 +863,21 @@ export class MonitorComponent implements OnInit, OnDestroy {
   scaleUp(card: MonitorCard) {
     if (!card.app) return;
     this.http.post<any>(`/api/scale/${card.app}`, { replicas: 1, relative: true }).subscribe(() => {
+      this.logAction(card, 'scale-up');
       setTimeout(() => this.fetchCardData(card), 2000);
     });
+  }
+
+  private logAction(card: MonitorCard, action: string) {
+    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const target = `${card.context}/${card.namespace}/${card.app}`;
+    card.actionLog.push({ time, action, target: card.app });
+    this.saveCards();
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification(`✅ ${target}`, { body: `${action} executed at ${time}` });
+    } else if ('Notification' in window && Notification.permission !== 'denied') {
+      Notification.requestPermission();
+    }
   }
 
   diagnoseCard(card: MonitorCard) {
@@ -794,6 +900,7 @@ export class MonitorComponent implements OnInit, OnDestroy {
       context: c.context, namespace: c.namespace, app: c.app || '',
       expanded: c.expanded, refreshInterval: c.refreshInterval || 60,
       alertEnabled: c.alertEnabled, alertThreshold: c.alertThreshold,
+      actionLog: (c.actionLog || []).slice(-50),
     }));
     localStorage.setItem('kubsome_monitor_cards', JSON.stringify(saved));
   }
@@ -810,6 +917,7 @@ export class MonitorComponent implements OnInit, OnDestroy {
             expanded: s.expanded ?? true, configuring: !(s.context && s.namespace), fullscreen: false,
             refreshInterval: s.refreshInterval || 60, lastUpdated: '', namespaces: [], apps: [], order: this.cards.length,
             alertEnabled: s.alertEnabled || false, alertThreshold: s.alertThreshold || 70,
+            actionLog: s.actionLog || [],
           };
           this.cards.push(card);
           if (card.context && card.namespace) {

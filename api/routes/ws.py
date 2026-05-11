@@ -73,6 +73,41 @@ async def ws_events(websocket: WebSocket):
         pass
 
 
+@router.websocket("/ws/gateway-monitor")
+async def ws_gateway_monitor(websocket: WebSocket):
+    """Stream gateway monitor data at client-specified interval."""
+    await websocket.accept()
+
+    from core.collectors.gateway_monitor import collect_gateway_monitor
+
+    interval = 10
+    try:
+        # Wait for initial config message with interval
+        msg = await asyncio.wait_for(websocket.receive_text(), timeout=2)
+        data = json.loads(msg)
+        interval = max(3, min(120, int(data.get("interval", 10))))
+    except (asyncio.TimeoutError, Exception):
+        pass
+
+    try:
+        while True:
+            entries = await asyncio.get_event_loop().run_in_executor(
+                None, collect_gateway_monitor
+            )
+            await websocket.send_text(json.dumps(entries))
+            # Check for interval update between sleeps
+            try:
+                msg = await asyncio.wait_for(
+                    websocket.receive_text(), timeout=interval
+                )
+                data = json.loads(msg)
+                interval = max(3, min(120, int(data.get("interval", interval))))
+            except asyncio.TimeoutError:
+                pass
+    except WebSocketDisconnect:
+        pass
+
+
 @router.websocket("/ws/shell/{pod}")
 async def ws_shell(websocket: WebSocket, pod: str):
     """Interactive shell into a pod via WebSocket."""
