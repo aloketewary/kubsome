@@ -16,6 +16,7 @@ from core.executor import execute
 from core.spinner import loading
 from core.audit import log_action
 from core.safety import confirm_production
+from core.cache import invalidate_pods, invalidate_deployments
 
 from core.k8s import get_pods
 from core.formatter import render_pods_table
@@ -348,6 +349,8 @@ def _handle_rollback(cmd, env):
         success, output = rollout_rollback(target)
         if success:
             log_action("rollback", target)
+            invalidate_pods()
+            invalidate_deployments()
             console.print(f"[green]✓ Rolled back {target}[/green]")
         else:
             console.print("[red]Rollback failed[/red]")
@@ -360,6 +363,7 @@ def _handle_restart(cmd, env):
     success, output = rollout_restart(target)
     if success:
         log_action("restart", target)
+        invalidate_pods()
         console.print(f"[green]✓ Restarted {target}[/green]")
     else:
         console.print("[red]Restart failed[/red]")
@@ -379,6 +383,8 @@ def _handle_scale(cmd, env):
     )
     if result.returncode == 0:
         log_action("scale", target, f"replicas={replicas}")
+        invalidate_pods()
+        invalidate_deployments()
         console.print(
             f"[green]✓ Scaled {target} to {replicas} replicas[/green]"
         )

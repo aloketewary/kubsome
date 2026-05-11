@@ -20,8 +20,70 @@ import { ConfirmService } from '../../shared/services/confirm.service';
       </div>
     </div>
 
+    <!-- Resolved Summary -->
+    @if (resolved) {
+      <div class="resolved-container">
+        <div class="resolved-hero">
+          <div class="resolved-icon"><i class="pi pi-check-circle"></i></div>
+          <h2>Incident Resolved</h2>
+          <p>{{ resolved.title }}</p>
+        </div>
+
+        <div class="resolved-stats">
+          <div class="stat-card">
+            <span class="stat-val">{{ resolvedDuration }}</span>
+            <span class="stat-label">Duration</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-val">{{ (resolved.notes || []).length }}</span>
+            <span class="stat-label">Notes</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-val">{{ (resolved.snapshots || []).length }}</span>
+            <span class="stat-label">Snapshots</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-val">{{ (resolved.timeline || []).length }}</span>
+            <span class="stat-label">Events</span>
+          </div>
+        </div>
+
+        @if (resolvedExportPath) {
+          <div class="export-info">
+            <i class="pi pi-file"></i>
+            <span>Exported to: <code>{{ resolvedExportPath }}</code></span>
+          </div>
+        }
+
+        <!-- Timeline Review -->
+        @if ((resolved.timeline || []).length > 0) {
+          <div class="resolved-timeline">
+            <h3>Timeline</h3>
+            <div class="notes-timeline">
+              @for (entry of resolved.timeline; track $index) {
+                <div class="tl-entry">
+                  <div class="tl-marker">
+                    <div class="tl-dot" [class.tl-dot-start]="entry.event === 'Incident started'" [class.tl-dot-end]="entry.event === 'Incident closed'"></div>
+                    @if ($index < resolved.timeline.length - 1) {
+                      <div class="tl-line"></div>
+                    }
+                  </div>
+                  <div class="tl-content">
+                    <span class="tl-time">{{ entry.time | slice:11:19 }}</span>
+                    <span class="tl-text"><strong>{{ entry.event }}</strong>@if (entry.detail) { — {{ entry.detail }}}</span>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        }
+
+        <button pButton label="Done" icon="pi pi-arrow-left" class="p-button-outlined dismiss-btn" (click)="dismissResolved()"></button>
+      </div>
+    }
+
     <!-- No Active Incident -->
-    @if (!active) {
+    @if (!active && !resolved) {
       <div class="start-container">
         <div class="start-hero">
           <div class="start-icon"><i class="pi pi-exclamation-circle"></i></div>
@@ -50,7 +112,7 @@ import { ConfirmService } from '../../shared/services/confirm.service';
     }
 
     <!-- Active Incident -->
-    @if (active) {
+    @if (active && !resolved) {
       <!-- Urgency Banner -->
       <div class="incident-banner">
         <div class="banner-pulse"></div>
@@ -262,6 +324,44 @@ import { ConfirmService } from '../../shared/services/confirm.service';
       color: var(--text-muted); font-size: 13px; justify-content: center;
     }
     .notes-empty i { font-size: 14px; opacity: 0.5; }
+
+    /* Resolved State */
+    .resolved-container { max-width: 560px; margin: 0 auto; }
+    .resolved-hero { text-align: center; margin-bottom: 24px; }
+    .resolved-icon {
+      width: 56px; height: 56px; border-radius: 50%; margin: 0 auto 16px;
+      background: var(--success-subtle); color: var(--success);
+      display: flex; align-items: center; justify-content: center; font-size: 24px;
+    }
+    .resolved-hero h2 { font-size: 20px; font-weight: 700; margin: 0 0 6px; }
+    .resolved-hero p { font-size: 14px; color: var(--text-secondary); margin: 0; }
+
+    .resolved-stats {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px;
+    }
+    .stat-card {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 14px; text-align: center;
+    }
+    .stat-val { display: block; font-size: 18px; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+    .stat-label { display: block; font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+    .export-info {
+      display: flex; align-items: center; gap: 8px; padding: 12px 16px;
+      background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius);
+      font-size: 12px; color: var(--text-secondary); margin-bottom: 20px;
+    }
+    .export-info code { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text); }
+
+    .resolved-timeline {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 20px; margin-bottom: 20px;
+    }
+    .resolved-timeline h3 { font-size: 14px; font-weight: 600; margin: 0 0 14px; }
+    .tl-dot-start { background: var(--danger) !important; }
+    .tl-dot-end { background: var(--success) !important; }
+
+    .dismiss-btn { width: 100%; }
   `],
 })
 export class IncidentComponent implements OnInit, OnDestroy {
@@ -270,6 +370,9 @@ export class IncidentComponent implements OnInit, OnDestroy {
   router = inject(Router);
   private base = '/api';
   active: any = null;
+  resolved: any = null;
+  resolvedDuration = '';
+  resolvedExportPath = '';
   title = '';
   noteText = '';
   severity = 'high';
@@ -313,12 +416,32 @@ export class IncidentComponent implements OnInit, OnDestroy {
       severity: 'warning',
     }).then(ok => {
       if (ok) {
-        this.http.post<any>(`${this.base}/incident/stop`, {}).subscribe(() => {
+        this.http.post<any>(`${this.base}/incident/stop`, {}).subscribe(res => {
           this.active = null;
           clearInterval(this.timerInterval);
+          if (res?.incident) {
+            this.resolved = res.incident;
+            this.resolvedExportPath = res.export_path || '';
+            this.resolvedDuration = this.calcDuration(res.incident);
+          }
         });
       }
     });
+  }
+
+  dismissResolved() {
+    this.resolved = null;
+    this.resolvedExportPath = '';
+    this.resolvedDuration = '';
+  }
+
+  private calcDuration(incident: any): string {
+    if (!incident.started || !incident.ended) return '—';
+    const ms = new Date(incident.ended).getTime() - new Date(incident.started).getTime();
+    const mins = Math.floor(ms / 60000);
+    if (mins < 60) return `${mins}m`;
+    const h = Math.floor(mins / 60);
+    return `${h}h ${mins % 60}m`;
   }
 
   addNote() {

@@ -5,12 +5,29 @@ import queue
 from core.context import context
 
 
+def fetch_containers(pod_name):
+    """Get list of container names in a pod."""
+    cmd = (
+        f"kubectl --context {context.current_context} "
+        f"get pod {pod_name} -n {context.namespace} "
+        f"-o jsonpath='{{.spec.containers[*].name}}'"
+    )
+    result = subprocess.run(
+        cmd, shell=True, capture_output=True, text=True
+    )
+    if result.returncode != 0:
+        return []
+    names = result.stdout.strip("'").split()
+    return [n for n in names if n]
+
+
 def fetch_logs(
     pod_name,
     tail=100,
     previous=False,
     follow=False,
-    errors_only=False
+    errors_only=False,
+    container=None
 ):
     cmd = (
         f"kubectl "
@@ -19,6 +36,9 @@ def fetch_logs(
         f"-n {context.namespace} "
         f"--tail={tail}"
     )
+
+    if container:
+        cmd += f" -c {container}"
 
     if previous:
         cmd += " --previous"
@@ -50,7 +70,7 @@ def fetch_logs(
     return lines
 
 
-def stream_logs(pod_name):
+def stream_logs(pod_name, container=None):
     """Returns a Popen process for live log streaming."""
     cmd = (
         f"kubectl "
@@ -59,6 +79,9 @@ def stream_logs(pod_name):
         f"-n {context.namespace} "
         f"--follow --tail=20"
     )
+
+    if container:
+        cmd += f" -c {container}"
 
     process = subprocess.Popen(
         cmd,
