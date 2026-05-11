@@ -44,27 +44,32 @@ def health():
 
 
 # Serve Angular build in production
-# Priority: 1) dev build (ui/dist/ui/browser)
+# Priority: 1) dev build (ui/dist/ui/browser) — always freshest
 #           2) bundled in package (api/ui_dist)
-#           3) auto-copy from dev build to api/ui_dist
 _api_dir = Path(__file__).parent
 _project_dir = _api_dir.parent
 
-ui_dist = _project_dir / "ui" / "dist" / "ui" / "browser"
-if not ui_dist.exists():
-    ui_dist = _api_dir / "ui_dist"
+_dev_build = _project_dir / "ui" / "dist" / "ui" / "browser"
+_bundled = _api_dir / "ui_dist"
 
-# Auto-copy dev build to api/ui_dist if it exists but ui_dist doesn't
-if not ui_dist.exists():
-    _dev_build = _project_dir / "ui" / "dist" / "ui" / "browser"
-    if _dev_build.exists():
-        import shutil
-        _dest = _api_dir / "ui_dist"
-        shutil.copytree(_dev_build, _dest)
-        ui_dist = _dest
+# If dev build exists and is newer, sync to api/ui_dist
+if _dev_build.exists():
+    import shutil
+    if _bundled.exists():
+        # Compare timestamps to detect if rebuild happened
+        dev_mtime = (_dev_build / "index.html").stat().st_mtime
+        bundled_mtime = (_bundled / "index.html").stat().st_mtime if (_bundled / "index.html").exists() else 0
+        if dev_mtime > bundled_mtime:
+            shutil.rmtree(_bundled)
+            shutil.copytree(_dev_build, _bundled)
+    else:
+        shutil.copytree(_dev_build, _bundled)
+
+ui_dist = _bundled if _bundled.exists() else _dev_build
 
 if ui_dist.exists():
     from fastapi.responses import FileResponse
+    from starlette.responses import Response
 
     # Serve static assets (js, css, fonts, images)
     app.mount(
@@ -75,15 +80,25 @@ if ui_dist.exists():
 
     @app.get("/app")
     def serve_spa_root():
-        return FileResponse(ui_dist / "index.html")
+        return FileResponse(
+            ui_dist / "index.html",
+            headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
+        )
 
     @app.get("/app/{path:path}")
     def serve_spa(path: str):
         file_path = ui_dist / path
         if file_path.is_file():
-            return FileResponse(file_path)
+            # Hashed assets (chunk-XXX.js) can be cached forever
+            headers = {}
+            if any(path.endswith(ext) for ext in (".js", ".css", ".woff2", ".ttf", ".woff", ".eot")):
+                headers["Cache-Control"] = "public, max-age=31536000, immutable"
+            return FileResponse(file_path, headers=headers)
         # SPA fallback — serve index.html for client-side routes
-        return FileResponse(ui_dist / "index.html")
+        return FileResponse(
+            ui_dist / "index.html",
+            headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
+        )
 else:
     from fastapi.responses import JSONResponse
 
