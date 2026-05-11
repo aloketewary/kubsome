@@ -1,15 +1,14 @@
 from rapidfuzz import process
 
-from core.k8s import get_pods
+from core.k8s import get_pod_names
+from core.cache import cached
 
 
 def resolve_pod_name(query: str):
-    pods = get_pods()
+    names = get_pod_names()
 
-    if not pods:
+    if not names:
         return None
-
-    names = [pod["name"] for pod in pods]
 
     matches = process.extract(
         query, names, limit=5
@@ -27,6 +26,7 @@ def resolve_pod_name(query: str):
     ] or None
 
 
+@cached(ttl=10)
 def resolve_deployment_name(query: str):
     """Fuzzy match deployment names."""
     import subprocess
@@ -62,6 +62,7 @@ def resolve_deployment_name(query: str):
     ] or None
 
 
+@cached(ttl=10)
 def resolve_cronjob_name(query: str):
     """Fuzzy match cronjob names."""
     import subprocess

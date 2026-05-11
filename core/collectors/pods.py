@@ -7,48 +7,41 @@ from core.cache import cached
 
 @cached(ttl=5)
 def collect_pods():
-
-    command = (
-        f"kubectl "
-        f"--context {context.current_context} "
-        f"get pods "
-        f"-n {context.namespace} "
-        f"-o json"
+    """Collect pod summary data using custom-columns for speed."""
+    cmd = (
+        f"kubectl --context {context.current_context} "
+        f"get pods -n {context.namespace} "
+        f"-o jsonpath='"
+        f'{{range .items}}'
+        f'{{.metadata.name}}\t'
+        f'{{.status.phase}}\t'
+        f'{{range .status.containerStatuses}}'
+        f'{{.restartCount}}{{end}}\n'
+        f"{{end}}'"
     )
 
     result = subprocess.run(
-        command,
-        shell=True,
-        capture_output=True,
-        text=True
+        cmd, shell=True,
+        capture_output=True, text=True
     )
 
-    if result.returncode != 0:
+    if result.returncode != 0 or not result.stdout.strip("'").strip():
         return []
 
-    data = json.loads(result.stdout)
-
     pods = []
-
-    for item in data["items"]:
-
-        statuses = item["status"].get(
-            "containerStatuses",
-            []
-        )
-
-        restarts = 0
-
-        if statuses:
-            restarts = statuses[0].get(
-                "restartCount",
-                0
-            )
-
+    for line in result.stdout.strip("'").strip().split("\n"):
+        if not line.strip():
+            continue
+        parts = line.split("\t")
+        if len(parts) < 2:
+            continue
+        name = parts[0]
+        status = parts[1]
+        restarts = int(parts[2]) if len(parts) > 2 and parts[2].isdigit() else 0
         pods.append({
-            "name": item["metadata"]["name"],
-            "status": item["status"]["phase"],
-            "restarts": restarts
+            "name": name,
+            "status": status,
+            "restarts": restarts,
         })
 
     return pods

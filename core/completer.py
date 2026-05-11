@@ -131,9 +131,8 @@ def get_namespace_names():
 
 def get_pod_names():
     try:
-        from core.k8s import get_pods
-        pods = get_pods()
-        return [p["name"] for p in pods]
+        from core.k8s import get_pod_names as _get_names
+        return _get_names()
     except Exception:
         return []
 

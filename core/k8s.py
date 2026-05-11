@@ -4,8 +4,10 @@ from datetime import datetime, timezone
 import humanize
 
 from core.context import context
+from core.cache import cached
 
 
+@cached(ttl=5)
 def get_pods():
     command = (
         f"kubectl "
@@ -58,6 +60,26 @@ def get_pods():
         pods.append(pod)
 
     return pods
+
+
+@cached(ttl=10)
+def get_pod_names():
+    """Fast pod name list using jsonpath (no full JSON parse)."""
+    command = (
+        f"kubectl --context {context.current_context} "
+        f"get pods -n {context.namespace} "
+        f"-o jsonpath='{{.items[*].metadata.name}}'"
+    )
+
+    result = subprocess.run(
+        command, shell=True,
+        capture_output=True, text=True
+    )
+
+    if result.returncode != 0:
+        return []
+
+    return result.stdout.strip("'").split()
 
 def human_age(timestamp: str):
     created = datetime.fromisoformat(
