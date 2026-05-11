@@ -131,6 +131,11 @@ interface ColumnDef {
       <div class="summary-pill">
         <span class="pill-val">{{ totalCpuUsage }}</span>
         <span class="pill-label">CPU cores</span>
+        @if (cpuHistory.length > 1) {
+          <svg class="sparkline" viewBox="0 0 80 24" preserveAspectRatio="none">
+            <path [attr.d]="sparklinePath(cpuHistory)" />
+          </svg>
+        }
       </div>
       @if (lastUpdated) {
         <div class="summary-pill pill-time">
@@ -156,7 +161,9 @@ interface ColumnDef {
           @for (e of filtered; track e.deployment) {
             <tr [class.row-warn]="e.pods_not_ready > 0">
               @for (col of visibleColumns; track col.key) {
-                <td [class.sticky-col]="col.key === 'deployment'" [class.cell-num]="isNumCol(col.key)" [class.cell-hot]="isCellHot(col.key, e)">
+                <td [class.sticky-col]="col.key === 'deployment'" [class.cell-num]="isNumCol(col.key)" [class.cell-hot]="isCellHot(col.key, e)"
+                    [class.cell-flash-up]="getCellChange(e.deployment, col.key) === 'up'"
+                    [class.cell-flash-down]="getCellChange(e.deployment, col.key) === 'down'">
                   @switch (col.key) {
                     @case ('deployment') { <code class="cell-name-text">{{ e.deployment }}</code> }
                     @case ('cluster') { <span class="cell-mono">{{ shortCluster(e.cluster) }}</span> }
@@ -339,6 +346,23 @@ interface ColumnDef {
     .row-warn { background: var(--danger-subtle); }
     .row-warn .sticky-col { background: var(--danger-subtle); }
     .row-warn:hover td, .row-warn:hover .sticky-col { background: rgba(239, 68, 68, 0.08); }
+
+    /* Sparkline */
+    .sparkline { width: 60px; height: 20px; margin-left: 4px; }
+    .sparkline path { fill: none; stroke: var(--accent); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+
+    /* Cell flash on change */
+    .cell-flash-up { animation: flashUp 2s ease-out; }
+    .cell-flash-down { animation: flashDown 2s ease-out; }
+    @keyframes flashUp {
+      0% { background: rgba(34, 197, 94, 0.3); }
+      100% { background: transparent; }
+    }
+    @keyframes flashDown {
+      0% { background: rgba(239, 68, 68, 0.3); }
+      100% { background: transparent; }
+    }
+
     .empty-state { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 48px; color: var(--text-muted); font-size: 13px; }
   `]
 })
@@ -348,6 +372,10 @@ export class GatewayMonitorComponent implements OnInit, OnDestroy {
 
   entries: GatewayEntry[] = [];
   filtered: GatewayEntry[] = [];
+  prevEntries: Map<string, GatewayEntry> = new Map();
+  changedCells: Map<string, 'up' | 'down'> = new Map();
+  cpuHistory: number[] = [];
+  memHistory: number[] = [];
   searchQuery = '';
   loading = false;
   streaming = false;
@@ -430,7 +458,49 @@ export class GatewayMonitorComponent implements OnInit, OnDestroy {
     } catch {}
   }
 
-  // Cell helpers
+  // Change detection
+  private detectChanges(newEntries: GatewayEntry[]) {
+    this.changedCells.clear();
+    const trackKeys: (keyof GatewayEntry)[] = ['cpu_usage_per_pod', 'cpu_usage_sum', 'mem_usage_per_pod', 'pods_not_ready', 'hpa_cpu_current', 'hpa_mem_current'];
+    for (const entry of newEntries) {
+      const prev = this.prevEntries.get(entry.deployment);
+      if (!prev) continue;
+      for (const k of trackKeys) {
+        const oldVal = prev[k] as number | null;
+        const newVal = entry[k] as number | null;
+        if (oldVal == null || newVal == null) continue;
+        if (newVal > oldVal) this.changedCells.set(`${entry.deployment}_${k}`, 'up');
+        else if (newVal < oldVal) this.changedCells.set(`${entry.deployment}_${k}`, 'down');
+      }
+    }
+    this.prevEntries.clear();
+    for (const e of newEntries) this.prevEntries.set(e.deployment, { ...e });
+    // Auto-clear highlights after 2s
+    if (this.changedCells.size > 0) {
+      setTimeout(() => this.changedCells.clear(), 2000);
+    }
+  }
+
+  private updateHistory() {
+    const cpu = this.entries.reduce((s, e) => s + e.cpu_usage_sum, 0);
+    const mem = this.entries.reduce((s, e) => s + e.mem_usage_per_pod * e.pods, 0);
+    this.cpuHistory.push(cpu);
+    this.memHistory.push(mem);
+    if (this.cpuHistory.length > 20) this.cpuHistory.shift();
+    if (this.memHistory.length > 20) this.memHistory.shift();
+  }
+
+  getCellChange(deployment: string, key: string): 'up' | 'down' | null {
+    return this.changedCells.get(`${deployment}_${key}`) || null;
+  }
+
+  sparklinePath(data: number[]): string {
+    if (data.length < 2) return '';
+    const max = Math.max(...data, 1);
+    const w = 80, h = 24;
+    const step = w / (data.length - 1);
+    return data.map((v, i) => `${i === 0 ? 'M' : 'L'}${i * step},${h - (v / max) * h}`).join(' ');
+  }
   isNumCol(key: string): boolean {
     return ['pods', 'pods_not_ready', 'cpu_req_per_pod', 'cpu_usage_per_pod', 'cpu_req_sum', 'cpu_usage_sum', 'hpa_cpu', 'hpa_mem', 'mem_req_per_pod', 'mem_usage_per_pod', 'mem_limit_per_pod', 'mem_req_limit_ratio'].includes(key);
   }
@@ -461,10 +531,13 @@ export class GatewayMonitorComponent implements OnInit, OnDestroy {
     setTimeout(() => conn.send(JSON.stringify({ interval: this.refreshInterval })), 100);
     this.wsSub = conn.messages$.subscribe({
       next: (data) => {
-        this.entries = JSON.parse(data);
+        const newEntries: GatewayEntry[] = JSON.parse(data);
+        this.detectChanges(newEntries);
+        this.entries = newEntries;
         this.filter();
         this.loading = false;
         this.lastUpdated = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        this.updateHistory();
       },
       complete: () => { this.streaming = false; },
       error: () => { this.streaming = false; this.loading = false; },

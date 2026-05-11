@@ -111,7 +111,7 @@ def render_pods_table(pods):
     table.add_column("Status", justify="center")
     table.add_column("Restarts", justify="right")
     table.add_column("Age", justify="right")
-    table.add_column("Insight", style="dim italic")
+    table.add_column("Labels", style="dim")
 
     for pod in pods:
         severity = get_severity(pod)
@@ -119,16 +119,21 @@ def render_pods_table(pods):
         icon = status_icon(severity)
         name = truncate_name(pod["name"])
 
-        suggestion = pod_suggestion(pod)
-        insight = suggestion if suggestion != "Healthy" else ""
+        # Show key labels (app, version) as compact string
+        labels = pod.get("labels", [])
+        label_str = ", ".join(
+            lbl.split("=", 1)[1]
+            for lbl in labels
+            if any(k in lbl for k in ["app=", "version="])
+        )[:30]
 
         table.add_row(
             icon,
             f"[{style}]{name}[/{style}]",
             pod["status"],
             str(pod["restarts"]),
-            pod["age"],
-            insight
+            pod.get("age", ""),
+            label_str
         )
 
     console.print(table)

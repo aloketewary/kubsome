@@ -8,6 +8,7 @@ import subprocess
 
 from rich.console import Console
 from rich.panel import Panel
+from rich.table import Table
 from rich.live import Live
 
 from config.settings import SETTINGS
@@ -254,18 +255,22 @@ def _handle_events_watch(cmd, env):
 
 def _handle_logs(cmd, env):
     target = cmd["target"]
+    container = cmd.get("container")
     if cmd["follow"]:
         console.print(
-            f"[dim]Streaming {target}... Ctrl+C to stop[/dim]"
+            f"[dim]Streaming {target}"
+            f"{' (' + container + ')' if container else ''}"
+            f"... Ctrl+C to stop[/dim]"
         )
-        process = stream_logs(target)
+        process = stream_logs(target, container=container)
         for line in process.stdout:
             render_streaming_line(line.rstrip())
     else:
         lines = fetch_logs(
             target,
             previous=cmd["previous"],
-            errors_only=cmd["errors"]
+            errors_only=cmd["errors"],
+            container=container
         )
         render_logs(lines, target, errors_only=cmd["errors"])
 
@@ -505,6 +510,50 @@ def _handle_incident_snapshot(cmd, env):
         console.print("[green]✓ Snapshot captured[/green]")
     else:
         console.print("[red]No active incident[/red]")
+
+
+def _handle_incident_history(cmd, env):
+    """List past incident reports."""
+    import json
+    from pathlib import Path
+    incidents_dir = Path.home() / ".kubsome" / "incidents"
+    if not incidents_dir.exists():
+        console.print("[dim]No past incidents[/dim]")
+        return
+    reports = sorted(
+        incidents_dir.glob("incident_*.json"),
+        reverse=True
+    )
+    if not reports:
+        console.print("[dim]No past incidents[/dim]")
+        return
+    table = Table(
+        show_header=True,
+        header_style="bold cyan",
+        border_style="dim",
+        expand=True
+    )
+    table.add_column("ID", width=16)
+    table.add_column("Title")
+    table.add_column("Started", width=12)
+    table.add_column("Notes", justify="right", width=6)
+    table.add_column("Snaps", justify="right", width=6)
+    for f in reports[:20]:
+        try:
+            data = json.loads(f.read_text())
+            table.add_row(
+                data.get("id", ""),
+                data.get("title", "Untitled"),
+                data.get("started", "")[:10],
+                str(len(data.get("notes", []))),
+                str(len(data.get("snapshots", []))),
+            )
+        except Exception:
+            continue
+    console.print(
+        Panel(table, title="[bold]📋 Past Incidents[/bold]",
+              border_style="cyan")
+    )
 
 
 def _handle_help(cmd, env):
@@ -1382,6 +1431,7 @@ HANDLERS = {
     "incident_status": _handle_incident_status,
     "incident_note": _handle_incident_note,
     "incident_snapshot": _handle_incident_snapshot,
+    "incident_history": _handle_incident_history,
     "help": _handle_help,
     "find": _handle_find,
     "ns_overview": _handle_ns_overview,

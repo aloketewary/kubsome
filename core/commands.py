@@ -54,12 +54,18 @@ def resolve_command(user_input: str):
             return None
 
         flags = tokens[2:]
+        container = None
+        for i, f in enumerate(flags):
+            if f in ("-c", "--container") and i + 1 < len(flags):
+                container = flags[i + 1]
+                break
         return {
             "type": "logs",
             "target": pod,
             "follow": "--follow" in flags or "-f" in flags,
             "errors": "--errors" in flags,
             "previous": "--previous" in flags,
+            "container": container,
         }
 
     # Logcat (combined logs from all pods of a deployment)
@@ -199,6 +205,8 @@ def resolve_command(user_input: str):
                 return {"type": "incident_stop"}
             if sub == "status":
                 return {"type": "incident_status"}
+            if sub == "history":
+                return {"type": "incident_history"}
         return {"type": "incident_status"}
 
     if cmd == "note" and len(tokens) > 1:
