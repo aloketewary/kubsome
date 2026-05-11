@@ -11,6 +11,7 @@ interface MonitorCard {
   id: number;
   context: string;
   namespace: string;
+  app: string;
   loading: boolean;
   data: any;
   events: any[];
@@ -18,10 +19,13 @@ interface MonitorCard {
   expanded: boolean;
   lastUpdated: string;
   namespaces: string[];
+  apps: string[];
   order: number;
   configuring: boolean;
   fullscreen: boolean;
   refreshInterval: number;
+  alertEnabled: boolean;
+  alertThreshold: number;
 }
 
 @Component({
@@ -71,7 +75,7 @@ interface MonitorCard {
           <div class="mc-toolbar">
             <div class="mc-drag" pTooltip="Drag to reorder"><i class="pi pi-bars"></i></div>
             <div class="mc-badge" [class]="'badge-' + cardHealth(card)">{{ cardHealth(card) }}</div>
-            <span class="mc-title">{{ card.context ? (card.context | slice:0:20) : 'New Card' }} / {{ card.namespace || '...' }}</span>
+            <span class="mc-title">{{ card.context ? (card.context | slice:0:20) : 'New Card' }} / {{ card.namespace || '...' }}{{ card.app ? ' / ' + card.app : '' }}</span>
             <div class="mc-toolbar-actions">
               <button pButton icon="pi pi-expand" class="p-button-text p-button-sm p-button-rounded" pTooltip="Full screen" (click)="card.fullscreen = true"></button>
               <button pButton icon="pi pi-cog" class="p-button-text p-button-sm p-button-rounded" pTooltip="Configure" (click)="card.configuring = !card.configuring"></button>
@@ -91,7 +95,25 @@ interface MonitorCard {
               <div class="cfg-row">
                 <span class="cfg-label">Namespace</span>
                 <p-select [options]="card.namespaces" [(ngModel)]="card.namespace" placeholder="Select namespace..."
-                          [filter]="true" [style]="{ width: '100%' }" />
+                          [filter]="true" [style]="{ width: '100%' }" (ngModelChange)="onNamespaceSelect(card)" />
+              </div>
+              <div class="cfg-row">
+                <span class="cfg-label">App (optional)</span>
+                <p-select [options]="card.apps" [(ngModel)]="card.app" placeholder="All apps"
+                          [filter]="true" [showClear]="true" [style]="{ width: '100%' }" />
+              </div>
+              <div class="cfg-row">
+                <span class="cfg-label">Alert</span>
+                <div class="cfg-alert-row">
+                  <button class="cfg-int" [class.active]="card.alertEnabled" (click)="card.alertEnabled = !card.alertEnabled">
+                    {{ card.alertEnabled ? 'On' : 'Off' }}
+                  </button>
+                  @if (card.alertEnabled) {
+                    <span class="cfg-hint">Trigger when health &lt;</span>
+                    <input class="cfg-threshold" type="number" [(ngModel)]="card.alertThreshold" min="10" max="100" />
+                    <span class="cfg-hint">%</span>
+                  }
+                </div>
               </div>
               <div class="cfg-row">
                 <span class="cfg-label">Auto Refresh</span>
@@ -142,8 +164,27 @@ interface MonitorCard {
             <!-- Footer -->
             <div class="mc-footer">
               <span class="mc-events-count"><i class="pi pi-bolt"></i> {{ card.events.length }} events</span>
+              @if (card.alertEnabled) {
+                <span class="mc-alert-badge" [class.alert-triggered]="healthPct(card) < card.alertThreshold">
+                  <i class="pi pi-bell"></i> {{ healthPct(card) < card.alertThreshold ? 'ALERT' : 'OK' }}
+                </span>
+              }
               <span class="mc-time">{{ card.lastUpdated || '—' }}</span>
             </div>
+
+            <!-- Actions -->
+            @if (card.app || (card.data?.pods?.critical || 0) > 0) {
+              <div class="mc-actions">
+                @if (card.app) {
+                  <button pButton icon="pi pi-refresh" label="Restart" class="p-button-sm p-button-text" (click)="restartApp(card)" pTooltip="Rolling restart"></button>
+                  <button pButton icon="pi pi-minus" label="Scale Down" class="p-button-sm p-button-text" (click)="scaleDown(card)" pTooltip="Reduce replicas by 1"></button>
+                  <button pButton icon="pi pi-plus" label="Scale Up" class="p-button-sm p-button-text" (click)="scaleUp(card)" pTooltip="Add 1 replica"></button>
+                }
+                @if (!card.app && (card.data?.pods?.critical || 0) > 0) {
+                  <button pButton icon="pi pi-exclamation-triangle" label="Diagnose" class="p-button-sm p-button-text p-button-warning" (click)="diagnoseCard(card)" pTooltip="Run AI diagnosis"></button>
+                }
+              </div>
+            }
           } @else if (card.loading) {
             <div class="mc-state"><div class="spin"></div> Loading...</div>
           } @else if (card.data?.error) {
@@ -378,9 +419,25 @@ interface MonitorCard {
     .mce-obj { color: var(--text-muted); font-family: 'JetBrains Mono', monospace; font-size: 9px; }
 
     /* Footer */
-    .mc-footer { display: flex; align-items: center; justify-content: space-between; }
+    .mc-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
     .mc-events-count { font-size: 10px; color: var(--text-muted); display: flex; align-items: center; gap: 4px; }
     .mc-events-count i { font-size: 10px; }
+    .mc-alert-badge {
+      font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 4px;
+      background: var(--success-subtle); color: var(--success);
+    }
+    .mc-alert-badge.alert-triggered {
+      background: var(--danger-subtle); color: var(--danger); animation: pulse 1.5s infinite;
+    }
+    .mc-actions {
+      display: flex; gap: 4px; padding-top: 8px; border-top: 1px solid var(--border); flex-wrap: wrap;
+    }
+    .cfg-alert-row { display: flex; align-items: center; gap: 6px; }
+    .cfg-hint { font-size: 10px; color: var(--text-muted); }
+    .cfg-threshold {
+      width: 48px; padding: 4px 6px; border: 1px solid var(--border); border-radius: 4px;
+      background: var(--bg-card); color: var(--text); font-size: 11px; text-align: center;
+    }
     .mc-mini-activity { padding-top: 6px; }
     .mini-label { font-size: 9px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; display: block; margin-bottom: 3px; }
     .mini-chart { display: flex; align-items: flex-end; gap: 1px; height: 24px; }
@@ -511,9 +568,11 @@ export class MonitorComponent implements OnInit, OnDestroy {
 
   addCard() {
     const card: MonitorCard = {
-      id: ++this.idCounter, context: '', namespace: '',
+      id: ++this.idCounter, context: '', namespace: '', app: '',
       loading: false, data: null, events: [], activityBars: [],
-      expanded: true, configuring: true, fullscreen: false, refreshInterval: 60, lastUpdated: '', namespaces: [], order: this.cards.length,
+      expanded: true, configuring: true, fullscreen: false, refreshInterval: 60,
+      lastUpdated: '', namespaces: [], apps: [], order: this.cards.length,
+      alertEnabled: false, alertThreshold: 70,
     };
     this.cards.push(card);
     this.saveCards();
@@ -546,6 +605,8 @@ export class MonitorComponent implements OnInit, OnDestroy {
   onContextSelect(card: MonitorCard) {
     if (!card.context) return;
     card.namespace = '';
+    card.app = '';
+    card.apps = [];
     card.data = null;
     this.http.get<any>(`/api/namespaces/${card.context}`).subscribe({
       next: (res) => {
@@ -555,6 +616,18 @@ export class MonitorComponent implements OnInit, OnDestroy {
         }
       },
       error: () => { card.namespaces = []; },
+    });
+  }
+
+  onNamespaceSelect(card: MonitorCard) {
+    card.app = '';
+    card.apps = [];
+    if (!card.context || !card.namespace) return;
+    this.http.get<any>(`/api/list-apps/${card.context}/${card.namespace}`).subscribe({
+      next: (res) => {
+        card.apps = (res.deployments || []).map((d: any) => d.name);
+      },
+      error: () => { card.apps = []; },
     });
   }
 
@@ -568,13 +641,19 @@ export class MonitorComponent implements OnInit, OnDestroy {
   fetchCardData(card: MonitorCard) {
     if (!card.context || !card.namespace) return;
     card.loading = true;
-    this.http.get<any>(`/api/overview/${card.context}/${card.namespace}`).subscribe({
+    const url = card.app
+      ? `/api/overview/${card.context}/${card.namespace}?app=${card.app}`
+      : `/api/overview/${card.context}/${card.namespace}`;
+    this.http.get<any>(url).subscribe({
       next: (res) => {
         card.data = res;
         card.events = res.events || [];
         card.activityBars = this.buildBars(card.events);
         card.loading = false;
         card.lastUpdated = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        if (card.alertEnabled && this.healthPct(card) < card.alertThreshold) {
+          this.triggerAlert(card);
+        }
         this.saveCards();
       },
       error: () => { card.loading = false; },
@@ -627,8 +706,48 @@ export class MonitorComponent implements OnInit, OnDestroy {
     return bars.map(b => Math.max((b / max) * 100, 4));
   }
 
+  restartApp(card: MonitorCard) {
+    if (!card.app) return;
+    this.http.post<any>(`/api/restart/${card.app}`, {}).subscribe(() => {
+      setTimeout(() => this.fetchCardData(card), 3000);
+    });
+  }
+
+  scaleDown(card: MonitorCard) {
+    if (!card.app) return;
+    this.http.post<any>(`/api/scale/${card.app}`, { replicas: -1, relative: true }).subscribe(() => {
+      setTimeout(() => this.fetchCardData(card), 2000);
+    });
+  }
+
+  scaleUp(card: MonitorCard) {
+    if (!card.app) return;
+    this.http.post<any>(`/api/scale/${card.app}`, { replicas: 1, relative: true }).subscribe(() => {
+      setTimeout(() => this.fetchCardData(card), 2000);
+    });
+  }
+
+  diagnoseCard(card: MonitorCard) {
+    // Navigate to pods page filtered by namespace
+    window.location.href = `/pods?filter=${card.namespace}`;
+  }
+
+  private triggerAlert(card: MonitorCard) {
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification(`⚠️ ${card.context}/${card.namespace}${card.app ? '/' + card.app : ''}`, {
+        body: `Health dropped to ${this.healthPct(card)}% (threshold: ${card.alertThreshold}%)`,
+      });
+    } else if ('Notification' in window && Notification.permission !== 'denied') {
+      Notification.requestPermission();
+    }
+  }
+
   private saveCards() {
-    const saved = this.cards.map(c => ({ context: c.context, namespace: c.namespace, expanded: c.expanded, refreshInterval: c.refreshInterval || 60 }));
+    const saved = this.cards.map(c => ({
+      context: c.context, namespace: c.namespace, app: c.app || '',
+      expanded: c.expanded, refreshInterval: c.refreshInterval || 60,
+      alertEnabled: c.alertEnabled, alertThreshold: c.alertThreshold,
+    }));
     localStorage.setItem('kubsome_monitor_cards', JSON.stringify(saved));
   }
 
@@ -639,19 +758,28 @@ export class MonitorComponent implements OnInit, OnDestroy {
         const saved = JSON.parse(raw);
         for (const s of saved) {
           const card: MonitorCard = {
-            id: ++this.idCounter, context: s.context || '', namespace: s.namespace || '',
+            id: ++this.idCounter, context: s.context || '', namespace: s.namespace || '', app: s.app || '',
             loading: false, data: null, events: [], activityBars: [],
-            expanded: s.expanded ?? true, configuring: !(s.context && s.namespace), fullscreen: false, refreshInterval: s.refreshInterval || 60, lastUpdated: '', namespaces: [], order: this.cards.length,
+            expanded: s.expanded ?? true, configuring: !(s.context && s.namespace), fullscreen: false,
+            refreshInterval: s.refreshInterval || 60, lastUpdated: '', namespaces: [], apps: [], order: this.cards.length,
+            alertEnabled: s.alertEnabled || false, alertThreshold: s.alertThreshold || 70,
           };
           this.cards.push(card);
           if (card.context && card.namespace) {
-            // Fetch namespaces without clearing saved namespace
             const savedNs = card.namespace;
+            const savedApp = card.app;
             this.http.get<any>(`/api/namespaces/${card.context}`).subscribe({
               next: (res) => {
                 card.namespaces = res.namespaces || [];
                 card.namespace = savedNs;
-                this.fetchCardData(card);
+                this.http.get<any>(`/api/list-apps/${card.context}/${savedNs}`).subscribe({
+                  next: (appsRes) => {
+                    card.apps = (appsRes.deployments || []).map((d: any) => d.name);
+                    card.app = savedApp;
+                    this.fetchCardData(card);
+                  },
+                  error: () => { this.fetchCardData(card); },
+                });
               },
               error: () => { card.namespaces = []; },
             });

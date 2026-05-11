@@ -44,13 +44,16 @@ def get_overview():
 
 
 @router.get("/overview/{ctx}/{ns}")
-def get_overview_for(ctx: str, ns: str):
-    """Get overview for a specific context/namespace without switching global state."""
+def get_overview_for(ctx: str, ns: str, app: str = None):
+    """Get overview for a specific context/namespace, optionally filtered by app."""
     import subprocess
     import json
 
     # Pods
-    r = subprocess.run(["kubectl", "--context", ctx, "get", "pods", "-n", ns, "-o", "json"], capture_output=True, text=True)
+    cmd = ["kubectl", "--context", ctx, "get", "pods", "-n", ns, "-o", "json"]
+    if app:
+        cmd += ["-l", f"app={app}"]
+    r = subprocess.run(cmd, capture_output=True, text=True)
     pods = []
     if r.returncode == 0:
         pods = json.loads(r.stdout).get("items", [])
@@ -102,6 +105,26 @@ def get_overview_for(ctx: str, ns: str):
         "context": ctx, "namespace": ns,
         "pods": pod_health, "nodes": node_health, "deployments": dep_health,
         "events": events,
+    }
+
+
+@router.get("/list-apps/{ctx}/{ns}")
+def get_apps_for(ctx: str, ns: str):
+    """List deployments for a specific context/namespace."""
+    import subprocess
+    import json
+    r = subprocess.run(
+        ["kubectl", "--context", ctx, "get", "deployments", "-n", ns, "-o", "json"],
+        capture_output=True, text=True
+    )
+    if r.returncode != 0:
+        return {"deployments": []}
+    items = json.loads(r.stdout).get("items", [])
+    return {
+        "deployments": [
+            {"name": d["metadata"]["name"]}
+            for d in items
+        ]
     }
 
 
