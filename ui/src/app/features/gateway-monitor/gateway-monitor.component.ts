@@ -73,30 +73,7 @@ interface ColumnDef {
 
         <!-- Column Config -->
         <div class="col-config-wrap">
-          <button pButton icon="pi pi-cog" class="p-button-outlined p-button-sm p-button-rounded" pTooltip="Configure columns" (click)="configOpen = !configOpen"></button>
-          @if (configOpen) {
-            <div class="col-config-panel">
-              <div class="cfg-panel-header">
-                <span>Columns</span>
-                <div class="cfg-panel-actions">
-                  <button class="cfg-link" (click)="showAll()">All</button>
-                  <button class="cfg-link" (click)="showNone()">None</button>
-                  <button class="cfg-link" (click)="resetColumns()">Reset</button>
-                </div>
-              </div>
-              @for (group of columnGroups; track group) {
-                <div class="cfg-group">
-                  <span class="cfg-group-label">{{ group }}</span>
-                  @for (col of columnsByGroup(group); track col.key) {
-                    <label class="cfg-item">
-                      <input type="checkbox" [(ngModel)]="col.visible" (ngModelChange)="saveColumns()" />
-                      <span>{{ col.label }}</span>
-                    </label>
-                  }
-                </div>
-              }
-            </div>
-          }
+          <button pButton icon="pi pi-cog" class="p-button-outlined p-button-sm p-button-rounded" pTooltip="Configure columns" (click)="configOpen = !configOpen; $event.stopPropagation()"></button>
         </div>
 
         <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="manualRefresh()" pTooltip="Manual refresh"></button>
@@ -105,6 +82,33 @@ interface ColumnDef {
           [commands]="['top pods', 'top nodes', 'overview']" />
       </div>
     </div>
+
+    <!-- Column Config Panel (outside header to avoid overflow clipping) -->
+    @if (configOpen) {
+      <div class="cfg-backdrop" (click)="configOpen = false"></div>
+      <div class="col-config-panel" (click)="$event.stopPropagation()">
+        <div class="cfg-panel-header">
+          <span>Configure Columns</span>
+          <div class="cfg-panel-actions">
+            <button class="cfg-link" (click)="showAll()">All</button>
+            <button class="cfg-link" (click)="showNone()">None</button>
+            <button class="cfg-link" (click)="resetColumns()">Reset</button>
+            <button class="cfg-close" (click)="configOpen = false"><i class="pi pi-times"></i></button>
+          </div>
+        </div>
+        @for (group of columnGroups; track group) {
+          <div class="cfg-group">
+            <span class="cfg-group-label">{{ group }}</span>
+            @for (col of columnsByGroup(group); track col.key) {
+              <label class="cfg-item">
+                <input type="checkbox" [(ngModel)]="col.visible" (ngModelChange)="saveColumns()" />
+                <span>{{ col.label }}</span>
+              </label>
+            }
+          </div>
+        }
+      </div>
+    }
 
     <!-- Summary -->
     <div class="summary-strip">
@@ -238,33 +242,41 @@ interface ColumnDef {
 
     /* Column Config */
     .col-config-wrap { position: relative; }
-    .col-config-panel {
-      position: absolute; top: 40px; right: 0; z-index: 100;
-      width: 280px; max-height: 400px; overflow-y: auto;
-      background: var(--bg-card); border: 1px solid var(--border);
-      border-radius: 12px; box-shadow: 0 12px 40px rgba(0,0,0,0.4);
-      padding: 12px; animation: cfgIn 0.15s ease-out;
+    .cfg-backdrop {
+      position: fixed; inset: 0; z-index: 999; background: transparent;
     }
-    @keyframes cfgIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+    .col-config-panel {
+      position: fixed; top: 80px; right: 24px; z-index: 1000;
+      width: 300px; max-height: 70vh; overflow-y: auto;
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 12px; box-shadow: 0 16px 48px rgba(0,0,0,0.5);
+      padding: 16px; animation: cfgIn 0.2s ease-out;
+    }
+    @keyframes cfgIn { from { opacity: 0; transform: translateY(-8px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
     .cfg-panel-header {
       display: flex; align-items: center; justify-content: space-between;
-      margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--border);
-      font-size: 12px; font-weight: 700;
+      margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--border);
+      font-size: 13px; font-weight: 700;
     }
-    .cfg-panel-actions { display: flex; gap: 8px; }
+    .cfg-panel-actions { display: flex; align-items: center; gap: 8px; }
     .cfg-link {
       background: none; border: none; color: var(--accent); font-size: 11px;
       cursor: pointer; font-weight: 500; padding: 0;
     }
     .cfg-link:hover { text-decoration: underline; }
-    .cfg-group { margin-bottom: 10px; }
+    .cfg-close {
+      background: none; border: none; color: var(--text-muted); cursor: pointer;
+      padding: 4px; border-radius: 4px; font-size: 12px;
+    }
+    .cfg-close:hover { color: var(--text); background: var(--bg-hover); }
+    .cfg-group { margin-bottom: 12px; }
     .cfg-group-label {
       display: block; font-size: 9px; font-weight: 700; color: var(--text-muted);
-      text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px;
+      text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px;
     }
     .cfg-item {
       display: flex; align-items: center; gap: 8px;
-      padding: 4px 6px; border-radius: 4px; cursor: pointer; font-size: 12px;
+      padding: 5px 8px; border-radius: 6px; cursor: pointer; font-size: 12px;
       color: var(--text-secondary); transition: background 0.1s;
     }
     .cfg-item:hover { background: var(--bg-hover); }

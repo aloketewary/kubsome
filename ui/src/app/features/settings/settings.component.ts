@@ -163,7 +163,7 @@ import { ConfirmService } from '../../shared/services/confirm.service';
       <!-- Right: About -->
       <div class="settings-aside">
         <div class="about-card">
-          <div class="about-logo">◆</div>
+          <div class="about-logo"><i class="pi pi-box"></i></div>
           <div class="about-name">Kubsome</div>
           <p-tag [value]="'v' + appVersion" severity="info" [rounded]="true" />
           <p class="about-tagline">AI-native Kubernetes Operations</p>
