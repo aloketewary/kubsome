@@ -20,22 +20,21 @@ def describe_resource(resource: str, name: str):
     """Describe a resource with fuzzy name matching."""
     resolved = _fuzzy_resolve(resource, name)
 
-    cmd = (
-        f"kubectl --context {context.current_context} "
-        f"describe {resource} {resolved} "
-        f"-n {context.namespace}"
-    )
+    args = [
+        "kubectl", "--context", context.current_context,
+        "describe", resource, resolved, "-n", context.namespace
+    ]
 
     # Cluster-scoped resources
     cluster_scoped = {"node", "nodes", "namespace", "namespaces"}
     if resource in cluster_scoped:
-        cmd = (
-            f"kubectl --context {context.current_context} "
-            f"describe {resource} {resolved}"
-        )
+        args = [
+            "kubectl", "--context", context.current_context,
+            "describe", resource, resolved
+        ]
 
     result = subprocess.run(
-        cmd, shell=True,
+        args,
         capture_output=True, text=True,
         timeout=15,
     )
@@ -66,24 +65,24 @@ def get_resource(resource: str, name: str = ""):
     if name:
         resolved = _fuzzy_resolve(resource, name)
 
-    cmd = (
-        f"kubectl --context {context.current_context} "
-        f"get {resource} "
-    )
+    args = [
+        "kubectl", "--context", context.current_context,
+        "get", resource
+    ]
     if resolved:
-        cmd += f"{resolved} "
+        args.append(resolved)
 
     cluster_scoped = {
         "node", "nodes", "namespace", "namespaces",
         "pv", "persistentvolumes",
     }
     if resource not in cluster_scoped:
-        cmd += f"-n {context.namespace} "
+        args.extend(["-n", context.namespace])
 
-    cmd += "-o json"
+    args.extend(["-o", "json"])
 
     result = subprocess.run(
-        cmd, shell=True,
+        args,
         capture_output=True, text=True,
         timeout=15,
     )
@@ -108,14 +107,13 @@ def delete_resource(resource: str, name: str):
     """Delete a resource with fuzzy name matching."""
     resolved = _fuzzy_resolve(resource, name)
 
-    cmd = (
-        f"kubectl --context {context.current_context} "
-        f"delete {resource} {resolved} "
-        f"-n {context.namespace}"
-    )
+    args = [
+        "kubectl", "--context", context.current_context,
+        "delete", resource, resolved, "-n", context.namespace
+    ]
 
     result = subprocess.run(
-        cmd, shell=True,
+        args,
         capture_output=True, text=True,
         timeout=30,
     )

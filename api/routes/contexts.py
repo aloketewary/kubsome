@@ -44,8 +44,11 @@ class NamespaceRequest(BaseModel):
 def get_namespaces():
     import subprocess
     result = subprocess.run(
-        f"kubectl --context {context.current_context} get namespaces -o jsonpath='{{.items[*].metadata.name}}'",
-        shell=True, capture_output=True, text=True,
+        [
+            "kubectl", "--context", context.current_context,
+            "get", "namespaces", "-o", "jsonpath={.items[*].metadata.name}"
+        ],
+        capture_output=True, text=True,
     )
     if result.returncode != 0:
         return {"namespaces": [], "current": context.namespace}
@@ -67,9 +70,11 @@ def get_namespaces_for(ctx: str):
     """Get namespaces for a specific context without switching global state."""
     import subprocess
     result = subprocess.run(
-        f"kubectl --context {ctx} get namespaces "
-        f"-o jsonpath='{{.items[*].metadata.name}}'",
-        shell=True, capture_output=True, text=True,
+        [
+            "kubectl", "--context", ctx, "get", "namespaces",
+            "-o", "jsonpath={.items[*].metadata.name}"
+        ],
+        capture_output=True, text=True,
         timeout=10,
     )
     if result.returncode != 0:
