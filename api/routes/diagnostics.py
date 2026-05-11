@@ -10,30 +10,47 @@ from core.diagnostics.recommendations import recommend
 router = APIRouter(tags=["diagnostics"])
 
 
-@router.get("/inspect/{pod}")
-def get_inspect(pod: str):
-    pod_data = inspect_pod(pod)
+@router.get("/inspect/{name}")
+def get_inspect(name: str):
+    pod_data = inspect_pod(name)
+    if not pod_data:
+        # Try prefix match
+        from core.collectors.pods import collect_pods
+        pods = collect_pods()
+        match = next((p for p in pods if p["name"].startswith(name)), None)
+        if match:
+            pod_data = inspect_pod(match["name"])
+            name = match["name"]
     if not pod_data:
         raise HTTPException(status_code=404, detail="Pod not found")
     details = extract_pod_details(pod_data)
-    events = pod_events(pod)
+    events = pod_events(name)
     recommendation = recommend(pod_data)
     return {
-        "pod": pod,
+        "pod": name,
         "details": details,
         "events": events,
         "recommendation": recommendation,
     }
 
 
-@router.get("/diagnose/{pod}")
-def get_diagnose(pod: str):
-    data = collect_diagnosis(pod)
+@router.get("/diagnose/{name}")
+def get_diagnose(name: str):
+    # Try exact pod name first, then fuzzy match
+    data = collect_diagnosis(name)
     if not data:
-        raise HTTPException(status_code=404, detail="Pod not found")
+        # Try to find a pod matching this prefix (deployment name)
+        from core.collectors.pods import collect_pods
+        pods = collect_pods()
+        match = next((p for p in pods if p["name"].startswith(name)), None)
+        if match:
+            data = collect_diagnosis(match["name"])
+            name = match["name"]
+    if not data:
+        return {"pod": name, "findings": [], "summary": f"No pod found matching '{name}'"}
     findings = diagnose(data)
     return {
-        "pod": pod,
+        "pod": name,
         "findings": findings,
     }
 

@@ -32,6 +32,13 @@ interface GatewayEntry {
   note: string;
 }
 
+interface ColumnDef {
+  key: string;
+  label: string;
+  group: string;
+  visible: boolean;
+}
+
 @Component({
   selector: 'app-gateway-monitor',
   standalone: true,
@@ -40,7 +47,7 @@ interface GatewayEntry {
     <div class="page-header">
       <div>
         <h1>Gateway Monitor</h1>
-        <p class="subtitle">{{ filtered.length }} deployments · Resource & HPA overview</p>
+        <p class="subtitle">{{ filtered.length }} deployments · {{ visibleColumns.length }}/{{ columns.length }} columns</p>
       </div>
       <div class="header-actions">
         <div class="search-wrap">
@@ -48,7 +55,7 @@ interface GatewayEntry {
           <input pInputText [(ngModel)]="searchQuery" placeholder="Filter..." (ngModelChange)="filter()" />
         </div>
 
-        <!-- Refresh Interval Config -->
+        <!-- Refresh Interval -->
         <div class="interval-config">
           <span class="interval-label">Refresh</span>
           <div class="interval-btns">
@@ -58,15 +65,43 @@ interface GatewayEntry {
           </div>
         </div>
 
-        <!-- Live indicator -->
+        <!-- Live -->
         <button pButton [class]="streaming ? 'p-button-danger p-button-sm' : 'p-button-outlined p-button-sm'" (click)="toggleStream()">
           <span class="live-dot" [class.pulsing]="streaming"></span>
           {{ streaming ? 'Live' : 'Connect' }}
         </button>
 
+        <!-- Column Config -->
+        <div class="col-config-wrap">
+          <button pButton icon="pi pi-cog" class="p-button-outlined p-button-sm p-button-rounded" pTooltip="Configure columns" (click)="configOpen = !configOpen"></button>
+          @if (configOpen) {
+            <div class="col-config-panel">
+              <div class="cfg-panel-header">
+                <span>Columns</span>
+                <div class="cfg-panel-actions">
+                  <button class="cfg-link" (click)="showAll()">All</button>
+                  <button class="cfg-link" (click)="showNone()">None</button>
+                  <button class="cfg-link" (click)="resetColumns()">Reset</button>
+                </div>
+              </div>
+              @for (group of columnGroups; track group) {
+                <div class="cfg-group">
+                  <span class="cfg-group-label">{{ group }}</span>
+                  @for (col of columnsByGroup(group); track col.key) {
+                    <label class="cfg-item">
+                      <input type="checkbox" [(ngModel)]="col.visible" (ngModelChange)="saveColumns()" />
+                      <span>{{ col.label }}</span>
+                    </label>
+                  }
+                </div>
+              }
+            </div>
+          }
+        </div>
+
         <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="manualRefresh()" pTooltip="Manual refresh"></button>
-        <app-page-info title="Gateway Monitor" description="Deployment-level resource metrics with HPA status, CPU/memory usage, and pod readiness. Streams via WebSocket."
-          [tips]="['Red rows indicate pods not ready', 'HPA columns show target/current utilization', 'CPU values in millicores, memory in Mi', 'Change refresh interval while live']"
+        <app-page-info title="Gateway Monitor" description="Deployment-level resource metrics. Configure visible columns via the gear icon."
+          [tips]="['Click gear icon to show/hide columns', 'Column config is saved to browser', 'Red rows = pods not ready', 'Change refresh interval while live']"
           [commands]="['top pods', 'top nodes', 'overview']" />
       </div>
     </div>
@@ -91,7 +126,7 @@ interface GatewayEntry {
       }
       <div class="summary-pill">
         <span class="pill-val">{{ totalCpuUsage }}</span>
-        <span class="pill-label">CPU cores used</span>
+        <span class="pill-label">CPU cores</span>
       </div>
       @if (lastUpdated) {
         <div class="summary-pill pill-time">
@@ -106,80 +141,58 @@ interface GatewayEntry {
       <table class="gw-table">
         <thead>
           <tr>
-            <th class="sticky-col" (click)="sort('deployment')">Deployment <i class="pi pi-sort-alt"></i></th>
-            <th>Cluster</th>
-            <th>Version</th>
-            <th (click)="sort('pods')">Pods <i class="pi pi-sort-alt"></i></th>
-            <th>Not Ready</th>
-            <th class="col-group-start">CPU req/pod</th>
-            <th>CPU use/pod</th>
-            <th>CPU req Σ</th>
-            <th>CPU use Σ</th>
-            <th class="col-group-start">HPA CPU %</th>
-            <th>HPA MEM %</th>
-            <th class="col-group-start">MEM req/pod</th>
-            <th>MEM use/pod</th>
-            <th>MEM limit/pod</th>
-            <th>Req/Limit</th>
-            <th class="col-group-start">Workload</th>
-            <th>LBA</th>
-            <th>Note</th>
+            @for (col of visibleColumns; track col.key) {
+              <th [class.sticky-col]="col.key === 'deployment'" (click)="sort(col.key)">
+                {{ col.label }} <i class="pi pi-sort-alt"></i>
+              </th>
+            }
           </tr>
         </thead>
         <tbody>
           @for (e of filtered; track e.deployment) {
             <tr [class.row-warn]="e.pods_not_ready > 0">
-              <td class="sticky-col cell-name">
-                <code>{{ e.deployment }}</code>
-              </td>
-              <td class="cell-mono">{{ shortCluster(e.cluster) }}</td>
-              <td><span class="version-tag">{{ e.version }}</span></td>
-              <td class="cell-num">{{ e.pods }}</td>
-              <td class="cell-num">
-                @if (e.pods_not_ready > 0) {
-                  <span class="not-ready-badge">{{ e.pods_not_ready }}</span>
-                } @else {
-                  <span class="all-ready">0</span>
-                }
-              </td>
-              <!-- CPU -->
-              <td class="cell-num col-group-start">{{ e.cpu_req_per_pod }}m</td>
-              <td class="cell-num" [class.cell-hot]="e.cpu_usage_per_pod > e.cpu_req_per_pod">{{ e.cpu_usage_per_pod }}m</td>
-              <td class="cell-num">{{ e.cpu_req_sum }}</td>
-              <td class="cell-num" [class.cell-hot]="e.cpu_usage_sum > e.cpu_req_sum">{{ e.cpu_usage_sum }}</td>
-              <!-- HPA -->
-              <td class="cell-num col-group-start">
-                @if (e.hpa_cpu_target !== null) {
-                  <span class="hpa-pair">
-                    <span class="hpa-target">{{ e.hpa_cpu_target }}</span>
-                    <span class="hpa-sep">/</span>
-                    <span class="hpa-current" [class.hpa-over]="e.hpa_cpu_current! > e.hpa_cpu_target!">{{ e.hpa_cpu_current ?? '—' }}</span>
-                  </span>
-                } @else { <span class="cell-na">—</span> }
-              </td>
-              <td class="cell-num">
-                @if (e.hpa_mem_target !== null) {
-                  <span class="hpa-pair">
-                    <span class="hpa-target">{{ e.hpa_mem_target }}</span>
-                    <span class="hpa-sep">/</span>
-                    <span class="hpa-current" [class.hpa-over]="e.hpa_mem_current! > e.hpa_mem_target!">{{ e.hpa_mem_current ?? '—' }}</span>
-                  </span>
-                } @else { <span class="cell-na">—</span> }
-              </td>
-              <!-- MEM -->
-              <td class="cell-num col-group-start">{{ e.mem_req_per_pod }}</td>
-              <td class="cell-num" [class.cell-hot]="e.mem_usage_per_pod > e.mem_req_per_pod">{{ e.mem_usage_per_pod }}</td>
-              <td class="cell-num">{{ e.mem_limit_per_pod }}</td>
-              <td class="cell-num">
-                <span class="ratio-bar">
-                  <span class="ratio-fill" [style.width.%]="e.mem_req_limit_ratio * 100"></span>
-                </span>
-                <span class="ratio-text">{{ e.mem_req_limit_ratio }}</span>
-              </td>
-              <!-- Meta -->
-              <td class="col-group-start">{{ e.workload || '—' }}</td>
-              <td>{{ e.lba || '—' }}</td>
-              <td class="cell-note">{{ e.note || '' }}</td>
+              @for (col of visibleColumns; track col.key) {
+                <td [class.sticky-col]="col.key === 'deployment'" [class.cell-num]="isNumCol(col.key)" [class.cell-hot]="isCellHot(col.key, e)">
+                  @switch (col.key) {
+                    @case ('deployment') { <code class="cell-name-text">{{ e.deployment }}</code> }
+                    @case ('cluster') { <span class="cell-mono">{{ shortCluster(e.cluster) }}</span> }
+                    @case ('version') { <span class="version-tag">{{ e.version }}</span> }
+                    @case ('pods') { {{ e.pods }} }
+                    @case ('pods_not_ready') {
+                      @if (e.pods_not_ready > 0) { <span class="not-ready-badge">{{ e.pods_not_ready }}</span> }
+                      @else { <span class="all-ready">0</span> }
+                    }
+                    @case ('cpu_req_per_pod') { {{ e.cpu_req_per_pod }}m }
+                    @case ('cpu_usage_per_pod') { {{ e.cpu_usage_per_pod }}m }
+                    @case ('cpu_req_sum') { {{ e.cpu_req_sum }} }
+                    @case ('cpu_usage_sum') { {{ e.cpu_usage_sum }} }
+                    @case ('hpa_cpu') {
+                      @if (e.hpa_cpu_target !== null) {
+                        <span class="hpa-pair">
+                          <span class="hpa-target">{{ e.hpa_cpu_target }}</span><span class="hpa-sep">/</span><span class="hpa-current" [class.hpa-over]="e.hpa_cpu_current! > e.hpa_cpu_target!">{{ e.hpa_cpu_current ?? '—' }}</span>
+                        </span>
+                      } @else { <span class="cell-na">—</span> }
+                    }
+                    @case ('hpa_mem') {
+                      @if (e.hpa_mem_target !== null) {
+                        <span class="hpa-pair">
+                          <span class="hpa-target">{{ e.hpa_mem_target }}</span><span class="hpa-sep">/</span><span class="hpa-current" [class.hpa-over]="e.hpa_mem_current! > e.hpa_mem_target!">{{ e.hpa_mem_current ?? '—' }}</span>
+                        </span>
+                      } @else { <span class="cell-na">—</span> }
+                    }
+                    @case ('mem_req_per_pod') { {{ e.mem_req_per_pod }} }
+                    @case ('mem_usage_per_pod') { {{ e.mem_usage_per_pod }} }
+                    @case ('mem_limit_per_pod') { {{ e.mem_limit_per_pod }} }
+                    @case ('mem_req_limit_ratio') {
+                      <span class="ratio-bar"><span class="ratio-fill" [style.width.%]="e.mem_req_limit_ratio * 100"></span></span>
+                      <span class="ratio-text">{{ e.mem_req_limit_ratio }}</span>
+                    }
+                    @case ('workload') { {{ e.workload || '—' }} }
+                    @case ('lba') { {{ e.lba || '—' }} }
+                    @case ('note') { {{ e.note || '' }} }
+                  }
+                </td>
+              }
             </tr>
           }
         </tbody>
@@ -202,7 +215,7 @@ interface GatewayEntry {
     .search-wrap i { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 12px; }
     .search-wrap input { padding-left: 30px !important; width: 160px; }
 
-    /* Interval Config */
+    /* Interval */
     .interval-config {
       display: flex; align-items: center; gap: 6px;
       padding: 4px 8px; border-radius: 8px;
@@ -218,13 +231,46 @@ interface GatewayEntry {
     .int-btn:hover { color: var(--text); background: var(--bg-hover); }
     .int-btn.active { border-color: var(--accent); background: var(--accent-subtle); color: var(--accent); font-weight: 700; }
 
-    /* Live dot */
-    .live-dot {
-      width: 8px; height: 8px; border-radius: 50%; background: var(--text-muted);
-      display: inline-block; margin-right: 6px;
-    }
+    /* Live */
+    .live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-muted); display: inline-block; margin-right: 6px; }
     .live-dot.pulsing { background: var(--danger); animation: pulse 1.5s infinite; }
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+    /* Column Config */
+    .col-config-wrap { position: relative; }
+    .col-config-panel {
+      position: absolute; top: 40px; right: 0; z-index: 100;
+      width: 280px; max-height: 400px; overflow-y: auto;
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 12px; box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+      padding: 12px; animation: cfgIn 0.15s ease-out;
+    }
+    @keyframes cfgIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+    .cfg-panel-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--border);
+      font-size: 12px; font-weight: 700;
+    }
+    .cfg-panel-actions { display: flex; gap: 8px; }
+    .cfg-link {
+      background: none; border: none; color: var(--accent); font-size: 11px;
+      cursor: pointer; font-weight: 500; padding: 0;
+    }
+    .cfg-link:hover { text-decoration: underline; }
+    .cfg-group { margin-bottom: 10px; }
+    .cfg-group-label {
+      display: block; font-size: 9px; font-weight: 700; color: var(--text-muted);
+      text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px;
+    }
+    .cfg-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 4px 6px; border-radius: 4px; cursor: pointer; font-size: 12px;
+      color: var(--text-secondary); transition: background 0.1s;
+    }
+    .cfg-item:hover { background: var(--bg-hover); }
+    .cfg-item input[type="checkbox"] {
+      width: 14px; height: 14px; accent-color: var(--accent); cursor: pointer;
+    }
 
     /* Summary */
     .summary-strip {
@@ -243,87 +289,45 @@ interface GatewayEntry {
     .pill-label { color: var(--text-muted); }
 
     /* Table */
-    .table-container {
-      overflow-x: auto; border: 1px solid var(--border);
-      border-radius: var(--radius); background: var(--bg-card);
-    }
-    .gw-table {
-      width: 100%; border-collapse: collapse; font-size: 12px;
-      white-space: nowrap;
-    }
+    .table-container { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-card); }
+    .gw-table { width: 100%; border-collapse: collapse; font-size: 12px; white-space: nowrap; }
     .gw-table thead { position: sticky; top: 0; z-index: 2; }
     .gw-table th {
       padding: 10px 12px; text-align: left; font-size: 10px;
       font-weight: 700; color: var(--text-muted); text-transform: uppercase;
       letter-spacing: 0.04em; background: var(--bg-elevated);
-      border-bottom: 1px solid var(--border); cursor: pointer;
-      user-select: none;
+      border-bottom: 1px solid var(--border); cursor: pointer; user-select: none;
     }
     .gw-table th i { font-size: 9px; opacity: 0.4; margin-left: 2px; }
     .gw-table th:hover { color: var(--text); }
-    .gw-table td {
-      padding: 10px 12px; border-bottom: 1px solid var(--border);
-      color: var(--text-secondary);
-    }
+    .gw-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); color: var(--text-secondary); }
     .gw-table tr:hover td { background: var(--bg-hover); }
     .gw-table tr:last-child td { border-bottom: none; }
-
-    .col-group-start { border-left: 1px solid var(--border) !important; }
-
-    .sticky-col {
-      position: sticky; left: 0; z-index: 1;
-      background: var(--bg-card);
-    }
+    .sticky-col { position: sticky; left: 0; z-index: 1; background: var(--bg-card); }
     thead .sticky-col { background: var(--bg-elevated); z-index: 3; }
     tr:hover .sticky-col { background: var(--bg-hover); }
 
     /* Cells */
-    .cell-name code { font-size: 11px; font-weight: 600; color: var(--text); }
+    .cell-name-text { font-size: 11px; font-weight: 600; color: var(--text); }
     .cell-mono { font-family: 'JetBrains Mono', monospace; font-size: 11px; }
     .cell-num { font-family: 'JetBrains Mono', monospace; text-align: right; }
     .cell-hot { color: var(--danger); font-weight: 600; }
     .cell-na { color: var(--text-muted); opacity: 0.5; }
-    .cell-note { max-width: 120px; overflow: hidden; text-overflow: ellipsis; }
-
-    .version-tag {
-      font-size: 10px; padding: 2px 6px; border-radius: 4px;
-      background: var(--bg-elevated); border: 1px solid var(--border);
-      font-family: 'JetBrains Mono', monospace;
-    }
-
-    .not-ready-badge {
-      display: inline-flex; align-items: center; justify-content: center;
-      min-width: 20px; padding: 2px 6px; border-radius: 10px;
-      background: var(--danger-subtle); color: var(--danger);
-      font-weight: 700; font-size: 11px;
-    }
+    .version-tag { font-size: 10px; padding: 2px 6px; border-radius: 4px; background: var(--bg-elevated); border: 1px solid var(--border); font-family: 'JetBrains Mono', monospace; }
+    .not-ready-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; padding: 2px 6px; border-radius: 10px; background: var(--danger-subtle); color: var(--danger); font-weight: 700; font-size: 11px; }
     .all-ready { color: var(--text-muted); opacity: 0.5; }
-
-    /* HPA */
     .hpa-pair { display: inline-flex; align-items: center; gap: 2px; }
     .hpa-target { color: var(--text-muted); }
     .hpa-sep { color: var(--border-hover); }
     .hpa-current { font-weight: 600; color: var(--success); }
     .hpa-over { color: var(--danger) !important; }
-
-    /* Ratio bar */
-    .ratio-bar {
-      display: inline-block; width: 32px; height: 4px; border-radius: 2px;
-      background: var(--bg-elevated); overflow: hidden; vertical-align: middle;
-      margin-right: 4px;
-    }
+    .ratio-bar { display: inline-block; width: 32px; height: 4px; border-radius: 2px; background: var(--bg-elevated); overflow: hidden; vertical-align: middle; margin-right: 4px; }
     .ratio-fill { display: block; height: 100%; border-radius: 2px; background: var(--accent); }
     .ratio-text { font-size: 10px; color: var(--text-muted); }
-
-    /* Row states */
     .row-warn { background: var(--danger-subtle); }
     .row-warn .sticky-col { background: var(--danger-subtle); }
     .row-warn:hover td, .row-warn:hover .sticky-col { background: rgba(239, 68, 68, 0.08); }
-
-    .empty-state {
-      display: flex; align-items: center; justify-content: center; gap: 8px;
-      padding: 48px; color: var(--text-muted); font-size: 13px;
-    }
+    .empty-state { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 48px; color: var(--text-muted); font-size: 13px; }
   `]
 })
 export class GatewayMonitorComponent implements OnInit, OnDestroy {
@@ -337,11 +341,14 @@ export class GatewayMonitorComponent implements OnInit, OnDestroy {
   streaming = false;
   lastUpdated = '';
   refreshInterval = 10;
+  configOpen = false;
   private sortField = '';
   private sortAsc = true;
   private wsSub: Subscription | null = null;
   private wsSend: ((msg: string) => void) | null = null;
   private wsClose: (() => void) | null = null;
+
+  private STORAGE_KEY = 'kubsome_gw_columns';
 
   intervalOptions = [
     { label: '5s', value: 5 },
@@ -350,16 +357,81 @@ export class GatewayMonitorComponent implements OnInit, OnDestroy {
     { label: '60s', value: 60 },
   ];
 
+  columns: ColumnDef[] = [
+    { key: 'deployment', label: 'Deployment', group: 'General', visible: true },
+    { key: 'cluster', label: 'Cluster', group: 'General', visible: true },
+    { key: 'version', label: 'Version', group: 'General', visible: true },
+    { key: 'pods', label: 'Pods', group: 'General', visible: true },
+    { key: 'pods_not_ready', label: 'Not Ready', group: 'General', visible: true },
+    { key: 'cpu_req_per_pod', label: 'CPU req/pod', group: 'CPU', visible: true },
+    { key: 'cpu_usage_per_pod', label: 'CPU use/pod', group: 'CPU', visible: true },
+    { key: 'cpu_req_sum', label: 'CPU req Σ', group: 'CPU', visible: true },
+    { key: 'cpu_usage_sum', label: 'CPU use Σ', group: 'CPU', visible: true },
+    { key: 'hpa_cpu', label: 'HPA CPU %', group: 'HPA', visible: true },
+    { key: 'hpa_mem', label: 'HPA MEM %', group: 'HPA', visible: true },
+    { key: 'mem_req_per_pod', label: 'MEM req/pod', group: 'Memory', visible: true },
+    { key: 'mem_usage_per_pod', label: 'MEM use/pod', group: 'Memory', visible: true },
+    { key: 'mem_limit_per_pod', label: 'MEM limit/pod', group: 'Memory', visible: true },
+    { key: 'mem_req_limit_ratio', label: 'Req/Limit', group: 'Memory', visible: true },
+    { key: 'workload', label: 'Workload', group: 'Meta', visible: true },
+    { key: 'lba', label: 'LBA', group: 'Meta', visible: true },
+    { key: 'note', label: 'Note', group: 'Meta', visible: false },
+  ];
+
+  columnGroups: string[] = ['General', 'CPU', 'HPA', 'Memory', 'Meta'];
+
+  get visibleColumns(): ColumnDef[] { return this.columns.filter(c => c.visible); }
   get totalPods() { return this.entries.reduce((s, e) => s + e.pods, 0); }
   get totalNotReady() { return this.entries.reduce((s, e) => s + e.pods_not_ready, 0); }
   get totalCpuUsage() { return this.entries.reduce((s, e) => s + e.cpu_usage_sum, 0).toFixed(1); }
 
-  ngOnInit() { this.startStream(); }
+  ngOnInit() {
+    this.loadColumns();
+    this.startStream();
+  }
+
   ngOnDestroy() { this.stopStream(); }
 
-  toggleStream() {
-    this.streaming ? this.stopStream() : this.startStream();
+  // Column config
+  columnsByGroup(group: string): ColumnDef[] { return this.columns.filter(c => c.group === group); }
+
+  showAll() { this.columns.forEach(c => c.visible = true); this.saveColumns(); }
+  showNone() { this.columns.forEach(c => c.visible = c.key === 'deployment'); this.saveColumns(); }
+  resetColumns() {
+    const defaults = ['deployment', 'cluster', 'version', 'pods', 'pods_not_ready', 'cpu_req_per_pod', 'cpu_usage_per_pod', 'cpu_req_sum', 'cpu_usage_sum', 'hpa_cpu', 'hpa_mem', 'mem_req_per_pod', 'mem_usage_per_pod', 'mem_limit_per_pod', 'mem_req_limit_ratio', 'workload', 'lba'];
+    this.columns.forEach(c => c.visible = defaults.includes(c.key));
+    this.saveColumns();
   }
+
+  saveColumns() {
+    const visible = this.columns.filter(c => c.visible).map(c => c.key);
+    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(visible));
+  }
+
+  private loadColumns() {
+    try {
+      const raw = localStorage.getItem(this.STORAGE_KEY);
+      if (raw) {
+        const visible: string[] = JSON.parse(raw);
+        this.columns.forEach(c => c.visible = visible.includes(c.key));
+      }
+    } catch {}
+  }
+
+  // Cell helpers
+  isNumCol(key: string): boolean {
+    return ['pods', 'pods_not_ready', 'cpu_req_per_pod', 'cpu_usage_per_pod', 'cpu_req_sum', 'cpu_usage_sum', 'hpa_cpu', 'hpa_mem', 'mem_req_per_pod', 'mem_usage_per_pod', 'mem_limit_per_pod', 'mem_req_limit_ratio'].includes(key);
+  }
+
+  isCellHot(key: string, e: GatewayEntry): boolean {
+    if (key === 'cpu_usage_per_pod') return e.cpu_usage_per_pod > e.cpu_req_per_pod;
+    if (key === 'cpu_usage_sum') return e.cpu_usage_sum > e.cpu_req_sum;
+    if (key === 'mem_usage_per_pod') return e.mem_usage_per_pod > e.mem_req_per_pod;
+    return false;
+  }
+
+  // Stream
+  toggleStream() { this.streaming ? this.stopStream() : this.startStream(); }
 
   setInterval(val: number) {
     this.refreshInterval = val;
@@ -374,12 +446,7 @@ export class GatewayMonitorComponent implements OnInit, OnDestroy {
     const conn = this.ws.connect('/ws/gateway-monitor');
     this.wsSend = conn.send;
     this.wsClose = conn.close;
-
-    // Send initial config
-    setTimeout(() => {
-      conn.send(JSON.stringify({ interval: this.refreshInterval }));
-    }, 100);
-
+    setTimeout(() => conn.send(JSON.stringify({ interval: this.refreshInterval })), 100);
     this.wsSub = conn.messages$.subscribe({
       next: (data) => {
         this.entries = JSON.parse(data);
@@ -433,7 +500,7 @@ export class GatewayMonitorComponent implements OnInit, OnDestroy {
     this.filtered = [...this.filtered].sort((a: any, b: any) => {
       const av = a[field], bv = b[field];
       if (typeof av === 'number') return (av - bv) * dir;
-      return String(av).localeCompare(String(bv)) * dir;
+      return String(av ?? '').localeCompare(String(bv ?? '')) * dir;
     });
   }
 
