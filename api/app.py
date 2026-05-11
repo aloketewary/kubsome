@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 
-from api.routes import pods, overview, contexts, events, metrics, logs, deployments, diagnostics, intelligence, terminal, operations, ws, describe
+from api.routes import pods, overview, contexts, events, metrics, logs, deployments, diagnostics, intelligence, terminal, operations, ws, describe, gateway
 
 app = FastAPI(
     title="Kubsome API",
@@ -35,6 +35,7 @@ app.include_router(intelligence.router, prefix="/api")
 app.include_router(terminal.router, prefix="/api")
 app.include_router(operations.router, prefix="/api")
 app.include_router(describe.router, prefix="/api")
+app.include_router(gateway.router, prefix="/api")
 app.include_router(ws.router)
 
 

@@ -328,6 +328,7 @@ export class ShellComponent implements OnInit {
   monitorItems = [
     { path: '/dashboard', icon: 'pi pi-objects-column', label: 'Dashboard' },
     { path: '/monitor', icon: 'pi pi-desktop', label: 'Monitor' },
+    { path: '/gateway-monitor', icon: 'pi pi-server', label: 'Gateway' },
     { path: '/pods', icon: 'pi pi-box', label: 'Pods' },
     { path: '/events', icon: 'pi pi-bolt', label: 'Events' },
     { path: '/metrics', icon: 'pi pi-chart-bar', label: 'Metrics' },

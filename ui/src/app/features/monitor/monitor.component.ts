@@ -213,17 +213,30 @@ interface MonitorCard {
             <div class="fs-header">
               <div class="fs-title">
                 <span class="fs-badge" [class]="'badge-' + cardHealth(card)">{{ cardHealth(card) }}</span>
-                <h2>{{ card.context }} / {{ card.namespace }}</h2>
+                <h2>{{ card.context }} / {{ card.namespace }}{{ card.app ? ' / ' + card.app : '' }}</h2>
+                @if (card.alertEnabled) {
+                  <span class="fs-alert-indicator" [class.alert-triggered]="healthPct(card) < card.alertThreshold">
+                    <i class="pi pi-bell"></i> {{ healthPct(card) < card.alertThreshold ? 'ALERT' : 'OK' }}
+                  </span>
+                }
                 @if (card.lastUpdated) {
                   <span class="fs-time">{{ card.lastUpdated }}</span>
                 }
               </div>
               <div class="fs-header-actions">
+                @if (card.app) {
+                  <button class="fs-btn" (click)="restartApp(card)" title="Restart">
+                    <i class="pi pi-refresh"></i>
+                  </button>
+                  <button class="fs-btn" (click)="scaleDown(card)" title="Scale Down">
+                    <i class="pi pi-minus"></i>
+                  </button>
+                  <button class="fs-btn" (click)="scaleUp(card)" title="Scale Up">
+                    <i class="pi pi-plus"></i>
+                  </button>
+                }
                 <button class="fs-btn" (click)="fetchCardData(card)" title="Refresh">
-                  <i class="pi pi-refresh"></i>
-                </button>
-                <button class="fs-btn" (click)="card.fullscreen = false" title="Minimize">
-                  <i class="pi pi-window-minimize"></i>
+                  <i class="pi pi-sync"></i>
                 </button>
                 <button class="fs-btn fs-btn-close" (click)="card.fullscreen = false" title="Close">
                   <i class="pi pi-times"></i>
@@ -248,6 +261,17 @@ interface MonitorCard {
                   <div class="fs-stat"><span class="fs-stat-val">{{ card.data.deployments?.healthy || 0 }}/{{ (card.data.deployments?.healthy || 0) + (card.data.deployments?.unavailable || 0) }}</span><span class="fs-stat-label">Deployments</span></div>
                 </div>
               </div>
+
+              <!-- Alert Threshold -->
+              @if (card.alertEnabled) {
+                <div class="fs-alert-section" [class.fs-alert-triggered]="healthPct(card) < card.alertThreshold">
+                  <div class="fs-alert-bar">
+                    <div class="fs-alert-fill" [style.width.%]="healthPct(card)"></div>
+                    <div class="fs-alert-threshold" [style.left.%]="card.alertThreshold"></div>
+                  </div>
+                  <span class="fs-alert-label">Health {{ healthPct(card) }}% · Threshold {{ card.alertThreshold }}%</span>
+                </div>
+              }
 
               <!-- Deployment Progress -->
               <div class="fs-section">
@@ -492,6 +516,29 @@ interface MonitorCard {
     }
     .fs-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-subtle); }
     .fs-btn-close:hover { border-color: var(--danger); color: var(--danger); background: var(--danger-subtle); }
+    .fs-alert-indicator {
+      font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 4px;
+      background: var(--success-subtle); color: var(--success);
+    }
+    .fs-alert-indicator.alert-triggered {
+      background: var(--danger-subtle); color: var(--danger); animation: pulse 1.5s infinite;
+    }
+    .fs-alert-section {
+      padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-elevated);
+    }
+    .fs-alert-section.fs-alert-triggered { border-color: var(--danger); background: var(--danger-subtle); }
+    .fs-alert-bar {
+      position: relative; height: 8px; border-radius: 4px; background: var(--bg); overflow: visible; margin-bottom: 8px;
+    }
+    .fs-alert-fill {
+      height: 100%; border-radius: 4px; background: var(--success); transition: width 0.4s;
+    }
+    .fs-alert-triggered .fs-alert-fill { background: var(--danger); }
+    .fs-alert-threshold {
+      position: absolute; top: -3px; width: 2px; height: 14px;
+      background: var(--warning); border-radius: 1px;
+    }
+    .fs-alert-label { font-size: 11px; color: var(--text-muted); }
     .fs-body { padding: 24px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 24px; }
     .fs-health-row { display: flex; align-items: center; gap: 24px; }
     .fs-ring-wrap { position: relative; width: 90px; height: 90px; flex-shrink: 0; }
