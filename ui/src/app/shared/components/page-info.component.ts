@@ -5,7 +5,7 @@ import { Component, Input } from '@angular/core';
   standalone: true,
   template: `
     <div class="info-wrap">
-      <button class="info-btn" (click)="open = !open" [class.active]="open">
+      <button class="info-btn" (click)="open = !open" [class.active]="open" aria-label="Toggle info">
         <i class="pi pi-info-circle"></i>
       </button>
       @if (open) {
@@ -13,7 +13,7 @@ import { Component, Input } from '@angular/core';
         <div class="info-panel">
           <div class="info-header">
             <span>{{ title }}</span>
-            <button class="info-close" (click)="open = false"><i class="pi pi-times"></i></button>
+            <button class="info-close" (click)="open = false" aria-label="Close info"><i class="pi pi-times"></i></button>
           </div>
           <div class="info-body">
             <p class="info-desc">{{ description }}</p>
