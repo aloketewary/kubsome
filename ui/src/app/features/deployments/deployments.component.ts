@@ -104,7 +104,7 @@ import { AiInsightDrawerComponent } from '../../shared/components/ai-insight-dra
     </div>
 
     <!-- Rollout Dialog -->
-    <p-dialog [(visible)]="rolloutVisible" [header]="'Rollout — ' + rolloutName" [modal]="true" [style]="{ width: '600px' }" [appendTo]="'body'">
+    <p-dialog [(visible)]="rolloutVisible" [header]="'Rollout — ' + rolloutName" [modal]="true" [maximizable]="true" styleClass="fullscreen-dialog" [appendTo]="'body'">
       @if (rolloutData) {
         <div class="rollout-section">
           <h4>Status</h4>

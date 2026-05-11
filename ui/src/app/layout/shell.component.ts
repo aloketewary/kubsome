@@ -286,10 +286,15 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
       display: flex; align-items: center; justify-content: center;
     }
     .help-modal {
-      width: 650px; max-height: 80vh; background: var(--bg-card);
+      width: min(650px, 90vw); max-height: 80vh; background: var(--bg-card);
       border: 1px solid var(--border); border-radius: var(--radius);
       box-shadow: 0 20px 60px rgba(0,0,0,0.5); display: flex; flex-direction: column;
       overflow: hidden;
+      animation: helpIn 0.25s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    @keyframes helpIn { from { opacity: 0; transform: scale(0.95) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+    @media (max-width: 768px) {
+      .help-modal { width: 100vw; height: 100vh; max-height: 100vh; border-radius: 0; }
     }
     .help-header {
       display: flex; align-items: center; justify-content: space-between;

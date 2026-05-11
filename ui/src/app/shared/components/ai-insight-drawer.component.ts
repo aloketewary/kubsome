@@ -8,7 +8,7 @@ import { DrawerModule } from 'primeng/drawer';
   standalone: true,
   imports: [TagModule, ButtonModule, DrawerModule],
   template: `
-    <p-drawer [(visible)]="visible" position="right" [appendTo]="'body'" [modal]="true" [style]="{ width: '450px' }" (onHide)="closed.emit()">
+    <p-drawer [(visible)]="visible" position="right" [appendTo]="'body'" [modal]="true" [style]="{ width: fullscreen ? '100vw' : '450px' }" (onHide)="closed.emit()">
       <ng-template pTemplate="header">
         <div class="drawer-header">
           <i class="pi pi-sparkles ai-icon"></i>
@@ -16,6 +16,9 @@ import { DrawerModule } from 'primeng/drawer';
             <h3>AI Diagnosis</h3>
             <p>{{ resourceName }}</p>
           </div>
+          <button class="expand-btn" (click)="fullscreen = !fullscreen" [title]="fullscreen ? 'Collapse' : 'Expand'">
+            <i class="pi" [class.pi-window-minimize]="fullscreen" [class.pi-expand]="!fullscreen"></i>
+          </button>
         </div>
       </ng-template>
 
@@ -73,10 +76,18 @@ import { DrawerModule } from 'primeng/drawer';
     </p-drawer>
   `,
   styles: [`
-    .drawer-header { display: flex; align-items: center; gap: 12px; }
+    .drawer-header { display: flex; align-items: center; gap: 12px; width: 100%; }
     .ai-icon { font-size: 20px; color: var(--accent); }
+    .header-text { flex: 1; }
     .header-text h3 { margin: 0; font-size: 16px; font-weight: 700; }
     .header-text p { margin: 0; font-size: 11px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+    .expand-btn {
+      width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--border);
+      background: var(--bg-elevated); color: var(--text-muted); cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.2s;
+    }
+    .expand-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-subtle); }
 
     .drawer-content { padding: 4px 16px 24px; display: flex; flex-direction: column; gap: 24px; }
     .section-label { font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; }
@@ -114,4 +125,5 @@ export class AiInsightDrawerComponent {
   @Input() findings: any[] = [];
   @Input() reasoning = '';
   @Output() closed = new EventEmitter<void>();
+  fullscreen = false;
 }

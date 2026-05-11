@@ -59,6 +59,46 @@ def incident_snapshot():
     return {"captured": False, "reason": "no active incident"}
 
 
+@router.get("/incident/report")
+def incident_report(path: str = ""):
+    """Read an exported incident report JSON file."""
+    import json
+    from pathlib import Path
+    file = Path(path)
+    if not file.exists() or not str(file).startswith(
+        str(Path.home() / ".kubsome" / "incidents")
+    ):
+        return {"error": "File not found or access denied"}
+    with open(file, "r") as f:
+        return json.load(f)
+
+
+@router.get("/incident/history")
+def incident_history():
+    """List all past incident reports."""
+    import json
+    from pathlib import Path
+    incidents_dir = Path.home() / ".kubsome" / "incidents"
+    if not incidents_dir.exists():
+        return {"incidents": []}
+    reports = []
+    for f in sorted(incidents_dir.glob("incident_*.json"), reverse=True):
+        try:
+            data = json.loads(f.read_text())
+            reports.append({
+                "id": data.get("id", ""),
+                "title": data.get("title", "Untitled"),
+                "started": data.get("started", ""),
+                "ended": data.get("ended", ""),
+                "notes_count": len(data.get("notes", [])),
+                "snapshots_count": len(data.get("snapshots", [])),
+                "path": str(f),
+            })
+        except Exception:
+            continue
+    return {"incidents": reports}
+
+
 # ─── RBAC ─────────────────────────────────────────────────────────────────────
 
 @router.get("/rbac")

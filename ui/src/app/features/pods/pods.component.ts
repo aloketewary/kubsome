@@ -22,6 +22,7 @@ interface PodGroup {
   expanded: boolean;
   unhealthyCount: number;
   healthPct: number;
+  commonLabels: { key: string; value: string }[];
 }
 
 @Component({
@@ -125,7 +126,7 @@ interface PodGroup {
                    (click)="togglePod(pod, group)" tabindex="0" role="button" aria-label="Select pod"
                    (keydown.enter)="togglePod(pod, group)" (keydown.space)="$event.preventDefault(); togglePod(pod, group)">
                 <div class="pod-main">
-                  <div class="pod-status-dot" [class.dot-running]="pod.status === 'Running'" [class.dot-pending]="pod.status === 'Pending'" [class.dot-error]="pod.status !== 'Running' && pod.status !== 'Pending'"></div>
+                  <div class="pod-status-dot" [class.dot-running]="pod.status === 'Running' || pod.status === 'Succeeded'" [class.dot-pending]="pod.status === 'Pending'" [class.dot-error]="pod.status !== 'Running' && pod.status !== 'Pending' && pod.status !== 'Succeeded'"></div>
                   <span class="pod-name mono" (click)="openDrawer(pod, $event)" [pTooltip]="pod.name">{{ shortName(pod.name) }}</span>
                   <p-tag [value]="pod.status" [severity]="statusSeverity(pod.status)" />
                   @if (pod.restarts > 0) {
@@ -148,16 +149,20 @@ interface PodGroup {
                        (keydown.space)="$event.preventDefault(); $event.stopPropagation(); openDrawer(pod, $event)"></i>
                   </div>
                 </div>
-                @if (pod.labels && pod.labels.length > 0) {
-                  <div class="pod-labels">
-                    @for (lbl of pod.labels; track $index) {
-                      <span class="pod-label-chip">{{ lbl }}</span>
-                    }
-                  </div>
-                }
               </div>
             }
           </div>
+          @if (group.commonLabels.length > 0) {
+            <div class="group-footer">
+              @for (lbl of group.commonLabels; track lbl.key) {
+                <span class="label-pair">
+                  <span class="label-key">{{ lbl.key }}</span>
+                  <span class="label-arrow">→</span>
+                  <span class="label-value">{{ lbl.value }}</span>
+                </span>
+              }
+            </div>
+          }
         }
       </div>
     }
@@ -189,7 +194,7 @@ interface PodGroup {
       (closed)="aiDrawerVisible = false" />
 
     <!-- Logs Dialog -->
-    <p-dialog [(visible)]="logsVisible" [header]="logsTitle" [modal]="true" [maximizable]="true" (onHide)="onLogsHide()" styleClass="logs-dialog" [appendTo]="'body'">
+    <p-dialog [(visible)]="logsVisible" [header]="logsTitle" [modal]="true" [maximizable]="true" (onHide)="onLogsHide()" styleClass="fullscreen-dialog" [appendTo]="'body'">
       <div class="log-viewer-container">
         @if (isLiveMode) {
           <app-log-terminal [podName]="activePodName" />
@@ -209,12 +214,12 @@ interface PodGroup {
     </p-dialog>
 
     <!-- Inspect Dialog -->
-    <p-dialog [(visible)]="inspectVisible" header="Pod Inspection" [modal]="true" [style]="{ width: '70vw' }" [appendTo]="'body'">
+    <p-dialog [(visible)]="inspectVisible" header="Pod Inspection" [modal]="true" [maximizable]="true" styleClass="fullscreen-dialog" [appendTo]="'body'">
       <pre class="inspect-output">{{ inspectData | json }}</pre>
     </p-dialog>
 
     <!-- Diagnose Dialog -->
-    <p-dialog [(visible)]="diagnoseVisible" header="Diagnosis" [modal]="true" [style]="{ width: '60vw' }" [appendTo]="'body'">
+    <p-dialog [(visible)]="diagnoseVisible" header="Diagnosis" [modal]="true" [maximizable]="true" styleClass="fullscreen-dialog" [appendTo]="'body'">
       @if (diagnoseFindings.length > 0) {
         @for (f of diagnoseFindings; track $index) {
           <div class="finding" [class]="'finding-' + f.severity">
@@ -359,15 +364,18 @@ interface PodGroup {
     }
     .pod-actions i:hover { color: var(--accent); background: var(--accent-subtle); transform: scale(1.15); }
 
-    /* Pod Labels */
-    .pod-labels {
-      display: flex; flex-wrap: wrap; gap: 4px; padding-left: 18px;
+    /* Group Footer Labels */
+    .group-footer {
+      display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 18px;
+      border-top: 1px solid var(--border); background: var(--bg-elevated);
     }
-    .pod-label-chip {
-      font-size: 10px; padding: 1px 7px; border-radius: 4px;
-      background: var(--bg-elevated); border: 1px solid var(--border);
-      color: var(--text-muted); font-family: 'JetBrains Mono', monospace;
+    .label-pair {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 11px; font-family: 'JetBrains Mono', monospace;
     }
+    .label-key { color: var(--text-muted); font-weight: 600; }
+    .label-arrow { color: var(--border-hover); font-size: 10px; }
+    .label-value { color: var(--accent); }
 
     /* Empty */
     .empty-state {
@@ -436,10 +444,10 @@ export class PodsComponent implements OnInit, OnDestroy {
   get criticalCount() { return this.pods.filter(p => p.status !== 'Running' && p.status !== 'Pending').length; }
 
   statusSeverity(status: string): 'success' | 'warn' | 'danger' | 'secondary' | undefined {
-    switch (status) { case 'Running': return 'success'; case 'Pending': return 'warn'; default: return 'danger'; }
+    switch (status) { case 'Running': return 'success'; case 'Succeeded': return 'secondary'; case 'Pending': return 'warn'; default: return 'danger'; }
   }
 
-  isHealthy(pod: Pod): boolean { return pod.status === 'Running' && pod.restarts <= 5; }
+  isHealthy(pod: Pod): boolean { return (pod.status === 'Running' || pod.status === 'Succeeded') && pod.restarts <= 5; }
   isError(line: string): boolean { const l = line.toLowerCase(); return l.includes('error') || l.includes('fatal') || l.includes('panic'); }
   isSelected(pod: Pod): boolean { return this.selected.some(p => p.name === pod.name); }
 
@@ -527,8 +535,20 @@ export class PodsComponent implements OnInit, OnDestroy {
     for (const pod of this.pods) { const dep = this.extractDeployment(pod.name); if (!map.has(dep)) map.set(dep, []); map.get(dep)!.push(pod); }
     this.groups = Array.from(map.entries()).map(([deployment, pods]) => {
       const unhealthyCount = pods.filter(p => !this.isHealthy(p)).length;
-      return { deployment, pods, expanded: true, unhealthyCount, healthPct: pods.length > 0 ? Math.round(((pods.length - unhealthyCount) / pods.length) * 100) : 100 };
+      const commonLabels = this.extractCommonLabels(pods);
+      return { deployment, pods, expanded: true, unhealthyCount, healthPct: pods.length > 0 ? Math.round(((pods.length - unhealthyCount) / pods.length) * 100) : 100, commonLabels };
     }).sort((a, b) => { if (a.unhealthyCount > 0 && b.unhealthyCount === 0) return -1; if (a.unhealthyCount === 0 && b.unhealthyCount > 0) return 1; return a.deployment.localeCompare(b.deployment); });
+  }
+
+  private extractCommonLabels(pods: Pod[]): { key: string; value: string }[] {
+    if (pods.length === 0) return [];
+    const first = pods[0].labels || [];
+    return first
+      .filter(lbl => pods.every(p => (p.labels || []).includes(lbl)))
+      .map(lbl => {
+        const idx = lbl.indexOf('=');
+        return idx > 0 ? { key: lbl.slice(0, idx), value: lbl.slice(idx + 1) } : { key: lbl, value: '' };
+      });
   }
 
   private extractDeployment(podName: string): string { const parts = podName.split('-'); return parts.length > 2 ? parts.slice(0, -2).join('-') : podName; }

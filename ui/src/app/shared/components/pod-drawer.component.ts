@@ -4,6 +4,7 @@ import { JsonPipe } from '@angular/common';
 import { TagModule } from 'primeng/tag';
 import { ButtonModule } from 'primeng/button';
 import { TooltipModule } from 'primeng/tooltip';
+import { DrawerModule } from 'primeng/drawer';
 import { ApiService } from '../../core/services/api.service';
 import { WsService } from '../../core/services/ws.service';
 import { Subscription } from 'rxjs';
@@ -11,210 +12,211 @@ import { Subscription } from 'rxjs';
 @Component({
   selector: 'app-pod-drawer',
   standalone: true,
-  imports: [FormsModule, JsonPipe, TagModule, ButtonModule, TooltipModule],
+  imports: [FormsModule, JsonPipe, TagModule, ButtonModule, TooltipModule, DrawerModule],
   template: `
-    @if (podName) {
-      <div class="drawer-overlay" (click)="close()"></div>
-      <aside class="drawer">
-        <!-- Rich Header -->
+    <p-drawer [(visible)]="drawerVisible" position="right" [appendTo]="'body'" [modal]="true"
+              [style]="{ width: fullscreen ? '100vw' : '580px' }" (onHide)="close()">
+      <ng-template pTemplate="header">
         <div class="drawer-header">
-          <div class="header-top">
-            <div class="header-status">
-              <span class="status-dot" [class.running]="podStatus === 'Running'" [class.error]="podStatus !== 'Running' && podStatus !== 'Pending'" [class.pending]="podStatus === 'Pending'"></span>
-              <p-tag [value]="podStatus" [severity]="podStatus === 'Running' ? 'success' : podStatus === 'Pending' ? 'warn' : 'danger'" />
-            </div>
-            <button pButton icon="pi pi-times" class="p-button-text p-button-sm p-button-rounded" (click)="close()"></button>
+          <div class="header-status">
+            <span class="status-dot" [class.running]="podStatus === 'Running'" [class.error]="podStatus !== 'Running' && podStatus !== 'Pending'" [class.pending]="podStatus === 'Pending'"></span>
+            <p-tag [value]="podStatus" [severity]="podStatus === 'Running' ? 'success' : podStatus === 'Pending' ? 'warn' : 'danger'" />
           </div>
-          <div class="header-name">
-            <code>{{ podName }}</code>
-            <i class="pi pi-copy copy-icon" pTooltip="Copy name" (click)="copyName()"
-               aria-label="Copy pod name" tabindex="0" role="button"
-               (keydown.enter)="$event.stopPropagation(); copyName()"
-               (keydown.space)="$event.preventDefault(); $event.stopPropagation(); copyName()"></i>
+          <div class="header-text">
+            <h3>Pod Details</h3>
+            <p>{{ podName }}</p>
           </div>
-          @if (podMeta) {
-            <div class="header-meta">
-              <span class="meta-item"><i class="pi pi-server"></i> {{ podMeta.node }}</span>
-              <span class="meta-item"><i class="pi pi-clock"></i> {{ podMeta.age }}</span>
-              <span class="meta-item"><i class="pi pi-globe"></i> {{ podMeta.ip }}</span>
+          <button class="expand-btn" (click)="fullscreen = !fullscreen" [title]="fullscreen ? 'Collapse' : 'Expand'">
+            <i class="pi" [class.pi-window-minimize]="fullscreen" [class.pi-expand]="!fullscreen"></i>
+          </button>
+        </div>
+      </ng-template>
+
+      <!-- Meta strip -->
+      @if (podMeta) {
+        <div class="meta-strip">
+          <span class="meta-item"><i class="pi pi-server"></i> {{ podMeta.node }}</span>
+          <span class="meta-item"><i class="pi pi-clock"></i> {{ podMeta.age }}</span>
+          <span class="meta-item"><i class="pi pi-globe"></i> {{ podMeta.ip }}</span>
+          <i class="pi pi-copy copy-icon" pTooltip="Copy name" (click)="copyName()"></i>
+        </div>
+      }
+
+      <!-- Tabs -->
+      <div class="drawer-tabs">
+        @for (tab of tabs; track tab.id) {
+          <button class="tab-btn" [class.active]="activeTab === tab.id" (click)="switchTab(tab.id)">
+            <i [class]="tab.icon"></i>
+            {{ tab.label }}
+            @if (tab.id === 'logs' && logLines.length > 0) {
+              <span class="tab-badge">{{ logLines.length }}</span>
+            }
+            @if (tab.id === 'events' && events.length > 0) {
+              <span class="tab-badge">{{ events.length }}</span>
+            }
+            @if (tab.id === 'diagnose' && findings.length > 0) {
+              <span class="tab-badge warn">{{ findings.length }}</span>
+            }
+          </button>
+        }
+      </div>
+
+      <!-- Content -->
+      <div class="drawer-content">
+        <!-- LOGS TAB -->
+        @if (activeTab === 'logs') {
+          <div class="logs-toolbar">
+            <span class="logs-count">{{ logLines.length }} lines</span>
+            <div class="logs-actions">
+              <button pButton [icon]="streaming ? 'pi pi-stop' : 'pi pi-play'" [label]="streaming ? 'Stop' : 'Live'"
+                      class="p-button-sm p-button-text" [class.p-button-success]="streaming" (click)="toggleLiveStream()"></button>
+              <button pButton icon="pi pi-arrow-down" class="p-button-sm p-button-text" pTooltip="Scroll to bottom" (click)="scrollToBottom()"></button>
             </div>
-          }
-        </div>
-
-        <!-- Tabs with badges -->
-        <div class="drawer-tabs">
-          @for (tab of tabs; track tab.id) {
-            <button class="tab-btn" [class.active]="activeTab === tab.id" (click)="switchTab(tab.id)">
-              <i [class]="tab.icon"></i>
-              {{ tab.label }}
-              @if (tab.id === 'logs' && logLines.length > 0) {
-                <span class="tab-badge">{{ logLines.length }}</span>
-              }
-              @if (tab.id === 'events' && events.length > 0) {
-                <span class="tab-badge">{{ events.length }}</span>
-              }
-              @if (tab.id === 'diagnose' && findings.length > 0) {
-                <span class="tab-badge warn">{{ findings.length }}</span>
-              }
-            </button>
-          }
-        </div>
-
-        <!-- Content -->
-        <div class="drawer-content">
-          <!-- LOGS TAB -->
-          @if (activeTab === 'logs') {
-            <div class="logs-toolbar">
-              <span class="logs-count">{{ logLines.length }} lines</span>
-              <div class="logs-actions">
-                <button pButton [icon]="streaming ? 'pi pi-stop' : 'pi pi-play'" [label]="streaming ? 'Stop' : 'Live'"
-                        class="p-button-sm p-button-text" [class.p-button-success]="streaming" (click)="toggleLiveStream()"></button>
-                <button pButton icon="pi pi-arrow-down" class="p-button-sm p-button-text" pTooltip="Scroll to bottom" (click)="scrollToBottom()"></button>
+          </div>
+          <div class="log-viewer" #logContainer>
+            @for (line of logLines; track $index) {
+              <div class="log-line" [class.error-line]="isError(line)">
+                <span class="line-num">{{ $index + 1 }}</span>
+                <span class="line-text">{{ line }}</span>
               </div>
-            </div>
-            <div class="log-viewer" #logContainer>
-              @for (line of logLines; track $index) {
-                <div class="log-line" [class.error-line]="isError(line)">
-                  <span class="line-num">{{ $index + 1 }}</span>
-                  <span class="line-text">{{ line }}</span>
-                </div>
-              }
-              @if (logLines.length === 0) {
-                <div class="tab-empty"><i class="pi pi-terminal"></i> No logs available</div>
-              }
-            </div>
-          }
+            }
+            @if (logLines.length === 0) {
+              <div class="tab-empty"><i class="pi pi-terminal"></i> No logs available</div>
+            }
+          </div>
+        }
 
-          <!-- EVENTS TAB -->
-          @if (activeTab === 'events') {
-            <div class="events-timeline">
-              @for (ev of events; track $index) {
-                <div class="ev-item">
-                  <div class="ev-marker">
-                    <div class="ev-dot" [class.ev-warn]="ev.type === 'Warning'" [class.ev-normal]="ev.type !== 'Warning'"></div>
-                    @if ($index < events.length - 1) { <div class="ev-line"></div> }
-                  </div>
-                  <div class="ev-content">
-                    <div class="ev-header">
-                      <span class="ev-reason">{{ ev.reason }}</span>
-                      <span class="ev-time">{{ ev.last_seen || '' }}</span>
-                    </div>
-                    <p class="ev-message">{{ ev.message }}</p>
-                    @if (ev.count > 1) {
-                      <span class="ev-count">{{ ev.count }}× repeated</span>
-                    }
-                  </div>
+        <!-- EVENTS TAB -->
+        @if (activeTab === 'events') {
+          <div class="events-timeline">
+            @for (ev of events; track $index) {
+              <div class="ev-item">
+                <div class="ev-marker">
+                  <div class="ev-dot" [class.ev-warn]="ev.type === 'Warning'" [class.ev-normal]="ev.type !== 'Warning'"></div>
+                  @if ($index < events.length - 1) { <div class="ev-line"></div> }
                 </div>
-              }
-              @if (events.length === 0) {
-                <div class="tab-empty"><i class="pi pi-check-circle"></i> No events</div>
-              }
-            </div>
-          }
+                <div class="ev-content">
+                  <div class="ev-header">
+                    <span class="ev-reason">{{ ev.reason }}</span>
+                    <span class="ev-time">{{ ev.last_seen || '' }}</span>
+                  </div>
+                  <p class="ev-message">{{ ev.message }}</p>
+                  @if (ev.count > 1) {
+                    <span class="ev-count">{{ ev.count }}× repeated</span>
+                  }
+                </div>
+              </div>
+            }
+            @if (events.length === 0) {
+              <div class="tab-empty"><i class="pi pi-check-circle"></i> No events</div>
+            }
+          </div>
+        }
 
-          <!-- INFO TAB -->
-          @if (activeTab === 'info') {
-            @if (inspectData) {
-              <div class="info-grid">
+        <!-- INFO TAB -->
+        @if (activeTab === 'info') {
+          @if (inspectData) {
+            <div class="info-grid">
+              <div class="info-section">
+                <h4>Pod</h4>
+                <div class="info-row"><span class="info-key">Name</span><code class="info-val">{{ inspectData.name }}</code></div>
+                <div class="info-row"><span class="info-key">Namespace</span><code class="info-val">{{ inspectData.namespace }}</code></div>
+                <div class="info-row"><span class="info-key">Node</span><code class="info-val">{{ inspectData.node }}</code></div>
+                <div class="info-row"><span class="info-key">Pod IP</span><code class="info-val">{{ inspectData.pod_ip }}</code></div>
+                <div class="info-row"><span class="info-key">Phase</span><p-tag [value]="inspectData.phase" [severity]="inspectData.phase === 'Running' ? 'success' : 'warn'" /></div>
+                <div class="info-row"><span class="info-key">Age</span><span class="info-val">{{ inspectData.age }}</span></div>
+                <div class="info-row"><span class="info-key">Restart Policy</span><span class="info-val">{{ inspectData.restart_policy }}</span></div>
+                <div class="info-row"><span class="info-key">Service Account</span><code class="info-val">{{ inspectData.service_account }}</code></div>
+              </div>
+
+              @if (inspectData.containers?.length > 0) {
                 <div class="info-section">
-                  <h4>Pod</h4>
-                  <div class="info-row"><span class="info-key">Name</span><code class="info-val">{{ inspectData.name }}</code></div>
-                  <div class="info-row"><span class="info-key">Namespace</span><code class="info-val">{{ inspectData.namespace }}</code></div>
-                  <div class="info-row"><span class="info-key">Node</span><code class="info-val">{{ inspectData.node }}</code></div>
-                  <div class="info-row"><span class="info-key">Pod IP</span><code class="info-val">{{ inspectData.pod_ip }}</code></div>
-                  <div class="info-row"><span class="info-key">Phase</span><p-tag [value]="inspectData.phase" [severity]="inspectData.phase === 'Running' ? 'success' : 'warn'" /></div>
-                  <div class="info-row"><span class="info-key">Age</span><span class="info-val">{{ inspectData.age }}</span></div>
-                  <div class="info-row"><span class="info-key">Restart Policy</span><span class="info-val">{{ inspectData.restart_policy }}</span></div>
-                  <div class="info-row"><span class="info-key">Service Account</span><code class="info-val">{{ inspectData.service_account }}</code></div>
-                </div>
-
-                @if (inspectData.containers?.length > 0) {
-                  <div class="info-section">
-                    <h4>Containers</h4>
-                    @for (c of inspectData.containers; track c.name) {
-                      <div class="container-card">
-                        <div class="container-header">
-                          <span class="container-name">{{ c.name }}</span>
-                          <p-tag [value]="c.state" [severity]="c.state === 'running' ? 'success' : 'danger'" />
-                        </div>
-                        <div class="info-row"><span class="info-key">Image</span><code class="info-val img">{{ c.image }}</code></div>
-                        <div class="info-row"><span class="info-key">Restarts</span><span class="info-val" [class.danger-text]="c.restarts > 5">{{ c.restarts }}</span></div>
-                        @if (c.ports?.length > 0) {
-                          <div class="info-row"><span class="info-key">Ports</span><span class="info-val">{{ c.ports.join(', ') }}</span></div>
-                        }
+                  <h4>Containers</h4>
+                  @for (c of inspectData.containers; track c.name) {
+                    <div class="container-card">
+                      <div class="container-header">
+                        <span class="container-name">{{ c.name }}</span>
+                        <p-tag [value]="c.state" [severity]="c.state === 'running' ? 'success' : 'danger'" />
                       </div>
-                    }
-                  </div>
-                }
-
-                @if (inspectData.labels && objectKeys(inspectData.labels).length > 0) {
-                  <div class="info-section">
-                    <h4>Labels</h4>
-                    <div class="labels-wrap">
-                      @for (key of objectKeys(inspectData.labels); track key) {
-                        <span class="label-chip">{{ key }}={{ inspectData.labels[key] }}</span>
+                      <div class="info-row"><span class="info-key">Image</span><code class="info-val img">{{ c.image }}</code></div>
+                      <div class="info-row"><span class="info-key">Restarts</span><span class="info-val" [class.danger-text]="c.restarts > 5">{{ c.restarts }}</span></div>
+                      @if (c.ports?.length > 0) {
+                        <div class="info-row"><span class="info-key">Ports</span><span class="info-val">{{ c.ports.join(', ') }}</span></div>
                       }
                     </div>
-                  </div>
-                }
-              </div>
-            } @else {
-              <div class="tab-empty"><i class="pi pi-spin pi-spinner"></i> Loading...</div>
-            }
-          }
-
-          <!-- DIAGNOSE TAB -->
-          @if (activeTab === 'diagnose') {
-            @if (findings.length > 0) {
-              @for (f of findings; track $index) {
-                <div class="finding" [class]="'finding-' + f.severity">
-                  <div class="finding-head">
-                    <p-tag [value]="f.severity" [severity]="f.severity === 'critical' ? 'danger' : 'warn'" />
-                    <strong>{{ f.title }}</strong>
-                  </div>
-                  <p class="finding-detail">{{ f.detail }}</p>
-                  <p class="finding-action"><i class="pi pi-arrow-right"></i> {{ f.action }}</p>
+                  }
                 </div>
               }
-            } @else if (diagnoseDone) {
-              <div class="tab-empty healthy"><i class="pi pi-check-circle"></i> Pod appears healthy — no issues detected</div>
-            } @else {
-              <div class="tab-empty"><i class="pi pi-spin pi-spinner"></i> Running diagnostics...</div>
-            }
+
+              @if (inspectData.labels && objectKeys(inspectData.labels).length > 0) {
+                <div class="info-section">
+                  <h4>Labels</h4>
+                  <div class="labels-wrap">
+                    @for (key of objectKeys(inspectData.labels); track key) {
+                      <span class="label-chip">{{ key }}={{ inspectData.labels[key] }}</span>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          } @else {
+            <div class="tab-empty"><i class="pi pi-spin pi-spinner"></i> Loading...</div>
           }
-        </div>
-      </aside>
-    }
+        }
+
+        <!-- DIAGNOSE TAB -->
+        @if (activeTab === 'diagnose') {
+          @if (findings.length > 0) {
+            @for (f of findings; track $index) {
+              <div class="finding" [class]="'finding-' + f.severity">
+                <div class="finding-head">
+                  <p-tag [value]="f.severity" [severity]="f.severity === 'critical' ? 'danger' : 'warn'" />
+                  <strong>{{ f.title }}</strong>
+                </div>
+                <p class="finding-detail">{{ f.detail }}</p>
+                <p class="finding-action"><i class="pi pi-arrow-right"></i> {{ f.action }}</p>
+              </div>
+            }
+          } @else if (diagnoseDone) {
+            <div class="tab-empty healthy"><i class="pi pi-check-circle"></i> Pod appears healthy — no issues detected</div>
+          } @else {
+            <div class="tab-empty"><i class="pi pi-spin pi-spinner"></i> Running diagnostics...</div>
+          }
+        }
+      </div>
+    </p-drawer>
   `,
   styles: [`
-    .drawer-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(2px); z-index: 1100; }
-    .drawer {
-      position: fixed; top: 0; right: 0; width: 580px; height: 100vh;
-      background: var(--bg); border-left: 1px solid var(--border);
-      z-index: 1200; display: flex; flex-direction: column;
-      animation: slideIn 0.2s ease-out; box-shadow: -8px 0 30px rgba(0,0,0,0.3);
-    }
-    @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
-
-    /* Header */
-    .drawer-header { padding: 20px; border-bottom: 1px solid var(--border); background: var(--bg-card); }
-    .header-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+    .drawer-header { display: flex; align-items: center; gap: 12px; width: 100%; }
     .header-status { display: flex; align-items: center; gap: 8px; }
     .status-dot { width: 10px; height: 10px; border-radius: 50%; }
     .status-dot.running { background: var(--success); box-shadow: 0 0 8px var(--success); }
     .status-dot.pending { background: var(--warning); animation: pulse 2s infinite; }
     .status-dot.error { background: var(--danger); box-shadow: 0 0 8px var(--danger); }
     @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
-    .header-name { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
-    .header-name code { font-size: 15px; font-weight: 600; }
-    .copy-icon { font-size: 12px; color: var(--text-muted); cursor: pointer; padding: 4px; border-radius: 4px; }
-    .copy-icon:hover { color: var(--accent); background: var(--accent-subtle); }
-    .header-meta { display: flex; gap: 16px; }
+    .header-text { flex: 1; }
+    .header-text h3 { margin: 0; font-size: 16px; font-weight: 700; }
+    .header-text p { margin: 0; font-size: 11px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .expand-btn {
+      width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--border);
+      background: var(--bg-elevated); color: var(--text-muted); cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.2s;
+    }
+    .expand-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-subtle); }
+
+    /* Meta */
+    .meta-strip {
+      display: flex; align-items: center; gap: 16px; padding: 10px 16px;
+      border-bottom: 1px solid var(--border); background: var(--bg-elevated);
+    }
     .meta-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-muted); }
     .meta-item i { font-size: 11px; }
+    .copy-icon { font-size: 12px; color: var(--text-muted); cursor: pointer; margin-left: auto; padding: 4px; border-radius: 4px; }
+    .copy-icon:hover { color: var(--accent); background: var(--accent-subtle); }
 
     /* Tabs */
-    .drawer-tabs { display: flex; border-bottom: 1px solid var(--border); padding: 0 16px; background: var(--bg-card); }
+    .drawer-tabs { display: flex; border-bottom: 1px solid var(--border); padding: 0 16px; }
     .tab-btn {
       display: flex; align-items: center; gap: 6px;
       padding: 12px 14px; background: none; border: none;
@@ -311,6 +313,8 @@ export class PodDrawerComponent implements OnChanges {
   @Input() podStatus = '';
   @Output() closed = new EventEmitter<void>();
 
+  drawerVisible = false;
+  fullscreen = false;
   activeTab = 'logs';
   tabs = [
     { id: 'logs', icon: 'pi pi-align-left', label: 'Logs' },
@@ -342,12 +346,15 @@ export class PodDrawerComponent implements OnChanges {
   ngOnChanges(changes: SimpleChanges) {
     if (changes['podName'] && this.podName) {
       this.reset();
+      this.drawerVisible = true;
       this.loadLogs();
       this.loadMeta();
+    } else if (changes['podName'] && !this.podName) {
+      this.drawerVisible = false;
     }
   }
 
-  close() { this.stopStream(); this.closed.emit(); }
+  close() { this.stopStream(); this.drawerVisible = false; this.closed.emit(); }
 
   copyName() { navigator.clipboard.writeText(this.podName); }
 
@@ -384,5 +391,5 @@ export class PodDrawerComponent implements OnChanges {
   }
   private loadDiagnose() { this.api.diagnose(this.podName).subscribe(res => { this.findings = res.findings; this.diagnoseDone = true; }); }
   private stopStream() { this.streaming = false; this.streamSub?.unsubscribe(); this.streamClose?.(); this.streamSub = null; this.streamClose = null; }
-  private reset() { this.stopStream(); this.logLines = []; this.events = []; this.inspectData = null; this.findings = []; this.diagnoseDone = false; this.podMeta = null; this.activeTab = 'logs'; }
+  private reset() { this.stopStream(); this.logLines = []; this.events = []; this.inspectData = null; this.findings = []; this.diagnoseDone = false; this.podMeta = null; this.activeTab = 'logs'; this.fullscreen = false; }
 }

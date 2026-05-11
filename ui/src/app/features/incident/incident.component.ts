@@ -50,9 +50,61 @@ import { ConfirmService } from '../../shared/services/confirm.service';
         </div>
 
         @if (resolvedExportPath) {
-          <div class="export-info">
+          <div class="export-info" (click)="loadReport()">
             <i class="pi pi-file"></i>
             <span>Exported to: <code>{{ resolvedExportPath }}</code></span>
+            <i class="pi pi-external-link export-link"></i>
+          </div>
+        }
+
+        <!-- Full Report View -->
+        @if (reportData) {
+          <div class="report-section">
+            <div class="report-header">
+              <h3>Full Report</h3>
+              <button pButton icon="pi pi-times" class="p-button-text p-button-sm p-button-rounded" (click)="reportData = null"></button>
+            </div>
+
+            @if (reportData.snapshots?.length > 0) {
+              <div class="report-block">
+                <h4>Snapshots ({{ reportData.snapshots.length }})</h4>
+                @for (snap of reportData.snapshots; track $index) {
+                  <div class="snapshot-card">
+                    <div class="snap-header">
+                      <span class="snap-time">{{ snap.time | slice:11:19 }}</span>
+                      <span class="snap-ctx">{{ snap.context }} / {{ snap.namespace }}</span>
+                    </div>
+                    <div class="snap-pods">
+                      @for (pod of snap.pods || []; track pod.name) {
+                        <span class="snap-pod" [class.snap-pod-bad]="pod.status !== 'Running'">{{ pod.name }} ({{ pod.status }})</span>
+                      }
+                      @if ((snap.pods || []).length === 0) {
+                        <span class="snap-empty">No pods captured</span>
+                      }
+                    </div>
+                    @if ((snap.events || []).length > 0) {
+                      <div class="snap-events">
+                        @for (ev of snap.events.slice(0, 5); track $index) {
+                          <div class="snap-ev"><span class="snap-ev-type" [class.snap-ev-warn]="ev.type === 'Warning'">{{ ev.type }}</span> {{ ev.reason }}: {{ ev.message }}</div>
+                        }
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+            }
+
+            @if (reportData.notes?.length > 0) {
+              <div class="report-block">
+                <h4>Notes ({{ reportData.notes.length }})</h4>
+                @for (note of reportData.notes; track $index) {
+                  <div class="report-note">
+                    <span class="note-time">{{ note.time | slice:11:19 }}</span>
+                    <span>{{ note.text }}</span>
+                  </div>
+                }
+              </div>
+            }
           </div>
         }
 
@@ -109,6 +161,28 @@ import { ConfirmService } from '../../shared/services/confirm.service';
           </div>
           <button pButton label="Start Incident" icon="pi pi-play" class="p-button-danger start-btn" (click)="start()" [disabled]="!title.trim()"></button>
         </div>
+
+        <!-- Past Incidents -->
+        @if (history.length > 0) {
+          <div class="history-section">
+            <h3>Past Incidents</h3>
+            @for (item of history; track item.id) {
+              <div class="history-card" (click)="viewHistoryReport(item)">
+                <div class="history-top">
+                  <span class="history-title">{{ item.title }}</span>
+                  <span class="history-date">{{ item.started | slice:0:10 }}</span>
+                </div>
+                <div class="history-meta">
+                  <span>{{ item.notes_count }} notes</span>
+                  <span>{{ item.snapshots_count }} snapshots</span>
+                  @if (item.ended) {
+                    <span>{{ calcDuration({started: item.started, ended: item.ended}) }}</span>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        }
       </div>
     }
 
@@ -351,8 +425,47 @@ import { ConfirmService } from '../../shared/services/confirm.service';
       display: flex; align-items: center; gap: 8px; padding: 12px 16px;
       background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius);
       font-size: 12px; color: var(--text-secondary); margin-bottom: 20px;
+      cursor: pointer; transition: all 0.2s;
     }
+    .export-info:hover { border-color: var(--accent); background: var(--accent-subtle); }
     .export-info code { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text); }
+    .export-link { margin-left: auto; font-size: 11px; color: var(--accent); }
+
+    .report-section {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 20px; margin-bottom: 20px; animation: fadeIn 0.3s ease;
+    }
+    .report-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+    .report-header h3 { font-size: 14px; font-weight: 600; margin: 0; }
+    .report-block { margin-bottom: 16px; }
+    .report-block h4 { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin: 0 0 10px; }
+
+    .snapshot-card {
+      background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 8px;
+      padding: 12px; margin-bottom: 8px;
+    }
+    .snap-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+    .snap-time { font-size: 11px; font-family: 'JetBrains Mono', monospace; color: var(--text-muted); }
+    .snap-ctx { font-size: 10px; color: var(--text-muted); }
+    .snap-pods { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
+    .snap-pod {
+      font-size: 10px; padding: 2px 6px; border-radius: 4px;
+      background: var(--success-subtle); color: var(--success);
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .snap-pod-bad { background: var(--danger-subtle); color: var(--danger); }
+    .snap-empty { font-size: 10px; color: var(--text-muted); }
+    .snap-events { margin-top: 6px; }
+    .snap-ev { font-size: 11px; color: var(--text-secondary); padding: 2px 0; }
+    .snap-ev-type { font-size: 10px; font-weight: 600; margin-right: 4px; color: var(--text-muted); }
+    .snap-ev-warn { color: var(--warning); }
+
+    .report-note {
+      display: flex; align-items: baseline; gap: 10px; padding: 6px 0;
+      border-bottom: 1px solid var(--border); font-size: 12px;
+    }
+    .report-note:last-child { border-bottom: none; }
+    .note-time { font-size: 10px; font-family: 'JetBrains Mono', monospace; color: var(--text-muted); flex-shrink: 0; }
 
     .resolved-timeline {
       background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
@@ -363,6 +476,22 @@ import { ConfirmService } from '../../shared/services/confirm.service';
     .tl-dot-end { background: var(--success) !important; }
 
     .dismiss-btn { width: 100%; }
+
+    /* History */
+    .history-section {
+      margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--border);
+    }
+    .history-section h3 { font-size: 13px; font-weight: 600; color: var(--text-muted); margin: 0 0 12px; }
+    .history-card {
+      padding: 12px 16px; background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius-sm, 12px); margin-bottom: 8px; cursor: pointer;
+      transition: all 0.2s;
+    }
+    .history-card:hover { border-color: var(--accent); background: var(--accent-subtle); }
+    .history-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+    .history-title { font-size: 13px; font-weight: 500; }
+    .history-date { font-size: 10px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+    .history-meta { display: flex; gap: 12px; font-size: 11px; color: var(--text-muted); }
   `],
 })
 export class IncidentComponent implements OnInit, OnDestroy {
@@ -374,6 +503,8 @@ export class IncidentComponent implements OnInit, OnDestroy {
   resolved: any = null;
   resolvedDuration = '';
   resolvedExportPath = '';
+  reportData: any = null;
+  history: any[] = [];
   title = '';
   noteText = '';
   severity = 'high';
@@ -392,8 +523,24 @@ export class IncidentComponent implements OnInit, OnDestroy {
     { value: 'low', label: 'Low' },
   ];
 
-  ngOnInit() { this.loadStatus(); }
+  ngOnInit() { this.loadStatus(); this.loadHistory(); }
   ngOnDestroy() { clearInterval(this.timerInterval); }
+
+  loadHistory() {
+    this.http.get<any>(`${this.base}/incident/history`).subscribe(res => {
+      this.history = res.incidents || [];
+    });
+  }
+
+  viewHistoryReport(item: any) {
+    this.http.get<any>(`${this.base}/incident/report`, { params: { path: item.path } }).subscribe(res => {
+      if (!res.error) {
+        this.resolved = res;
+        this.resolvedExportPath = item.path;
+        this.resolvedDuration = this.calcDuration(res);
+      }
+    });
+  }
 
   loadStatus() {
     this.http.get<any>(`${this.base}/incident/status`).subscribe(res => {
@@ -434,9 +581,17 @@ export class IncidentComponent implements OnInit, OnDestroy {
     this.resolved = null;
     this.resolvedExportPath = '';
     this.resolvedDuration = '';
+    this.reportData = null;
   }
 
-  private calcDuration(incident: any): string {
+  loadReport() {
+    if (!this.resolvedExportPath) return;
+    this.http.get<any>(`${this.base}/incident/report`, { params: { path: this.resolvedExportPath } }).subscribe(res => {
+      if (!res.error) this.reportData = res;
+    });
+  }
+
+  calcDuration(incident: any): string {
     if (!incident.started || !incident.ended) return '—';
     const ms = new Date(incident.ended).getTime() - new Date(incident.started).getTime();
     const mins = Math.floor(ms / 60000);
