@@ -299,6 +299,86 @@ app-contexts {
   background: var(--accent-subtle) !important;
 }
 
+/* Severity Buttons — glassmorphism with readable text */
+.p-button.p-button-danger:not(.p-button-text):not(.p-button-outlined) {
+  background: rgba(244, 63, 94, 0.85) !important;
+  border-color: rgba(244, 63, 94, 0.6) !important;
+  color: #fff !important;
+  backdrop-filter: blur(8px);
+}
+.p-button.p-button-danger:not(.p-button-text):not(.p-button-outlined):hover {
+  background: rgba(244, 63, 94, 1) !important;
+  box-shadow: 0 0 20px rgba(244, 63, 94, 0.3) !important;
+}
+.p-button.p-button-success:not(.p-button-text):not(.p-button-outlined) {
+  background: rgba(16, 185, 129, 0.85) !important;
+  border-color: rgba(16, 185, 129, 0.6) !important;
+  color: #fff !important;
+  backdrop-filter: blur(8px);
+}
+.p-button.p-button-success:not(.p-button-text):not(.p-button-outlined):hover {
+  background: rgba(16, 185, 129, 1) !important;
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.3) !important;
+}
+.p-button.p-button-warning:not(.p-button-text):not(.p-button-outlined) {
+  background: rgba(245, 158, 11, 0.85) !important;
+  border-color: rgba(245, 158, 11, 0.6) !important;
+  color: #fff !important;
+  backdrop-filter: blur(8px);
+}
+.p-button.p-button-warning:not(.p-button-text):not(.p-button-outlined):hover {
+  background: rgba(245, 158, 11, 1) !important;
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.3) !important;
+}
+.p-button.p-button-secondary:not(.p-button-text):not(.p-button-outlined) {
+  background: rgba(113, 113, 122, 0.3) !important;
+  border-color: rgba(113, 113, 122, 0.4) !important;
+  color: var(--text) !important;
+  backdrop-filter: blur(8px);
+}
+.p-button.p-button-secondary:not(.p-button-text):not(.p-button-outlined):hover {
+  background: rgba(113, 113, 122, 0.5) !important;
+  box-shadow: 0 0 20px rgba(113, 113, 122, 0.2) !important;
+}
+/* Primary (default accent) */
+.p-button:not(.p-button-text):not(.p-button-outlined):not(.p-button-danger):not(.p-button-success):not(.p-button-warning):not(.p-button-secondary) {
+  background: rgba(59, 130, 246, 0.85) !important;
+  border-color: rgba(59, 130, 246, 0.6) !important;
+  color: #fff !important;
+  backdrop-filter: blur(8px);
+}
+/* Outlined severity */
+.p-button-outlined.p-button-danger {
+  border-color: var(--danger) !important;
+  color: var(--danger) !important;
+}
+.p-button-outlined.p-button-danger:hover {
+  background: var(--danger-subtle) !important;
+  border-color: var(--danger) !important;
+  color: var(--danger) !important;
+}
+.p-button-outlined.p-button-success {
+  border-color: var(--success) !important;
+  color: var(--success) !important;
+}
+.p-button-outlined.p-button-success:hover {
+  background: var(--success-subtle) !important;
+}
+.p-button-outlined.p-button-warning {
+  border-color: var(--warning) !important;
+  color: var(--warning) !important;
+}
+.p-button-outlined.p-button-warning:hover {
+  background: var(--warning-subtle) !important;
+}
+/* Text severity */
+.p-button-text.p-button-danger { color: var(--danger) !important; }
+.p-button-text.p-button-danger:hover { background: var(--danger-subtle) !important; }
+.p-button-text.p-button-success { color: var(--success) !important; }
+.p-button-text.p-button-success:hover { background: var(--success-subtle) !important; }
+.p-button-text.p-button-warning { color: var(--warning) !important; }
+.p-button-text.p-button-warning:hover { background: var(--warning-subtle) !important; }
+
 /* Progress Bar */
 .p-progressbar {
   height: 6px !important;
