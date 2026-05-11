@@ -6,6 +6,7 @@ from core.resolver import (
 from core.selector import (
     choose_pod, choose_deployment, choose_cronjob
 )
+from core.spinner import loading
 
 
 def resolve_command(user_input: str):
@@ -46,7 +47,8 @@ def resolve_command(user_input: str):
     # Logs
     if cmd == "logs" and len(tokens) > 1:
         query = tokens[1]
-        matches = resolve_pod_name(query)
+        with loading(f"Resolving {query}..."):
+            matches = resolve_pod_name(query)
         if not matches:
             return None
         pod = choose_pod(matches)

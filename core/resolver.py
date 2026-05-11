@@ -1,14 +1,11 @@
 import sys
 from rapidfuzz import process
-from rich.console import Console
 
 from core.k8s import get_pod_names
 from core.cache import cached
 
-_console = Console(stderr=True)
 
-
-def _spin_resolve(query, names):
+def _fuzzy_match(query, names):
     """Fuzzy match with score filtering."""
     matches = process.extract(query, names, limit=5)
     if not matches:
@@ -19,20 +16,18 @@ def _spin_resolve(query, names):
 
 
 def resolve_pod_name(query: str):
+    """Resolve a partial pod name. Requires 2+ chars."""
     if len(query) < 2:
         return None
-    with _console.status(
-        "[dim]Resolving pod...[/dim]", spinner="dots"
-    ):
-        names = get_pod_names()
+    names = get_pod_names()
     if not names:
         return None
-    return _spin_resolve(query, names)
+    return _fuzzy_match(query, names)
 
 
 @cached(ttl=10)
 def resolve_deployment_name(query: str):
-    """Fuzzy match deployment names."""
+    """Fuzzy match deployment names. Requires 2+ chars."""
     if len(query) < 2:
         return None
     import subprocess
@@ -44,23 +39,20 @@ def resolve_deployment_name(query: str):
         f"-o jsonpath='{{.items[*].metadata.name}}'"
     )
 
-    with _console.status(
-        "[dim]Resolving deployment...[/dim]", spinner="dots"
-    ):
-        r = subprocess.run(
-            cmd, shell=True,
-            capture_output=True, text=True
-        )
+    r = subprocess.run(
+        cmd, shell=True,
+        capture_output=True, text=True
+    )
 
     names = r.stdout.strip("'").split()
     if not names:
         return None
-    return _spin_resolve(query, names)
+    return _fuzzy_match(query, names)
 
 
 @cached(ttl=10)
 def resolve_cronjob_name(query: str):
-    """Fuzzy match cronjob names."""
+    """Fuzzy match cronjob names. Requires 2+ chars."""
     if len(query) < 2:
         return None
     import subprocess
@@ -72,15 +64,12 @@ def resolve_cronjob_name(query: str):
         f"-o jsonpath='{{.items[*].metadata.name}}'"
     )
 
-    with _console.status(
-        "[dim]Resolving cronjob...[/dim]", spinner="dots"
-    ):
-        r = subprocess.run(
-            cmd, shell=True,
-            capture_output=True, text=True
-        )
+    r = subprocess.run(
+        cmd, shell=True,
+        capture_output=True, text=True
+    )
 
     names = r.stdout.strip("'").split()
     if not names:
         return None
-    return _spin_resolve(query, names)
+    return _fuzzy_match(query, names)
