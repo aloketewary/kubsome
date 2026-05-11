@@ -521,7 +521,7 @@ interface MonitorCard {
     .empty-page p { font-size: 13px; color: var(--text-secondary); margin: 0; max-width: 320px; }
 
     /* Dialog Fullscreen */
-    .fsd-body { display: flex; flex-direction: column; gap: 20px; }
+    .fsd-body { display: flex; flex-direction: column; gap: 20px; flex: 1; overflow-y: auto; }
     .fsd-health-row { display: flex; align-items: center; gap: 20px; }
     .fsd-ring-wrap { position: relative; width: 80px; height: 80px; flex-shrink: 0; }
     .fsd-ring-wrap svg { width: 100%; height: 100%; transform: rotate(-90deg); }
@@ -536,7 +536,8 @@ interface MonitorCard {
     .fsd-warn .fsd-stat-val { color: var(--warning); }
     .fsd-crit .fsd-stat-val { color: var(--danger); }
     .fsd-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-    .fsd-section { }
+    .fsd-section { display: flex; flex-direction: column; min-height: 0; }
+    .fsd-section:last-child { flex: 1; }
     .fsd-section h4 { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; margin: 0 0 8px; }
     .fsd-section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
     .fsd-section-header h4 { margin: 0; }
@@ -555,7 +556,7 @@ interface MonitorCard {
     .fsd-al-action { font-weight: 500; min-width: 70px; font-size: 11px; }
     .fsd-al-target { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-muted); flex: 1; }
     .fsd-al-time { font-size: 10px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
-    .fsd-events { display: flex; flex-direction: column; gap: 3px; max-height: 200px; overflow-y: auto; }
+    .fsd-events { display: flex; flex-direction: column; gap: 3px; flex: 1; min-height: 0; overflow-y: auto; }
     .fsd-ev { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-radius: 6px; font-size: 12px; }
     .fsd-ev:hover { background: var(--bg-hover); }
     .fsd-ev-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }

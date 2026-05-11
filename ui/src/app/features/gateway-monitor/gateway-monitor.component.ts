@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, OnDestroy } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
@@ -42,6 +42,7 @@ interface ColumnDef {
 @Component({
   selector: 'app-gateway-monitor',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [FormsModule, ButtonModule, TooltipModule, TagModule, InputTextModule, PageInfoComponent],
   template: `
     <div class="page-header">
@@ -369,6 +370,7 @@ interface ColumnDef {
 export class GatewayMonitorComponent implements OnInit, OnDestroy {
   private http = inject(HttpClient);
   private ws = inject(WsService);
+  private cdr = inject(ChangeDetectorRef);
 
   entries: GatewayEntry[] = [];
   filtered: GatewayEntry[] = [];
@@ -387,6 +389,17 @@ export class GatewayMonitorComponent implements OnInit, OnDestroy {
   private wsSub: Subscription | null = null;
   private wsSend: ((msg: string) => void) | null = null;
   private wsClose: (() => void) | null = null;
+  private flashTimer: any = null;
+
+  // Cached computed values (avoid recalc on every CD cycle)
+  cachedVisibleColumns: ColumnDef[] = [];
+  cachedColumnsByGroup: Map<string, ColumnDef[]> = new Map();
+  cachedSparkline = '';
+  totalPods = 0;
+  totalNotReady = 0;
+  totalCpuUsage = '0.0';
+
+  private static NUM_COLS = new Set(['pods', 'pods_not_ready', 'cpu_req_per_pod', 'cpu_usage_per_pod', 'cpu_req_sum', 'cpu_usage_sum', 'hpa_cpu', 'hpa_mem', 'mem_req_per_pod', 'mem_usage_per_pod', 'mem_limit_per_pod', 'mem_req_limit_ratio']);
 
   private STORAGE_KEY = 'kubsome_gw_columns';
 
@@ -420,32 +433,40 @@ export class GatewayMonitorComponent implements OnInit, OnDestroy {
 
   columnGroups: string[] = ['General', 'CPU', 'HPA', 'Memory', 'Meta'];
 
-  get visibleColumns(): ColumnDef[] { return this.columns.filter(c => c.visible); }
-  get totalPods() { return this.entries.reduce((s, e) => s + e.pods, 0); }
-  get totalNotReady() { return this.entries.reduce((s, e) => s + e.pods_not_ready, 0); }
-  get totalCpuUsage() { return this.entries.reduce((s, e) => s + e.cpu_usage_sum, 0).toFixed(1); }
+  get visibleColumns(): ColumnDef[] { return this.cachedVisibleColumns; }
 
   ngOnInit() {
     this.loadColumns();
+    this.rebuildColumnCache();
     this.startStream();
   }
 
   ngOnDestroy() { this.stopStream(); }
 
   // Column config
-  columnsByGroup(group: string): ColumnDef[] { return this.columns.filter(c => c.group === group); }
+  columnsByGroup(group: string): ColumnDef[] { return this.cachedColumnsByGroup.get(group) || []; }
 
-  showAll() { this.columns.forEach(c => c.visible = true); this.saveColumns(); }
-  showNone() { this.columns.forEach(c => c.visible = c.key === 'deployment'); this.saveColumns(); }
+  showAll() { this.columns.forEach(c => c.visible = true); this.saveColumns(); this.rebuildColumnCache(); }
+  showNone() { this.columns.forEach(c => c.visible = c.key === 'deployment'); this.saveColumns(); this.rebuildColumnCache(); }
   resetColumns() {
     const defaults = ['deployment', 'cluster', 'version', 'pods', 'pods_not_ready', 'cpu_req_per_pod', 'cpu_usage_per_pod', 'cpu_req_sum', 'cpu_usage_sum', 'hpa_cpu', 'hpa_mem', 'mem_req_per_pod', 'mem_usage_per_pod', 'mem_limit_per_pod', 'mem_req_limit_ratio', 'workload', 'lba'];
     this.columns.forEach(c => c.visible = defaults.includes(c.key));
     this.saveColumns();
+    this.rebuildColumnCache();
   }
 
   saveColumns() {
     const visible = this.columns.filter(c => c.visible).map(c => c.key);
     localStorage.setItem(this.STORAGE_KEY, JSON.stringify(visible));
+    this.rebuildColumnCache();
+  }
+
+  private rebuildColumnCache() {
+    this.cachedVisibleColumns = this.columns.filter(c => c.visible);
+    this.cachedColumnsByGroup.clear();
+    for (const g of this.columnGroups) {
+      this.cachedColumnsByGroup.set(g, this.columns.filter(c => c.group === g));
+    }
   }
 
   private loadColumns() {
@@ -475,9 +496,13 @@ export class GatewayMonitorComponent implements OnInit, OnDestroy {
     }
     this.prevEntries.clear();
     for (const e of newEntries) this.prevEntries.set(e.deployment, { ...e });
-    // Auto-clear highlights after 2s
+    // Debounced clear — cancel previous timer
+    if (this.flashTimer) clearTimeout(this.flashTimer);
     if (this.changedCells.size > 0) {
-      setTimeout(() => this.changedCells.clear(), 2000);
+      this.flashTimer = setTimeout(() => {
+        this.changedCells.clear();
+        this.cdr.markForCheck();
+      }, 2000);
     }
   }
 
@@ -488,6 +513,13 @@ export class GatewayMonitorComponent implements OnInit, OnDestroy {
     this.memHistory.push(mem);
     if (this.cpuHistory.length > 20) this.cpuHistory.shift();
     if (this.memHistory.length > 20) this.memHistory.shift();
+    this.cachedSparkline = this.buildSparkline(this.cpuHistory);
+  }
+
+  private updateTotals() {
+    this.totalPods = this.entries.reduce((s, e) => s + e.pods, 0);
+    this.totalNotReady = this.entries.reduce((s, e) => s + e.pods_not_ready, 0);
+    this.totalCpuUsage = this.entries.reduce((s, e) => s + e.cpu_usage_sum, 0).toFixed(1);
   }
 
   getCellChange(deployment: string, key: string): 'up' | 'down' | null {
@@ -495,14 +527,19 @@ export class GatewayMonitorComponent implements OnInit, OnDestroy {
   }
 
   sparklinePath(data: number[]): string {
+    return this.cachedSparkline;
+  }
+
+  private buildSparkline(data: number[]): string {
     if (data.length < 2) return '';
     const max = Math.max(...data, 1);
     const w = 80, h = 24;
     const step = w / (data.length - 1);
     return data.map((v, i) => `${i === 0 ? 'M' : 'L'}${i * step},${h - (v / max) * h}`).join(' ');
   }
+
   isNumCol(key: string): boolean {
-    return ['pods', 'pods_not_ready', 'cpu_req_per_pod', 'cpu_usage_per_pod', 'cpu_req_sum', 'cpu_usage_sum', 'hpa_cpu', 'hpa_mem', 'mem_req_per_pod', 'mem_usage_per_pod', 'mem_limit_per_pod', 'mem_req_limit_ratio'].includes(key);
+    return GatewayMonitorComponent.NUM_COLS.has(key);
   }
 
   isCellHot(key: string, e: GatewayEntry): boolean {
@@ -538,9 +575,11 @@ export class GatewayMonitorComponent implements OnInit, OnDestroy {
         this.loading = false;
         this.lastUpdated = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
         this.updateHistory();
+        this.updateTotals();
+        this.cdr.markForCheck();
       },
-      complete: () => { this.streaming = false; },
-      error: () => { this.streaming = false; this.loading = false; },
+      complete: () => { this.streaming = false; this.cdr.markForCheck(); },
+      error: () => { this.streaming = false; this.loading = false; this.cdr.markForCheck(); },
     });
   }
 
@@ -562,8 +601,10 @@ export class GatewayMonitorComponent implements OnInit, OnDestroy {
         this.filter();
         this.loading = false;
         this.lastUpdated = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        this.updateTotals();
+        this.cdr.markForCheck();
       },
-      error: () => { this.loading = false; },
+      error: () => { this.loading = false; this.cdr.markForCheck(); },
     });
   }
 

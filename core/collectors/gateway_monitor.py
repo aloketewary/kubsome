@@ -5,7 +5,9 @@ HPA status, and pod readiness for operational overview.
 
 import json
 import subprocess
+from concurrent.futures import ThreadPoolExecutor
 from core.context import context
+from core.cache import cached
 
 
 def collect_gateway_monitor():
@@ -16,22 +18,32 @@ def collect_gateway_monitor():
     ctx = context.current_context
     ns = context.namespace
 
-    deployments = _get_deployments(ctx, ns)
-    hpas = _get_hpas(ctx, ns)
-    pod_metrics = _get_pod_metrics(ctx, ns)
+    # Run all 3 kubectl calls in parallel
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        dep_future = pool.submit(_get_deployments, ctx, ns)
+        hpa_future = pool.submit(_get_hpas, ctx, ns)
+        met_future = pool.submit(_get_pod_metrics, ctx, ns)
+
+    deployments = dep_future.result()
+    hpas = hpa_future.result()
+    pod_metrics = met_future.result()
 
     results = []
     for dep in deployments:
         name = dep["metadata"]["name"]
         spec = dep["spec"]
         status = dep.get("status", {})
-        containers = spec.get("template", {}).get("spec", {}).get("containers", [])
+        containers = (
+            spec.get("template", {})
+            .get("spec", {})
+            .get("containers", [])
+        )
 
         desired = spec.get("replicas", 0)
         ready = status.get("readyReplicas", 0)
         not_ready = desired - ready
 
-        # Extract version from image tag
+        # Version from image tag
         version = ""
         if containers:
             img = containers[0].get("image", "")
@@ -43,23 +55,29 @@ def collect_gateway_monitor():
         mem_limit_mi = 0
         for c in containers:
             res = c.get("resources", {})
-            cpu_req_m += _parse_cpu(res.get("requests", {}).get("cpu", "0"))
-            mem_req_mi += _parse_mem(res.get("requests", {}).get("memory", "0"))
-            mem_limit_mi += _parse_mem(res.get("limits", {}).get("memory", "0"))
+            cpu_req_m += _parse_cpu(
+                res.get("requests", {}).get("cpu", "0")
+            )
+            mem_req_mi += _parse_mem(
+                res.get("requests", {}).get("memory", "0")
+            )
+            mem_limit_mi += _parse_mem(
+                res.get("limits", {}).get("memory", "0")
+            )
 
         # Actual usage from metrics
         cpu_usage_m, mem_usage_mi = _get_deployment_usage(
             name, pod_metrics
         )
-        avg_cpu_usage = round(cpu_usage_m / ready, 2) if ready > 0 else 0
-        avg_mem_usage = round(mem_usage_mi / ready, 2) if ready > 0 else 0
+        avg_cpu_usage = (
+            round(cpu_usage_m / ready, 2) if ready > 0 else 0
+        )
+        avg_mem_usage = (
+            round(mem_usage_mi / ready, 2) if ready > 0 else 0
+        )
 
         # HPA
         hpa = hpas.get(name, {})
-        hpa_cpu_target = hpa.get("cpu_target", None)
-        hpa_cpu_current = hpa.get("cpu_current", None)
-        hpa_mem_target = hpa.get("mem_target", None)
-        hpa_mem_current = hpa.get("mem_current", None)
 
         # Ratios
         mem_req_limit_ratio = (
@@ -77,40 +95,57 @@ def collect_gateway_monitor():
             "cpu_usage_per_pod": avg_cpu_usage,
             "cpu_req_sum": round(cpu_req_m * desired / 1000, 2),
             "cpu_usage_sum": round(cpu_usage_m / 1000, 2),
-            "hpa_cpu_target": hpa_cpu_target,
-            "hpa_cpu_current": hpa_cpu_current,
-            "hpa_mem_target": hpa_mem_target,
-            "hpa_mem_current": hpa_mem_current,
+            "hpa_cpu_target": hpa.get("cpu_target"),
+            "hpa_cpu_current": hpa.get("cpu_current"),
+            "hpa_mem_target": hpa.get("mem_target"),
+            "hpa_mem_current": hpa.get("mem_current"),
             "mem_req_per_pod": mem_req_mi,
             "mem_usage_per_pod": avg_mem_usage,
             "mem_limit_per_pod": mem_limit_mi,
             "mem_req_limit_ratio": mem_req_limit_ratio,
-            "workload": dep.get("metadata", {}).get("labels", {}).get("workload", ""),
-            "lba": dep.get("metadata", {}).get("annotations", {}).get("service.beta.kubernetes.io/aws-load-balancer-type", ""),
+            "workload": (
+                dep.get("metadata", {})
+                .get("labels", {})
+                .get("workload", "")
+            ),
+            "lba": (
+                dep.get("metadata", {})
+                .get("annotations", {})
+                .get(
+                    "service.beta.kubernetes.io/"
+                    "aws-load-balancer-type", ""
+                )
+            ),
             "note": "",
         })
 
     return results
 
 
+@cached(ttl=3)
 def _get_deployments(ctx, ns):
     cmd = (
         f"kubectl --context {ctx} get deployments "
         f"-n {ns} -o json"
     )
-    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+    result = subprocess.run(
+        cmd, shell=True, capture_output=True, text=True
+    )
     if result.returncode != 0:
         return []
     data = json.loads(result.stdout)
     return data.get("items", [])
 
 
+@cached(ttl=3)
 def _get_hpas(ctx, ns):
     cmd = (
         f"kubectl --context {ctx} get hpa "
         f"-n {ns} -o json"
     )
-    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+    result = subprocess.run(
+        cmd, shell=True, capture_output=True, text=True
+    )
     if result.returncode != 0:
         return {}
     data = json.loads(result.stdout)
@@ -122,7 +157,9 @@ def _get_hpas(ctx, ns):
             .get("name", "")
         )
         metrics = item.get("spec", {}).get("metrics", [])
-        status_metrics = item.get("status", {}).get("currentMetrics", [])
+        status_metrics = (
+            item.get("status", {}).get("currentMetrics", [])
+        )
 
         cpu_target = None
         mem_target = None
@@ -164,22 +201,25 @@ def _get_hpas(ctx, ns):
     return hpas
 
 
+@cached(ttl=3)
 def _get_pod_metrics(ctx, ns):
     cmd = (
         f"kubectl --context {ctx} top pods "
         f"-n {ns} --no-headers"
     )
-    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+    result = subprocess.run(
+        cmd, shell=True, capture_output=True, text=True
+    )
     if result.returncode != 0:
         return {}
     metrics = {}
     for line in result.stdout.strip().split("\n"):
         parts = line.split()
         if len(parts) >= 3:
-            name = parts[0]
-            cpu = _parse_cpu(parts[1])
-            mem = _parse_mem(parts[2])
-            metrics[name] = {"cpu": cpu, "mem": mem}
+            metrics[parts[0]] = {
+                "cpu": _parse_cpu(parts[1]),
+                "mem": _parse_mem(parts[2]),
+            }
     return metrics
 
 
