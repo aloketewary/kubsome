@@ -31,6 +31,9 @@ def switch_context(ctx):
         context.namespace
     )
 
+    from core.cache import invalidate
+    invalidate()
+
 def find_context(query: str):
     contexts = enriched_contexts()
 

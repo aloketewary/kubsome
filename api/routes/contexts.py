@@ -60,8 +60,10 @@ def get_namespaces():
 @router.post("/switch-namespace")
 def post_switch_namespace(req: NamespaceRequest):
     from core.state import save_state
+    from core.cache import invalidate
     context.namespace = req.namespace
     save_state(context.current_context, context.namespace)
+    invalidate()
     return {"namespace": context.namespace}
 
 

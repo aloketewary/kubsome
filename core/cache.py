@@ -18,7 +18,7 @@ def cached(ttl=5):
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
-            key = f"{func.__name__}:{args}:{kwargs}"
+            key = f"{func.__module__}:{func.__name__}:{args}:{kwargs}"
             now = time.time()
 
             if key in _cache:
