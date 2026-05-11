@@ -58,14 +58,66 @@ def get_overview_for(ctx: str, ns: str, app: str = None):
     if r.returncode == 0:
         pods = json.loads(r.stdout).get("items", [])
 
+    total_restarts = 0
+    for p in pods:
+        for cs in p["status"].get("containerStatuses", []):
+            total_restarts += cs.get("restartCount", 0)
+
     pod_health = {
         "healthy": sum(1 for p in pods if p["status"].get("phase") == "Running"),
         "warning": sum(1 for p in pods if sum(cs.get("restartCount", 0) for cs in p["status"].get("containerStatuses", [])) > 5),
         "critical": sum(1 for p in pods if p["status"].get("phase") in ("CrashLoopBackOff", "Error", "Failed")),
         "unavailable": 0,
+        "total": len(pods),
+        "restarts": total_restarts,
     }
 
-    # Nodes
+    # App-specific: get deployment replicas
+    if app:
+        r = subprocess.run(
+            ["kubectl", "--context", ctx, "get", "deployment", app, "-n", ns, "-o", "json"],
+            capture_output=True, text=True
+        )
+        app_info = {}
+        if r.returncode == 0:
+            dep = json.loads(r.stdout)
+            desired = dep.get("spec", {}).get("replicas", 0)
+            available = dep.get("status", {}).get("availableReplicas", 0)
+            app_info = {
+                "desired": desired,
+                "available": available,
+                "ready": dep.get("status", {}).get("readyReplicas", 0),
+                "image": (dep.get("spec", {}).get("template", {}).get("spec", {}).get("containers", [{}])[0].get("image", "")),
+            }
+
+        # Events filtered to app pods
+        r = subprocess.run(
+            ["kubectl", "--context", ctx, "get", "events", "-n", ns,
+             "--field-selector", f"involvedObject.kind=Pod",
+             "--sort-by=.lastTimestamp", "-o", "json"],
+            capture_output=True, text=True
+        )
+        events = []
+        if r.returncode == 0:
+            for item in json.loads(r.stdout).get("items", [])[-50:]:
+                obj_name = item.get("involvedObject", {}).get("name", "")
+                if app.lower() in obj_name.lower():
+                    events.append({
+                        "type": item.get("type", "Normal"),
+                        "reason": item.get("reason", ""),
+                        "object": obj_name,
+                        "message": item.get("message", ""),
+                    })
+
+        return {
+            "context": ctx, "namespace": ns, "app": app,
+            "mode": "app",
+            "pods": pod_health,
+            "app_info": app_info,
+            "events": events,
+        }
+
+    # Cluster/namespace level
     r = subprocess.run(["kubectl", "--context", ctx, "get", "nodes", "-o", "json"], capture_output=True, text=True)
     nodes = []
     if r.returncode == 0:
@@ -77,7 +129,6 @@ def get_overview_for(ctx: str, ns: str, app: str = None):
         "critical": 0, "unavailable": 0,
     }
 
-    # Deployments
     r = subprocess.run(["kubectl", "--context", ctx, "get", "deployments", "-n", ns, "-o", "json"], capture_output=True, text=True)
     deps = []
     if r.returncode == 0:
@@ -89,7 +140,6 @@ def get_overview_for(ctx: str, ns: str, app: str = None):
         "warning": 0, "critical": 0,
     }
 
-    # Events
     r = subprocess.run(["kubectl", "--context", ctx, "get", "events", "-n", ns, "--sort-by=.lastTimestamp", "-o", "json"], capture_output=True, text=True)
     events = []
     if r.returncode == 0:
@@ -103,6 +153,7 @@ def get_overview_for(ctx: str, ns: str, app: str = None):
 
     return {
         "context": ctx, "namespace": ns,
+        "mode": "cluster",
         "pods": pod_health, "nodes": node_health, "deployments": dep_health,
         "events": events,
     }

@@ -139,25 +139,49 @@ interface MonitorCard {
 
           <!-- Data -->
           @if (card.data) {
-            <!-- Compact View -->
-            <div class="mc-compact">
-              <div class="compact-ring">
-                <svg viewBox="0 0 36 36">
-                  <path class="ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                  <path class="ring-fill" [class]="ringClass(card)" [attr.stroke-dasharray]="healthPct(card) + ', 100'" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                </svg>
-                <span class="ring-val">{{ healthPct(card) }}%</span>
+            @if (card.data.mode === 'app') {
+              <!-- App-specific View -->
+              <div class="mc-app-view">
+                <div class="app-replica-ring">
+                  <svg viewBox="0 0 36 36">
+                    <path class="ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                    <path class="ring-fill" [class]="ringClass(card)" [attr.stroke-dasharray]="healthPct(card) + ', 100'" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                  </svg>
+                  <span class="ring-val">{{ card.data.app_info?.available || 0 }}/{{ card.data.app_info?.desired || 0 }}</span>
+                </div>
+                <div class="app-details">
+                  <div class="app-stat-row"><span class="app-stat-label">Pods</span><span class="app-stat-val">{{ card.data.pods?.total || 0 }}</span></div>
+                  <div class="app-stat-row"><span class="app-stat-label">Running</span><span class="app-stat-val app-ok">{{ card.data.pods?.healthy || 0 }}</span></div>
+                  <div class="app-stat-row"><span class="app-stat-label">Restarts</span><span class="app-stat-val" [class.app-warn]="(card.data.pods?.restarts || 0) > 5">{{ card.data.pods?.restarts || 0 }}</span></div>
+                  @if (card.data.pods?.critical > 0) {
+                    <div class="app-stat-row"><span class="app-stat-label">Failed</span><span class="app-stat-val app-crit">{{ card.data.pods?.critical }}</span></div>
+                  }
+                </div>
               </div>
-              <div class="compact-stats">
-                <div class="cs-row"><span class="cs-dot cs-ok"></span><span class="cs-num">{{ card.data.pods?.healthy || 0 }}</span> running</div>
-                <div class="cs-row"><span class="cs-dot cs-warn"></span><span class="cs-num">{{ card.data.pods?.warning || 0 }}</span> warn</div>
-                <div class="cs-row"><span class="cs-dot cs-crit"></span><span class="cs-num">{{ card.data.pods?.critical || 0 }}</span> crit</div>
+              @if (card.data.app_info?.image) {
+                <div class="app-image"><i class="pi pi-box"></i> {{ card.data.app_info.image | slice:-40 }}</div>
+              }
+            } @else {
+              <!-- Cluster View -->
+              <div class="mc-compact">
+                <div class="compact-ring">
+                  <svg viewBox="0 0 36 36">
+                    <path class="ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                    <path class="ring-fill" [class]="ringClass(card)" [attr.stroke-dasharray]="healthPct(card) + ', 100'" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                  </svg>
+                  <span class="ring-val">{{ healthPct(card) }}%</span>
+                </div>
+                <div class="compact-stats">
+                  <div class="cs-row"><span class="cs-dot cs-ok"></span><span class="cs-num">{{ card.data.pods?.healthy || 0 }}</span> running</div>
+                  <div class="cs-row"><span class="cs-dot cs-warn"></span><span class="cs-num">{{ card.data.pods?.warning || 0 }}</span> warn</div>
+                  <div class="cs-row"><span class="cs-dot cs-crit"></span><span class="cs-num">{{ card.data.pods?.critical || 0 }}</span> crit</div>
+                </div>
+                <div class="compact-nodes">
+                  <span class="cn-label">Nodes</span>
+                  <span class="cn-val">{{ card.data.nodes?.healthy || 0 }}/{{ (card.data.nodes?.healthy || 0) + (card.data.nodes?.warning || 0) }}</span>
+                </div>
               </div>
-              <div class="compact-nodes">
-                <span class="cn-label">Nodes</span>
-                <span class="cn-val">{{ card.data.nodes?.healthy || 0 }}/{{ (card.data.nodes?.healthy || 0) + (card.data.nodes?.warning || 0) }}</span>
-              </div>
-            </div>
+            }
 
             <!-- Mini Activity -->
             <div class="mc-mini-activity">
@@ -389,6 +413,23 @@ interface MonitorCard {
     .compact-nodes { text-align: center; padding: 6px 10px; background: var(--bg-elevated); border-radius: 6px; }
     .cn-label { display: block; font-size: 9px; color: var(--text-muted); text-transform: uppercase; }
     .cn-val { font-size: 14px; font-weight: 700; }
+
+    /* App-specific card view */
+    .mc-app-view { display: flex; align-items: center; gap: 14px; padding: 8px 0; }
+    .app-replica-ring { position: relative; width: 56px; height: 56px; flex-shrink: 0; }
+    .app-replica-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+    .app-details { flex: 1; display: flex; flex-direction: column; gap: 3px; }
+    .app-stat-row { display: flex; align-items: center; justify-content: space-between; font-size: 11px; }
+    .app-stat-label { color: var(--text-muted); }
+    .app-stat-val { font-weight: 600; font-family: 'JetBrains Mono', monospace; }
+    .app-ok { color: var(--success); }
+    .app-warn { color: var(--warning); }
+    .app-crit { color: var(--danger); }
+    .app-image {
+      font-size: 10px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace;
+      display: flex; align-items: center; gap: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .app-image i { font-size: 10px; }
 
     /* Sections */
     .mc-section { padding-top: 8px; border-top: 1px solid var(--border); }
