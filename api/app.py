@@ -64,12 +64,26 @@ if not ui_dist.exists():
         ui_dist = _dest
 
 if ui_dist.exists():
-    # Mount static assets (js, css, images) with proper MIME types
+    from fastapi.responses import FileResponse
+
+    # Serve static assets (js, css, fonts, images)
     app.mount(
-        "/app",
-        StaticFiles(directory=str(ui_dist), html=True),
-        name="spa",
-    )
+        "/app/media",
+        StaticFiles(directory=str(ui_dist / "media")),
+        name="media",
+    ) if (ui_dist / "media").exists() else None
+
+    @app.get("/app")
+    def serve_spa_root():
+        return FileResponse(ui_dist / "index.html")
+
+    @app.get("/app/{path:path}")
+    def serve_spa(path: str):
+        file_path = ui_dist / path
+        if file_path.is_file():
+            return FileResponse(file_path)
+        # SPA fallback — serve index.html for client-side routes
+        return FileResponse(ui_dist / "index.html")
 else:
     from fastapi.responses import JSONResponse
 
