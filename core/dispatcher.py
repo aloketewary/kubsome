@@ -1405,6 +1405,7 @@ def _handle_list_queries(cmd, env):
 
 # Handler registry
 HANDLERS = {
+    "noop": lambda cmd, env: None,
     "pods_table": _handle_pods_table,
     "pods_watch": _handle_pods_watch,
     "overview": _handle_overview,

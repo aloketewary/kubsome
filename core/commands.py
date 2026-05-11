@@ -6,7 +6,6 @@ from core.resolver import (
 from core.selector import (
     choose_pod, choose_deployment, choose_cronjob
 )
-from core.spinner import loading
 
 
 def resolve_command(user_input: str):
@@ -47,8 +46,14 @@ def resolve_command(user_input: str):
     # Logs
     if cmd == "logs" and len(tokens) > 1:
         query = tokens[1]
-        with loading(f"Resolving {query}..."):
-            matches = resolve_pod_name(query)
+        if len(query) < 2:
+            from rich.console import Console
+            Console().print(
+                f"[yellow]Query too short.[/yellow] "
+                f"[dim]Use 2+ characters (e.g. logs cu)[/dim]"
+            )
+            return {"type": "noop"}
+        matches = resolve_pod_name(query)
         if not matches:
             return None
         pod = choose_pod(matches)
