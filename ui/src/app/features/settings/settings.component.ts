@@ -6,6 +6,7 @@ import { TagModule } from 'primeng/tag';
 import { TooltipModule } from 'primeng/tooltip';
 import { PreferencesService } from '../../core/services/preferences.service';
 import { SpotlightComponent } from '../../shared/components/spotlight.component';
+import { ConfirmService } from '../../shared/services/confirm.service';
 
 @Component({
   selector: 'app-settings',
@@ -14,52 +15,77 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
   template: `
     <app-spotlight id="settings" title="Settings" icon="pi pi-cog"
       description="Configure theme, refresh intervals, and preferences."
-      [capabilities]="['Theme selection', 'Refresh intervals', 'Shortcuts reference']" [compact]="true" />
+      [capabilities]="['Theme selection', 'Refresh intervals', 'Shortcuts reference', 'Data management']" [compact]="true" />
 
-        <div class="page-header">
+    <div class="page-header">
       <div>
         <h1>Settings</h1>
-        <p class="subtitle">Customize your experience</p>
+        <p class="subtitle">Customize your workspace</p>
       </div>
     </div>
 
-    <div class="settings-layout">
-      <!-- Appearance -->
-      <div class="settings-section">
-        <div class="section-icon"><i class="pi pi-palette"></i></div>
-        <div class="section-content">
-          <h3>Appearance</h3>
-          <p class="section-desc">Visual theme and display preferences</p>
-
-          <div class="setting-row">
-            <div class="setting-info">
-              <span class="setting-name">Theme</span>
-              <span class="setting-hint">Choose between dark and light mode</span>
+    <div class="settings-grid">
+      <!-- Left: Settings -->
+      <div class="settings-main">
+        <!-- Cluster Info -->
+        <div class="settings-section">
+          <div class="section-header">
+            <div class="section-icon icon-cluster"><i class="pi pi-server"></i></div>
+            <div><h3>Cluster Connection</h3><p class="section-desc">Current active connection</p></div>
+          </div>
+          <div class="cluster-info-grid">
+            <div class="ci-item">
+              <span class="ci-label">Context</span>
+              <code class="ci-value">{{ clusterInfo.context || '—' }}</code>
             </div>
-            <div class="theme-toggle">
-              <button class="toggle-btn" [class.active]="prefs.get('theme') === 'dark'" (click)="setTheme('dark')">
-                <i class="pi pi-moon"></i>
-                <span>Dark</span>
-              </button>
-              <button class="toggle-btn" [class.active]="prefs.get('theme') === 'light'" (click)="setTheme('light')">
-                <i class="pi pi-sun"></i>
-                <span>Light</span>
-              </button>
+            <div class="ci-item">
+              <span class="ci-label">Namespace</span>
+              <code class="ci-value">{{ clusterInfo.namespace || '—' }}</code>
+            </div>
+            <div class="ci-item">
+              <span class="ci-label">Server</span>
+              <code class="ci-value">{{ clusterInfo.server || '—' }}</code>
+            </div>
+            <div class="ci-item">
+              <span class="ci-label">Status</span>
+              <span class="ci-status" [class.ci-ok]="clusterInfo.connected" [class.ci-err]="!clusterInfo.connected">
+                <span class="ci-dot"></span> {{ clusterInfo.connected ? 'Connected' : 'Disconnected' }}
+              </span>
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- Data & Refresh -->
-      <div class="settings-section">
-        <div class="section-icon"><i class="pi pi-sync"></i></div>
-        <div class="section-content">
-          <h3>Data & Refresh</h3>
-          <p class="section-desc">How often data updates automatically</p>
-
+        <!-- Appearance -->
+        <div class="settings-section">
+          <div class="section-header">
+            <div class="section-icon icon-theme"><i class="pi pi-palette"></i></div>
+            <div><h3>Appearance</h3><p class="section-desc">Visual theme and display</p></div>
+          </div>
           <div class="setting-row">
             <div class="setting-info">
-              <span class="setting-name">Auto-refresh interval</span>
+              <span class="setting-name">Theme</span>
+              <span class="setting-hint">Interface color scheme</span>
+            </div>
+            <div class="theme-switcher">
+              @for (t of themes; track t.id) {
+                <button class="theme-card" [class.active]="prefs.get('theme') === t.id" (click)="setTheme(t.id)">
+                  <div class="tc-preview" [class]="'tc-' + t.id"></div>
+                  <span class="tc-label">{{ t.label }}</span>
+                </button>
+              }
+            </div>
+          </div>
+        </div>
+
+        <!-- Data & Refresh -->
+        <div class="settings-section">
+          <div class="section-header">
+            <div class="section-icon icon-data"><i class="pi pi-sync"></i></div>
+            <div><h3>Data & Refresh</h3><p class="section-desc">Auto-update intervals</p></div>
+          </div>
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-name">Auto-refresh</span>
               <span class="setting-hint">Dashboard and pod data refresh rate</span>
             </div>
             <div class="interval-options">
@@ -70,254 +96,255 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
               }
             </div>
           </div>
-        </div>
-      </div>
-
-      <!-- Notifications -->
-      <div class="settings-section">
-        <div class="section-icon"><i class="pi pi-bell"></i></div>
-        <div class="section-content">
-          <h3>Notifications</h3>
-          <p class="section-desc">Alert behavior for cluster events</p>
-
           <div class="setting-row">
             <div class="setting-info">
-              <span class="setting-name">Toast alerts</span>
-              <span class="setting-hint">Show notifications when pods crash or recover</span>
+              <span class="setting-name">Notifications</span>
+              <span class="setting-hint">Browser alerts for pod crashes and recoveries</span>
             </div>
-            <div class="toggle-switch" [class.on]="prefs.get('notifications')" (click)="prefs.set('notifications', !prefs.get('notifications'))">
+            <div class="toggle-switch" [class.on]="prefs.get('notifications')" (click)="toggleNotifications()">
               <div class="toggle-thumb"></div>
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- Keyboard Shortcuts -->
-      <div class="settings-section">
-        <div class="section-icon"><i class="pi pi-key"></i></div>
-        <div class="section-content">
-          <h3>Keyboard Shortcuts</h3>
-          <p class="section-desc">Navigate faster with your keyboard</p>
-
-          <div class="shortcuts-table">
-            @for (shortcut of shortcuts; track shortcut.key) {
-              <div class="shortcut-row">
-                <kbd>{{ shortcut.key }}</kbd>
-                <span>{{ shortcut.action }}</span>
+        <!-- Keyboard Shortcuts -->
+        <div class="settings-section">
+          <div class="section-header">
+            <div class="section-icon icon-keys"><i class="pi pi-key"></i></div>
+            <div><h3>Keyboard Shortcuts</h3><p class="section-desc">Navigate faster</p></div>
+          </div>
+          <div class="shortcuts-grid">
+            @for (group of shortcutGroups; track group.label) {
+              <div class="sc-group">
+                <span class="sc-group-label">{{ group.label }}</span>
+                @for (sc of group.items; track sc.key) {
+                  <div class="sc-row">
+                    <kbd>{{ sc.key }}</kbd>
+                    <span>{{ sc.action }}</span>
+                  </div>
+                }
               </div>
             }
           </div>
         </div>
+
+        <!-- Data Management -->
+        <div class="settings-section section-danger">
+          <div class="section-header">
+            <div class="section-icon icon-danger"><i class="pi pi-shield"></i></div>
+            <div><h3>Data Management</h3><p class="section-desc">Reset and clear stored data</p></div>
+          </div>
+          <div class="danger-actions">
+            <div class="danger-row">
+              <div class="setting-info">
+                <span class="setting-name">Reset onboarding</span>
+                <span class="setting-hint">Show all feature spotlights again</span>
+              </div>
+              <button pButton label="Reset" icon="pi pi-refresh" class="p-button-sm p-button-outlined" (click)="resetSpotlights()"></button>
+            </div>
+            <div class="danger-row">
+              <div class="setting-info">
+                <span class="setting-name">Clear monitor cards</span>
+                <span class="setting-hint">Remove all saved monitor configurations</span>
+              </div>
+              <button pButton label="Clear" icon="pi pi-trash" class="p-button-sm p-button-outlined p-button-warning" (click)="clearMonitorCards()"></button>
+            </div>
+            <div class="danger-row">
+              <div class="setting-info">
+                <span class="setting-name">Reset all preferences</span>
+                <span class="setting-hint">Restore all settings to defaults</span>
+              </div>
+              <button pButton label="Reset All" icon="pi pi-exclamation-triangle" class="p-button-sm p-button-outlined p-button-danger" (click)="resetAll()"></button>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <!-- About -->
-      <div class="settings-section">
-        <div class="section-icon"><i class="pi pi-info-circle"></i></div>
-        <div class="section-content">
-          <h3>About Kubsome</h3>
-          <p class="section-desc">AI-native Kubernetes Operations Platform</p>
+      <!-- Right: About -->
+      <div class="settings-aside">
+        <div class="about-card">
+          <div class="about-logo">◆</div>
+          <div class="about-name">Kubsome</div>
+          <p-tag [value]="'v' + appVersion" severity="info" [rounded]="true" />
+          <p class="about-tagline">AI-native Kubernetes Operations</p>
 
-          <div class="about-hero">
-            <div class="about-logo">◆</div>
-            <div class="about-tagline">
-              <span class="about-name">Kubsome</span>
-              <span class="about-version">v{{ appVersion }}</span>
-            </div>
+          <div class="about-stats">
+            <div class="as-item"><span class="as-val">72</span><span class="as-label">APIs</span></div>
+            <div class="as-item"><span class="as-val">30+</span><span class="as-label">Pages</span></div>
+            <div class="as-item"><span class="as-val">85+</span><span class="as-label">Commands</span></div>
           </div>
 
-          <p class="about-description">
-            Faster debugging. Safer operations. Less cognitive load.
-            Multi-interface Kubernetes operations platform with CLI, Web UI, API, and AI intelligence.
-          </p>
-
-          <div class="about-grid">
-            <div class="about-item">
-              <span class="about-label">API</span>
-              <span class="about-value">72</span>
-            </div>
-            <div class="about-item">
-              <span class="about-label">WebSocket</span>
-              <span class="about-value">4</span>
-            </div>
-            <div class="about-item">
-              <span class="about-label">Pages</span>
-              <span class="about-value">22</span>
-            </div>
-            <div class="about-item">
-              <span class="about-label">Commands</span>
-              <span class="about-value">85+</span>
-            </div>
-          </div>
-
-          <div class="about-credits">
-            <span class="credits-label">Created by</span>
-            <div class="credits-author">
-              <div class="author-avatar">A</div>
-              <div class="author-info">
-                <span class="author-name">Aloke Tewary</span>
-                <a href="https://github.com/aloketewary" target="_blank" class="author-handle">&#64;aloketewary</a>
-              </div>
+          <div class="about-author">
+            <div class="author-avatar">A</div>
+            <div class="author-info">
+              <span class="author-name">Aloke Tewary</span>
+              <a href="https://github.com/aloketewary" target="_blank" class="author-link">&#64;aloketewary</a>
             </div>
           </div>
 
           <div class="about-links">
-            <a href="/docs" target="_blank" class="about-link">
-              <i class="pi pi-external-link"></i> API Docs
-            </a>
-            <a href="https://github.com/aloketewary/kubsome" target="_blank" class="about-link">
-              <i class="pi pi-github"></i> GitHub
-            </a>
+            <a href="https://github.com/aloketewary/kubsome" target="_blank" class="alink"><i class="pi pi-github"></i> GitHub</a>
+            <a href="/docs" target="_blank" class="alink"><i class="pi pi-book"></i> Docs</a>
           </div>
         </div>
       </div>
     </div>
   `,
   styles: [`
-    .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 24px; }
+    .page-header { margin-bottom: 20px; }
     .page-header h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.03em; }
     .subtitle { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
 
-    .settings-layout { display: flex; flex-direction: column; gap: 12px; max-width: 640px; }
+    .settings-grid { display: grid; grid-template-columns: 1fr 260px; gap: 20px; align-items: start; }
+    @media (max-width: 900px) { .settings-grid { grid-template-columns: 1fr; } }
+
+    .settings-main { display: flex; flex-direction: column; gap: 12px; }
 
     .settings-section {
-      display: flex;
-      gap: 16px;
-      padding: 20px;
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      transition: all 0.25s cubic-bezier(0.34,1.56,0.64,1);
+      padding: 20px; background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius); transition: border-color 0.2s;
     }
-    .settings-section:hover { border-color: var(--border-hover); transform: translateY(-2px); box-shadow: 0 8px 24px -8px rgba(0,0,0,0.2); }
+    .settings-section:hover { border-color: var(--border-hover); }
+    .section-danger { border-color: rgba(244,63,94,0.2); }
+    .section-danger:hover { border-color: rgba(244,63,94,0.4); }
 
+    .section-header { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 16px; }
     .section-icon {
-      width: 36px; height: 36px; border-radius: 10px;
-      background: var(--accent-subtle); color: var(--accent);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 16px; flex-shrink: 0;
+      width: 34px; height: 34px; border-radius: 9px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center; font-size: 15px;
     }
-    .section-content { flex: 1; }
-    .section-content h3 { font-size: 15px; font-weight: 600; margin: 0 0 2px; }
-    .section-desc { font-size: 12px; color: var(--text-muted); margin: 0 0 14px; }
+    .icon-cluster { background: var(--success-subtle); color: var(--success); }
+    .icon-theme { background: var(--accent-subtle); color: var(--accent); }
+    .icon-data { background: var(--warning-subtle); color: var(--warning); }
+    .icon-keys { background: var(--bg-elevated); color: var(--text-muted); }
+    .icon-danger { background: var(--danger-subtle); color: var(--danger); }
+    .section-header h3 { font-size: 14px; font-weight: 600; margin: 0; }
+    .section-desc { font-size: 11px; color: var(--text-muted); margin: 2px 0 0; }
 
     .setting-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 8px 0;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 0; border-bottom: 1px solid var(--border);
     }
+    .setting-row:last-child { border-bottom: none; padding-bottom: 0; }
     .setting-info { display: flex; flex-direction: column; gap: 2px; }
     .setting-name { font-size: 13px; font-weight: 500; }
     .setting-hint { font-size: 11px; color: var(--text-muted); }
 
-    /* Theme Toggle */
-    .theme-toggle { display: flex; gap: 4px; background: var(--bg-elevated); border-radius: 8px; padding: 3px; }
-    .toggle-btn {
-      display: flex; align-items: center; gap: 5px;
-      padding: 6px 12px; border-radius: 6px; border: none;
-      background: transparent; color: var(--text-muted);
-      font-size: 12px; cursor: pointer; transition: all 0.25s cubic-bezier(0.34,1.56,0.64,1);
-    }
-    .toggle-btn i { font-size: 12px; }
-    .toggle-btn.active { background: var(--bg-card); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+    /* Cluster Info */
+    .cluster-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .ci-item { padding: 10px 12px; background: var(--bg-elevated); border-radius: 8px; }
+    .ci-label { display: block; font-size: 9px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px; }
+    .ci-value { font-size: 11px; font-family: 'JetBrains Mono', monospace; word-break: break-all; }
+    .ci-status { display: flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 500; }
+    .ci-dot { width: 6px; height: 6px; border-radius: 50%; }
+    .ci-ok { color: var(--success); }
+    .ci-ok .ci-dot { background: var(--success); }
+    .ci-err { color: var(--danger); }
+    .ci-err .ci-dot { background: var(--danger); }
 
-    /* Interval Options */
-    .interval-options { display: flex; gap: 4px; background: var(--bg-elevated); border-radius: 8px; padding: 3px; }
+    /* Theme Switcher */
+    .theme-switcher { display: flex; gap: 8px; }
+    .theme-card {
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+      padding: 8px 12px; border-radius: 8px; border: 2px solid var(--border);
+      background: var(--bg-elevated); cursor: pointer; transition: all 0.2s;
+    }
+    .theme-card:hover { border-color: var(--border-hover); }
+    .theme-card.active { border-color: var(--accent); background: var(--accent-subtle); }
+    .tc-preview { width: 32px; height: 20px; border-radius: 4px; border: 1px solid var(--border); }
+    .tc-dark { background: #0f0f11; }
+    .tc-light { background: #f8f9fa; }
+    .tc-label { font-size: 10px; color: var(--text-muted); }
+    .theme-card.active .tc-label { color: var(--accent); }
+
+    /* Interval */
+    .interval-options { display: flex; gap: 3px; background: var(--bg-elevated); border-radius: 8px; padding: 3px; }
     .opt-btn {
       padding: 5px 10px; border-radius: 5px; border: none;
       background: transparent; color: var(--text-muted);
-      font-size: 11px; cursor: pointer; transition: all 0.25s cubic-bezier(0.34,1.56,0.64,1);
+      font-size: 11px; cursor: pointer; transition: all 0.2s;
     }
     .opt-btn.active { background: var(--accent); color: #fff; }
     .opt-btn:hover:not(.active) { color: var(--text); }
 
-    /* Toggle Switch */
+    /* Toggle */
     .toggle-switch {
       width: 40px; height: 22px; border-radius: 11px;
-      background: var(--border); cursor: pointer;
-      position: relative; transition: background 0.2s;
+      background: var(--border); cursor: pointer; position: relative; transition: background 0.2s;
     }
     .toggle-switch.on { background: var(--accent); }
     .toggle-thumb {
-      width: 16px; height: 16px; border-radius: 50%;
-      background: #fff; position: absolute;
-      top: 3px; left: 3px; transition: transform 0.2s;
+      width: 16px; height: 16px; border-radius: 50%; background: #fff;
+      position: absolute; top: 3px; left: 3px; transition: transform 0.2s;
     }
     .toggle-switch.on .toggle-thumb { transform: translateX(18px); }
 
     /* Shortcuts */
-    .shortcuts-table { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
-    .shortcut-row {
-      display: flex; align-items: center; gap: 10px;
-      padding: 6px 10px; border-radius: 6px; background: var(--bg-elevated);
+    .shortcuts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .sc-group-label { font-size: 9px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; display: block; margin-bottom: 6px; }
+    .sc-row { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
+    .sc-row kbd {
+      font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600;
+      padding: 2px 6px; border-radius: 4px; background: var(--bg-elevated);
+      border: 1px solid var(--border); color: var(--text-muted); min-width: 28px; text-align: center;
     }
-    .shortcut-row kbd {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 10px; font-weight: 600;
-      padding: 2px 6px; border-radius: 4px;
-      background: var(--bg); border: 1px solid var(--border);
-      color: var(--text-muted); min-width: 28px; text-align: center;
-    }
-    .shortcut-row span { font-size: 12px; color: var(--text-secondary); }
+    .sc-row span { font-size: 11px; color: var(--text-secondary); }
 
-    /* About */
-    .about-hero {
-      display: flex; align-items: center; gap: 10px; margin-bottom: 12px;
+    /* Danger Zone */
+    .danger-actions { display: flex; flex-direction: column; gap: 10px; }
+    .danger-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; }
+
+    /* About Aside */
+    .settings-aside { position: sticky; top: 20px; }
+    .about-card {
+      padding: 24px; background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius); text-align: center;
+      display: flex; flex-direction: column; align-items: center; gap: 8px;
     }
-    .about-logo {
-      font-size: 24px; color: var(--accent);
-    }
-    .about-tagline { display: flex; align-items: baseline; gap: 8px; }
+    .about-logo { font-size: 28px; color: var(--accent); }
     .about-name { font-size: 18px; font-weight: 700; letter-spacing: -0.02em; }
-    .about-version { font-size: 11px; color: var(--text-muted); background: var(--bg-elevated); padding: 2px 6px; border-radius: 4px; }
-    .about-description { font-size: 12px; color: var(--text-secondary); line-height: 1.5; margin: 0 0 14px; }
+    .about-tagline { font-size: 11px; color: var(--text-muted); margin: 0; }
 
-    .about-grid {
-      display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 14px;
-    }
+    .about-stats { display: flex; gap: 12px; margin: 12px 0; width: 100%; }
+    .as-item { flex: 1; text-align: center; padding: 8px; background: var(--bg-elevated); border-radius: 6px; }
+    .as-val { display: block; font-size: 14px; font-weight: 700; }
+    .as-label { display: block; font-size: 9px; color: var(--text-muted); text-transform: uppercase; }
 
-    .about-credits {
-      padding: 12px; background: var(--bg-elevated); border-radius: 8px; margin-bottom: 12px;
+    .about-author {
+      display: flex; align-items: center; gap: 10px; width: 100%;
+      padding: 12px; background: var(--bg-elevated); border-radius: 8px; margin-top: 4px;
     }
-    .credits-label { font-size: 9px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; display: block; margin-bottom: 8px; }
-    .credits-author { display: flex; align-items: center; gap: 10px; }
     .author-avatar {
       width: 32px; height: 32px; border-radius: 50%;
       background: linear-gradient(135deg, var(--accent), var(--purple));
       color: #fff; display: flex; align-items: center; justify-content: center;
-      font-size: 14px; font-weight: 700;
+      font-size: 13px; font-weight: 700; flex-shrink: 0;
     }
-    .author-info { display: flex; flex-direction: column; }
-    .author-name { font-size: 13px; font-weight: 600; }
-    .author-handle { font-size: 11px; color: var(--accent); }
-    .about-item {
-      padding: 10px; border-radius: 8px; background: var(--bg-elevated); text-align: center;
-    }
-    .about-label { display: block; font-size: 9px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 2px; }
-    .about-value { display: block; font-size: 14px; font-weight: 700; }
+    .author-info { display: flex; flex-direction: column; text-align: left; }
+    .author-name { font-size: 12px; font-weight: 600; }
+    .author-link { font-size: 11px; color: var(--accent); text-decoration: none; }
 
-    .about-links { display: flex; gap: 10px; }
-    .about-link {
-      display: flex; align-items: center; gap: 5px;
-      font-size: 12px; color: var(--accent);
-      padding: 6px 12px; border-radius: 6px;
-      border: 1px solid var(--border); transition: all 0.25s cubic-bezier(0.34,1.56,0.64,1);
+    .about-links { display: flex; gap: 8px; margin-top: 8px; width: 100%; }
+    .alink {
+      flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px;
+      font-size: 11px; color: var(--text-muted); text-decoration: none;
+      padding: 8px; border-radius: 6px; border: 1px solid var(--border); transition: all 0.2s;
     }
-    .about-link:hover { border-color: var(--accent); background: var(--accent-subtle); }
-    .about-link i { font-size: 12px; }
+    .alink:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-subtle); }
+    .alink i { font-size: 12px; }
   `],
 })
 export class SettingsComponent implements OnInit {
   prefs = inject(PreferencesService);
   private http = inject(HttpClient);
+  private confirmService = inject(ConfirmService);
   appVersion = '...';
+  clusterInfo: any = { context: '', namespace: '', server: '', connected: false };
 
-  ngOnInit() {
-    this.http.get<any>('/api/version').subscribe({
-      next: (res) => this.appVersion = res.version || '1.7.2',
-      error: () => this.appVersion = '1.7.2',
-    });
-  }
+  themes = [
+    { id: 'dark', label: 'Dark' },
+    { id: 'light', label: 'Light' },
+  ];
 
   refreshOptions = [
     { label: '10s', value: 10000 },
@@ -326,23 +353,82 @@ export class SettingsComponent implements OnInit {
     { label: 'Off', value: 0 },
   ];
 
-  shortcuts = [
-    { key: '⌘K', action: 'Command Palette' },
-    { key: 'G D', action: 'Dashboard' },
-    { key: 'G P', action: 'Pods' },
-    { key: 'G E', action: 'Events' },
-    { key: 'G L', action: 'Logs' },
-    { key: 'G T', action: 'Terminal' },
-    { key: 'G A', action: 'AI Assistant' },
-    { key: 'G M', action: 'Metrics' },
-    { key: 'G R', action: 'Runbooks' },
-    { key: 'G S', action: 'Settings' },
-    { key: 'H', action: 'Help' },
-    { key: 'ESC', action: 'Close overlay' },
+  shortcutGroups = [
+    {
+      label: 'Navigation',
+      items: [
+        { key: '⌘K', action: 'Command Palette' },
+        { key: 'G D', action: 'Dashboard' },
+        { key: 'G P', action: 'Pods' },
+        { key: 'G E', action: 'Events' },
+        { key: 'G L', action: 'Logs' },
+        { key: 'G M', action: 'Metrics' },
+      ],
+    },
+    {
+      label: 'Actions',
+      items: [
+        { key: 'G T', action: 'Terminal' },
+        { key: 'G A', action: 'AI Assistant' },
+        { key: 'G R', action: 'Runbooks' },
+        { key: 'G S', action: 'Settings' },
+        { key: 'H', action: 'Help' },
+        { key: 'ESC', action: 'Close overlay' },
+      ],
+    },
   ];
 
-  setTheme(theme: 'dark' | 'light') {
-    this.prefs.set('theme', theme);
+  ngOnInit() {
+    this.http.get<any>('/api/version').subscribe({
+      next: (res) => this.appVersion = res.version || '1.7.6',
+      error: () => this.appVersion = '1.7.6',
+    });
+    this.http.get<any>('/api/contexts').subscribe({
+      next: (res) => {
+        this.clusterInfo.context = res.current || '';
+        this.clusterInfo.connected = true;
+        const ctx = (res.contexts || []).find((c: any) => c.name === res.current);
+        this.clusterInfo.server = ctx?.cluster || '';
+      },
+      error: () => { this.clusterInfo.connected = false; },
+    });
+    this.http.get<any>('/api/namespaces').subscribe({
+      next: (res) => { this.clusterInfo.namespace = res.current || ''; },
+    });
+  }
+
+  setTheme(theme: string) {
+    this.prefs.set('theme', theme as 'dark' | 'light');
     document.documentElement.setAttribute('data-theme', theme);
+  }
+
+  toggleNotifications() {
+    const enabled = !this.prefs.get('notifications');
+    this.prefs.set('notifications', enabled);
+    if (enabled && 'Notification' in window && Notification.permission !== 'granted') {
+      Notification.requestPermission();
+    }
+  }
+
+  resetSpotlights() {
+    Object.keys(localStorage).filter(k => k.startsWith('kubsome_spotlight_')).forEach(k => localStorage.removeItem(k));
+  }
+
+  clearMonitorCards() {
+    localStorage.removeItem('kubsome_monitor_cards');
+  }
+
+  resetAll() {
+    this.confirmService.confirm({
+      title: 'Reset All Settings',
+      message: 'This will clear all preferences, monitor cards, and onboarding state. Continue?',
+      confirmLabel: 'Reset',
+      severity: 'danger',
+    }).then(ok => {
+      if (ok) {
+        Object.keys(localStorage).filter(k => k.startsWith('kubsome_')).forEach(k => localStorage.removeItem(k));
+        window.location.reload();
+      }
+    });
   }
 }
