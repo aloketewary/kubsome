@@ -408,18 +408,9 @@ export class ShellComponent implements OnInit {
       error: () => { this.clusterOk = false; },
     });
   }
-  private allItems = [
-    { path: '/dashboard', icon: 'pi pi-objects-column', label: 'Dashboard' },
-    { path: '/pods', icon: 'pi pi-box', label: 'Pods' },
-    { path: '/events', icon: 'pi pi-bolt', label: 'Events' },
-    { path: '/metrics', icon: 'pi pi-chart-bar', label: 'Metrics' },
-    { path: '/deployments', icon: 'pi pi-send', label: 'Deployments' },
-    { path: '/logs', icon: 'pi pi-align-left', label: 'Logs' },
-    { path: '/jobs', icon: 'pi pi-clock', label: 'Jobs' },
-    { path: '/terminal', icon: 'pi pi-code', label: 'Terminal' },
-    { path: '/ai', icon: 'pi pi-sparkles', label: 'AI Assistant' },
-    { path: '/incident', icon: 'pi pi-exclamation-circle', label: 'Incident' },
-  ];
+  private get allItems() {
+    return [...this.monitorItems, ...this.opsItems, ...this.aiItems];
+  }
 
   loadFavorites() {
     const paths = this.prefsService.get('sidebarFavorites');
