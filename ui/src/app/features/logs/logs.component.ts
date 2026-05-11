@@ -9,15 +9,20 @@ import { ApiService } from '../../core/services/api.service';
 import { WsService } from '../../core/services/ws.service';
 import { Pod } from '../../core/models';
 import { PageInfoComponent } from '../../shared/components/page-info.component';
+import { SpotlightComponent } from '../../shared/components/spotlight.component';
 
 @Component({
   selector: 'app-logs',
   standalone: true,
-  imports: [ButtonModule, Select, TooltipModule, FormsModule, InputTextModule, PageInfoComponent],
+  imports: [ButtonModule, Select, TooltipModule, FormsModule, InputTextModule, PageInfoComponent, SpotlightComponent],
   host: {
     '[class.logs-fullscreen-active]': 'fullscreen',
   },
   template: `
+    <app-spotlight id="logs" title="Log Viewer" icon="pi pi-align-left"
+      description="Stream and search pod logs in real-time. Filter by container, level, or text."
+      [capabilities]="['Container-specific log filtering', 'Live streaming via WebSocket', 'Error/Warn level filters', 'Fullscreen mode for focused debugging', 'Copy and search across lines']" [compact]="true" />
+
     <div class="page-header">
       <div>
         <h1>Logs</h1>

@@ -6,14 +6,17 @@ import { ButtonModule } from 'primeng/button';
 import { TooltipModule } from 'primeng/tooltip';
 import { ApiService } from '../../core/services/api.service';
 import { OverviewResponse, KubeEvent } from '../../core/models';
+import { SpotlightComponent } from '../../shared/components/spotlight.component';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [TagModule, ButtonModule, TooltipModule],
+  imports: [TagModule, ButtonModule, TooltipModule, SpotlightComponent],
   template: `
     @if (data) {
-      <!-- Hero -->
+      <app-spotlight id="dashboard" title="Cluster Dashboard" icon="pi pi-th-large"
+        description="Real-time overview of your cluster health. Cards show pod, node, and deployment status at a glance."
+        [capabilities]="['Health scoring across pods, nodes, deployments', 'Anomaly alerts with auto-detection', 'Quick navigation to problem areas', 'Recent events timeline']" />
       <div class="hero" [class]="'hero-' + overallHealth">
         <div class="hero-mesh"></div>
         <div class="hero-orb hero-orb-1"></div>

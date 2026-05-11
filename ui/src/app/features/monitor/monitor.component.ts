@@ -7,6 +7,8 @@ import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
 import { TooltipModule } from 'primeng/tooltip';
 import { DialogModule } from 'primeng/dialog';
+import { SpotlightComponent } from '../../shared/components/spotlight.component';
+import { SkeletonComponent } from '../../shared/components/skeleton.component';
 
 interface ActionEntry {
   time: string;
@@ -39,8 +41,12 @@ interface MonitorCard {
 @Component({
   selector: 'app-monitor',
   standalone: true,
-  imports: [FormsModule, SlicePipe, Select, ButtonModule, TagModule, TooltipModule, DialogModule],
+  imports: [FormsModule, SlicePipe, Select, ButtonModule, TagModule, TooltipModule, DialogModule, SpotlightComponent, SkeletonComponent],
   template: `
+    <app-spotlight id="monitor" title="Multi-Cluster Monitor" icon="pi pi-desktop"
+      description="Add cards to watch cluster or app health. Configure alerts, perform actions, and track activity across environments."
+      [capabilities]="['Monitor cluster-wide or specific app', 'Auto-refresh with configurable intervals', 'Health alerts with browser notifications', 'Restart and scale from the dialog', 'Drag to reorder cards']" [compact]="true" />
+
     <div class="page-header">
       <div>
         <h1>Monitor</h1>
@@ -218,7 +224,7 @@ interface MonitorCard {
               </div>
             }
           } @else if (card.loading) {
-            <div class="mc-state"><div class="spin"></div> Loading...</div>
+            <app-skeleton variant="stats" />
           } @else if (card.data?.error) {
             <div class="mc-error"><i class="pi pi-exclamation-triangle"></i> {{ card.data.error }}</div>
           } @else {

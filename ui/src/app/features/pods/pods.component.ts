@@ -15,6 +15,7 @@ import { PodDrawerComponent } from '../../shared/components/pod-drawer.component
 import { PageInfoComponent } from '../../shared/components/page-info.component';
 import { AiInsightDrawerComponent } from '../../shared/components/ai-insight-drawer.component';
 import { LogTerminalComponent } from '../../shared/components/log-terminal.component';
+import { SpotlightComponent } from '../../shared/components/spotlight.component';
 
 interface PodGroup {
   deployment: string;
@@ -28,8 +29,12 @@ interface PodGroup {
 @Component({
   selector: 'app-pods',
   standalone: true,
-  imports: [JsonPipe, TagModule, ButtonModule, TooltipModule, DialogModule, InputTextModule, FormsModule, PodDrawerComponent, PageInfoComponent, AiInsightDrawerComponent, LogTerminalComponent],
+  imports: [JsonPipe, TagModule, ButtonModule, TooltipModule, DialogModule, InputTextModule, FormsModule, PodDrawerComponent, PageInfoComponent, AiInsightDrawerComponent, LogTerminalComponent, SpotlightComponent],
   template: `
+    <app-spotlight id="pods" title="Pod Management" icon="pi pi-box"
+      description="View, inspect, and diagnose pods grouped by deployment. Select pods for combined log views."
+      [capabilities]="['Click pod name to open detail drawer', 'Multi-select for combined logcat', 'AI-powered diagnosis per pod', 'Live streaming via WebSocket', 'Grouped by deployment with health bars']" [compact]="true" />
+
     <!-- Header -->
     <div class="page-header">
       <div>
