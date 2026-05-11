@@ -83,6 +83,12 @@ def handle_ai_query(query):
     if intent == "describe" and target:
         return _why_query(query, target)
 
+    # "How to" questions → explain module
+    lower = query.lower()
+    if _is_howto_query(lower):
+        from core.ai.explain import explain
+        return explain(query)
+
     # Fallback
     return {
         "title": "🤖 AI Assistant",
@@ -301,6 +307,18 @@ def _truncate(text, max_len=100):
     if len(text) <= max_len:
         return text
     return text[:max_len - 3] + "..."
+
+
+def _is_howto_query(lower):
+    """Detect 'how to configure/setup/add' type questions."""
+    howto_patterns = [
+        "how to ", "how do i ", "how can i ",
+        "configure ", "setup ", "set up ",
+        "add probe", "add liveness", "add readiness",
+        "what is ", "what are ",
+        "explain ",
+    ]
+    return any(p in lower for p in howto_patterns)
 
 
 def _format_warning_events(warning_events):

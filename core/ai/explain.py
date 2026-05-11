@@ -147,6 +147,48 @@ def _rule_based_explain(query):
                 "  • Add more nodes to cluster"
             ),
         },
+        "probe": {
+            "title": "🧠 Liveness & Readiness Probes",
+            "content": (
+                "Probes let Kubernetes check if your container "
+                "is alive and ready to serve traffic.\n\n"
+                "[bold]Types:[/bold]\n"
+                "  • [cyan]livenessProbe[/cyan] — restarts container if it fails\n"
+                "  • [cyan]readinessProbe[/cyan] — removes from service if it fails\n"
+                "  • [cyan]startupProbe[/cyan] — gives slow-starting apps time\n\n"
+                "[bold]Configuration (add to container spec):[/bold]\n\n"
+                "  [cyan]livenessProbe:[/cyan]\n"
+                "    httpGet:\n"
+                "      path: /healthz\n"
+                "      port: 8080\n"
+                "    initialDelaySeconds: 15\n"
+                "    periodSeconds: 10\n"
+                "    failureThreshold: 3\n\n"
+                "  [cyan]readinessProbe:[/cyan]\n"
+                "    httpGet:\n"
+                "      path: /ready\n"
+                "      port: 8080\n"
+                "    initialDelaySeconds: 5\n"
+                "    periodSeconds: 5\n\n"
+                "[bold]Probe methods:[/bold]\n"
+                "  • [cyan]httpGet[/cyan] — HTTP GET returns 200-399\n"
+                "  • [cyan]tcpSocket[/cyan] — TCP connection succeeds\n"
+                "  • [cyan]exec[/cyan] — command exits with 0\n\n"
+                "[bold]Best practices:[/bold]\n"
+                "  • Always set readinessProbe for services\n"
+                "  • Set livenessProbe with higher threshold\n"
+                "  • Use startupProbe for slow-starting apps\n"
+                "  • Don't make liveness depend on external deps\n"
+                "  • Keep probe endpoints lightweight\n\n"
+                "[bold]Example (TCP for non-HTTP apps):[/bold]\n\n"
+                "  [cyan]livenessProbe:[/cyan]\n"
+                "    tcpSocket:\n"
+                "      port: 3306\n"
+                "    periodSeconds: 10\n\n"
+                "[bold]Generate manifest:[/bold]\n"
+                "  [cyan]generate deployment my-app[/cyan]"
+            ),
+        },
         "networkpolicy": {
             "title": "🧠 NetworkPolicy",
             "content": (
