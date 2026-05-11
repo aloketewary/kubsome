@@ -180,19 +180,6 @@ interface MonitorCard {
               <span class="mc-time">{{ card.lastUpdated || '—' }}</span>
             </div>
 
-            <!-- Actions -->
-            @if (card.app || (card.data?.pods?.critical || 0) > 0) {
-              <div class="mc-actions">
-                @if (card.app) {
-                  <button pButton icon="pi pi-refresh" label="Restart" class="p-button-sm p-button-text" (click)="restartApp(card)" pTooltip="Rolling restart"></button>
-                  <button pButton icon="pi pi-minus" label="Scale Down" class="p-button-sm p-button-text" (click)="scaleDown(card)" pTooltip="Reduce replicas by 1"></button>
-                  <button pButton icon="pi pi-plus" label="Scale Up" class="p-button-sm p-button-text" (click)="scaleUp(card)" pTooltip="Add 1 replica"></button>
-                }
-                @if (!card.app && (card.data?.pods?.critical || 0) > 0) {
-                  <button pButton icon="pi pi-exclamation-triangle" label="Diagnose" class="p-button-sm p-button-text p-button-warning" (click)="diagnoseCard(card)" pTooltip="Run AI diagnosis"></button>
-                }
-              </div>
-            }
 
             <!-- Action Log -->
             @if (card.actionLog.length > 0) {
