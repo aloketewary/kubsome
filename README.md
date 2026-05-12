@@ -185,6 +185,16 @@ Access at `http://localhost:8000/app` after `kubsome serve`.
 
 Pages: Dashboard, Monitor, Pods, Events, Metrics, Deployments, Logs, Jobs, RBAC, Network, Resources, Scorecard, Cost, Runbooks, Compare, AI Assistant, Terminal, Settings.
 
+See [docs/web-ui.md](docs/web-ui.md) for detailed page descriptions.
+
+## Documentation
+
+- [CLI Guide](docs/cli.md) — Full command reference
+- [API Reference](docs/api.md) — REST + WebSocket endpoints
+- [Web UI Guide](docs/web-ui.md) — Page-by-page walkthrough
+- [Architecture](docs/architecture.md) — System design and patterns
+- [Changelog](CHANGELOG.md) — Release history
+
 ## License
 
 MIT
