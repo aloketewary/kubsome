@@ -8,6 +8,8 @@ Configure in ~/.kubsome/config.yaml:
       type: slack
     - url: https://outlook.office.com/webhook/XXX
       type: teams
+    - url: https://webexapis.com/v1/webhooks/incoming/XXX
+      type: webex
     - url: https://your-server.com/alert
       type: generic
 """
@@ -81,6 +83,8 @@ def _send_webhook(hook, title, message, severity):
             payload = _slack_payload(title, message, severity)
         elif hook_type == "teams":
             payload = _teams_payload(title, message, severity)
+        elif hook_type == "webex":
+            payload = _webex_payload(title, message, severity)
         else:
             payload = _generic_payload(title, message, severity)
 
@@ -130,6 +134,20 @@ def _generic_payload(title, message, severity):
         "title": title,
         "message": message,
         "severity": severity,
+    }
+
+
+def _webex_payload(title, message, severity):
+    icon = (
+        "🔴" if severity == "critical"
+        else "🟡" if severity == "warning"
+        else "🟢"
+    )
+    return {
+        "markdown": (
+            f"{icon} **Kubsome: {title}**\n\n"
+            f"{message}"
+        )
     }
 
 
