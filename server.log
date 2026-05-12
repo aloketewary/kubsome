@@ -1,0 +1,122 @@
+╭──────────────────────────────────╮
+│ Kubsome Server                   │
+│ API:  http://localhost:8000/api  │
+│ UI:   http://localhost:8000/app  │
+│ Docs: http://localhost:8000/docs │
+╰──────────────────────────────────╯
+INFO:     Will watch for changes in these directories: ['/app']
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [448514] using WatchFiles
+INFO:     Started server process [448856]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+(B)0[?1049h[1;24r[m[4l[?1h=[?1h=[39;49m[39;49m[37m[40m[1;1H                                                                                [2;1H                                                                                [3;1H                                                                                [4;1H                                                                                [5;1H                                                                                [6;1H                                                                                [7;1H                                                                                [8;1H                                                                                [9;1H                                                                                [10;1H                                                                                [11;1H                                                                                [12;1H                                                                                [13;1H                                                                                [14;1H                                                                                [15;1H                                                                                [16;1H                                                                                [17;1H                                                                                [18;1H                                                                                [19;1H                                                                                [20;1H                                                                                [21;1H                                                                                [22;1H                                                                                [23;1H                                                                                [24;1H                                                                                [1@[37m[40m [H[m[39;49m[37m[40m[39;49m[37m[40m                                                                                [2;1H                                                                                [3;1H                                                                                [4;1H                                                                                [5;1H                                                                                [6;1H                                                                                [7;1H                                                                                [8;1H                                                                                [9;1H                                                                                [10;1H                                                                                [11;1H                                                                                [12;1H                                                                                [13;1H                                                                                [14;1H                                                                                [15;1H                                                                                [16;1H                                                                                [17;1H                                                                                [18;1H                                                                                [19;1H                                                                                [20;1H                                                                                [21;1H                                                                                [22;1H                                                                                [23;1H                                                                                [24;1H                                                                                [1@ [H[39;49m[m[22d[93m[44mGetting http://localhost:8000/app                                               [22;34H[39;49m[m[93m[44mLooking up localhost:8000        [22;26H[39;49m[m[93m[44mMaking HTTP connection to localhost:8000[39;49m[m[24d[24;1H[?1049l[?1l>INFO:     127.0.0.1:36672 - "GET /app/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36672 - "GET /app/chunk-SOS7EFA2.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36688 - "GET /app/chunk-TU5UFHDL.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36684 - "GET /app/chunk-PCJQGKGE.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36672 - "GET /app/chunk-6ERXBFDS.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36698 - "GET /app/chunk-IY3N42HH.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36718 - "GET /app/chunk-PXEJURSP.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36710 - "GET /app/chunk-GNKZPTRH.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36684 - "GET /app/chunk-DPOLVM7J.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36710 - "GET /app/chunk-L6DDJOKO.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36672 - "GET /app/polyfills-7R4CRVNH.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36688 - "GET /app/chunk-ZXUWRYS2.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36718 - "GET /app/styles-US5R5DIC.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36698 - "GET /app/main-LCLJRSQP.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36698 - "GET /app/chunk-LUBMEZSW.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36710 - "GET /app/chunk-ODTNUG5O.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36672 - "GET /app/chunk-QEA3PV5M.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36688 - "GET /app/chunk-3257W4BQ.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36718 - "GET /app/chunk-BHHYHZFV.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36688 - "GET /app/chunk-DE6ODVTY.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36688 - "GET /api/namespaces HTTP/1.1" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/uvicorn/protocols/http/httptools_impl.py", line 421, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 56, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/fastapi/applications.py", line 1159, in __call__
+    await super().__call__(scope, receive, send)
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/starlette/applications.py", line 90, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    raise exc
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/starlette/middleware/cors.py", line 88, in __call__
+    await self.app(scope, receive, send)
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/starlette/routing.py", line 660, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/starlette/routing.py", line 680, in app
+    await route.handle(scope, receive, send)
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/starlette/routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/fastapi/routing.py", line 134, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/fastapi/routing.py", line 120, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/fastapi/routing.py", line 674, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/fastapi/routing.py", line 330, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/starlette/concurrency.py", line 32, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/anyio/to_thread.py", line 63, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2518, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 1002, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/api/routes/contexts.py", line 46, in get_namespaces
+    result = subprocess.run(
+             ^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/subprocess.py", line 548, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/subprocess.py", line 1026, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/subprocess.py", line 1885, in _execute_child
+    self.pid = _fork_exec(
+               ^^^^^^^^^^^
+TypeError: expected str, bytes or os.PathLike object, not NoneType
+INFO:     127.0.0.1:36710 - "GET /api/contexts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36718 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36736 - "WebSocket /ws/pods" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:36684 - "GET /api/pods HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36672 - "GET /api/overview HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36698 - "GET /api/anomalies HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36722 - "GET /api/deployments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36710 - "GET /api/contexts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36718 - "GET /api/uptime HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36718 - "GET /app/chunk-2OCNI6TL.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36718 - "GET /app/media/primeicons-4GST5W3O.woff2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36710 - "GET /app/chunk-TVONV2AC.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36718 - "GET /app/chunk-XWYEPRKA.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36710 - "GET /api/overview HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36722 - "GET /api/uptime HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36718 - "GET /api/events?limit=5 HTTP/1.1" 200 OK
+INFO:     connection closed

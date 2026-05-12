@@ -1,6 +1,5 @@
 import { Component, inject, Input, Output, EventEmitter, OnChanges, SimpleChanges, ViewChild, ElementRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { JsonPipe } from '@angular/common';
 import { TagModule } from 'primeng/tag';
 import { ButtonModule } from 'primeng/button';
 import { TooltipModule } from 'primeng/tooltip';
@@ -12,7 +11,7 @@ import { Subscription } from 'rxjs';
 @Component({
   selector: 'app-pod-drawer',
   standalone: true,
-  imports: [FormsModule, JsonPipe, TagModule, ButtonModule, TooltipModule, DrawerModule],
+  imports: [FormsModule, TagModule, ButtonModule, TooltipModule, DrawerModule],
   template: `
     <p-drawer [(visible)]="drawerVisible" position="right" [appendTo]="'body'" [modal]="true"
               [style]="{ width: fullscreen ? '100vw' : '580px' }" (onHide)="close()">
@@ -26,7 +25,10 @@ import { Subscription } from 'rxjs';
             <h3>Pod Details</h3>
             <p>{{ podName }}</p>
           </div>
-          <button class="expand-btn" (click)="fullscreen = !fullscreen" [title]="fullscreen ? 'Collapse' : 'Expand'">
+          <button class="expand-btn" (click)="fullscreen = !fullscreen"
+                  [title]="fullscreen ? 'Collapse' : 'Expand'"
+                  [aria-label]="fullscreen ? 'Collapse details' : 'Expand details'"
+                  [aria-pressed]="fullscreen">
             <i class="pi" [class.pi-window-minimize]="fullscreen" [class.pi-expand]="!fullscreen"></i>
           </button>
         </div>
@@ -38,7 +40,17 @@ import { Subscription } from 'rxjs';
           <span class="meta-item"><i class="pi pi-server"></i> {{ podMeta.node }}</span>
           <span class="meta-item"><i class="pi pi-clock"></i> {{ podMeta.age }}</span>
           <span class="meta-item"><i class="pi pi-globe"></i> {{ podMeta.ip }}</span>
-          <i class="pi pi-copy copy-icon" pTooltip="Copy name" (click)="copyName()"></i>
+          <i class="pi copy-icon"
+             [class.pi-copy]="!nameCopied"
+             [class.pi-check]="nameCopied"
+             [class.copied]="nameCopied"
+             pTooltip="Copy name"
+             role="button"
+             tabindex="0"
+             aria-label="Copy pod name"
+             (click)="copyName()"
+             (keydown.enter)="copyName(); $event.preventDefault()"
+             (keydown.space)="copyName(); $event.preventDefault()"></i>
         </div>
       }
 
@@ -212,8 +224,10 @@ import { Subscription } from 'rxjs';
     }
     .meta-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-muted); }
     .meta-item i { font-size: 11px; }
-    .copy-icon { font-size: 12px; color: var(--text-muted); cursor: pointer; margin-left: auto; padding: 4px; border-radius: 4px; }
-    .copy-icon:hover { color: var(--accent); background: var(--accent-subtle); }
+    .copy-icon { font-size: 12px; color: var(--text-muted); cursor: pointer; margin-left: auto; padding: 4px; border-radius: 4px; transition: all 0.2s; outline: none; }
+    .copy-icon:hover, .copy-icon:focus-visible { color: var(--accent); background: var(--accent-subtle); }
+    .copy-icon:focus-visible { box-shadow: 0 0 0 2px var(--accent-subtle); }
+    .copy-icon.copied { color: var(--success) !important; }
 
     /* Tabs */
     .drawer-tabs { display: flex; border-bottom: 1px solid var(--border); padding: 0 16px; }
@@ -315,6 +329,7 @@ export class PodDrawerComponent implements OnChanges {
 
   drawerVisible = false;
   fullscreen = false;
+  nameCopied = false;
   activeTab = 'logs';
   tabs = [
     { id: 'logs', icon: 'pi pi-align-left', label: 'Logs' },
@@ -356,7 +371,12 @@ export class PodDrawerComponent implements OnChanges {
 
   close() { this.stopStream(); this.drawerVisible = false; this.closed.emit(); }
 
-  copyName() { navigator.clipboard.writeText(this.podName); }
+  copyName() {
+    navigator.clipboard.writeText(this.podName).then(() => {
+      this.nameCopied = true;
+      setTimeout(() => this.nameCopied = false, 2000);
+    });
+  }
 
   scrollToBottom() {
     const el = this.logContainer?.nativeElement;
