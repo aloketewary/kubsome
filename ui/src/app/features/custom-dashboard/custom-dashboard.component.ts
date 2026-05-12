@@ -1,4 +1,5 @@
 import { Component, inject, OnInit, OnDestroy } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
@@ -376,6 +377,8 @@ const WIDGET_CATALOG = [
 })
 export class CustomDashboardComponent implements OnInit, OnDestroy {
   private http = inject(HttpClient);
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
   widgets: Widget[] = [];
   catalog = WIDGET_CATALOG;
   catalogVisible = false;
@@ -388,7 +391,16 @@ export class CustomDashboardComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.loadSavedList();
-    this.loadWidgets();
+    this.route.queryParams.subscribe(params => {
+      if (params['name']) {
+        const dash = this.savedDashboards.find(d => d.name === params['name']);
+        if (dash) {
+          this.loadDashboard(dash);
+          return;
+        }
+      }
+      this.loadWidgets();
+    });
     this.refreshAll();
     this.refreshTimer = setInterval(() => this.tickRefresh(), 5000);
   }

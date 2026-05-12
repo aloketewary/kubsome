@@ -42,7 +42,7 @@ import { ConfirmDialogComponent } from './shared/components/confirm-dialog.compo
           <div class="dash-menu" (mouseleave)="dashMenuOpen = false">
             @if (savedDashList.length > 0) {
               @for (d of savedDashList; track d.name) {
-                <a class="dash-menu-item" [routerLink]="'/my-dashboard'" (click)="selectDash(d); dashMenuOpen = false">
+                <a class="dash-menu-item" [routerLink]="'/my-dashboard'" [queryParams]="{name: d.name}" (click)="selectDash(d); dashMenuOpen = false">
                   <i class="pi pi-th-large"></i>
                   <span>{{ d.name }}</span>
                   <span class="dm-count">{{ d.widgets.length }}</span>
