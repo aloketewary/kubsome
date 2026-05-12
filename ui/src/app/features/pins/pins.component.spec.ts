@@ -27,26 +27,26 @@ describe('PinsComponent', () => {
 
   it('should load pins on init', () => {
     fixture.detectChanges();
-    const req = httpMock.expectOne('http://localhost:8000/api/saved-queries');
+    const req = httpMock.expectOne('/api/saved-queries');
     req.flush({ queries: [{ name: 'test', query: 'pods', last_run: null }] });
     expect(component.pins.length).toBe(1);
   });
 
   it('should add a pin', () => {
     fixture.detectChanges();
-    httpMock.expectOne('http://localhost:8000/api/saved-queries').flush({ queries: [] });
+    httpMock.expectOne('/api/saved-queries').flush({ queries: [] });
 
     component.newName = 'health';
     component.newQuery = 'scorecard';
     component.addPin();
 
-    const postReq = httpMock.expectOne('http://localhost:8000/api/saved-queries');
+    const postReq = httpMock.expectOne('/api/saved-queries');
     expect(postReq.request.method).toBe('POST');
     expect(postReq.request.body.name).toBe('health');
     postReq.flush({});
 
     // Refresh after add
-    httpMock.expectOne('http://localhost:8000/api/saved-queries').flush({ queries: [{ name: 'health', query: 'scorecard' }] });
+    httpMock.expectOne('/api/saved-queries').flush({ queries: [{ name: 'health', query: 'scorecard' }] });
     expect(component.pins.length).toBe(1);
   });
 

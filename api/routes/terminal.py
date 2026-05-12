@@ -173,9 +173,12 @@ def _run_kubsome(cmd: str):
 
 def _run(command: str, timeout: int = 15, cwd: str = None):
     """Run a shell command with timeout."""
+    import shlex
     try:
+        # Split command into arguments for safe execution without shell=True
+        args = shlex.split(command)
         result = subprocess.run(
-            command, shell=True, capture_output=True,
+            args, shell=False, capture_output=True,
             text=True, timeout=timeout, cwd=cwd,
         )
         output = result.stdout or result.stderr

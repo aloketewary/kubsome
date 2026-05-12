@@ -36,9 +36,46 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
           </div>
           <div class="hero-actions">
             <span class="hero-time">{{ lastUpdated }}</span>
-            <button class="refresh-btn" [class.spinning]="refreshing" (click)="refresh()" title="Refresh"><i class="pi pi-refresh"></i></button>
+            <button class="refresh-btn" [class.spinning]="refreshing"
+              (click)="refresh()" (keydown)="onKey($event, refresh.bind(this))"
+              tabindex="0" role="button" aria-label="Refresh Dashboard" title="Refresh">
+              <i class="pi pi-refresh"></i>
+            </button>
           </div>
         </div>
+      </div>
+
+      <!-- Growth: Empty State -->
+      @if (isClusterEmpty) {
+        <div class="empty-state-card glass stagger-1">
+          <div class="empty-icon"><i class="pi pi-compass"></i></div>
+          <div class="empty-content">
+            <h3>Welcome to Kubsome!</h3>
+            <p>We didn't find any resources in the current namespace. Try exploring other namespaces or use the AI Assistant to get started.</p>
+            <div class="empty-actions">
+              <button class="btn-primary" (click)="router.navigate(['/namespace'])">Switch Namespace</button>
+              <button class="btn-secondary" (click)="router.navigate(['/ai'])">Ask AI Assistant</button>
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- Growth: Smart Insights -->
+      <div class="insights-row stagger-1">
+        <div class="insight-pill" (click)="router.navigate(['/scorecard'])" tabindex="0" role="button" (keydown)="onKey($event, router.navigate.bind(router, ['/scorecard']))">
+          <i class="pi pi-trophy"></i>
+          <span>Check Cluster Scorecard</span>
+        </div>
+        <div class="insight-pill" (click)="router.navigate(['/cost'])" tabindex="0" role="button" (keydown)="onKey($event, router.navigate.bind(router, ['/cost']))">
+          <i class="pi pi-chart-line"></i>
+          <span>Optimize Resource Costs</span>
+        </div>
+        @if (data && pins.length === 0) {
+          <div class="insight-pill suggested" (click)="router.navigate(['/ai'])" tabindex="0" role="button" (keydown)="onKey($event, router.navigate.bind(router, ['/ai']))">
+            <i class="pi pi-bookmark"></i>
+            <span>Tip: Pin your favorite AI queries</span>
+          </div>
+        }
       </div>
 
       <!-- Alert -->
@@ -56,7 +93,7 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
 
       <!-- Bento Metrics -->
       <div class="bento-grid">
-        <div class="bento-card bento-pods stagger-1" (click)="goToPods()">
+        <div class="bento-card bento-pods stagger-1" (click)="goToPods()" (keydown)="onKey($event, goToPods.bind(this))" tabindex="0" role="button" aria-label="View Pods">
           <div class="bento-header">
             <div class="bento-icon pods"><i class="pi pi-box"></i></div>
             <span class="bento-label">Pods</span>
@@ -77,7 +114,7 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
           </div>
         </div>
 
-        <div class="bento-card bento-nodes stagger-2" (click)="router.navigate(['/metrics'])">
+        <div class="bento-card bento-nodes stagger-2" (click)="router.navigate(['/metrics'])" (keydown)="onKey($event, router.navigate.bind(router, ['/metrics']))" tabindex="0" role="button" aria-label="View Node Metrics">
           <div class="bento-header">
             <div class="bento-icon nodes"><i class="pi pi-server"></i></div>
             <span class="bento-label">Nodes</span>
@@ -96,7 +133,7 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
           </div>
         </div>
 
-        <div class="bento-card bento-deps stagger-3" (click)="router.navigate(['/deployments'])">
+        <div class="bento-card bento-deps stagger-3" (click)="router.navigate(['/deployments'])" (keydown)="onKey($event, router.navigate.bind(router, ['/deployments']))" tabindex="0" role="button" aria-label="View Deployments">
           <div class="bento-header">
             <div class="bento-icon deploys"><i class="pi pi-send"></i></div>
             <span class="bento-label">Deployments</span>
@@ -123,7 +160,9 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
             </div>
             <div class="uptime-info">
               <span class="uptime-title">{{ uptime?.cluster_down ? 'Cluster Down' : 'Cluster Operational' }}</span>
-              <span class="uptime-ctx" [pTooltip]="uptime?.context" tooltipPosition="bottom" (click)="copyContext()">{{ uptime?.context }}</span>
+              <span class="uptime-ctx" [pTooltip]="uptime?.context" tooltipPosition="bottom"
+                (click)="copyContext()" (keydown)="onKey($event, copyContext.bind(this))"
+                tabindex="0" role="button" aria-label="Copy Context">{{ uptime?.context }}</span>
             </div>
             <div class="uptime-stats">
               @if (uptime?.nodes?.length && !uptime?.cluster_down) {
@@ -210,27 +249,27 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
             <h2>Quick Actions</h2>
           </div>
           <div class="actions-grid">
-            <div class="action-card" (click)="router.navigate(['/ai'])">
+            <div class="action-card" (click)="router.navigate(['/ai'])" (keydown)="onKey($event, router.navigate.bind(router, ['/ai']))" tabindex="0" role="button">
               <i class="pi pi-sparkles"></i>
               <span>AI Summary</span>
             </div>
-            <div class="action-card" (click)="router.navigate(['/terminal'])">
+            <div class="action-card" (click)="router.navigate(['/terminal'])" (keydown)="onKey($event, router.navigate.bind(router, ['/terminal']))" tabindex="0" role="button">
               <i class="pi pi-code"></i>
               <span>Terminal</span>
             </div>
-            <div class="action-card" (click)="router.navigate(['/runbooks'])">
+            <div class="action-card" (click)="router.navigate(['/runbooks'])" (keydown)="onKey($event, router.navigate.bind(router, ['/runbooks']))" tabindex="0" role="button">
               <i class="pi pi-book"></i>
               <span>Runbooks</span>
             </div>
-            <div class="action-card" (click)="router.navigate(['/incident'])">
+            <div class="action-card" (click)="router.navigate(['/incident'])" (keydown)="onKey($event, router.navigate.bind(router, ['/incident']))" tabindex="0" role="button">
               <i class="pi pi-exclamation-circle"></i>
               <span>Incident</span>
             </div>
-            <div class="action-card" (click)="router.navigate(['/secrets'])">
+            <div class="action-card" (click)="router.navigate(['/secrets'])" (keydown)="onKey($event, router.navigate.bind(router, ['/secrets']))" tabindex="0" role="button">
               <i class="pi pi-lock"></i>
               <span>Secrets</span>
             </div>
-            <div class="action-card" (click)="router.navigate(['/cost'])">
+            <div class="action-card" (click)="router.navigate(['/cost'])" (keydown)="onKey($event, router.navigate.bind(router, ['/cost']))" tabindex="0" role="button">
               <i class="pi pi-dollar"></i>
               <span>Optimize</span>
             </div>
@@ -254,6 +293,41 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
       max-width: 100%;
       overflow: visible;
     }
+
+    /* Empty State */
+    .empty-state-card {
+      display: flex; align-items: center; gap: 24px;
+      padding: 24px 32px; margin-bottom: 24px;
+      border-radius: 20px; border: 1px solid var(--border);
+      background: var(--bg-card);
+    }
+    .empty-icon {
+      width: 64px; height: 64px; border-radius: 16px;
+      background: var(--accent-subtle); color: var(--accent);
+      display: flex; align-items: center; justify-content: center; font-size: 28px;
+    }
+    .empty-content h3 { margin: 0 0 8px; font-size: 18px; font-weight: 700; }
+    .empty-content p { margin: 0 0 16px; color: var(--text-muted); font-size: 14px; line-height: 1.5; }
+    .empty-actions { display: flex; gap: 12px; }
+    .btn-primary {
+      background: var(--accent); color: #fff; border: none; padding: 8px 16px;
+      border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer;
+    }
+    .btn-secondary {
+      background: var(--bg-elevated); color: var(--text); border: 1px solid var(--border);
+      padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer;
+    }
+
+    /* Insights Pill */
+    .insights-row { display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
+    .insight-pill {
+      display: flex; align-items: center; gap: 8px; padding: 8px 16px;
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 20px;
+      font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s;
+    }
+    .insight-pill:hover { border-color: var(--accent); background: var(--accent-subtle); color: var(--accent); transform: translateY(-1px); }
+    .insight-pill.suggested { border-style: dashed; opacity: 0.8; }
+    .insight-pill i { font-size: 14px; }
 
     /* Hero — Glassmorphism + Mesh Gradient */
     .hero {
@@ -335,6 +409,7 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
       border-color: var(--border); background: var(--bg-elevated); color: var(--text-muted);
     }
     .refresh-btn:hover { background: rgba(255,255,255,0.12); transform: scale(1.1) rotate(45deg); border-color: rgba(255,255,255,0.2); }
+    .refresh-btn:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--accent); }
     .refresh-btn.spinning i { animation: spin 0.8s linear infinite; }
     @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
@@ -395,6 +470,11 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
       border-color: var(--border-hover);
       box-shadow: 0 12px 40px -12px rgba(0,0,0,0.3);
     }
+    .bento-card:focus-visible {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: inset 0 0 0 1px var(--accent), 0 12px 40px -12px rgba(0,0,0,0.3);
+    }
     .bento-pods { grid-column: 1; }
 
     .bento-header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
@@ -451,6 +531,7 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     .uptime-down .uptime-title { color: var(--danger); }
     .uptime-ctx { font-size: 11px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
     .uptime-ctx:hover { color: var(--accent); }
+    .uptime-ctx:focus-visible { outline: none; color: var(--accent); text-decoration: underline; }
 
     .uptime-stats { display: flex; gap: 20px; flex-shrink: 0; }
     .ustat { display: flex; flex-direction: column; align-items: center; gap: 1px; }
@@ -595,6 +676,11 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
       background: var(--accent-subtle);
       box-shadow: 0 8px 24px -8px rgba(99,102,241,0.15);
     }
+    .action-card:focus-visible {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: inset 0 0 0 1px var(--accent);
+    }
     .action-card i { font-size: 16px; color: var(--text-muted); transition: color 0.2s; }
     .action-card:hover i { color: var(--accent); }
 
@@ -637,6 +723,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   refreshing = false;
   private refreshInterval: any;
   uptime: any = null;
+  pins: any[] = [];
 
   get podTotal() {
     return (this.data?.pods.healthy || 0) + (this.data?.pods.warning || 0) + (this.data?.pods.critical || 0);
@@ -657,6 +744,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (total === 0) return 100;
     const healthy = (this.data?.pods.healthy || 0) + (this.data?.nodes.healthy || 0) + (this.data?.deployments.healthy || 0);
     return Math.round((healthy / total) * 100);
+  }
+
+  get isClusterEmpty(): boolean {
+    return this.data !== null && this.podTotal === 0 && this.nodeTotal === 0 && this.depTotal === 0;
   }
 
   Math = Math;
@@ -708,8 +799,17 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return max.uptime_human || '—';
   }
 
+  onKey(event: KeyboardEvent, action: Function) {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      event.stopPropagation();
+      action();
+    }
+  }
+
   refresh() {
     this.refreshing = true;
+    this.loadPins();
     this.api.getOverview().subscribe({
       next: (res) => (this.data = res),
       error: () => {
@@ -738,6 +838,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
       },
     });
     this.lastUpdated = new Date().toLocaleTimeString();
+  }
+
+  loadPins() {
+    this.http.get<any>('/api/saved-queries').subscribe({
+      next: (res) => (this.pins = res.queries || []),
+      error: () => (this.pins = []),
+    });
   }
 
   copyContext() {
