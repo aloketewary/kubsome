@@ -17,6 +17,8 @@ interface RunbookStep {
   output?: string;
   outputExpanded?: boolean;
   loading?: boolean;
+  note?: string;
+  isInfo?: boolean;
 }
 
 interface Runbook {
@@ -132,13 +134,16 @@ interface Runbook {
             <p>{{ activeRunbook.description }}</p>
           </div>
         </div>
-        <div class="active-progress">
-          <div class="progress-ring">
-            <svg viewBox="0 0 36 36">
-              <path class="ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-              <path class="ring-fill" [attr.stroke-dasharray]="progressPct + ', 100'" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-            </svg>
-            <span class="ring-val">{{ completedSteps }}/{{ activeRunbook.steps.length }}</span>
+        <div class="active-meta">
+          <div class="elapsed-badge"><i class="pi pi-clock"></i> {{ runbookElapsed }}</div>
+          <div class="active-progress">
+            <div class="progress-ring">
+              <svg viewBox="0 0 36 36">
+                <path class="ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                <path class="ring-fill" [attr.stroke-dasharray]="progressPct + ', 100'" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+              </svg>
+              <span class="ring-val">{{ completedSteps }}/{{ activeRunbook.steps.length }}</span>
+            </div>
           </div>
         </div>
       </div>
@@ -146,11 +151,13 @@ interface Runbook {
       <!-- Steps -->
       <div class="steps-list">
         @for (step of activeRunbook.steps; track $index; let i = $index) {
-          <div class="step-card" [class.step-done]="step.done" [class.step-active]="i === currentStepIndex">
+          <div class="step-card" [class.step-done]="step.done" [class.step-active]="i === currentStepIndex" [class.step-info]="step.isInfo">
             <div class="step-left">
-              <div class="step-number" [class.num-done]="step.done" [class.num-active]="i === currentStepIndex">
+              <div class="step-number" [class.num-done]="step.done" [class.num-active]="i === currentStepIndex" [class.num-info]="step.isInfo && !step.done">
                 @if (step.done) {
                   <i class="pi pi-check"></i>
+                } @else if (step.isInfo) {
+                  <i class="pi pi-info"></i>
                 } @else {
                   {{ i + 1 }}
                 }
@@ -191,7 +198,20 @@ interface Runbook {
                     <button pButton label="Run" icon="pi pi-play" class="p-button-sm" (click)="runStep(i)" [disabled]="step.loading || (!!step.paramName && !step.paramValue)"></button>
                   }
                   <button pButton label="Mark Done" icon="pi pi-check" class="p-button-sm p-button-outlined" (click)="markDone(i)"></button>
-                  <button pButton label="Skip" class="p-button-sm p-button-text" (click)="markDone(i)"></button>
+                  @if (!step.isInfo) {
+                    <button pButton label="Skip" class="p-button-sm p-button-text" (click)="markDone(i)"></button>
+                  }
+                </div>
+              }
+
+              <!-- Step Note -->
+              @if (step.done && !step.isInfo) {
+                <div class="step-note">
+                  @if (step.note) {
+                    <span class="note-text"><i class="pi pi-pencil"></i> {{ step.note }}</span>
+                  } @else {
+                    <input class="note-input" [(ngModel)]="stepNoteInput" placeholder="Add observation..." (keyup.enter)="saveStepNote(i)" (blur)="saveStepNote(i)" />
+                  }
                 </div>
               }
 
@@ -221,8 +241,11 @@ interface Runbook {
         <div class="completion-card">
           <div class="completion-icon"><i class="pi pi-check-circle"></i></div>
           <h3>Runbook Complete</h3>
-          <p>All steps have been executed. Review the outputs above for any follow-up actions.</p>
-          <button pButton label="Back to Runbooks" icon="pi pi-arrow-left" class="p-button-outlined p-button-sm" (click)="activeRunbook = null"></button>
+          <p>All {{ activeRunbook.steps.length }} steps completed in {{ runbookElapsed }}.</p>
+          <div class="completion-actions">
+            <button pButton label="Back to Runbooks" icon="pi pi-arrow-left" class="p-button-outlined p-button-sm" (click)="activeRunbook = null"></button>
+            <button pButton label="Link to Incident" icon="pi pi-link" class="p-button-sm p-button-warning" (click)="linkToIncident()" pTooltip="Add runbook execution to active incident"></button>
+          </div>
         </div>
       }
     }
@@ -319,6 +342,13 @@ interface Runbook {
     }
     .active-info h2 { font-size: 16px; font-weight: 700; margin: 0; }
     .active-info p { font-size: 12px; color: var(--text-muted); margin: 2px 0 0; }
+    .active-meta { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+    .elapsed-badge {
+      font-size: 11px; font-family: 'JetBrains Mono', monospace; color: var(--text-muted);
+      padding: 4px 10px; background: var(--bg-elevated); border-radius: 6px;
+      display: flex; align-items: center; gap: 5px;
+    }
+    .elapsed-badge i { font-size: 11px; }
     .active-progress { flex-shrink: 0; }
     .progress-ring { position: relative; width: 48px; height: 48px; }
     .progress-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
@@ -343,6 +373,10 @@ interface Runbook {
     .num-done { background: var(--success); color: #fff; border-color: var(--success); }
     .num-done i { font-size: 12px; }
     .num-active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .num-info { background: transparent; border-color: var(--text-muted); border-style: dashed; }
+    .num-info i { font-size: 10px; }
+    .step-info { opacity: 0.8; }
+    .step-info .step-title { font-size: 13px; font-weight: 500; color: var(--text-secondary); }
     .step-connector { width: 2px; flex: 1; background: var(--border); min-height: 16px; }
     .conn-done { background: var(--success); }
 
@@ -363,6 +397,20 @@ interface Runbook {
     .step-command code { font-family: 'JetBrains Mono', monospace; font-size: 11px; flex: 1; color: var(--accent); }
 
     .step-actions { display: flex; gap: 6px; margin-bottom: 8px; }
+
+    /* Step Notes */
+    .step-note { margin-top: 6px; }
+    .step-note .note-text {
+      font-size: 11px; color: var(--text-muted); font-style: italic;
+      display: flex; align-items: center; gap: 4px;
+    }
+    .step-note .note-text i { font-size: 10px; }
+    .step-note .note-input {
+      width: 100%; padding: 6px 10px;
+      background: var(--bg-elevated); border: 1px dashed var(--border); border-radius: 4px;
+      color: var(--text); font-size: 11px; outline: none;
+    }
+    .step-note .note-input:focus { border-color: var(--accent); border-style: solid; }
     .step-param {
       display: flex; align-items: center; gap: 8px;
       margin-bottom: 10px;
@@ -407,6 +455,7 @@ interface Runbook {
     .completion-icon { font-size: 36px; color: var(--success); margin-bottom: 12px; }
     .completion-card h3 { font-size: 18px; font-weight: 700; margin: 0 0 8px; }
     .completion-card p { font-size: 13px; color: var(--text-secondary); margin: 0 0 16px; }
+    .completion-actions { display: flex; gap: 8px; justify-content: center; }
   `],
 })
 export class RunbooksComponent implements OnInit {
@@ -417,6 +466,11 @@ export class RunbooksComponent implements OnInit {
   filterSeverity = 'all';
   filteredRunbooks: Runbook[] = [];
   recommended: Runbook[] = [];
+  stepNoteInput = '';
+  runbookElapsed = '00:00';
+  private startTime = 0;
+  private timerInterval: any;
+  copied = false;
 
   get completedSteps() { return this.activeRunbook?.steps.filter(s => s.done).length || 0; }
   get progressPct() { return this.activeRunbook ? Math.round((this.completedSteps / this.activeRunbook.steps.length) * 100) : 0; }
@@ -489,14 +543,21 @@ export class RunbooksComponent implements OnInit {
           estimatedTime: `${pb.steps.length * 2} min`,
           steps: pb.steps.map((s: string) => {
             const extracted = this.extractCommand(s);
+            const cleaned = s.replace(/\[\/?[^\]]+\]/g, '').trim();
+            const isInfo = !extracted.command && !extracted.commandTemplate && (
+              cleaned.startsWith('•') || cleaned.startsWith('Common') ||
+              cleaned.startsWith('If ') || cleaned.startsWith('Note:') ||
+              cleaned.length < 20
+            );
             return {
-              title: s.replace(/\[\/?[^\]]+\]/g, '').trim(),
+              title: cleaned,
               description: '',
               command: extracted.command,
               commandTemplate: extracted.commandTemplate,
               paramName: extracted.paramName,
               paramValue: '',
               done: false,
+              isInfo,
             };
           }),
         }));
@@ -554,7 +615,25 @@ export class RunbooksComponent implements OnInit {
   }
 
   selectRunbook(rb: Runbook) {
-    this.activeRunbook = { ...rb, steps: rb.steps.map(s => ({ ...s, done: false, output: undefined, loading: false })) };
+    this.activeRunbook = { ...rb, steps: rb.steps.map(s => ({ ...s, done: false, output: undefined, loading: false, note: undefined })) };
+    this.startTime = Date.now();
+    this.runbookElapsed = '00:00';
+    this.timerInterval = setInterval(() => {
+      const secs = Math.floor((Date.now() - this.startTime) / 1000);
+      const m = Math.floor(secs / 60).toString().padStart(2, '0');
+      const s = (secs % 60).toString().padStart(2, '0');
+      this.runbookElapsed = `${m}:${s}`;
+    }, 1000);
+    // Auto-complete info steps that are before the first actionable step
+    this.autoCompleteInfoSteps();
+  }
+
+  private autoCompleteInfoSteps() {
+    if (!this.activeRunbook) return;
+    for (const step of this.activeRunbook.steps) {
+      if (step.isInfo) { step.done = true; }
+      else { break; }
+    }
   }
 
   runStep(index: number) {
@@ -576,9 +655,37 @@ export class RunbooksComponent implements OnInit {
 
   markDone(index: number) {
     this.activeRunbook!.steps[index].done = true;
+    // Auto-complete subsequent info steps
+    for (let i = index + 1; i < this.activeRunbook!.steps.length; i++) {
+      if (this.activeRunbook!.steps[i].isInfo) {
+        this.activeRunbook!.steps[i].done = true;
+      } else {
+        break;
+      }
+    }
+  }
+
+  saveStepNote(index: number) {
+    if (!this.stepNoteInput.trim()) return;
+    this.activeRunbook!.steps[index].note = this.stepNoteInput;
+    this.stepNoteInput = '';
+  }
+
+  linkToIncident() {
+    if (!this.activeRunbook) return;
+    const summary = `Runbook: ${this.activeRunbook.name} (${this.completedSteps}/${this.activeRunbook.steps.length} steps, ${this.runbookElapsed})`;
+    this.http.post<any>('/api/incident/note', { text: summary }).subscribe({
+      next: () => {
+        this.activeRunbook = null;
+        clearInterval(this.timerInterval);
+      },
+      error: () => {},
+    });
   }
 
   copyCmd(text: string) {
     navigator.clipboard.writeText(text);
+    this.copied = true;
+    setTimeout(() => this.copied = false, 1500);
   }
 }
