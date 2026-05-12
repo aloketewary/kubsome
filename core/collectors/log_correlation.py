@@ -5,7 +5,7 @@ into a single timeline with timestamps.
 
 import subprocess
 import re
-from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor
 
 from core.context import context
 
@@ -15,35 +15,55 @@ def correlate_logs(pod_names, tail=50):
     Fetch logs from multiple pods and merge into
     a time-sorted unified timeline.
     """
+    if not pod_names:
+        return {
+            "pods": [],
+            "entries": [],
+            "total": 0,
+        }
+
     ctx = context.current_context
     ns = context.namespace
     entries = []
 
-    for pod in pod_names:
+    def fetch_pod_logs(pod):
         cmd = (
             f"kubectl --context {ctx} "
             f"logs {pod} -n {ns} "
             f"--tail={tail} --timestamps"
         )
-        result = subprocess.run(
-            cmd, shell=True,
-            capture_output=True, text=True,
-            timeout=15,
-        )
-        if result.returncode != 0:
-            continue
+        try:
+            result = subprocess.run(
+                cmd, shell=True,
+                capture_output=True, text=True,
+                timeout=15,
+            )
+            if result.returncode != 0:
+                return []
 
-        for line in result.stdout.strip().split("\n"):
-            if not line.strip():
-                continue
-            ts, msg = _parse_timestamped_line(line)
-            entries.append({
-                "pod": _short_name(pod),
-                "pod_full": pod,
-                "timestamp": ts,
-                "message": msg,
-                "level": _detect_level(msg),
-            })
+            pod_entries = []
+            for line in result.stdout.strip().split("\n"):
+                if not line.strip():
+                    continue
+                ts, msg = _parse_timestamped_line(line)
+                pod_entries.append({
+                    "pod": _short_name(pod),
+                    "pod_full": pod,
+                    "timestamp": ts,
+                    "message": msg,
+                    "level": _detect_level(msg),
+                })
+            return pod_entries
+        except (subprocess.SubprocessError, Exception):
+            return []
+
+    # Parallel fetch logs from all pods
+    workers = min(len(pod_names), 10)
+    with ThreadPoolExecutor(max_workers=workers) as executor:
+        results = executor.map(fetch_pod_logs, pod_names)
+
+    for pod_entries in results:
+        entries.extend(pod_entries)
 
     # Sort by timestamp
     entries.sort(key=lambda e: e["timestamp"] or "")

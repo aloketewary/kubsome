@@ -1,6 +1,7 @@
 import subprocess
 import threading
 import queue
+from concurrent.futures import ThreadPoolExecutor
 
 from core.context import context
 
@@ -163,28 +164,46 @@ def fetch_combined_logs(pods, tail=50, errors_only=False):
     Fetch logs from multiple pods and merge them
     with pod-name prefix (logcat style).
     """
+    if not pods:
+        return []
+
+    ctx = context.current_context
+    ns = context.namespace
     all_lines = []
 
-    for pod in pods:
+    def fetch_single(pod):
         cmd = (
             f"kubectl "
-            f"--context {context.current_context} "
+            f"--context {ctx} "
             f"logs {pod} "
-            f"-n {context.namespace} "
+            f"-n {ns} "
             f"--tail={tail} --timestamps"
         )
 
-        result = subprocess.run(
-            cmd, shell=True,
-            capture_output=True, text=True
-        )
+        try:
+            result = subprocess.run(
+                cmd, shell=True,
+                capture_output=True, text=True,
+                timeout=15
+            )
+            pod_lines = []
+            for line in result.stdout.strip().split("\n"):
+                if line:
+                    pod_lines.append({
+                        "pod": pod,
+                        "line": line,
+                    })
+            return pod_lines
+        except (subprocess.SubprocessError, Exception):
+            return []
 
-        for line in result.stdout.strip().split("\n"):
-            if line:
-                all_lines.append({
-                    "pod": pod,
-                    "line": line,
-                })
+    # Parallel fetch across pods
+    workers = min(len(pods), 10)
+    with ThreadPoolExecutor(max_workers=workers) as executor:
+        results = executor.map(fetch_single, pods)
+
+    for pod_lines in results:
+        all_lines.extend(pod_lines)
 
     # Sort by timestamp (first part of line)
     all_lines.sort(
@@ -193,9 +212,9 @@ def fetch_combined_logs(pods, tail=50, errors_only=False):
 
     if errors_only:
         all_lines = [
-            l for l in all_lines
+            line_entry for line_entry in all_lines
             if any(
-                kw in l["line"].lower()
+                kw in line_entry["line"].lower()
                 for kw in [
                     "error", "fatal", "exception",
                     "panic", "fail", "traceback"
