@@ -8,7 +8,13 @@ import { ConfirmService, ConfirmOptions } from '../services/confirm.service';
   template: `
     @if (visible) {
       <div class="confirm-overlay" (click)="onCancel()">
-        <div class="confirm-dialog" (click)="$event.stopPropagation()">
+        <div class="confirm-dialog" [class.dialog-danger]="options?.severity === 'danger'" (click)="$event.stopPropagation()">
+          @if (options?.severity === 'danger' && isProdWarning) {
+            <div class="prod-banner">
+              <i class="pi pi-shield"></i>
+              <span>PRODUCTION ENVIRONMENT</span>
+            </div>
+          }
           <div class="confirm-icon" [class]="'icon-' + (options?.severity || 'warning')">
             <i class="pi" [class.pi-exclamation-triangle]="options?.severity !== 'danger'" [class.pi-trash]="options?.severity === 'danger'"></i>
           </div>
@@ -37,8 +43,20 @@ import { ConfirmService, ConfirmOptions } from '../services/confirm.service';
       display: flex; flex-direction: column; align-items: center; gap: 12px;
       box-shadow: 0 24px 80px rgba(0,0,0,0.5);
       animation: slideUp 0.25s cubic-bezier(0.34,1.56,0.64,1);
+      overflow: hidden;
     }
+    .dialog-danger { border-color: var(--danger); }
     @keyframes slideUp { from { opacity: 0; transform: translateY(16px) scale(0.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
+    .prod-banner {
+      position: absolute; top: 0; left: 0; right: 0;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      padding: 6px; background: var(--danger); color: #fff;
+      font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .prod-banner i { font-size: 11px; }
+    .dialog-danger .confirm-icon { margin-top: 20px; }
 
     .confirm-icon {
       width: 48px; height: 48px; border-radius: 50%;
@@ -76,12 +94,14 @@ export class ConfirmDialogComponent implements OnInit, OnDestroy {
 
   visible = false;
   options: ConfirmOptions | null = null;
+  isProdWarning = false;
   private resolve: ((v: boolean) => void) | null = null;
 
   ngOnInit() {
     this.sub = this.confirmService.confirm$.subscribe(data => {
       this.options = data;
       this.resolve = data.resolve;
+      this.isProdWarning = (data.title || '').includes('PRODUCTION');
       this.visible = true;
     });
   }

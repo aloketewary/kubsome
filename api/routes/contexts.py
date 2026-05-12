@@ -21,6 +21,20 @@ def get_contexts():
     }
 
 
+@router.get("/context-info")
+def get_context_info():
+    """Current context environment and risk level."""
+    from core.kubeconfig import detect_environment, risk_level
+    env = detect_environment(context.current_context or "")
+    return {
+        "context": context.current_context,
+        "namespace": context.namespace,
+        "environment": env,
+        "risk": risk_level(env),
+        "is_production": env == "PROD",
+    }
+
+
 @router.post("/switch-context")
 def post_switch_context(req: SwitchRequest):
     matches = find_context(req.name)

@@ -302,6 +302,7 @@ export class DeploymentsComponent implements OnInit {
       message: `This will perform a rolling restart of "${dep.name}". Pods will be recreated.`,
       confirmLabel: 'Restart',
       severity: 'warning',
+      productionGuard: true,
     }).then(ok => {
       if (ok) { this.operating = true; this.api.restart(dep.name).subscribe({ next: () => { this.operating = false; this.refresh(); }, error: () => { this.operating = false; } }); }
     });
@@ -313,6 +314,7 @@ export class DeploymentsComponent implements OnInit {
       message: `This will rollback "${dep.name}" to the previous revision. This cannot be undone.`,
       confirmLabel: 'Rollback',
       severity: 'danger',
+      productionGuard: true,
     }).then(ok => {
       if (ok) { this.operating = true; this.api.rollback(dep.name).subscribe({ next: () => { this.operating = false; this.refresh(); }, error: () => { this.operating = false; } }); }
     });
@@ -331,6 +333,7 @@ export class DeploymentsComponent implements OnInit {
       message: `Scale "${this.scaleName}" to ${this.scaleReplicas} replicas?`,
       confirmLabel: 'Scale',
       severity: 'warning',
+      productionGuard: true,
     }).then(ok => {
       if (ok) {
         this.api.scale(this.scaleName, this.scaleReplicas).subscribe(() => {
