@@ -2,6 +2,29 @@
 
 All notable changes to Kubsome are documented here.
 
+## [1.10.0] — 2025-07-14
+
+### Features
+- **Custom Dashboard Builder** — Create personalized dashboards with 18 widget types
+  - Named dashboards with save/load
+  - Drag-drop widget reordering
+  - Per-widget refresh intervals (10s/30s/1m/5m)
+  - Topbar workspace dropdown for quick switching
+  - Query param routing (`/my-dashboard?name=X`)
+- **Webhook Notifications** — Slack, Teams, Webex, generic webhook support
+  - Background thread delivery (non-blocking)
+  - Settings UI for add/remove/test webhooks
+  - Persists to `~/.kubsome/config.yaml`
+- **Live Resource Editor** — Fetch, edit, and apply any K8s resource YAML
+  - Resource picker (lists existing resources by kind)
+  - LIVE badge indicator
+  - Dry-run validation
+  - Production guard on apply
+- **Production Safety Guard** — Enhanced confirmation for destructive ops on prod clusters
+  - Red "PRODUCTION ENVIRONMENT" banner
+  - Auto-detects via context name
+  - Applied to restart, rollback, scale, YAML apply
+
 ## [1.9.1] — 2025-07-14
 
 ### Features
