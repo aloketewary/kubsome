@@ -36,17 +36,40 @@ const WIDGET_CATALOG = [
   template: `
     <div class="page-header">
       <div>
-        <h1>My Dashboard</h1>
+        <div class="title-row">
+          @if (editingName) {
+            <input class="dash-name-input" [(ngModel)]="dashboardName" (keyup.enter)="editingName = false; saveDashboard()" (blur)="editingName = false; saveDashboard()" autofocus />
+          } @else {
+            <h1 (click)="editingName = true">{{ dashboardName || 'My Dashboard' }}</h1>
+            <i class="pi pi-pencil edit-name-icon" (click)="editingName = true" pTooltip="Rename"></i>
+          }
+        </div>
         <p class="subtitle">{{ widgets.length }} widgets</p>
       </div>
       <div class="header-actions">
         <button pButton icon="pi pi-plus" label="Add Widget" class="p-button-sm" (click)="catalogVisible = true"></button>
+        <button pButton icon="pi pi-save" label="Save" class="p-button-sm p-button-outlined" (click)="saveDashboard()" pTooltip="Save dashboard"></button>
         <button pButton icon="pi pi-refresh" class="p-button-sm p-button-outlined p-button-rounded" (click)="refreshAll()" pTooltip="Refresh all"></button>
         @if (widgets.length > 0) {
           <button pButton icon="pi pi-trash" class="p-button-sm p-button-text p-button-danger" (click)="clearAll()" pTooltip="Clear all widgets"></button>
         }
       </div>
     </div>
+
+    <!-- Saved Dashboards -->
+    @if (savedDashboards.length > 0) {
+      <div class="saved-bar">
+        @for (dash of savedDashboards; track dash.name) {
+          <button class="saved-chip" [class.active]="dash.name === dashboardName" (click)="loadDashboard(dash)">
+            <i class="pi pi-th-large"></i> {{ dash.name }}
+            <span class="chip-count">{{ dash.widgets.length }}</span>
+          </button>
+        }
+        <button class="saved-chip new-chip" (click)="newDashboard()">
+          <i class="pi pi-plus"></i> New
+        </button>
+      </div>
+    }
 
     <!-- Empty State -->
     @if (widgets.length === 0) {
@@ -60,9 +83,11 @@ const WIDGET_CATALOG = [
 
     <!-- Widget Grid -->
     <div class="widget-grid">
-      @for (widget of widgets; track widget.id) {
-        <div class="widget-card" [class]="'widget-' + widget.size">
+      @for (widget of widgets; track widget.id; let i = $index) {
+        <div class="widget-card" [class]="'widget-' + widget.size" [class.dragging]="dragIndex === i" [class.drag-over]="dropIndex === i"
+             draggable="true" (dragstart)="onDragStart(i)" (dragover)="onDragOver($event, i)" (dragend)="onDragEnd()" (drop)="onDrop(i)">
           <div class="widget-header">
+            <i class="pi pi-bars drag-handle"></i>
             <span class="widget-title">{{ widget.title }}</span>
             <div class="widget-actions">
               <i class="pi pi-refresh" pTooltip="Refresh" (click)="refreshWidget(widget)"></i>
@@ -201,10 +226,36 @@ const WIDGET_CATALOG = [
     </p-dialog>
   `,
   styles: [`
-    .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px; }
-    .page-header h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.03em; }
+    .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; }
+    .page-header h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.03em; cursor: pointer; }
+    .page-header h1:hover { color: var(--accent); }
     .subtitle { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
     .header-actions { display: flex; gap: 8px; }
+    .title-row { display: flex; align-items: center; gap: 8px; }
+    .edit-name-icon { font-size: 12px; color: var(--text-muted); cursor: pointer; opacity: 0.5; }
+    .edit-name-icon:hover { opacity: 1; color: var(--accent); }
+    .dash-name-input {
+      font-size: 24px; font-weight: 700; letter-spacing: -0.03em;
+      background: transparent; border: none; border-bottom: 2px solid var(--accent);
+      color: var(--text); outline: none; width: 250px;
+    }
+
+    /* Saved Dashboards */
+    .saved-bar {
+      display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap;
+    }
+    .saved-chip {
+      display: flex; align-items: center; gap: 6px;
+      padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border);
+      background: var(--bg-card); color: var(--text-secondary); font-size: 12px;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .saved-chip:hover { border-color: var(--accent); color: var(--accent); }
+    .saved-chip.active { border-color: var(--accent); background: var(--accent-subtle); color: var(--accent); font-weight: 600; }
+    .saved-chip i { font-size: 11px; }
+    .chip-count { font-size: 10px; background: var(--bg-elevated); padding: 1px 5px; border-radius: 8px; }
+    .new-chip { border-style: dashed; color: var(--text-muted); }
+    .new-chip:hover { border-color: var(--success); color: var(--success); }
 
     /* Empty */
     .empty-state {
@@ -228,15 +279,19 @@ const WIDGET_CATALOG = [
 
     .widget-card {
       background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
-      overflow: hidden; transition: all 0.2s;
+      overflow: hidden; transition: all 0.2s; cursor: grab;
     }
     .widget-card:hover { border-color: var(--border-hover); box-shadow: 0 4px 16px rgba(0,0,0,0.15); }
     .widget-card:hover .widget-actions { opacity: 1; }
+    .widget-card.dragging { opacity: 0.4; transform: scale(0.95); }
+    .widget-card.drag-over { border-color: var(--accent); border-style: dashed; }
 
     .widget-header {
-      display: flex; align-items: center; justify-content: space-between;
+      display: flex; align-items: center; gap: 8px;
       padding: 10px 14px; border-bottom: 1px solid var(--border);
     }
+    .drag-handle { font-size: 10px; color: var(--text-muted); cursor: grab; opacity: 0.4; }
+    .widget-card:hover .drag-handle { opacity: 1; }
     .widget-title { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
     .widget-actions { display: flex; gap: 4px; opacity: 0.3; transition: opacity 0.15s; }
     .widget-actions i { font-size: 11px; color: var(--text-muted); cursor: pointer; padding: 4px; border-radius: 4px; }
@@ -309,9 +364,15 @@ export class CustomDashboardComponent implements OnInit, OnDestroy {
   widgets: Widget[] = [];
   catalog = WIDGET_CATALOG;
   catalogVisible = false;
+  dashboardName = 'My Dashboard';
+  editingName = false;
+  savedDashboards: { name: string; widgets: any[] }[] = [];
+  dragIndex = -1;
+  dropIndex = -1;
   private refreshTimer: any;
 
   ngOnInit() {
+    this.loadSavedList();
     this.loadWidgets();
     this.refreshAll();
     this.refreshTimer = setInterval(() => this.refreshAll(), 30000);
@@ -355,6 +416,56 @@ export class CustomDashboardComponent implements OnInit, OnDestroy {
   clearAll() {
     this.widgets = [];
     this.saveWidgets();
+  }
+
+  // Drag & Drop
+  onDragStart(index: number) { this.dragIndex = index; }
+  onDragOver(event: DragEvent, index: number) { event.preventDefault(); this.dropIndex = index; }
+  onDragEnd() { this.dragIndex = -1; this.dropIndex = -1; }
+  onDrop(index: number) {
+    if (this.dragIndex < 0 || this.dragIndex === index) return;
+    const moved = this.widgets.splice(this.dragIndex, 1)[0];
+    this.widgets.splice(index, 0, moved);
+    this.widgets = [...this.widgets];
+    this.dragIndex = -1;
+    this.dropIndex = -1;
+    this.saveWidgets();
+  }
+
+  // Multi-dashboard
+  saveDashboard() {
+    const name = this.dashboardName || 'My Dashboard';
+    const saved = this.widgets.map(w => ({ id: w.id, type: w.type, title: w.title, size: w.size }));
+    const list = this.loadSavedListRaw();
+    const idx = list.findIndex((d: any) => d.name === name);
+    if (idx >= 0) { list[idx].widgets = saved; }
+    else { list.push({ name, widgets: saved }); }
+    localStorage.setItem('kubsome_dashboards', JSON.stringify(list));
+    this.loadSavedList();
+  }
+
+  loadDashboard(dash: { name: string; widgets: any[] }) {
+    this.dashboardName = dash.name;
+    this.widgets = dash.widgets.map((w: any) => ({ ...w, loading: true }));
+    localStorage.setItem('kubsome_custom_dashboard', JSON.stringify(dash.widgets));
+    localStorage.setItem('kubsome_dashboard_name', dash.name);
+    this.refreshAll();
+  }
+
+  newDashboard() {
+    this.dashboardName = 'New Dashboard';
+    this.widgets = [];
+    this.editingName = true;
+    localStorage.setItem('kubsome_custom_dashboard', '[]');
+    localStorage.setItem('kubsome_dashboard_name', this.dashboardName);
+  }
+
+  private loadSavedList() {
+    this.savedDashboards = this.loadSavedListRaw();
+  }
+
+  private loadSavedListRaw(): any[] {
+    try { return JSON.parse(localStorage.getItem('kubsome_dashboards') || '[]'); } catch { return []; }
   }
 
   shortName(name: string): string {
@@ -440,10 +551,12 @@ export class CustomDashboardComponent implements OnInit, OnDestroy {
   private saveWidgets() {
     const saved = this.widgets.map(w => ({ id: w.id, type: w.type, title: w.title, size: w.size }));
     localStorage.setItem('kubsome_custom_dashboard', JSON.stringify(saved));
+    localStorage.setItem('kubsome_dashboard_name', this.dashboardName);
   }
 
   private loadWidgets() {
     try {
+      this.dashboardName = localStorage.getItem('kubsome_dashboard_name') || 'My Dashboard';
       const raw = localStorage.getItem('kubsome_custom_dashboard');
       if (raw) this.widgets = JSON.parse(raw).map((w: any) => ({ ...w, loading: true }));
     } catch { }
