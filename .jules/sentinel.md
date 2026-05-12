@@ -7,3 +7,8 @@
 **Vulnerability:** API endpoints (`/namespaces/{ctx}`, `/describe/{resource}/{name}`) were vulnerable to command injection because they passed user-provided path parameters directly into `subprocess.run(..., shell=True)`.
 **Learning:** Even with "fuzzy resolution" in place, unvalidated path parameters used in shell strings are a major risk. List-based arguments for `subprocess.run` are the standard defense.
 **Prevention:** Avoid `shell=True` and f-strings for command construction. Use list-based arguments to ensure user input is treated as a literal argument.
+
+## 2026-05-22 - [CRITICAL] Command Injection in WebSocket Routes
+**Vulnerability:** WebSocket endpoints (`/ws/logs/{pod}`, `/ws/shell/{pod}`) were vulnerable to command injection as they passed user-provided path and query parameters into shell commands executed via `subprocess.Popen(..., shell=True)`.
+**Learning:** Security audits must cover all entry points, including WebSockets, which are often overlooked compared to standard REST endpoints. The same `shell=True` risk applies across all transports.
+**Prevention:** Use list-based arguments for `subprocess.Popen` and avoid `shell=True` regardless of the protocol.
