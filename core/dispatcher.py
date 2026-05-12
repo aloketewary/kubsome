@@ -377,13 +377,13 @@ def _handle_restart(cmd, env):
 def _handle_scale(cmd, env):
     target = cmd["target"]
     replicas = cmd["replicas"]
-    scale_cmd = (
-        f"kubectl --context {context.current_context} "
-        f"scale deployment/{target} "
-        f"--replicas={replicas} -n {context.namespace}"
-    )
+    scale_cmd = [
+        "kubectl", "--context", context.current_context,
+        "scale", f"deployment/{target}",
+        f"--replicas={replicas}", "-n", context.namespace
+    ]
     result = subprocess.run(
-        scale_cmd, shell=True,
+        scale_cmd, shell=False,
         capture_output=True, text=True
     )
     if result.returncode == 0:
@@ -660,15 +660,15 @@ def _handle_diff(cmd, env):
 def _handle_forward(cmd, env):
     target = cmd["target"]
     port = cmd["port"]
-    fwd_cmd = (
-        f"kubectl --context {context.current_context} "
-        f"port-forward {target} {port} -n {context.namespace}"
-    )
+    fwd_cmd = [
+        "kubectl", "--context", context.current_context,
+        "port-forward", target, str(port), "-n", context.namespace
+    ]
     console.print(
         f"[green]✓ Forwarding {target}:{port}[/green]\n"
         f"[dim]Press Ctrl+C to stop[/dim]"
     )
-    subprocess.run(fwd_cmd, shell=True)
+    subprocess.run(fwd_cmd, shell=False)
 
 
 def _handle_explain(cmd, env):
@@ -786,12 +786,13 @@ def _handle_workflow_run(cmd, env):
 def _handle_watch_cmd(cmd, env):
     watch_input = cmd["command"]
     from datetime import datetime
+    import shlex
     with Live(console=console, refresh_per_second=1) as live:
         while True:
             resolved = resolve_command(watch_input)
             if resolved and isinstance(resolved, str):
                 result = subprocess.run(
-                    resolved, shell=True,
+                    shlex.split(resolved), shell=False,
                     capture_output=True, text=True
                 )
                 now = datetime.now().strftime("%H:%M:%S")
@@ -817,16 +818,16 @@ def _handle_rbac(cmd, env):
 
 def _handle_shell(cmd, env):
     target = cmd["target"]
-    shell_cmd = (
-        f"kubectl --context {context.current_context} "
-        f"exec -it {target} -n {context.namespace} -- "
-        f"/bin/sh -c 'command -v bash && exec bash || exec sh'"
-    )
+    shell_cmd = [
+        "kubectl", "--context", context.current_context,
+        "exec", "-it", target, "-n", context.namespace, "--",
+        "/bin/sh", "-c", "command -v bash && exec bash || exec sh"
+    ]
     console.print(
         f"[green]✓ Shell into {target}[/green]\n"
         f"[dim]Type 'exit' to return[/dim]"
     )
-    subprocess.run(shell_cmd, shell=True)
+    subprocess.run(shell_cmd, shell=False)
 
 
 def _handle_timeline(cmd, env):
@@ -844,13 +845,13 @@ def _handle_labels(cmd, env):
 
 def _handle_apply(cmd, env):
     file_path = cmd["file"]
-    apply_cmd = (
-        f"kubectl --context {context.current_context} "
-        f"apply -f {file_path} -n {context.namespace}"
-    )
-    console.print(f"[dim]→ {apply_cmd}[/dim]")
+    apply_cmd = [
+        "kubectl", "--context", context.current_context,
+        "apply", "-f", file_path, "-n", context.namespace
+    ]
+    console.print(f"[dim]→ {' '.join(apply_cmd)}[/dim]")
     result = subprocess.run(
-        apply_cmd, shell=True,
+        apply_cmd, shell=False,
         capture_output=True, text=True
     )
     if result.returncode == 0:
@@ -912,13 +913,14 @@ def _handle_kubectl_pretty(cmd, env):
     from core.renderers.describe_renderer import (
         render_describe
     )
+    import shlex
 
     kubectl_cmd = cmd["cmd"]
     console.print(f"[dim]→ {kubectl_cmd}[/dim]")
 
     result = subprocess.run(
-        kubectl_cmd,
-        shell=True,
+        shlex.split(kubectl_cmd),
+        shell=False,
         capture_output=True,
         text=True
     )

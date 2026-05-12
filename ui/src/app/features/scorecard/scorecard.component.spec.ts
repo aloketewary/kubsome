@@ -27,7 +27,7 @@ describe('ScorecardComponent', () => {
 
   it('should fetch scorecard on init', () => {
     fixture.detectChanges();
-    const req = httpMock.expectOne('http://localhost:8000/api/scorecard');
+    const req = httpMock.expectOne('/api/scorecard');
     expect(req.request.method).toBe('GET');
     req.flush({
       overall_grade: 'A', overall_score: 95, summary: 'All good',

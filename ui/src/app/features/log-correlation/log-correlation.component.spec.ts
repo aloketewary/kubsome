@@ -27,7 +27,7 @@ describe('LogCorrelationComponent', () => {
 
   it('should load pods on init', () => {
     fixture.detectChanges();
-    const req = httpMock.expectOne('http://localhost:8000/api/pods');
+    const req = httpMock.expectOne('/api/pods');
     req.flush({ pods: [{ name: 'pod-a', status: 'Running' }, { name: 'pod-b', status: 'Running' }] });
     expect(component.podOptions.length).toBe(2);
   });
@@ -40,13 +40,13 @@ describe('LogCorrelationComponent', () => {
 
   it('should correlate with 2+ pods', () => {
     fixture.detectChanges();
-    httpMock.expectOne('http://localhost:8000/api/pods').flush({ pods: [] });
+    httpMock.expectOne('/api/pods').flush({ pods: [] });
 
     component.selectedPods = ['pod-a', 'pod-b'];
     component.correlate();
     expect(component.loading).toBeTrue();
 
-    const req = httpMock.expectOne('http://localhost:8000/api/correlate-logs');
+    const req = httpMock.expectOne('/api/correlate-logs');
     expect(req.request.method).toBe('POST');
     expect(req.request.body.pods).toEqual(['pod-a', 'pod-b']);
     req.flush({ entries: [{ pod: 'pod-a', message: 'test', timestamp: '2024-01-01T00:00:00', level: 'info' }], pods: ['pod-a', 'pod-b'], total: 1 });

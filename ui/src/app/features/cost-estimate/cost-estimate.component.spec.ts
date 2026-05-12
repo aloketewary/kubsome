@@ -27,7 +27,7 @@ describe('CostEstimateComponent', () => {
 
   it('should fetch cost data on init', () => {
     fixture.detectChanges();
-    const req = httpMock.expectOne('http://localhost:8000/api/cost-estimate');
+    const req = httpMock.expectOne('/api/cost-estimate');
     expect(req.request.method).toBe('GET');
     req.flush({
       deployments: [{ name: 'app', replicas: 2, cpu_request: '500m', memory_request: '256Mi', cost_per_pod: 8.5, cost_total: 17.0 }],
