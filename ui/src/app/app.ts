@@ -1,5 +1,5 @@
 import { Component, OnInit, inject } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { RouterOutlet, RouterLink } from '@angular/router';
 import { Select } from 'primeng/select';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from './core/services/api.service';
@@ -17,7 +17,7 @@ import { ConfirmDialogComponent } from './shared/components/confirm-dialog.compo
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, Select, FormsModule, ShellComponent, CommandPaletteComponent, AiFloatComponent, ToastAlertsComponent, BreadcrumbComponent, ConnectionStatusComponent, ErrorToastComponent, ConfirmDialogComponent],
+  imports: [RouterOutlet, RouterLink, Select, FormsModule, ShellComponent, CommandPaletteComponent, AiFloatComponent, ToastAlertsComponent, BreadcrumbComponent, ConnectionStatusComponent, ErrorToastComponent, ConfirmDialogComponent],
   template: `
     <!-- Connection Status (top-most) -->
     <app-connection-status />
@@ -33,10 +33,29 @@ import { ConfirmDialogComponent } from './shared/components/confirm-dialog.compo
     <!-- Topbar -->
     <header class="topbar glass">
       <div class="topbar-left">
-        <div class="workspace-label">
+        <div class="workspace-label" (click)="dashMenuOpen = !dashMenuOpen">
           <i class="pi pi-th-large"></i>
-          <span>Workspace</span>
+          <span>{{ activeDashName || 'Workspace' }}</span>
+          <i class="pi pi-chevron-down ws-chevron"></i>
         </div>
+        @if (dashMenuOpen) {
+          <div class="dash-menu" (mouseleave)="dashMenuOpen = false">
+            @if (savedDashList.length > 0) {
+              @for (d of savedDashList; track d.name) {
+                <a class="dash-menu-item" [routerLink]="'/my-dashboard'" (click)="selectDash(d); dashMenuOpen = false">
+                  <i class="pi pi-th-large"></i>
+                  <span>{{ d.name }}</span>
+                  <span class="dm-count">{{ d.widgets.length }}</span>
+                </a>
+              }
+              <div class="dash-menu-divider"></div>
+            }
+            <a class="dash-menu-item dash-menu-new" [routerLink]="'/my-dashboard'" (click)="dashMenuOpen = false">
+              <i class="pi pi-plus"></i>
+              <span>{{ savedDashList.length > 0 ? 'New Dashboard' : 'Create Custom Dashboard' }}</span>
+            </a>
+          </div>
+        }
       </div>
 
       <div class="topbar-center">
@@ -197,6 +216,7 @@ import { ConfirmDialogComponent } from './shared/components/confirm-dialog.compo
       display: flex;
       align-items: center;
       min-width: 200px;
+      position: relative;
     }
     .workspace-label {
       display: flex;
@@ -207,11 +227,37 @@ import { ConfirmDialogComponent } from './shared/components/confirm-dialog.compo
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.05em;
+      cursor: pointer;
+      padding: 6px 10px;
+      border-radius: 6px;
+      transition: all 0.15s;
     }
+    .workspace-label:hover { background: var(--bg-elevated); color: var(--text); }
+    .ws-chevron { font-size: 10px; opacity: 0.5; }
     .workspace-label i {
       font-size: 14px;
       color: var(--accent);
     }
+    .dash-menu {
+      position: absolute; top: 100%; left: 0; margin-top: 4px;
+      min-width: 220px; padding: 6px;
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.3); z-index: 1000;
+      animation: fadeDown 0.15s ease;
+    }
+    @keyframes fadeDown { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+    .dash-menu-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 12px; border-radius: 6px; font-size: 12px;
+      color: var(--text-secondary); text-decoration: none; cursor: pointer;
+      transition: all 0.12s;
+    }
+    .dash-menu-item:hover { background: var(--bg-elevated); color: var(--text); }
+    .dash-menu-item i { font-size: 12px; color: var(--text-muted); }
+    .dm-count { margin-left: auto; font-size: 10px; color: var(--text-muted); background: var(--bg-elevated); padding: 1px 6px; border-radius: 8px; }
+    .dash-menu-divider { height: 1px; background: var(--border); margin: 4px 8px; }
+    .dash-menu-new i { color: var(--accent); }
+    .dash-menu-new:hover { color: var(--accent); }
     .topbar-right {
       display: flex;
       align-items: center;
@@ -516,9 +562,13 @@ export class AppComponent implements OnInit {
   showNotifications = false;
   anomalies: any[] = [];
   sidebarCollapsed = false;
+  dashMenuOpen = false;
+  savedDashList: { name: string; widgets: any[] }[] = [];
+  activeDashName = '';
 
   ngOnInit() {
     this.sidebarCollapsed = localStorage.getItem('sidebar_collapsed') === 'true';
+    this.loadDashList();
     this.api.getNamespaces().subscribe(res => {
       this.namespaces = res.namespaces;
       this.currentNamespace = res.current;
@@ -583,5 +633,18 @@ export class AppComponent implements OnInit {
   toggleSidebar() {
     this.sidebarCollapsed = !this.sidebarCollapsed;
     localStorage.setItem('sidebar_collapsed', String(this.sidebarCollapsed));
+  }
+
+  loadDashList() {
+    try {
+      this.savedDashList = JSON.parse(localStorage.getItem('kubsome_dashboards') || '[]');
+      this.activeDashName = localStorage.getItem('kubsome_dashboard_name') || '';
+    } catch { this.savedDashList = []; }
+  }
+
+  selectDash(dash: { name: string; widgets: any[] }) {
+    localStorage.setItem('kubsome_custom_dashboard', JSON.stringify(dash.widgets));
+    localStorage.setItem('kubsome_dashboard_name', dash.name);
+    this.activeDashName = dash.name;
   }
 }
