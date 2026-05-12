@@ -57,17 +57,21 @@ def start_incident(title=""):
     return incident
 
 
-def stop_incident():
+def stop_incident(root_cause="", resolution=""):
     """Stop active incident and export report."""
     incident = _load()
     if not incident:
         return None
 
     incident["ended"] = datetime.now().isoformat()
+    if root_cause:
+        incident["root_cause"] = root_cause
+    if resolution:
+        incident["resolution"] = resolution
     incident["timeline"].append({
         "time": datetime.now().isoformat(),
         "event": "Incident closed",
-        "detail": "",
+        "detail": resolution or "",
     })
 
     # Final snapshot
@@ -108,6 +112,31 @@ def add_note(note):
     return True
 
 
+def add_action(action, target="", result=""):
+    """Log a remediation action taken during the incident."""
+    incident = _load()
+    if not incident:
+        return False
+
+    if "actions" not in incident:
+        incident["actions"] = []
+
+    incident["actions"].append({
+        "time": datetime.now().isoformat(),
+        "action": action,
+        "target": target,
+        "result": result,
+    })
+    incident["timeline"].append({
+        "time": datetime.now().isoformat(),
+        "event": f"Action: {action}",
+        "detail": f"{target} — {result}" if result else target,
+    })
+
+    _save(incident)
+    return True
+
+
 def snapshot():
     """Take a snapshot of current state."""
     incident = _load()
@@ -139,12 +168,21 @@ def _take_snapshot():
         pods = []
         events = []
 
+    # Include metrics if available
+    metrics = []
+    try:
+        from core.collectors.metrics import top_pods
+        metrics = top_pods()
+    except Exception:
+        pass
+
     return {
         "time": datetime.now().isoformat(),
         "context": context.current_context,
         "namespace": context.namespace,
         "pods": pods,
         "events": events,
+        "metrics": metrics,
     }
 
 

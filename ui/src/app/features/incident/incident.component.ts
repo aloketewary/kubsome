@@ -62,6 +62,16 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
           </div>
         }
 
+        @if (resolved.root_cause) {
+          <div class="root-cause-card">
+            <div class="rc-header"><i class="pi pi-search"></i> Root Cause</div>
+            <p class="rc-text">{{ resolved.root_cause }}</p>
+            @if (resolved.resolution) {
+              <p class="rc-resolution"><strong>Resolution:</strong> {{ resolved.resolution }}</p>
+            }
+          </div>
+        }
+
         <!-- Full Report View -->
         @if (reportData) {
           <div class="report-section">
@@ -206,7 +216,7 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
               <i class="pi pi-clock"></i>
               <span>{{ elapsedTime }}</span>
             </div>
-            <button pButton label="Resolve" icon="pi pi-check" class="p-button-sm p-button-outlined" (click)="stop()"></button>
+            <button pButton label="Resolve" icon="pi pi-check" class="p-button-sm p-button-outlined" (click)="showResolveForm = true"></button>
           </div>
         </div>
       </div>
@@ -243,14 +253,91 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
       <div class="quick-actions">
         <button pButton icon="pi pi-sparkles" label="AI Analysis" class="p-button-sm p-button-warning" (click)="runAiAnalysis()" [loading]="analyzing"></button>
         <button pButton icon="pi pi-camera" label="Snapshot" class="p-button-sm p-button-outlined" (click)="snapshot()" pTooltip="Capture cluster state"></button>
-        <button pButton icon="pi pi-box" label="Check Pods" class="p-button-sm p-button-outlined" (click)="router.navigate(['/pods'])"></button>
+        <button pButton icon="pi pi-wrench" label="Log Action" class="p-button-sm p-button-outlined" (click)="showActionInput = !showActionInput" pTooltip="Record remediation action"></button>
+        <button pButton icon="pi pi-box" label="Pods" class="p-button-sm p-button-outlined" (click)="router.navigate(['/pods'])"></button>
         <button pButton icon="pi pi-bolt" label="Events" class="p-button-sm p-button-outlined" (click)="router.navigate(['/events'])"></button>
         @if (snapshotTaken) {
           <span class="snapshot-feedback"><i class="pi pi-check"></i> Snapshot captured</span>
         }
       </div>
 
+      <!-- Action Input -->
+      @if (showActionInput) {
+        <div class="action-input-card">
+          <div class="action-input-row">
+            <select class="action-select" [(ngModel)]="actionType">
+              <option value="restart">Restart</option>
+              <option value="scale">Scale</option>
+              <option value="rollback">Rollback</option>
+              <option value="config_change">Config Change</option>
+              <option value="manual_fix">Manual Fix</option>
+              <option value="other">Other</option>
+            </select>
+            <input pInputText [(ngModel)]="actionTarget" placeholder="Target (e.g. payment-api)" />
+            <input pInputText [(ngModel)]="actionResult" placeholder="Result (e.g. pods restarted)" />
+            <button pButton icon="pi pi-plus" class="p-button-sm" (click)="logAction()" [disabled]="!actionTarget.trim()"></button>
+          </div>
+        </div>
+      }
+
       <div class="incident-grid">
+        <!-- Resolve Form -->
+        @if (showResolveForm) {
+          <div class="resolve-card">
+            <h3><i class="pi pi-check-circle"></i> Resolve Incident</h3>
+            <div class="resolve-form">
+              <div class="form-field">
+                <label>Root Cause</label>
+                <select class="action-select full" [(ngModel)]="rootCauseCategory">
+                  <option value="">Select category...</option>
+                  <option value="OOM">Out of Memory (OOM)</option>
+                  <option value="config_error">Configuration Error</option>
+                  <option value="deployment_failure">Deployment Failure</option>
+                  <option value="network">Network Issue</option>
+                  <option value="resource_exhaustion">Resource Exhaustion</option>
+                  <option value="dependency">Dependency Failure</option>
+                  <option value="scaling">Scaling Issue</option>
+                  <option value="unknown">Unknown / Investigating</option>
+                </select>
+              </div>
+              <div class="form-field">
+                <label>Details</label>
+                <input pInputText [(ngModel)]="rootCauseDetail" placeholder="Brief description of what caused it..." />
+              </div>
+              <div class="form-field">
+                <label>Resolution</label>
+                <input pInputText [(ngModel)]="resolutionText" placeholder="What fixed it..." />
+              </div>
+              <div class="resolve-actions">
+                <button pButton label="Cancel" class="p-button-text p-button-sm" (click)="showResolveForm = false"></button>
+                <button pButton label="Resolve & Export" icon="pi pi-check" class="p-button-sm p-button-success" (click)="stop()"></button>
+              </div>
+            </div>
+          </div>
+        }
+
+        <!-- Actions Log -->
+        @if ((active.actions || []).length > 0) {
+          <div class="actions-section">
+            <div class="notes-header">
+              <h3>Actions Taken</h3>
+              <span class="notes-count">{{ (active.actions || []).length }}</span>
+            </div>
+            <div class="actions-list">
+              @for (a of (active.actions || []).slice().reverse(); track $index) {
+                <div class="action-entry">
+                  <div class="action-badge">{{ a.action }}</div>
+                  <div class="action-detail">
+                    <span class="action-target">{{ a.target }}</span>
+                    @if (a.result) { <span class="action-result">→ {{ a.result }}</span> }
+                  </div>
+                  <span class="action-time">{{ a.time | slice:11:19 }}</span>
+                </div>
+              }
+            </div>
+          </div>
+        }
+
         <!-- Notes Timeline -->
         <div class="notes-section">
         <div class="notes-header">
@@ -375,6 +462,49 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     }
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
+    /* Action Input */
+    .action-input-card {
+      padding: 12px 16px; margin-bottom: 16px;
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+      animation: fadeIn 0.2s ease;
+    }
+    .action-input-row { display: flex; gap: 8px; align-items: center; }
+    .action-select {
+      padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border);
+      background: var(--bg-elevated); color: var(--text); font-size: 12px; outline: none;
+    }
+    .action-select:focus { border-color: var(--accent); }
+    .action-select.full { width: 100%; }
+    .action-input-row input { flex: 1; }
+
+    /* Resolve Form */
+    .resolve-card {
+      background: var(--bg-card); border: 1px solid var(--success); border-radius: var(--radius);
+      padding: 20px; animation: fadeIn 0.3s ease;
+    }
+    .resolve-card h3 { font-size: 14px; font-weight: 600; margin: 0 0 14px; display: flex; align-items: center; gap: 8px; }
+    .resolve-card h3 i { color: var(--success); }
+    .resolve-form { display: flex; flex-direction: column; gap: 12px; }
+    .resolve-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+
+    /* Actions Log */
+    .actions-section {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px;
+    }
+    .actions-list { display: flex; flex-direction: column; gap: 6px; }
+    .action-entry {
+      display: flex; align-items: center; gap: 10px; padding: 8px 12px;
+      background: var(--bg-elevated); border-radius: 6px; font-size: 12px;
+    }
+    .action-badge {
+      font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 4px;
+      background: var(--accent-subtle); color: var(--accent); text-transform: uppercase;
+    }
+    .action-detail { flex: 1; }
+    .action-target { font-weight: 500; }
+    .action-result { color: var(--text-muted); margin-left: 6px; }
+    .action-time { font-size: 10px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+
     /* Notes */
     .notes-section {
       background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px;
@@ -435,6 +565,15 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     .export-info:hover { border-color: var(--accent); background: var(--accent-subtle); }
     .export-info code { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text); }
     .export-link { margin-left: auto; font-size: 11px; color: var(--accent); }
+
+    .root-cause-card {
+      padding: 16px; margin-bottom: 20px;
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+      border-left: 3px solid var(--warning);
+    }
+    .rc-header { font-size: 11px; font-weight: 700; color: var(--warning); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+    .rc-text { font-size: 13px; margin: 0 0 6px; line-height: 1.4; }
+    .rc-resolution { font-size: 12px; color: var(--text-secondary); margin: 0; }
 
     .report-section {
       background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
@@ -519,6 +658,14 @@ export class IncidentComponent implements OnInit, OnDestroy {
   probableCause = '';
   blastRadius = '';
   healthScore = 100;
+  showActionInput = false;
+  showResolveForm = false;
+  actionType = 'restart';
+  actionTarget = '';
+  actionResult = '';
+  rootCauseCategory = '';
+  rootCauseDetail = '';
+  resolutionText = '';
   private timerInterval: any;
 
   severities = [
@@ -562,22 +709,20 @@ export class IncidentComponent implements OnInit, OnDestroy {
   }
 
   stop() {
-    this.confirmService.confirm({
-      title: 'Resolve Incident',
-      message: 'This will close the incident and export the timeline. Continue?',
-      confirmLabel: 'Resolve',
-      severity: 'warning',
-    }).then(ok => {
-      if (ok) {
-        this.http.post<any>(`${this.base}/incident/stop`, {}).subscribe(res => {
-          this.active = null;
-          clearInterval(this.timerInterval);
-          if (res?.incident) {
-            this.resolved = res.incident;
-            this.resolvedExportPath = res.export_path || '';
-            this.resolvedDuration = this.calcDuration(res.incident);
-          }
-        });
+    const rootCause = this.rootCauseCategory
+      ? `[${this.rootCauseCategory}] ${this.rootCauseDetail}`.trim()
+      : this.rootCauseDetail;
+    this.http.post<any>(`${this.base}/incident/stop`, {
+      root_cause: rootCause,
+      resolution: this.resolutionText,
+    }).subscribe(res => {
+      this.active = null;
+      this.showResolveForm = false;
+      clearInterval(this.timerInterval);
+      if (res?.incident) {
+        this.resolved = res.incident;
+        this.resolvedExportPath = res.export_path || '';
+        this.resolvedDuration = this.calcDuration(res.incident);
       }
     });
   }
@@ -616,7 +761,22 @@ export class IncidentComponent implements OnInit, OnDestroy {
   snapshot() {
     this.http.post<any>(`${this.base}/incident/snapshot`, {}).subscribe(() => {
       this.snapshotTaken = true;
+      this.loadStatus();
       setTimeout(() => this.snapshotTaken = false, 3000);
+    });
+  }
+
+  logAction() {
+    if (!this.actionTarget.trim()) return;
+    this.http.post<any>(`${this.base}/incident/action`, {
+      action: this.actionType,
+      target: this.actionTarget,
+      result: this.actionResult,
+    }).subscribe(() => {
+      this.actionTarget = '';
+      this.actionResult = '';
+      this.showActionInput = false;
+      this.loadStatus();
     });
   }
 

@@ -54,10 +54,49 @@ interface Runbook {
           <h3>Choose a Runbook</h3>
           <p>Follow step-by-step procedures to diagnose and resolve common issues.</p>
         </div>
+        <div class="intro-actions">
+          <div class="search-wrap">
+            <i class="pi pi-search"></i>
+            <input [(ngModel)]="searchQuery" placeholder="Search runbooks..." (ngModelChange)="filterRunbooks()" />
+          </div>
+        </div>
       </div>
 
+      <!-- Severity Filter -->
+      <div class="filter-bar">
+        <button class="filter-btn" [class.active]="filterSeverity === 'all'" (click)="filterSeverity = 'all'; filterRunbooks()">All ({{ runbooks.length }})</button>
+        <button class="filter-btn filter-crit" [class.active]="filterSeverity === 'Critical'" (click)="filterSeverity = 'Critical'; filterRunbooks()">Critical</button>
+        <button class="filter-btn filter-high" [class.active]="filterSeverity === 'High'" (click)="filterSeverity = 'High'; filterRunbooks()">High</button>
+        <button class="filter-btn filter-med" [class.active]="filterSeverity === 'Medium'" (click)="filterSeverity = 'Medium'; filterRunbooks()">Medium</button>
+      </div>
+
+      <!-- Recommended -->
+      @if (recommended.length > 0 && filterSeverity === 'all' && !searchQuery) {
+        <div class="recommended-section">
+          <div class="rec-header">
+            <i class="pi pi-sparkles"></i>
+            <span>Recommended for current cluster state</span>
+          </div>
+          <div class="rec-grid">
+            @for (rb of recommended; track rb.id) {
+              <div class="runbook-card rec-card" (click)="selectRunbook(rb)">
+                <div class="rb-header">
+                  <div class="rb-icon" [style.background]="rb.color + '15'" [style.color]="rb.color">
+                    <i [class]="rb.icon"></i>
+                  </div>
+                  <p-tag value="Suggested" severity="warn" [rounded]="true" />
+                </div>
+                <h4 class="rb-name">{{ rb.name }}</h4>
+                <p class="rb-desc">{{ rb.description }}</p>
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- Runbook Grid -->
       <div class="runbook-grid">
-        @for (rb of runbooks; track rb.id) {
+        @for (rb of filteredRunbooks; track rb.id) {
           <div class="runbook-card" (click)="selectRunbook(rb)">
             <div class="rb-header">
               <div class="rb-icon" [style.background]="rb.color + '15'" [style.color]="rb.color">
@@ -72,6 +111,9 @@ interface Runbook {
               <span class="rb-time"><i class="pi pi-clock"></i> {{ rb.estimatedTime }}</span>
             </div>
           </div>
+        }
+        @if (filteredRunbooks.length === 0) {
+          <div class="empty-state"><i class="pi pi-search"></i> No runbooks matching your filter</div>
         }
       </div>
     }
@@ -193,7 +235,7 @@ interface Runbook {
     /* Intro */
     .intro-card {
       display: flex; align-items: center; gap: 16px;
-      padding: 20px 24px; margin-bottom: 20px;
+      padding: 20px 24px; margin-bottom: 16px;
       background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
     }
     .intro-icon {
@@ -201,8 +243,50 @@ interface Runbook {
       background: var(--accent-subtle); color: var(--accent);
       display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0;
     }
+    .intro-text { flex: 1; }
     .intro-text h3 { font-size: 16px; font-weight: 600; margin: 0 0 4px; }
     .intro-text p { font-size: 13px; color: var(--text-secondary); margin: 0; }
+    .intro-actions { flex-shrink: 0; }
+    .search-wrap { position: relative; }
+    .search-wrap i { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 12px; }
+    .search-wrap input {
+      padding: 8px 12px 8px 32px; width: 200px;
+      background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 6px;
+      color: var(--text); font-size: 12px; outline: none;
+    }
+    .search-wrap input:focus { border-color: var(--accent); }
+
+    /* Filter Bar */
+    .filter-bar {
+      display: flex; gap: 6px; margin-bottom: 16px;
+    }
+    .filter-btn {
+      padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border);
+      background: var(--bg-elevated); color: var(--text-muted); font-size: 11px; font-weight: 500;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .filter-btn:hover { border-color: var(--border-hover); color: var(--text); }
+    .filter-btn.active { border-color: var(--accent); background: var(--accent-subtle); color: var(--accent); }
+    .filter-btn.filter-crit.active { border-color: var(--danger); background: var(--danger-subtle); color: var(--danger); }
+    .filter-btn.filter-high.active { border-color: var(--warning); background: var(--warning-subtle); color: var(--warning); }
+    .filter-btn.filter-med.active { border-color: var(--accent); background: var(--accent-subtle); color: var(--accent); }
+
+    /* Recommended */
+    .recommended-section { margin-bottom: 20px; }
+    .rec-header {
+      display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+      font-size: 12px; font-weight: 600; color: var(--warning);
+    }
+    .rec-header i { font-size: 14px; }
+    .rec-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
+    .rec-card { border-color: var(--warning) !important; border-left: 3px solid var(--warning); }
+
+    .empty-state {
+      grid-column: 1 / -1;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 40px; color: var(--text-muted); font-size: 13px;
+    }
+    .empty-state i { font-size: 16px; opacity: 0.5; }
 
     /* Runbook Grid */
     .runbook-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
@@ -329,6 +413,10 @@ export class RunbooksComponent implements OnInit {
   private http = inject(HttpClient);
   activeRunbook: Runbook | null = null;
   apiPlaybooks: any[] = [];
+  searchQuery = '';
+  filterSeverity = 'all';
+  filteredRunbooks: Runbook[] = [];
+  recommended: Runbook[] = [];
 
   get completedSteps() { return this.activeRunbook?.steps.filter(s => s.done).length || 0; }
   get progressPct() { return this.activeRunbook ? Math.round((this.completedSteps / this.activeRunbook.steps.length) * 100) : 0; }
@@ -412,6 +500,8 @@ export class RunbooksComponent implements OnInit {
             };
           }),
         }));
+        this.filterRunbooks();
+        this.loadRecommendations();
       },
       error: () => {},
     });
@@ -430,6 +520,38 @@ export class RunbooksComponent implements OnInit {
   }
 
   runbooks: Runbook[] = [];
+
+  filterRunbooks() {
+    let result = this.runbooks;
+    if (this.filterSeverity !== 'all') {
+      result = result.filter(r => r.severity === this.filterSeverity);
+    }
+    if (this.searchQuery) {
+      const q = this.searchQuery.toLowerCase();
+      result = result.filter(r => r.name.toLowerCase().includes(q) || r.id.toLowerCase().includes(q));
+    }
+    this.filteredRunbooks = result;
+  }
+
+  private loadRecommendations() {
+    this.http.get<any>('/api/anomalies').subscribe({
+      next: (res) => {
+        const alerts = res.alerts || [];
+        const matched = new Set<string>();
+        for (const alert of alerts) {
+          const msg = (alert.message || alert.title || '').toLowerCase();
+          for (const rb of this.runbooks) {
+            if (matched.has(rb.id)) continue;
+            if (msg.includes(rb.id.toLowerCase()) || rb.name.toLowerCase().split(' ').some((w: string) => w.length > 4 && msg.includes(w))) {
+              matched.add(rb.id);
+            }
+          }
+        }
+        this.recommended = this.runbooks.filter(r => matched.has(r.id)).slice(0, 3);
+      },
+      error: () => {},
+    });
+  }
 
   selectRunbook(rb: Runbook) {
     this.activeRunbook = { ...rb, steps: rb.steps.map(s => ({ ...s, done: false, output: undefined, loading: false })) };

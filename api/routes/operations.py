@@ -24,6 +24,15 @@ class IncidentStartRequest(BaseModel):
 class NoteRequest(BaseModel):
     text: str
 
+class ActionRequest(BaseModel):
+    action: str
+    target: str = ""
+    result: str = ""
+
+class IncidentStopRequest(BaseModel):
+    root_cause: str = ""
+    resolution: str = ""
+
 @router.post("/incident/start")
 def incident_start(req: IncidentStartRequest):
     from core.incident.manager import start_incident
@@ -31,9 +40,9 @@ def incident_start(req: IncidentStartRequest):
     return incident
 
 @router.post("/incident/stop")
-def incident_stop():
+def incident_stop(req: IncidentStopRequest = IncidentStopRequest()):
     from core.incident.manager import stop_incident
-    result = stop_incident()
+    result = stop_incident(req.root_cause, req.resolution)
     if not result:
         return {"status": "no active incident"}
     incident, path = result
@@ -57,6 +66,13 @@ def incident_snapshot():
     if snapshot():
         return {"captured": True}
     return {"captured": False, "reason": "no active incident"}
+
+@router.post("/incident/action")
+def incident_action(req: ActionRequest):
+    from core.incident.manager import add_action
+    if add_action(req.action, req.target, req.result):
+        return {"added": True}
+    return {"added": False, "reason": "no active incident"}
 
 
 @router.get("/incident/report")
