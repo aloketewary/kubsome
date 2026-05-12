@@ -6,6 +6,7 @@ import { TagModule } from 'primeng/tag';
 import { TooltipModule } from 'primeng/tooltip';
 import { Select } from 'primeng/select';
 import { SpotlightComponent } from '../../shared/components/spotlight.component';
+import { ConfirmService } from '../../shared/services/confirm.service';
 
 @Component({
   selector: 'app-yaml-editor',
@@ -46,9 +47,10 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     <!-- Generator Bar -->
     <div class="generator-bar">
       <div class="gen-left">
-        <p-select [options]="kinds" [(ngModel)]="kind" placeholder="Kind" [style]="{ width: '140px' }" />
+        <p-select [options]="kinds" [(ngModel)]="kind" placeholder="Kind" [style]="{ width: '140px' }" (ngModelChange)="onKindChange()" />
         <input class="gen-input" [(ngModel)]="name" placeholder="Resource name..." (keyup.enter)="generate()" />
         <button pButton label="Generate" icon="pi pi-sparkles" class="p-button-sm" (click)="generate()" [disabled]="!kind || !name" pTooltip="AI-generate manifest"></button>
+        <button pButton label="Load" icon="pi pi-download" class="p-button-sm p-button-outlined" (click)="loadResource()" [disabled]="!kind || !name" pTooltip="Fetch live resource YAML"></button>
       </div>
       <div class="gen-right">
         @if (yaml) {
@@ -56,6 +58,18 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
         }
       </div>
     </div>
+
+    <!-- Resource Picker (when kind selected) -->
+    @if (resourceNames.length > 0 && !yaml) {
+      <div class="resource-picker">
+        <span class="picker-label">Existing {{ kind }}s:</span>
+        <div class="picker-list">
+          @for (r of resourceNames; track r) {
+            <button class="picker-item" (click)="name = r; loadResource()">{{ r }}</button>
+          }
+        </div>
+      </div>
+    }
 
     <!-- Editor -->
     @if (yaml || showEditor) {
@@ -65,6 +79,9 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
           <div class="tab active">
             <i class="pi pi-file"></i>
             <span>{{ fileName }}</span>
+            @if (isLiveEdit) {
+              <span class="live-badge">LIVE</span>
+            }
           </div>
           <div class="tab-spacer"></div>
           <div class="editor-actions">
@@ -164,6 +181,10 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     }
     .tab.active { color: var(--text); border-bottom-color: var(--accent); }
     .tab i { font-size: 12px; color: var(--accent); }
+    .live-badge {
+      font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 4px;
+      background: var(--warning-subtle); color: var(--warning); letter-spacing: 0.04em;
+    }
     .tab-spacer { flex: 1; }
     .editor-actions { display: flex; gap: 6px; }
 
@@ -200,6 +221,20 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
       margin-top: 12px; border-radius: var(--radius-sm); overflow: hidden;
       border: 1px solid var(--border);
     }
+
+    /* Resource Picker */
+    .resource-picker {
+      padding: 12px 16px; margin-bottom: 12px;
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm);
+    }
+    .picker-label { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; display: block; margin-bottom: 8px; }
+    .picker-list { display: flex; flex-wrap: wrap; gap: 6px; }
+    .picker-item {
+      padding: 5px 12px; border-radius: 6px; border: 1px solid var(--border);
+      background: var(--bg-elevated); color: var(--text-secondary); font-size: 11px;
+      font-family: 'JetBrains Mono', monospace; cursor: pointer; transition: all 0.15s;
+    }
+    .picker-item:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-subtle); }
     .result-ok { border-color: var(--success); }
     .result-err { border-color: var(--danger); }
     .result-header {
@@ -218,6 +253,7 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
 })
 export class YamlEditorComponent {
   private http = inject(HttpClient);
+  private confirmService = inject(ConfirmService);
   private base = '/api';
 
   kinds = ['Deployment', 'Service', 'ConfigMap', 'Secret', 'Ingress', 'CronJob', 'HPA'];
@@ -230,6 +266,8 @@ export class YamlEditorComponent {
   copied = false;
   showEditor = false;
   lineNumbers: number[] = [1];
+  resourceNames: string[] = [];
+  isLiveEdit = false;
 
   templates = [
     { kind: 'Deployment', desc: 'Container workload', icon: 'pi pi-send', color: '#3b82f6' },
@@ -253,19 +291,74 @@ export class YamlEditorComponent {
 
   generate() {
     this.showEditor = true;
+    this.isLiveEdit = false;
     this.http.post<any>(`${this.base}/generate`, { kind: this.kind, name: this.name }).subscribe(res => {
       this.yaml = res.yaml || `# Could not generate ${this.kind} manifest`;
       this.updateLines();
     });
   }
 
-  apply() {
-    this.isDryRun = false;
+  loadResource() {
+    if (!this.kind || !this.name) return;
+    const kindMap: Record<string, string> = {
+      'Deployment': 'deployment', 'Service': 'service',
+      'ConfigMap': 'configmap', 'Secret': 'secret',
+      'Ingress': 'ingress', 'CronJob': 'cronjob', 'HPA': 'hpa',
+    };
+    const resource = kindMap[this.kind] || this.kind.toLowerCase();
     this.http.post<any>(`${this.base}/exec`, {
-      command: `kubectl apply -f - <<EOF\n${this.yaml}\nEOF`
+      command: `kubectl get ${resource} ${this.name} -o yaml`
     }).subscribe({
-      next: (res) => { this.result = res.output || 'Applied'; this.resultSuccess = res.exit_code === 0; },
-      error: () => { this.result = 'Connection error'; this.resultSuccess = false; },
+      next: (res) => {
+        this.yaml = res.output || `# Could not fetch ${this.kind}/${this.name}`;
+        this.showEditor = true;
+        this.isLiveEdit = true;
+        this.resourceNames = [];
+        this.updateLines();
+      },
+      error: () => {
+        this.yaml = `# Error fetching ${this.kind}/${this.name}`;
+        this.showEditor = true;
+        this.updateLines();
+      },
+    });
+  }
+
+  onKindChange() {
+    if (!this.kind) { this.resourceNames = []; return; }
+    const kindMap: Record<string, string> = {
+      'Deployment': 'deployments', 'Service': 'services',
+      'ConfigMap': 'configmaps', 'Secret': 'secrets',
+      'Ingress': 'ingresses', 'CronJob': 'cronjobs', 'HPA': 'hpa',
+    };
+    const resource = kindMap[this.kind] || this.kind.toLowerCase() + 's';
+    this.http.post<any>(`${this.base}/exec`, {
+      command: `kubectl get ${resource} -o jsonpath='{.items[*].metadata.name}'`
+    }).subscribe({
+      next: (res) => {
+        const names = (res.output || '').trim().replace(/'/g, '').split(/\s+/).filter((n: string) => n);
+        this.resourceNames = names.slice(0, 20);
+      },
+      error: () => { this.resourceNames = []; },
+    });
+  }
+
+  apply() {
+    this.confirmService.confirm({
+      title: 'Apply Manifest',
+      message: `Apply this ${this.kind || 'resource'} manifest to the cluster?`,
+      confirmLabel: 'Apply',
+      severity: 'warning',
+      productionGuard: true,
+    }).then(ok => {
+      if (!ok) return;
+      this.isDryRun = false;
+      this.http.post<any>(`${this.base}/exec`, {
+        command: `kubectl apply -f - <<EOF\n${this.yaml}\nEOF`
+      }).subscribe({
+        next: (res) => { this.result = res.output || 'Applied'; this.resultSuccess = res.exit_code === 0; },
+        error: () => { this.result = 'Connection error'; this.resultSuccess = false; },
+      });
     });
   }
 
@@ -289,6 +382,7 @@ export class YamlEditorComponent {
     this.yaml = '';
     this.result = '';
     this.showEditor = false;
+    this.isLiveEdit = false;
     this.updateLines();
   }
 
