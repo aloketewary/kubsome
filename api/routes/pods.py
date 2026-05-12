@@ -10,7 +10,7 @@ router = APIRouter(tags=["pods"])
 @router.get("/pods")
 def get_pods(
     page: int = Query(1, ge=1),
-    size: int = Query(0, ge=0),
+    size: int = Query(50, ge=0),
     search: Optional[str] = None,
 ):
     pods = collect_pods()

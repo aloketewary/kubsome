@@ -33,6 +33,27 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
         <div class="total-note">{{ data.deployments.length }} deployments · {{ data.pricing.note }}</div>
       </div>
 
+      <!-- Cost Bar Chart -->
+      @if (data.deployments.length > 0) {
+        <div class="cost-chart-card">
+          <div class="cost-chart-header">
+            <span class="cost-chart-title">Cost Distribution</span>
+            <span class="cost-chart-badge">Top {{ Math.min(data.deployments.length, 10) }}</span>
+          </div>
+          <div class="cost-bars">
+            @for (dep of data.deployments.slice(0, 10); track dep.name) {
+              <div class="cost-bar-row">
+                <span class="cb-name" [pTooltip]="dep.name">{{ shortName(dep.name) }}</span>
+                <div class="cb-track">
+                  <div class="cb-fill" [style.width.%]="costPct(dep.cost_total)" [class.cb-high]="dep.cost_total > data.total * 0.3" [class.cb-med]="dep.cost_total > data.total * 0.15 && dep.cost_total <= data.total * 0.3"></div>
+                </div>
+                <span class="cb-value">\${{ dep.cost_total.toFixed(0) }}</span>
+              </div>
+            }
+          </div>
+        </div>
+      }
+
       <!-- Table -->
       <div class="cost-table">
         <div class="table-header">
@@ -74,6 +95,23 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     .total-label { font-size: 14px; color: var(--text-secondary); margin-top: 4px; }
     .total-note { font-size: 11px; color: var(--text-muted); margin-top: 8px; }
 
+    /* Cost Bar Chart */
+    .cost-chart-card {
+      padding: 18px; margin-bottom: 20px;
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+    }
+    .cost-chart-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+    .cost-chart-title { font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+    .cost-chart-badge { font-size: 10px; font-weight: 600; padding: 3px 10px; border-radius: 20px; background: var(--accent-subtle); color: var(--accent); }
+    .cost-bars { display: flex; flex-direction: column; gap: 8px; }
+    .cost-bar-row { display: flex; align-items: center; gap: 10px; }
+    .cb-name { font-size: 11px; font-family: 'JetBrains Mono', monospace; color: var(--text-secondary); width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex-shrink: 0; }
+    .cb-track { flex: 1; height: 20px; border-radius: 4px; background: var(--bg-elevated); overflow: hidden; }
+    .cb-fill { height: 100%; border-radius: 4px; background: var(--accent); opacity: 0.7; transition: width 0.5s cubic-bezier(0.4,0,0.2,1); }
+    .cb-fill.cb-high { background: var(--danger); opacity: 0.8; }
+    .cb-fill.cb-med { background: var(--warning); opacity: 0.75; }
+    .cb-value { font-size: 11px; font-weight: 600; font-family: 'JetBrains Mono', monospace; min-width: 40px; text-align: right; }
+
     .cost-table { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
     .table-header {
       display: grid; grid-template-columns: 2fr 0.5fr 0.7fr 0.7fr 0.7fr 0.8fr;
@@ -100,13 +138,23 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
 export class CostEstimateComponent implements OnInit {
   private http = inject(HttpClient);
   data: any = null;
+  Math = Math;
 
   ngOnInit() { this.refresh(); }
 
   refresh() {
     this.http.get<any>('/api/cost-estimate').subscribe({
-      next: (res) => (this.data = res),
-      error: () => (this.data = { deployments: [], total: 0, pricing: { note: 'Error' } }),
+      next: (res) => { this.data = res; },
+      error: () => { this.data = { deployments: [], total: 0, pricing: { note: 'Error' } }; },
     });
+  }
+
+  costPct(cost: number): number {
+    if (!this.data || this.data.total === 0) return 0;
+    return Math.min(Math.round((cost / this.data.total) * 100), 100);
+  }
+
+  shortName(name: string): string {
+    return name.length > 16 ? name.slice(0, 15) + '…' : name;
   }
 }

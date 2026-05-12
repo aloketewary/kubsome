@@ -9,6 +9,9 @@ export interface PodsResponse {
   context: string;
   namespace: string;
   pods: Pod[];
+  total: number;
+  page: number;
+  size: number;
 }
 
 export interface HealthCount {

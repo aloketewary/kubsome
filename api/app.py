@@ -44,6 +44,12 @@ def health_root():
     return {"status": "ok"}
 
 
+@app.on_event("startup")
+def _on_startup():
+    from core.cache import prewarm
+    prewarm()
+
+
 @app.get("/api/health")
 def health():
     return {"status": "ok"}

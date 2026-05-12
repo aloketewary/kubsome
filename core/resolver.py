@@ -15,11 +15,22 @@ def _fuzzy_match(query, names):
     return [m[0] for m in matches if m[1] > 50] or None
 
 
+def _get_pod_names_fast():
+    """Get pod names using fastest available source."""
+    names = get_pod_names()
+    if names:
+        return names
+    # Fallback: extract from collect_pods cache if available
+    from core.collectors.pods import collect_pods
+    pods = collect_pods()
+    return [p["name"] for p in pods] if pods else []
+
+
 def resolve_pod_name(query: str):
     """Resolve a partial pod name. Requires 2+ chars."""
     if len(query) < 2:
         return None
-    names = get_pod_names()
+    names = _get_pod_names_fast()
     if not names:
         return None
     return _fuzzy_match(query, names)

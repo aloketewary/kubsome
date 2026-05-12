@@ -226,6 +226,23 @@ def get_mesh():
     from core.collectors.services import detect_mesh
     return detect_mesh()
 
+@router.get("/endpoints")
+def get_endpoints():
+    from core.collectors.network import _check_service_endpoints
+    from core.context import context
+    services = _check_service_endpoints(
+        context.namespace, context.current_context
+    )
+    return {"services": services}
+
+@router.get("/network-policies")
+def get_network_policies():
+    from core.collectors.network import _check_network_policies
+    from core.context import context
+    return _check_network_policies(
+        context.namespace, context.current_context
+    )
+
 @router.get("/deps/{name}")
 def get_deps(name: str):
     from core.collectors.services import service_dependencies

@@ -21,8 +21,10 @@ export class ApiService {
   private base = '/api';
 
   // Pods
-  getPods(): Observable<PodsResponse> {
-    return this.http.get<PodsResponse>(`${this.base}/pods`);
+  getPods(page = 1, size = 50, search?: string): Observable<PodsResponse> {
+    const params: any = { page, size };
+    if (search) params.search = search;
+    return this.http.get<PodsResponse>(`${this.base}/pods`, { params });
   }
 
   // Overview

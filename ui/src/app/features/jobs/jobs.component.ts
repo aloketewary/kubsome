@@ -111,10 +111,16 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
               <div class="job-body">
                 <div class="job-top">
                   <code class="job-name">{{ j.name }}</code>
-                  <p-tag [value]="j.status || 'Unknown'" [severity]="jobSeverity(j)" [rounded]="true" />
+                  <p-tag [value]="j.state || j.status || 'Unknown'" [severity]="jobSeverity(j)" [rounded]="true" />
                 </div>
                 @if (j.duration) {
                   <span class="job-duration"><i class="pi pi-stopwatch"></i> {{ j.duration }}</span>
+                }
+                @if (j.reason || j.message) {
+                  <div class="job-failure">
+                    @if (j.reason) { <span class="jf-reason">{{ j.reason }}</span> }
+                    @if (j.message) { <span class="jf-message">{{ j.message }}</span> }
+                  </div>
                 }
               </div>
               <!-- Progress indicator -->
@@ -219,6 +225,15 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     .job-duration { font-size: 11px; color: var(--text-muted); display: flex; align-items: center; gap: 4px; }
     .job-duration i { font-size: 10px; }
 
+    /* Failure Info */
+    .job-failure {
+      margin-top: 4px; padding: 6px 10px;
+      background: var(--danger-subtle); border-radius: 6px;
+      font-size: 11px; line-height: 1.4;
+    }
+    .jf-reason { font-weight: 600; color: var(--danger); display: block; }
+    .jf-message { color: var(--text-secondary); display: block; margin-top: 2px; }
+
     /* Progress Steps */
     .job-progress { display: flex; align-items: center; gap: 0; flex-shrink: 0; }
     .jp-step { display: flex; flex-direction: column; align-items: center; gap: 2px; }
@@ -268,7 +283,7 @@ export class JobsComponent implements OnInit {
   }
 
   jobStatus(j: any): string {
-    const s = (j.status || '').toLowerCase();
+    const s = (j.state || j.status || '').toLowerCase();
     if (s.includes('complete') || s.includes('succeeded')) return 'complete';
     if (s.includes('fail')) return 'failed';
     if (s.includes('running') || s.includes('active')) return 'running';

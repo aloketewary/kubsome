@@ -66,10 +66,14 @@ def resolve_command(user_input: str):
             if f in ("-c", "--container") and i + 1 < len(flags):
                 container = flags[i + 1]
                 break
+        follow = (
+            "--follow" in flags or "-f" in flags
+            or "watch" in flags
+        )
         return {
             "type": "logs",
             "target": pod,
-            "follow": "--follow" in flags or "-f" in flags,
+            "follow": follow,
             "errors": "--errors" in flags,
             "previous": "--previous" in flags,
             "container": container,

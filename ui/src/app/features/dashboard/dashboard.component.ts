@@ -811,7 +811,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.refreshing = true;
     this.loadPins();
     this.api.getOverview().subscribe({
-      next: (res) => (this.data = res),
+      next: (res) => { this.data = res; },
       error: () => {
         this.data = {
           pods: { healthy: 0, warning: 0, critical: 0 },
@@ -825,9 +825,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
       error: () => { this.recentEvents = []; this.refreshing = false; },
     });
     this.http.get<any>('/api/uptime').subscribe({
-      next: (res) => (this.uptime = res),
+      next: (res) => { this.uptime = res; },
       error: () => {
-        // If overview data shows healthy resources, cluster is up
         const hasResources = this.podTotal > 0 || this.nodeTotal > 0;
         this.uptime = {
           api_reachable: hasResources,

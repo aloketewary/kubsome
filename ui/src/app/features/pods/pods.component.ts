@@ -15,6 +15,7 @@ import { PodDrawerComponent } from '../../shared/components/pod-drawer.component
 import { PageInfoComponent } from '../../shared/components/page-info.component';
 import { AiInsightDrawerComponent } from '../../shared/components/ai-insight-drawer.component';
 import { LogTerminalComponent } from '../../shared/components/log-terminal.component';
+import { ShellTerminalComponent } from '../../shared/components/shell-terminal.component';
 import { SpotlightComponent } from '../../shared/components/spotlight.component';
 
 interface PodGroup {
@@ -29,7 +30,7 @@ interface PodGroup {
 @Component({
   selector: 'app-pods',
   standalone: true,
-  imports: [JsonPipe, TagModule, ButtonModule, TooltipModule, DialogModule, InputTextModule, FormsModule, PodDrawerComponent, PageInfoComponent, AiInsightDrawerComponent, LogTerminalComponent, SpotlightComponent],
+  imports: [JsonPipe, TagModule, ButtonModule, TooltipModule, DialogModule, InputTextModule, FormsModule, PodDrawerComponent, PageInfoComponent, AiInsightDrawerComponent, LogTerminalComponent, ShellTerminalComponent, SpotlightComponent],
   template: `
     <app-spotlight id="pods" title="Pod Management" icon="pi pi-box"
       description="View, inspect, and diagnose pods grouped by deployment. Select pods for combined log views."
@@ -93,6 +94,7 @@ interface PodGroup {
           @if (selected.length === 1) {
             <button pButton icon="pi pi-align-left" label="Logs" class="p-button-sm" (click)="viewLogs()"></button>
             <button pButton icon="pi pi-play" label="Live" class="p-button-sm p-button-success" (click)="viewLiveLogs()"></button>
+            <button pButton icon="pi pi-code" label="Shell" class="p-button-sm p-button-help" (click)="openShell()"></button>
             <button pButton icon="pi pi-search" label="Inspect" class="p-button-sm p-button-secondary" (click)="inspectPod()"></button>
             <button pButton icon="pi pi-sparkles" label="AI Diagnose" class="p-button-sm p-button-warning" (click)="diagnosePod()"></button>
           }
@@ -148,6 +150,10 @@ interface PodGroup {
                        (click)="quickLogs(pod, $event)"
                        (keydown.enter)="$event.stopPropagation(); quickLogs(pod, $event)"
                        (keydown.space)="$event.preventDefault(); $event.stopPropagation(); quickLogs(pod, $event)"></i>
+                    <i class="pi pi-code" pTooltip="Shell" aria-label="Shell" tabindex="0" role="button"
+                       (click)="quickShell(pod, $event)"
+                       (keydown.enter)="$event.stopPropagation(); quickShell(pod, $event)"
+                       (keydown.space)="$event.preventDefault(); $event.stopPropagation(); quickShell(pod, $event)"></i>
                     <i class="pi pi-ellipsis-h" pTooltip="Details" aria-label="View details" tabindex="0" role="button"
                        (click)="openDrawer(pod, $event)"
                        (keydown.enter)="$event.stopPropagation(); openDrawer(pod, $event)"
@@ -177,10 +183,21 @@ interface PodGroup {
         <span>No pods matching "{{ searchQuery }}"</span>
       </div>
     }
-    @if (filteredGroups.length === 0 && !searchQuery && pods.length === 0) {
+    @if (filteredGroups.length === 0 && !searchQuery && pods.length === 0 && !loading) {
       <div class="empty-state">
         <i class="pi pi-box"></i>
         <span>No pods in this namespace</span>
+      </div>
+    }
+    @if (loading && pods.length === 0) {
+      <div class="empty-state">
+        <i class="pi pi-spin pi-spinner"></i>
+        <span>Loading pods...</span>
+      </div>
+    }
+    @if (hasMore) {
+      <div class="load-more">
+        <button pButton [label]="'Load more (' + pods.length + '/' + totalPods + ')'" class="p-button-outlined p-button-sm" [loading]="loading" (click)="loadMore()"></button>
       </div>
     }
 
@@ -220,6 +237,15 @@ interface PodGroup {
     <!-- Inspect Dialog -->
     <p-dialog [(visible)]="inspectVisible" header="Pod Inspection" [modal]="true" [maximizable]="true" styleClass="fullscreen-dialog" [appendTo]="'body'">
       <pre class="inspect-output">{{ inspectData | json }}</pre>
+    </p-dialog>
+
+    <!-- Shell Dialog -->
+    <p-dialog [(visible)]="shellVisible" [header]="'Shell — ' + shellPodName" [modal]="true" [maximizable]="true" styleClass="fullscreen-dialog" (onHide)="onShellHide()" [appendTo]="'body'">
+      @if (shellVisible && shellPodName) {
+        <div class="shell-viewer-container">
+          <app-shell-terminal [podName]="shellPodName" />
+        </div>
+      }
     </p-dialog>
 
     <!-- Diagnose Dialog -->
@@ -392,8 +418,14 @@ interface PodGroup {
     }
     .empty-state i { font-size: 28px; opacity: 0.3; }
 
+    /* Load More */
+    .load-more {
+      display: flex; justify-content: center; padding: 16px;
+    }
+
     /* Dialogs */
     .log-viewer-container { height: 100%; display: flex; flex-direction: column; overflow: hidden; background: var(--bg-elevated); border-radius: 8px; }
+    .shell-viewer-container { height: 100%; min-height: 400px; display: flex; flex-direction: column; overflow: hidden; border-radius: 8px; }
     .log-viewer { height: 100%; overflow-y: auto; font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 1.7; }
     .log-line { display: flex; gap: 12px; padding: 1px 12px; }
     .log-line:hover { background: var(--bg-hover); }
@@ -424,6 +456,14 @@ export class PodsComponent implements OnInit, OnDestroy {
   selected: Pod[] = [];
   selectedGroup = '';
   searchQuery = '';
+  private searchTimeout: any = null;
+
+  // Pagination
+  currentPage = 1;
+  pageSize = 50;
+  totalPods = 0;
+  loading = false;
+  hasMore = false;
 
   // Dialogs
   logsVisible = false;
@@ -446,6 +486,10 @@ export class PodsComponent implements OnInit, OnDestroy {
   diagnoseFindings: any[] = [];
   drawerPod = '';
   drawerStatus = '';
+
+  // Shell
+  shellVisible = false;
+  shellPodName = '';
 
   get healthyCount() { return this.pods.filter(p => this.isHealthy(p)).length; }
   get warningCount() { return this.pods.filter(p => p.status === 'Running' && p.restarts > 5).length; }
@@ -487,9 +531,13 @@ export class PodsComponent implements OnInit, OnDestroy {
   }
 
   filterGroups() {
-    const q = this.searchQuery.toLowerCase();
-    if (!q) { this.filteredGroups = this.groups; return; }
-    this.filteredGroups = this.groups.map(g => ({ ...g, pods: g.pods.filter(p => p.name.toLowerCase().includes(q)) })).filter(g => g.pods.length > 0 || g.deployment.toLowerCase().includes(q));
+    // Debounce search to avoid spamming API
+    clearTimeout(this.searchTimeout);
+    this.searchTimeout = setTimeout(() => {
+      this.currentPage = 1;
+      this.pods = [];
+      this.fetchPods();
+    }, 300);
   }
 
   viewLogs() { const pod = this.selected[0]; this.logsTitle = `Logs — ${pod.name}`; this.logsVisible = true; this.logsLoading = true; this.logLines = []; this.api.getLogs(pod.name, 200).subscribe(res => { this.logLines = res.lines; this.logsLoading = false; }); }
@@ -536,7 +584,34 @@ export class PodsComponent implements OnInit, OnDestroy {
     });
   }
 
-  refresh() { this.api.getPods().subscribe(res => { this.pods = res.pods; this.groupPods(); this.filterGroups(); }); }
+  refresh() {
+    this.currentPage = 1;
+    this.pods = [];
+    this.fetchPods();
+  }
+
+  loadMore() {
+    if (!this.hasMore || this.loading) return;
+    this.currentPage++;
+    this.fetchPods(true);
+  }
+
+  private fetchPods(append = false) {
+    this.loading = true;
+    const search = this.searchQuery || undefined;
+    this.api.getPods(this.currentPage, this.pageSize, search).subscribe(res => {
+      if (append) {
+        this.pods = [...this.pods, ...res.pods];
+      } else {
+        this.pods = res.pods;
+      }
+      this.totalPods = res.total;
+      this.hasMore = this.pods.length < res.total;
+      this.groupPods();
+      this.filteredGroups = this.groups;
+      this.loading = false;
+    });
+  }
 
   private groupPods() {
     const map = new Map<string, Pod[]>();
@@ -561,10 +636,15 @@ export class PodsComponent implements OnInit, OnDestroy {
 
   private extractDeployment(podName: string): string { const parts = podName.split('-'); return parts.length > 2 ? parts.slice(0, -2).join('-') : podName; }
 
-  ngOnInit() { this.refresh(); this.route.queryParams.subscribe(params => { if (params['filter']) { this.searchQuery = params['filter']; this.filterGroups(); } }); }
+  ngOnInit() {
+    this.route.queryParams.subscribe(params => {
+      if (params['filter']) { this.searchQuery = params['filter']; }
+      this.fetchPods();
+    });
+  }
   ngOnDestroy() { this.stopWatch(); }
   toggleWatch() { this.watching ? this.stopWatch() : this.startWatch(); }
-  private startWatch() { this.watching = true; const conn = this.ws.connect('/ws/pods'); this.watchClose = conn.close; this.watchSub = conn.messages$.subscribe({ next: (data) => { this.pods = JSON.parse(data); this.groupPods(); this.filterGroups(); }, complete: () => { this.watching = false; } }); }
+  private startWatch() { this.watching = true; const conn = this.ws.connect('/ws/pods'); this.watchClose = conn.close; this.watchSub = conn.messages$.subscribe({ next: (data) => { const incoming = JSON.parse(data); this.pods = incoming.slice(0, this.currentPage * this.pageSize); this.totalPods = incoming.length; this.hasMore = this.pods.length < this.totalPods; this.groupPods(); this.filteredGroups = this.groups; }, complete: () => { this.watching = false; } }); }
   private stopWatch() { this.watching = false; this.watchSub?.unsubscribe(); this.watchClose?.(); this.watchSub = null; this.watchClose = null; }
   viewLiveLogs() {
     const pod = this.selected[0];
@@ -577,5 +657,21 @@ export class PodsComponent implements OnInit, OnDestroy {
   onLogsHide() {
     this.isLiveMode = false;
     this.activePodName = '';
+  }
+
+  openShell() {
+    const pod = this.selected[0];
+    this.shellPodName = pod.name;
+    this.shellVisible = true;
+  }
+
+  quickShell(pod: Pod, event: Event) {
+    event.stopPropagation();
+    this.shellPodName = pod.name;
+    this.shellVisible = true;
+  }
+
+  onShellHide() {
+    this.shellPodName = '';
   }
 }

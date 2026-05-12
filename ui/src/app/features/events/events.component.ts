@@ -9,6 +9,13 @@ import { WsService } from '../../core/services/ws.service';
 import { KubeEvent } from '../../core/models';
 import { SpotlightComponent } from '../../shared/components/spotlight.component';
 
+interface HeatmapCell {
+  count: number;
+  level: number;
+  hasWarning: boolean;
+  label: string;
+}
+
 @Component({
   selector: 'app-events',
   standalone: true,
@@ -17,6 +24,28 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     <app-spotlight id="events" title="Cluster Events" icon="pi pi-bolt"
       description="Real-time Kubernetes events. Filter by type to spot issues."
       [capabilities]="['Live event stream', 'Warning/Normal filter', 'Object grouping']" [compact]="true" />
+
+    <!-- Heatmap -->
+    @if (events.length > 0) {
+      <div class="heatmap-card">
+        <div class="heatmap-header">
+          <span class="heatmap-title">Event Activity</span>
+          <span class="heatmap-legend">
+            <span class="hl-item"><span class="hl-dot hl-normal"></span>Normal</span>
+            <span class="hl-item"><span class="hl-dot hl-warn"></span>Warning</span>
+          </span>
+        </div>
+        <div class="heatmap-grid">
+          @for (cell of heatmapCells; track $index) {
+            <div class="heatmap-cell" [class.hc-low]="cell.level === 1" [class.hc-med]="cell.level === 2" [class.hc-high]="cell.level === 3" [class.hc-warn]="cell.hasWarning" [pTooltip]="cell.label"></div>
+          }
+        </div>
+        <div class="heatmap-labels">
+          <span>older</span>
+          <span>recent</span>
+        </div>
+      </div>
+    }
 
         <!-- Header -->
     <div class="page-header">
@@ -96,6 +125,34 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     </div>
   `,
   styles: [`
+    /* Heatmap */
+    .heatmap-card {
+      padding: 16px 18px; margin-bottom: 16px;
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+    }
+    .heatmap-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    .heatmap-title { font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+    .heatmap-legend { display: flex; gap: 10px; }
+    .hl-item { display: flex; align-items: center; gap: 4px; font-size: 10px; color: var(--text-muted); }
+    .hl-dot { width: 8px; height: 8px; border-radius: 2px; }
+    .hl-normal { background: var(--accent); opacity: 0.6; }
+    .hl-warn { background: var(--warning); }
+    .heatmap-grid {
+      display: grid; grid-template-columns: repeat(24, 1fr); gap: 3px;
+    }
+    .heatmap-cell {
+      aspect-ratio: 1; border-radius: 3px; background: var(--bg-elevated);
+      transition: all 0.2s; cursor: default;
+    }
+    .heatmap-cell:hover { transform: scale(1.3); z-index: 1; }
+    .hc-low { background: var(--accent); opacity: 0.25; }
+    .hc-med { background: var(--accent); opacity: 0.55; }
+    .hc-high { background: var(--accent); opacity: 0.9; }
+    .hc-warn.hc-low { background: var(--warning); opacity: 0.3; }
+    .hc-warn.hc-med { background: var(--warning); opacity: 0.6; }
+    .hc-warn.hc-high { background: var(--warning); opacity: 0.95; }
+    .heatmap-labels { display: flex; justify-content: space-between; margin-top: 4px; font-size: 9px; color: var(--text-muted); }
+
     /* Header */
     .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; }
     .page-header h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.03em; }
@@ -203,6 +260,7 @@ export class EventsComponent implements OnInit, OnDestroy {
 
   events: KubeEvent[] = [];
   filteredEvents: KubeEvent[] = [];
+  heatmapCells: HeatmapCell[] = [];
   filter: 'all' | 'warning' | 'normal' = 'all';
   searchQuery = '';
   watching = false;
@@ -251,6 +309,7 @@ export class EventsComponent implements OnInit, OnDestroy {
     this.watchClose = conn.close;
     this.watchSub = conn.messages$.subscribe(data => {
       this.events = JSON.parse(data);
+      this.buildHeatmap();
       this.applyFilters();
     });
   }
@@ -266,8 +325,31 @@ export class EventsComponent implements OnInit, OnDestroy {
   refresh() {
     this.api.getEvents(100).subscribe(res => {
       this.events = res.events;
+      this.buildHeatmap();
       this.applyFilters();
     });
+  }
+
+  private buildHeatmap() {
+    const cells: HeatmapCell[] = [];
+    const total = this.events.length;
+    const bucketCount = 24;
+    const bucketSize = Math.max(Math.ceil(total / bucketCount), 1);
+    const maxCount = Math.max(...Array.from({ length: bucketCount }, (_, i) => {
+      const slice = this.events.slice(i * bucketSize, (i + 1) * bucketSize);
+      return slice.length;
+    }), 1);
+
+    for (let i = 0; i < bucketCount; i++) {
+      const slice = this.events.slice(i * bucketSize, (i + 1) * bucketSize);
+      const count = slice.length;
+      const hasWarning = slice.some(e => e.type === 'Warning');
+      const ratio = count / maxCount;
+      const level = count === 0 ? 0 : ratio > 0.66 ? 3 : ratio > 0.33 ? 2 : 1;
+      const warnings = slice.filter(e => e.type === 'Warning').length;
+      cells.push({ count, level, hasWarning, label: `${count} events${warnings ? ' (' + warnings + ' warnings)' : ''}` });
+    }
+    this.heatmapCells = cells;
   }
 
   ngOnInit() { this.refresh(); }

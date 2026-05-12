@@ -32,10 +32,27 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
         <span class="pill-val">{{ ingresses.length }}</span>
         <span class="pill-label">Ingresses</span>
       </div>
+      <div class="summary-pill">
+        <i class="pi pi-server"></i>
+        <span class="pill-val">{{ endpoints.length }}</span>
+        <span class="pill-label">Endpoints</span>
+      </div>
+      @if (unhealthyEndpoints > 0) {
+        <div class="summary-pill pill-bad">
+          <span class="pill-dot dot-bad"></span>
+          <span class="pill-val">{{ unhealthyEndpoints }}</span>
+          <span class="pill-label">Unhealthy</span>
+        </div>
+      }
       <div class="summary-pill" [class.pill-ok]="meshDetected" [class.pill-off]="!meshDetected">
         <i class="pi pi-sitemap"></i>
         <span class="pill-val">{{ meshDetected ? 'Active' : 'None' }}</span>
         <span class="pill-label">Service Mesh</span>
+      </div>
+      <div class="summary-pill" [class.pill-ok]="netPolicies > 0" [class.pill-off]="netPolicies === 0">
+        <i class="pi pi-shield"></i>
+        <span class="pill-val">{{ netPolicies }}</span>
+        <span class="pill-label">Policies</span>
       </div>
     </div>
 
@@ -182,6 +199,38 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
         }
       </div>
     </div>
+
+    <!-- Service Endpoints -->
+    <div class="section">
+      <div class="section-header">
+        <h3><i class="pi pi-server"></i> Service Endpoints</h3>
+        <span class="section-count">{{ endpoints.length }}</span>
+      </div>
+
+      @if (endpoints.length > 0) {
+        <div class="ep-list">
+          @for (ep of endpoints; track ep.name) {
+            <div class="ep-card" [class.ep-unhealthy]="!ep.healthy">
+              <div class="ep-status-dot" [class.dot-ok]="ep.healthy" [class.dot-bad]="!ep.healthy"></div>
+              <div class="ep-body">
+                <code class="ep-name">{{ ep.name }}</code>
+                <div class="ep-counts">
+                  <span class="ep-ready"><i class="pi pi-check"></i> {{ ep.ready }} ready</span>
+                  @if (ep.not_ready > 0) {
+                    <span class="ep-not-ready"><i class="pi pi-times"></i> {{ ep.not_ready }} not ready</span>
+                  }
+                </div>
+              </div>
+              @if (!ep.healthy) {
+                <p-tag value="Degraded" severity="danger" [rounded]="true" />
+              }
+            </div>
+          }
+        </div>
+      } @else {
+        <div class="empty-state"><i class="pi pi-server"></i> No service endpoints found</div>
+      }
+    </div>
   `,
   styles: [`
     .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; }
@@ -276,6 +325,29 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     .mesh-title { font-size: 14px; font-weight: 600; }
     .mesh-detail { font-size: 12px; color: var(--text-muted); }
 
+    /* Endpoints */
+    .ep-list { display: flex; flex-direction: column; gap: 6px; }
+    .ep-card {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 16px; background: var(--bg-card);
+      border: 1px solid var(--border); border-radius: var(--radius);
+      transition: all 0.2s;
+    }
+    .ep-card:hover { border-color: var(--border-hover); }
+    .ep-unhealthy { border-left: 3px solid var(--danger); background: var(--danger-subtle); }
+    .ep-status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .dot-ok { background: var(--success); }
+    .dot-bad { background: var(--danger); box-shadow: 0 0 6px var(--danger); }
+    .ep-body { flex: 1; min-width: 0; }
+    .ep-name { font-size: 12px; font-weight: 500; display: block; margin-bottom: 4px; }
+    .ep-counts { display: flex; gap: 12px; font-size: 11px; }
+    .ep-ready { color: var(--success); display: flex; align-items: center; gap: 3px; }
+    .ep-ready i { font-size: 10px; }
+    .ep-not-ready { color: var(--danger); display: flex; align-items: center; gap: 3px; }
+    .ep-not-ready i { font-size: 10px; }
+    .pill-bad { background: var(--danger-subtle); }
+    .dot-bad { background: var(--danger); }
+
     .empty-state {
       display: flex; align-items: center; justify-content: center; gap: 8px;
       padding: 40px; color: var(--text-muted); font-size: 13px;
@@ -287,10 +359,14 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
 export class NetworkComponent implements OnInit {
   private http = inject(HttpClient);
   ingresses: any[] = [];
+  endpoints: any[] = [];
+  netPolicies = 0;
   dnsQuery = '';
   dnsResult: any = null;
   meshDetected = false;
   meshType = '';
+
+  get unhealthyEndpoints() { return this.endpoints.filter(e => !e.healthy).length; }
 
   ngOnInit() { this.load(); }
 
@@ -300,6 +376,8 @@ export class NetworkComponent implements OnInit {
       this.meshDetected = r.detected || false;
       this.meshType = r.type || '';
     });
+    this.http.get<any>('/api/endpoints').subscribe(r => this.endpoints = r.services || []);
+    this.http.get<any>('/api/network-policies').subscribe(r => this.netPolicies = r.count || 0);
   }
 
   lookupDns() {

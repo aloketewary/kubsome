@@ -6,6 +6,7 @@ Strategies:
   - Stale-while-revalidate: returns cached data immediately,
     refreshes in background if near expiry
   - Event-driven invalidation: destructive ops clear relevant cache
+  - Background refresh: pre-warms critical caches
 """
 
 import time
@@ -15,10 +16,15 @@ from functools import wraps
 
 _cache = {}
 _lock = threading.Lock()
+_refreshing = set()
+_refresh_lock = threading.Lock()
 
 # Adaptive TTL bounds
 MIN_TTL = 3
 MAX_TTL = 30
+
+# Stale grace period — serve stale data while refreshing
+STALE_GRACE = 10
 
 
 def cached(ttl=5, adaptive=True):
@@ -28,6 +34,10 @@ def cached(ttl=5, adaptive=True):
     If adaptive=True, TTL grows when data is unchanged
     (stable cluster = less kubectl calls) and resets
     when data changes (active incident = fresh data).
+
+    Stale-while-revalidate: if cache expired but within
+    grace period, returns stale data and refreshes in
+    background thread.
     """
     def decorator(func):
         @wraps(func)
@@ -44,34 +54,63 @@ def cached(ttl=5, adaptive=True):
                     # Still valid — return cached
                     if now < entry["expires"]:
                         return entry["value"]
-
-            # Cache miss or expired — fetch fresh
-            result = func(*args, **kwargs)
-
-            with _lock:
-                if adaptive and key in _cache:
-                    prev = _cache[key]
-                    if _data_changed(prev["value"], result):
-                        # Data changed — reset to min TTL
-                        new_ttl = MIN_TTL
-                    else:
-                        # Data stable — grow TTL (up to max)
-                        new_ttl = min(
-                            prev["current_ttl"] * 1.5, MAX_TTL
+                    # Expired but within grace — return stale,
+                    # trigger background refresh
+                    if now < entry["expires"] + STALE_GRACE:
+                        _trigger_bg_refresh(
+                            key, func, args, kwargs,
+                            ttl, adaptive
                         )
-                else:
-                    new_ttl = ttl
+                        return entry["value"]
 
-                _cache[key] = {
-                    "value": result,
-                    "expires": now + new_ttl,
-                    "current_ttl": new_ttl,
-                    "fetched_at": now,
-                }
-
+            # Cache miss or beyond grace — fetch fresh
+            result = func(*args, **kwargs)
+            _store(key, result, ttl, adaptive)
             return result
         return wrapper
     return decorator
+
+
+def _trigger_bg_refresh(key, func, args, kwargs, ttl, adaptive):
+    """Spawn background thread to refresh cache entry."""
+    with _refresh_lock:
+        if key in _refreshing:
+            return
+        _refreshing.add(key)
+
+    def _do_refresh():
+        try:
+            result = func(*args, **kwargs)
+            _store(key, result, ttl, adaptive)
+        finally:
+            with _refresh_lock:
+                _refreshing.discard(key)
+
+    t = threading.Thread(target=_do_refresh, daemon=True)
+    t.start()
+
+
+def _store(key, result, ttl, adaptive):
+    """Store result in cache with adaptive TTL."""
+    now = time.time()
+    with _lock:
+        if adaptive and key in _cache:
+            prev = _cache[key]
+            if _data_changed(prev["value"], result):
+                new_ttl = MIN_TTL
+            else:
+                new_ttl = min(
+                    prev["current_ttl"] * 1.5, MAX_TTL
+                )
+        else:
+            new_ttl = ttl
+
+        _cache[key] = {
+            "value": result,
+            "expires": now + new_ttl,
+            "current_ttl": new_ttl,
+            "fetched_at": now,
+        }
 
 
 def _data_changed(old, new):
@@ -138,3 +177,19 @@ def cache_stats():
         ),
         "entries": entries[:10],
     }
+
+
+def prewarm():
+    """Pre-warm critical caches in background thread."""
+    def _warm():
+        try:
+            from core.collectors.pods import collect_pods
+            from core.k8s import get_pods, get_pod_names
+            collect_pods()
+            get_pods()
+            get_pod_names()
+        except Exception:
+            pass
+
+    t = threading.Thread(target=_warm, daemon=True)
+    t.start()

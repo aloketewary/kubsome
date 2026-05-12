@@ -87,12 +87,47 @@ def list_jobs(limit=20):
         else:
             state = "Pending"
 
+        # Extract duration
+        duration = ""
+        start = status.get("startTime", "")
+        completion = status.get("completionTime", "")
+        if start and completion:
+            from datetime import datetime
+            try:
+                t0 = datetime.fromisoformat(
+                    start.replace("Z", "+00:00")
+                )
+                t1 = datetime.fromisoformat(
+                    completion.replace("Z", "+00:00")
+                )
+                secs = int((t1 - t0).total_seconds())
+                if secs < 60:
+                    duration = f"{secs}s"
+                elif secs < 3600:
+                    duration = f"{secs // 60}m{secs % 60}s"
+                else:
+                    duration = f"{secs // 3600}h{(secs % 3600) // 60}m"
+            except Exception:
+                pass
+
+        # Extract failure reason from conditions
+        reason = ""
+        message = ""
+        for cond in status.get("conditions", []):
+            if cond.get("type") == "Failed":
+                reason = cond.get("reason", "")
+                message = cond.get("message", "")
+                break
+
         jobs.append({
             "name": item["metadata"]["name"],
             "state": state,
             "succeeded": succeeded,
             "failed": failed,
             "active": active,
+            "duration": duration,
+            "reason": reason,
+            "message": message,
         })
 
     return jobs
