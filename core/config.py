@@ -80,6 +80,13 @@ def save_default_config():
             )
 
 
+def save_config(config):
+    """Save config to file."""
+    CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with open(CONFIG_PATH, "w") as f:
+        yaml.dump(config, f, default_flow_style=False)
+
+
 def resolve_alias(user_input, config):
     """Expand command aliases."""
     tokens = user_input.split()

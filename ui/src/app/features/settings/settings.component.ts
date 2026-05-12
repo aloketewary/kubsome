@@ -107,6 +107,38 @@ import { ConfirmService } from '../../shared/services/confirm.service';
           </div>
         </div>
 
+        <!-- Webhooks -->
+        <div class="settings-section">
+          <div class="section-header">
+            <div class="section-icon icon-webhook"><i class="pi pi-bell"></i></div>
+            <div><h3>Webhook Notifications</h3><p class="section-desc">Send alerts to Slack, Teams, Webex, or custom endpoints</p></div>
+          </div>
+
+          @for (hook of webhooks; track $index; let i = $index) {
+            <div class="webhook-row">
+              <select class="wh-type" [(ngModel)]="hook.type">
+                <option value="slack">Slack</option>
+                <option value="teams">Teams</option>
+                <option value="webex">Webex</option>
+                <option value="generic">Generic</option>
+              </select>
+              <input class="wh-url" [(ngModel)]="hook.url" [placeholder]="webhookPlaceholder(hook.type)" />
+              <button class="wh-remove" (click)="removeWebhook(i)" pTooltip="Remove"><i class="pi pi-trash"></i></button>
+            </div>
+          }
+
+          <div class="webhook-actions">
+            <button pButton icon="pi pi-plus" label="Add Webhook" class="p-button-sm p-button-outlined" (click)="addWebhook()"></button>
+            @if (webhooks.length > 0) {
+              <button pButton icon="pi pi-save" label="Save" class="p-button-sm" (click)="saveWebhooks()" [disabled]="webhookSaving"></button>
+              <button pButton icon="pi pi-send" label="Test" class="p-button-sm p-button-outlined p-button-success" (click)="testWebhook()" [disabled]="webhookSaving"></button>
+            }
+            @if (webhookMsg) {
+              <span class="wh-msg" [class.wh-ok]="webhookMsg.includes('✓')">{{ webhookMsg }}</span>
+            }
+          </div>
+        </div>
+
         <!-- Keyboard Shortcuts -->
         <div class="settings-section">
           <div class="section-header">
@@ -217,6 +249,7 @@ import { ConfirmService } from '../../shared/services/confirm.service';
     .icon-theme { background: var(--accent-subtle); color: var(--accent); }
     .icon-data { background: var(--warning-subtle); color: var(--warning); }
     .icon-keys { background: var(--bg-elevated); color: var(--text-muted); }
+    .icon-webhook { background: rgba(168,85,247,0.1); color: #a855f7; }
     .icon-danger { background: var(--danger-subtle); color: var(--danger); }
     .section-header h3 { font-size: 14px; font-weight: 600; margin: 0; }
     .section-desc { font-size: 11px; color: var(--text-muted); margin: 2px 0 0; }
@@ -332,6 +365,35 @@ import { ConfirmService } from '../../shared/services/confirm.service';
     }
     .alink:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-subtle); }
     .alink i { font-size: 12px; }
+
+    /* Webhooks */
+    .webhook-row {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 0; border-bottom: 1px solid var(--border);
+    }
+    .webhook-row:last-of-type { border-bottom: none; }
+    .wh-type {
+      padding: 7px 10px; border-radius: 6px; border: 1px solid var(--border);
+      background: var(--bg-elevated); color: var(--text); font-size: 12px;
+      outline: none; min-width: 90px;
+    }
+    .wh-type:focus { border-color: var(--accent); }
+    .wh-url {
+      flex: 1; padding: 7px 10px; border-radius: 6px; border: 1px solid var(--border);
+      background: var(--bg-elevated); color: var(--text); font-size: 11px;
+      font-family: 'JetBrains Mono', monospace; outline: none;
+    }
+    .wh-url:focus { border-color: var(--accent); }
+    .wh-remove {
+      width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--border);
+      background: transparent; color: var(--text-muted); cursor: pointer;
+      display: flex; align-items: center; justify-content: center; font-size: 12px;
+      transition: all 0.2s;
+    }
+    .wh-remove:hover { border-color: var(--danger); color: var(--danger); background: var(--danger-subtle); }
+    .webhook-actions { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+    .wh-msg { font-size: 11px; color: var(--text-muted); }
+    .wh-msg.wh-ok { color: var(--success); }
   `],
 })
 export class SettingsComponent implements OnInit {
@@ -340,6 +402,9 @@ export class SettingsComponent implements OnInit {
   private confirmService = inject(ConfirmService);
   appVersion = '...';
   clusterInfo: any = { context: '', namespace: '', server: '', connected: false };
+  webhooks: { type: string; url: string }[] = [];
+  webhookSaving = false;
+  webhookMsg = '';
 
   themes = [
     { id: 'dark', label: 'Dark' },
@@ -395,6 +460,9 @@ export class SettingsComponent implements OnInit {
     this.http.get<any>('/api/namespaces').subscribe({
       next: (res) => { this.clusterInfo.namespace = res.current || ''; },
     });
+    this.http.get<any>('/api/webhooks').subscribe({
+      next: (res) => { this.webhooks = res.webhooks || []; },
+    });
   }
 
   setTheme(theme: string) {
@@ -412,6 +480,41 @@ export class SettingsComponent implements OnInit {
 
   resetSpotlights() {
     Object.keys(localStorage).filter(k => k.startsWith('kubsome_spotlight_')).forEach(k => localStorage.removeItem(k));
+  }
+
+  addWebhook() {
+    this.webhooks = [...this.webhooks, { type: 'slack', url: '' }];
+  }
+
+  removeWebhook(index: number) {
+    this.webhooks = this.webhooks.filter((_, i) => i !== index);
+  }
+
+  saveWebhooks() {
+    this.webhookSaving = true;
+    this.webhookMsg = '';
+    const valid = this.webhooks.filter(w => w.url.trim());
+    this.http.post<any>('/api/webhooks', { webhooks: valid }).subscribe({
+      next: () => { this.webhookMsg = '✓ Saved'; this.webhookSaving = false; setTimeout(() => this.webhookMsg = '', 3000); },
+      error: () => { this.webhookMsg = 'Save failed'; this.webhookSaving = false; },
+    });
+  }
+
+  testWebhook() {
+    this.webhookMsg = 'Sending...';
+    this.http.post<any>('/api/webhook/test', {}).subscribe({
+      next: (res) => { this.webhookMsg = `✓ Sent to ${res.sent_to} webhook(s)`; setTimeout(() => this.webhookMsg = '', 3000); },
+      error: () => { this.webhookMsg = 'Test failed'; },
+    });
+  }
+
+  webhookPlaceholder(type: string): string {
+    switch (type) {
+      case 'slack': return 'https://hooks.slack.com/services/T.../B.../xxx';
+      case 'teams': return 'https://outlook.office.com/webhook/...';
+      case 'webex': return 'https://webexapis.com/v1/webhooks/incoming/...';
+      default: return 'https://your-server.com/alert';
+    }
   }
 
   clearMonitorCards() {

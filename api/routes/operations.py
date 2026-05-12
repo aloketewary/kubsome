@@ -311,6 +311,22 @@ def test_webhook():
     count = len(config.get("webhooks", []))
     return {"sent_to": count, "message": f"Test sent to {count} webhook(s)"}
 
+@router.get("/webhooks")
+def get_webhooks():
+    """Get configured webhooks."""
+    from core.config import load_config
+    config = load_config()
+    return {"webhooks": config.get("webhooks", [])}
+
+@router.post("/webhooks")
+def save_webhooks(req: dict):
+    """Save webhooks configuration."""
+    from core.config import load_config, save_config
+    config = load_config()
+    config["webhooks"] = req.get("webhooks", [])
+    save_config(config)
+    return {"saved": True, "count": len(config["webhooks"])}
+
 @router.get("/changelog")
 def get_changelog():
     from core.collectors.changes import build_changelog
