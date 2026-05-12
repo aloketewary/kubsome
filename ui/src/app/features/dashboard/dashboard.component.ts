@@ -36,6 +36,9 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
           </div>
           <div class="hero-actions">
             <span class="hero-time">{{ lastUpdated }}</span>
+            <button class="customize-btn" (click)="router.navigate(['/my-dashboard'])" title="Customize Dashboard">
+              <i class="pi pi-sliders-h"></i>
+            </button>
             <button class="refresh-btn" [class.spinning]="refreshing"
               (click)="refresh()" (keydown)="onKey($event, refresh.bind(this))"
               tabindex="0" role="button" aria-label="Refresh Dashboard" title="Refresh">
@@ -404,6 +407,16 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
       background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.7);
       cursor: pointer; display: flex; align-items: center; justify-content: center;
       transition: all 0.2s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    .customize-btn {
+      width: 36px; height: 36px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.7);
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: all 0.2s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    .customize-btn:hover { background: rgba(255,255,255,0.12); border-color: var(--accent); color: var(--accent); }
+    :host-context([data-theme="light"]) .customize-btn {
+      border-color: var(--border); background: var(--bg-elevated); color: var(--text-muted);
     }
     :host-context([data-theme="light"]) .refresh-btn {
       border-color: var(--border); background: var(--bg-elevated); color: var(--text-muted);
