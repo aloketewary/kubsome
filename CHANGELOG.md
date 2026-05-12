@@ -2,6 +2,23 @@
 
 All notable changes to Kubsome are documented here.
 
+## [1.9.1] — 2025-07-14
+
+### Features
+- **Production Safety Guard** — Destructive operations (restart, rollback, scale) show enhanced confirmation dialog when targeting production clusters
+  - Red "PRODUCTION ENVIRONMENT" banner
+  - Escalated severity with disruption warning
+  - Explicit "I understand, proceed" confirmation
+  - Auto-detects prod via context name (prd/prod)
+
+### Documentation
+- Added `CHANGELOG.md`
+- Added `docs/cli.md` — full command reference
+- Added `docs/api.md` — REST + WebSocket endpoints
+- Added `docs/web-ui.md` — page-by-page guide
+- Added `docs/architecture.md` — system design
+- Updated README with documentation links
+
 ## [1.9.0] — 2025-07-14
 
 ### Features
