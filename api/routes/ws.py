@@ -20,15 +20,15 @@ async def ws_logs(websocket: WebSocket, pod: str, container: str = None):
     """Stream live logs from a pod (optionally a specific container)."""
     await websocket.accept()
 
-    cmd = (
-        f"kubectl --context {context.current_context} "
-        f"logs {pod} -n {context.namespace} --follow --tail=20"
-    )
+    cmd = [
+        "kubectl", "--context", context.current_context,
+        "logs", pod, "-n", context.namespace, "--follow", "--tail=20"
+    ]
     if container:
-        cmd += f" -c {container}"
+        cmd.extend(["-c", container])
 
     process = subprocess.Popen(
-        cmd, shell=True,
+        cmd,
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
     )
 
@@ -113,14 +113,14 @@ async def ws_shell(websocket: WebSocket, pod: str):
     """Interactive shell into a pod via WebSocket."""
     await websocket.accept()
 
-    cmd = (
-        f"kubectl --context {context.current_context} "
-        f"exec -i {pod} -n {context.namespace} -- "
-        f"/bin/sh -c 'command -v bash >/dev/null && exec bash || exec sh'"
-    )
+    cmd = [
+        "kubectl", "--context", context.current_context,
+        "exec", "-i", pod, "-n", context.namespace, "--",
+        "/bin/sh", "-c", "command -v bash >/dev/null && exec bash || exec sh"
+    ]
 
     process = subprocess.Popen(
-        cmd, shell=True,
+        cmd,
         stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
         text=True,
     )
