@@ -33,4 +33,5 @@ export const routes: Routes = [
   { path: 'watches', loadComponent: () => import('./features/watch-manager/watch-manager.component').then(m => m.WatchManagerComponent) },
   { path: 'log-correlation', loadComponent: () => import('./features/log-correlation/log-correlation.component').then(m => m.LogCorrelationComponent) },
   { path: 'gateway-monitor', loadComponent: () => import('./features/gateway-monitor/gateway-monitor.component').then(m => m.GatewayMonitorComponent) },
+  { path: 'my-dashboard', loadComponent: () => import('./features/custom-dashboard/custom-dashboard.component').then(m => m.CustomDashboardComponent) },
 ];
