@@ -461,7 +461,7 @@ export class CustomDashboardComponent implements OnInit, OnDestroy {
   // Multi-dashboard
   saveDashboard() {
     const name = this.dashboardName || 'My Dashboard';
-    const saved = this.widgets.map(w => ({ id: w.id, type: w.type, title: w.title, size: w.size }));
+    const saved = this.widgets.map(w => ({ id: w.id, type: w.type, title: w.title, size: w.size, refreshInterval: w.refreshInterval }));
     const list = this.loadSavedListRaw();
     const idx = list.findIndex((d: any) => d.name === name);
     if (idx >= 0) { list[idx].widgets = saved; }
@@ -472,7 +472,7 @@ export class CustomDashboardComponent implements OnInit, OnDestroy {
 
   loadDashboard(dash: { name: string; widgets: any[] }) {
     this.dashboardName = dash.name;
-    this.widgets = dash.widgets.map((w: any) => ({ ...w, loading: true }));
+    this.widgets = dash.widgets.map((w: any) => ({ ...w, refreshInterval: w.refreshInterval || 30, loading: true }));
     localStorage.setItem('kubsome_custom_dashboard', JSON.stringify(dash.widgets));
     localStorage.setItem('kubsome_dashboard_name', dash.name);
     this.refreshAll();
