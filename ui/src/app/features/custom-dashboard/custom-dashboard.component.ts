@@ -11,9 +11,11 @@ interface Widget {
   type: string;
   title: string;
   size: 'sm' | 'md' | 'lg';
+  refreshInterval: number;
   config?: any;
   data?: any;
   loading?: boolean;
+  lastRefresh?: number;
 }
 
 const WIDGET_CATALOG = [
@@ -89,6 +91,12 @@ const WIDGET_CATALOG = [
           <div class="widget-header">
             <i class="pi pi-bars drag-handle"></i>
             <span class="widget-title">{{ widget.title }}</span>
+            <select class="widget-interval" [(ngModel)]="widget.refreshInterval" (ngModelChange)="saveWidgets()" pTooltip="Refresh interval">
+              <option [ngValue]="10">10s</option>
+              <option [ngValue]="30">30s</option>
+              <option [ngValue]="60">1m</option>
+              <option [ngValue]="300">5m</option>
+            </select>
             <div class="widget-actions">
               <i class="pi pi-refresh" pTooltip="Refresh" (click)="refreshWidget(widget)"></i>
               <i class="pi pi-times" pTooltip="Remove" (click)="removeWidget(widget.id)"></i>
@@ -292,7 +300,14 @@ const WIDGET_CATALOG = [
     }
     .drag-handle { font-size: 10px; color: var(--text-muted); cursor: grab; opacity: 0.4; }
     .widget-card:hover .drag-handle { opacity: 1; }
-    .widget-title { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+    .widget-title { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; flex: 1; }
+    .widget-interval {
+      padding: 2px 6px; border-radius: 4px; border: 1px solid var(--border);
+      background: var(--bg-elevated); color: var(--text-muted); font-size: 9px;
+      outline: none; cursor: pointer; opacity: 0.5; transition: opacity 0.15s;
+    }
+    .widget-card:hover .widget-interval { opacity: 1; }
+    .widget-interval:focus { border-color: var(--accent); opacity: 1; }
     .widget-actions { display: flex; gap: 4px; opacity: 0.3; transition: opacity 0.15s; }
     .widget-actions i { font-size: 11px; color: var(--text-muted); cursor: pointer; padding: 4px; border-radius: 4px; }
     .widget-actions i:hover { color: var(--text); background: var(--bg-elevated); }
@@ -375,10 +390,20 @@ export class CustomDashboardComponent implements OnInit, OnDestroy {
     this.loadSavedList();
     this.loadWidgets();
     this.refreshAll();
-    this.refreshTimer = setInterval(() => this.refreshAll(), 30000);
+    this.refreshTimer = setInterval(() => this.tickRefresh(), 5000);
   }
 
   ngOnDestroy() { clearInterval(this.refreshTimer); }
+
+  private tickRefresh() {
+    const now = Date.now();
+    for (const w of this.widgets) {
+      const elapsed = now - (w.lastRefresh || 0);
+      if (elapsed >= (w.refreshInterval || 30) * 1000) {
+        this.fetchWidgetData(w);
+      }
+    }
+  }
 
   addWidget(item: typeof WIDGET_CATALOG[0]) {
     if (this.hasWidget(item.type)) return;
@@ -387,6 +412,7 @@ export class CustomDashboardComponent implements OnInit, OnDestroy {
       type: item.type,
       title: item.title,
       size: item.size,
+      refreshInterval: 30,
       loading: true,
     };
     this.widgets = [...this.widgets, widget];
@@ -474,6 +500,7 @@ export class CustomDashboardComponent implements OnInit, OnDestroy {
 
   private fetchWidgetData(widget: Widget) {
     widget.loading = true;
+    widget.lastRefresh = Date.now();
     switch (widget.type) {
       case 'pod_count':
       case 'namespace_pods':
@@ -548,8 +575,8 @@ export class CustomDashboardComponent implements OnInit, OnDestroy {
     }
   }
 
-  private saveWidgets() {
-    const saved = this.widgets.map(w => ({ id: w.id, type: w.type, title: w.title, size: w.size }));
+  saveWidgets() {
+    const saved = this.widgets.map(w => ({ id: w.id, type: w.type, title: w.title, size: w.size, refreshInterval: w.refreshInterval }));
     localStorage.setItem('kubsome_custom_dashboard', JSON.stringify(saved));
     localStorage.setItem('kubsome_dashboard_name', this.dashboardName);
   }
