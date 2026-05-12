@@ -108,6 +108,7 @@ def incident_history():
                 "ended": data.get("ended", ""),
                 "notes_count": len(data.get("notes", [])),
                 "snapshots_count": len(data.get("snapshots", [])),
+                "root_cause": data.get("root_cause", ""),
                 "path": str(f),
             })
         except Exception:

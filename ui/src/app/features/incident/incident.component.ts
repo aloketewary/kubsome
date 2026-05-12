@@ -194,6 +194,9 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
                     <span>{{ calcDuration({started: item.started, ended: item.ended}) }}</span>
                   }
                 </div>
+                @if (item.root_cause) {
+                  <div class="history-rc">{{ item.root_cause }}</div>
+                }
               </div>
             }
           </div>
@@ -204,11 +207,12 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     <!-- Active Incident -->
     @if (active && !resolved) {
       <!-- Urgency Banner -->
-      <div class="incident-banner">
+      <div class="incident-banner" [class]="'banner-' + (active.severity || severity)">
         <div class="banner-pulse"></div>
         <div class="banner-content">
           <div class="banner-left">
             <p-tag value="ACTIVE INCIDENT" severity="danger" />
+            <p-tag [value]="(active.severity || severity).toUpperCase()" [severity]="(active.severity || severity) === 'critical' ? 'danger' : (active.severity || severity) === 'high' ? 'warn' : 'info'" [rounded]="true" />
             <span class="banner-title">{{ active.title }}</span>
           </div>
           <div class="banner-right">
@@ -219,6 +223,29 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
             <button pButton label="Resolve" icon="pi pi-check" class="p-button-sm p-button-outlined" (click)="showResolveForm = true"></button>
           </div>
         </div>
+      </div>
+
+      <!-- Affected Resources -->
+      <div class="affected-section">
+        <div class="affected-header">
+          <span class="affected-title"><i class="pi pi-exclamation-triangle"></i> Affected Resources</span>
+          <div class="affected-input">
+            <input pInputText [(ngModel)]="affectedInput" placeholder="Add pod or deployment..." (keyup.enter)="addAffected()" />
+            <button pButton icon="pi pi-plus" class="p-button-sm p-button-rounded" (click)="addAffected()" [disabled]="!affectedInput.trim()"></button>
+          </div>
+        </div>
+        @if ((active.affected || affectedResources).length > 0) {
+          <div class="affected-tags">
+            @for (res of (active.affected || affectedResources); track res) {
+              <span class="affected-chip">
+                <i class="pi pi-box"></i> {{ res }}
+                <i class="pi pi-times chip-remove" (click)="removeAffected(res)"></i>
+              </span>
+            }
+          </div>
+        } @else {
+          <span class="affected-empty">No resources tagged yet</span>
+        }
       </div>
 
       <!-- AI Insights & Findings -->
@@ -315,6 +342,31 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
             </div>
           </div>
         }
+
+      <!-- Snapshot Diff -->
+      @if ((active.snapshots || []).length >= 2) {
+        <div class="snap-diff-section">
+          <div class="notes-header">
+            <h3><i class="pi pi-arrows-h"></i> Snapshot Changes</h3>
+            <span class="notes-count">{{ (active.snapshots || []).length }} snapshots</span>
+          </div>
+          <div class="snap-diff-content">
+            @for (change of snapshotDiff; track $index) {
+              <div class="diff-entry" [class]="'diff-' + change.type">
+                <span class="diff-icon">
+                  @if (change.type === 'added') { <i class="pi pi-plus-circle"></i> }
+                  @else if (change.type === 'removed') { <i class="pi pi-minus-circle"></i> }
+                  @else { <i class="pi pi-sync"></i> }
+                </span>
+                <span class="diff-text">{{ change.message }}</span>
+              </div>
+            }
+            @if (snapshotDiff.length === 0) {
+              <span class="diff-empty">No changes between snapshots</span>
+            }
+          </div>
+        </div>
+      }
 
         <!-- Actions Log -->
         @if ((active.actions || []).length > 0) {
@@ -426,6 +478,10 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
       background: linear-gradient(135deg, rgba(239,68,68,0.08), rgba(239,68,68,0.03));
       border: 1px solid var(--danger); border-radius: var(--radius);
     }
+    .banner-medium { border-color: var(--accent); background: linear-gradient(135deg, rgba(99,102,241,0.06), transparent); }
+    .banner-medium .banner-pulse { background: var(--accent); }
+    .banner-low { border-color: var(--success); background: linear-gradient(135deg, rgba(34,197,94,0.06), transparent); }
+    .banner-low .banner-pulse { background: var(--success); }
     .banner-pulse {
       position: absolute; top: 0; left: 0; right: 0; height: 2px;
       background: var(--danger); animation: pulseBanner 2s ease-in-out infinite;
@@ -437,6 +493,47 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     .banner-right { display: flex; align-items: center; gap: 12px; }
     .elapsed { display: flex; align-items: center; gap: 6px; font-size: 13px; font-family: 'JetBrains Mono', monospace; color: var(--text-secondary); }
     .elapsed i { font-size: 12px; }
+
+    /* Affected Resources */
+    .affected-section {
+      padding: 14px 18px; margin-bottom: 16px;
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+    }
+    .affected-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    .affected-title { font-size: 12px; font-weight: 600; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; }
+    .affected-title i { font-size: 12px; color: var(--warning); }
+    .affected-input { display: flex; gap: 6px; }
+    .affected-input input { width: 180px; font-size: 12px; }
+    .affected-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+    .affected-chip {
+      display: flex; align-items: center; gap: 5px;
+      padding: 4px 10px; border-radius: 6px;
+      background: var(--danger-subtle); color: var(--danger);
+      font-size: 11px; font-weight: 500;
+    }
+    .affected-chip i { font-size: 11px; }
+    .chip-remove { cursor: pointer; opacity: 0.6; transition: opacity 0.15s; }
+    .chip-remove:hover { opacity: 1; }
+    .affected-empty { font-size: 11px; color: var(--text-muted); }
+
+    /* Snapshot Diff */
+    .snap-diff-section {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 20px; margin-bottom: 16px;
+    }
+    .snap-diff-content { display: flex; flex-direction: column; gap: 4px; }
+    .diff-entry {
+      display: flex; align-items: center; gap: 8px;
+      padding: 6px 10px; border-radius: 4px; font-size: 12px;
+    }
+    .diff-added { background: rgba(34,197,94,0.06); }
+    .diff-added .diff-icon { color: var(--success); }
+    .diff-removed { background: rgba(239,68,68,0.06); }
+    .diff-removed .diff-icon { color: var(--danger); }
+    .diff-changed { background: rgba(234,179,8,0.06); }
+    .diff-changed .diff-icon { color: var(--warning); }
+    .diff-icon { font-size: 12px; flex-shrink: 0; }
+    .diff-empty { font-size: 11px; color: var(--text-muted); }
 
     /* Quick Actions */
     .quick-actions {
@@ -636,6 +733,7 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     .history-title { font-size: 13px; font-weight: 500; }
     .history-date { font-size: 10px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
     .history-meta { display: flex; gap: 12px; font-size: 11px; color: var(--text-muted); }
+    .history-rc { font-size: 11px; color: var(--warning); margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   `],
 })
 export class IncidentComponent implements OnInit, OnDestroy {
@@ -666,6 +764,9 @@ export class IncidentComponent implements OnInit, OnDestroy {
   rootCauseCategory = '';
   rootCauseDetail = '';
   resolutionText = '';
+  affectedInput = '';
+  affectedResources: string[] = [];
+  snapshotDiff: { type: string; message: string }[] = [];
   private timerInterval: any;
 
   severities = [
@@ -697,7 +798,13 @@ export class IncidentComponent implements OnInit, OnDestroy {
   loadStatus() {
     this.http.get<any>(`${this.base}/incident/status`).subscribe(res => {
       this.active = res.status === 'no active incident' ? null : res;
-      if (this.active) this.startTimer();
+      if (this.active) {
+        this.startTimer();
+        this.affectedResources = this.active.affected || [];
+        this.computeSnapshotDiff();
+        // Auto-run AI on first load if no cause yet
+        if (!this.probableCause) this.runAiAnalysis();
+      }
     });
   }
 
@@ -778,6 +885,45 @@ export class IncidentComponent implements OnInit, OnDestroy {
       this.showActionInput = false;
       this.loadStatus();
     });
+  }
+
+  addAffected() {
+    if (!this.affectedInput.trim()) return;
+    this.affectedResources.push(this.affectedInput.trim());
+    this.http.post<any>(`${this.base}/incident/note`, {
+      text: `[affected] ${this.affectedInput.trim()}`
+    }).subscribe(() => this.loadStatus());
+    this.affectedInput = '';
+  }
+
+  removeAffected(res: string) {
+    this.affectedResources = this.affectedResources.filter(r => r !== res);
+  }
+
+  private computeSnapshotDiff() {
+    const snaps = this.active?.snapshots || [];
+    if (snaps.length < 2) { this.snapshotDiff = []; return; }
+    const first = snaps[0];
+    const last = snaps[snaps.length - 1];
+    const diff: { type: string; message: string }[] = [];
+
+    const firstPods = new Set((first.pods || []).map((p: any) => p.name));
+    const lastPods = new Set((last.pods || []).map((p: any) => p.name));
+
+    for (const p of last.pods || []) {
+      if (!firstPods.has(p.name)) diff.push({ type: 'added', message: `Pod ${p.name} appeared` });
+    }
+    for (const p of first.pods || []) {
+      if (!lastPods.has(p.name)) diff.push({ type: 'removed', message: `Pod ${p.name} disappeared` });
+    }
+    // Status changes
+    for (const p of last.pods || []) {
+      const prev = (first.pods || []).find((fp: any) => fp.name === p.name);
+      if (prev && prev.status !== p.status) {
+        diff.push({ type: 'changed', message: `${p.name}: ${prev.status} → ${p.status}` });
+      }
+    }
+    this.snapshotDiff = diff;
   }
 
   runAiAnalysis() {
