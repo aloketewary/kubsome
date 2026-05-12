@@ -26,10 +26,18 @@ const WIDGET_CATALOG = [
   { type: 'health_score', title: 'Health Score', icon: 'pi pi-heart', color: '#ef4444', desc: 'Overall cluster health percentage', size: 'sm' as const },
   { type: 'recent_events', title: 'Recent Events', icon: 'pi pi-bolt', color: '#eab308', desc: 'Latest cluster events', size: 'md' as const },
   { type: 'top_pods_cpu', title: 'Top CPU Pods', icon: 'pi pi-chart-bar', color: '#f97316', desc: 'Highest CPU consumers', size: 'md' as const },
+  { type: 'top_pods_memory', title: 'Top Memory Pods', icon: 'pi pi-database', color: '#8b5cf6', desc: 'Highest memory consumers', size: 'md' as const },
   { type: 'cost_summary', title: 'Cost Summary', icon: 'pi pi-dollar', color: '#10b981', desc: 'Monthly cost estimate', size: 'sm' as const },
   { type: 'anomalies', title: 'Anomalies', icon: 'pi pi-exclamation-triangle', color: '#ef4444', desc: 'Active anomaly alerts', size: 'md' as const },
   { type: 'namespace_pods', title: 'Namespace Pods', icon: 'pi pi-th-large', color: '#06b6d4', desc: 'Pod distribution by status', size: 'sm' as const },
   { type: 'uptime', title: 'Uptime', icon: 'pi pi-clock', color: '#22c55e', desc: 'Cluster availability status', size: 'sm' as const },
+  { type: 'warning_events', title: 'Warning Events', icon: 'pi pi-exclamation-circle', color: '#f59e0b', desc: 'Only warning-type events', size: 'md' as const },
+  { type: 'restart_pods', title: 'High Restart Pods', icon: 'pi pi-replay', color: '#ef4444', desc: 'Pods with most restarts', size: 'md' as const },
+  { type: 'ingress_count', title: 'Ingress Routes', icon: 'pi pi-link', color: '#ec4899', desc: 'Active ingress count', size: 'sm' as const },
+  { type: 'cronjob_count', title: 'CronJobs', icon: 'pi pi-history', color: '#a855f7', desc: 'Scheduled jobs count', size: 'sm' as const },
+  { type: 'security_issues', title: 'Security Issues', icon: 'pi pi-shield', color: '#ef4444', desc: 'Misconfiguration findings', size: 'sm' as const },
+  { type: 'context_info', title: 'Cluster Context', icon: 'pi pi-globe', color: '#3b82f6', desc: 'Current context and namespace', size: 'sm' as const },
+  { type: 'endpoint_health', title: 'Endpoint Health', icon: 'pi pi-sitemap', color: '#14b8a6', desc: 'Service endpoints status', size: 'sm' as const },
 ];
 
 @Component({
@@ -204,6 +212,76 @@ const WIDGET_CATALOG = [
                     <span class="metric-label">{{ widget.data.day || '' }}</span>
                   </div>
                 }}
+                @case ('top_pods_memory') { @if (widget.data) {
+                  <div class="top-widget">
+                    @for (pod of widget.data.slice(0, 5); track pod.name) {
+                      <div class="top-row">
+                        <span class="top-name">{{ shortName(pod.name) }}</span>
+                        <span class="top-val">{{ pod.memory }}</span>
+                      </div>
+                    }
+                    @if (widget.data.length === 0) { <span class="widget-empty">No metrics</span> }
+                  </div>
+                }}
+                @case ('warning_events') { @if (widget.data) {
+                  <div class="events-widget">
+                    @for (ev of widget.data.slice(0, 5); track $index) {
+                      <div class="ev-row">
+                        <span class="ev-dot ev-warn"></span>
+                        <span class="ev-reason">{{ ev.reason }}</span>
+                        <span class="ev-obj">{{ ev.object }}</span>
+                      </div>
+                    }
+                    @if (widget.data.length === 0) { <span class="widget-empty">No warnings ✓</span> }
+                  </div>
+                }}
+                @case ('restart_pods') { @if (widget.data) {
+                  <div class="top-widget">
+                    @for (pod of widget.data.slice(0, 5); track pod.name) {
+                      <div class="top-row">
+                        <span class="top-name">{{ shortName(pod.name) }}</span>
+                        <span class="top-val restart-val">↻ {{ pod.restarts }}</span>
+                      </div>
+                    }
+                    @if (widget.data.length === 0) { <span class="widget-empty">No restarts ✓</span> }
+                  </div>
+                }}
+                @case ('ingress_count') { @if (widget.data) {
+                  <div class="metric-widget">
+                    <span class="metric-value">{{ widget.data.count }}</span>
+                    <span class="metric-label">ingress routes</span>
+                  </div>
+                }}
+                @case ('cronjob_count') { @if (widget.data) {
+                  <div class="metric-widget">
+                    <span class="metric-value">{{ widget.data.count }}</span>
+                    <span class="metric-label">cronjobs</span>
+                  </div>
+                }}
+                @case ('security_issues') { @if (widget.data) {
+                  <div class="metric-widget">
+                    <span class="metric-value" [class.val-ok]="widget.data.count === 0" [class.val-bad]="widget.data.count > 0">{{ widget.data.count }}</span>
+                    <span class="metric-label">findings</span>
+                  </div>
+                }}
+                @case ('context_info') { @if (widget.data) {
+                  <div class="metric-widget">
+                    <span class="metric-label">Context</span>
+                    <code class="ctx-val">{{ widget.data.context }}</code>
+                    <span class="metric-label">Namespace</span>
+                    <code class="ctx-val">{{ widget.data.namespace }}</code>
+                  </div>
+                }}
+                @case ('endpoint_health') { @if (widget.data) {
+                  <div class="metric-widget">
+                    <span class="metric-value">{{ widget.data.healthy }}</span>
+                    <span class="metric-total">/ {{ widget.data.total }}</span>
+                    <span class="metric-label">endpoints healthy</span>
+                    @if (widget.data.unhealthy > 0) {
+                      <span class="metric-alert">{{ widget.data.unhealthy }} degraded</span>
+                    }
+                  </div>
+                }}
                 @default {
                   <span class="widget-empty">Unknown widget</span>
                 }
@@ -332,6 +410,8 @@ const WIDGET_CATALOG = [
     .cost-val { color: var(--success); }
     .val-ok { color: var(--success); }
     .val-bad { color: var(--danger); }
+    .restart-val { color: var(--danger); font-weight: 700; }
+    .ctx-val { font-size: 11px; font-family: 'JetBrains Mono', monospace; color: var(--text-secondary); word-break: break-all; text-align: center; }
     .ns-pills { display: flex; gap: 6px; margin-top: 6px; }
     .ns-pill { font-size: 10px; padding: 2px 8px; border-radius: 10px; }
     .ns-ok { background: var(--success-subtle); color: var(--success); }
@@ -580,6 +660,58 @@ export class CustomDashboardComponent implements OnInit, OnDestroy {
         this.http.get<any>('/api/uptime').subscribe({
           next: (r) => { widget.data = r; widget.loading = false; },
           error: () => { widget.data = { cluster_down: true, day: '' }; widget.loading = false; },
+        });
+        break;
+      case 'top_pods_memory':
+        this.http.get<any>('/api/top/pods').subscribe({
+          next: (r) => { widget.data = (r.pods || []).sort((a: any, b: any) => b.memory_mb - a.memory_mb).slice(0, 5); widget.loading = false; },
+          error: () => { widget.data = []; widget.loading = false; },
+        });
+        break;
+      case 'warning_events':
+        this.http.get<any>('/api/events?limit=20').subscribe({
+          next: (r) => { widget.data = (r.events || []).filter((e: any) => e.type === 'Warning'); widget.loading = false; },
+          error: () => { widget.data = []; widget.loading = false; },
+        });
+        break;
+      case 'restart_pods':
+        this.http.get<any>('/api/pods?size=0').subscribe({
+          next: (r) => { widget.data = (r.pods || []).filter((p: any) => p.restarts > 0).sort((a: any, b: any) => b.restarts - a.restarts).slice(0, 5); widget.loading = false; },
+          error: () => { widget.data = []; widget.loading = false; },
+        });
+        break;
+      case 'ingress_count':
+        this.http.get<any>('/api/ingress').subscribe({
+          next: (r) => { widget.data = { count: (r.ingresses || []).length }; widget.loading = false; },
+          error: () => { widget.data = { count: 0 }; widget.loading = false; },
+        });
+        break;
+      case 'cronjob_count':
+        this.http.get<any>('/api/cronjobs').subscribe({
+          next: (r) => { widget.data = { count: (r.cronjobs || []).length }; widget.loading = false; },
+          error: () => { widget.data = { count: 0 }; widget.loading = false; },
+        });
+        break;
+      case 'security_issues':
+        this.http.get<any>('/api/security').subscribe({
+          next: (r) => { widget.data = { count: (r.findings || []).length }; widget.loading = false; },
+          error: () => { widget.data = { count: 0 }; widget.loading = false; },
+        });
+        break;
+      case 'context_info':
+        this.http.get<any>('/api/context-info').subscribe({
+          next: (r) => { widget.data = r; widget.loading = false; },
+          error: () => { widget.data = { context: '—', namespace: '—' }; widget.loading = false; },
+        });
+        break;
+      case 'endpoint_health':
+        this.http.get<any>('/api/endpoints').subscribe({
+          next: (r) => {
+            const svcs = r.services || [];
+            widget.data = { total: svcs.length, healthy: svcs.filter((s: any) => s.healthy).length, unhealthy: svcs.filter((s: any) => !s.healthy).length };
+            widget.loading = false;
+          },
+          error: () => { widget.data = { total: 0, healthy: 0, unhealthy: 0 }; widget.loading = false; },
         });
         break;
       default:
