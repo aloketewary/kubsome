@@ -18,6 +18,7 @@ DEFAULTS = {
     "log_tail_lines": 100,
     "max_events": 50,
     "notifications": True,
+    "webhooks": [],
     "llm": {
         "provider": "local",
         "model": "llama3",

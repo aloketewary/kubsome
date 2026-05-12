@@ -297,6 +297,20 @@ def list_playbooks():
 
 # ─── Changelog / Snap ─────────────────────────────────────────────────────────
 
+@router.post("/webhook/test")
+def test_webhook():
+    """Send a test notification to all configured webhooks."""
+    from core.notify import notify_webhook
+    notify_webhook(
+        "Test Notification",
+        "This is a test from Kubsome. Webhooks are working!",
+        "info"
+    )
+    from core.config import load_config
+    config = load_config()
+    count = len(config.get("webhooks", []))
+    return {"sent_to": count, "message": f"Test sent to {count} webhook(s)"}
+
 @router.get("/changelog")
 def get_changelog():
     from core.collectors.changes import build_changelog
