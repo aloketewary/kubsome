@@ -50,6 +50,18 @@ def notify(title, message):
         pass
 
 
+def _get_cluster_info():
+    """Get current cluster context and namespace."""
+    try:
+        from core.context import context
+        return {
+            "context": context.current_context or "unknown",
+            "namespace": context.namespace or "default",
+        }
+    except Exception:
+        return {"context": "unknown", "namespace": "default"}
+
+
 def notify_webhook(title, message, severity="warning"):
     """Send notification to configured webhooks."""
     from core.config import load_config
@@ -59,16 +71,18 @@ def notify_webhook(title, message, severity="warning"):
     if not webhooks:
         return
 
+    cluster = _get_cluster_info()
+
     for hook in webhooks:
         t = threading.Thread(
             target=_send_webhook,
-            args=(hook, title, message, severity),
+            args=(hook, title, message, severity, cluster),
             daemon=True
         )
         t.start()
 
 
-def _send_webhook(hook, title, message, severity):
+def _send_webhook(hook, title, message, severity, cluster):
     """Send to a single webhook (runs in background thread)."""
     import urllib.request
 
@@ -80,13 +94,13 @@ def _send_webhook(hook, title, message, severity):
 
     try:
         if hook_type == "slack":
-            payload = _slack_payload(title, message, severity)
+            payload = _slack_payload(title, message, severity, cluster)
         elif hook_type == "teams":
-            payload = _teams_payload(title, message, severity)
+            payload = _teams_payload(title, message, severity, cluster)
         elif hook_type == "webex":
-            payload = _webex_payload(title, message, severity)
+            payload = _webex_payload(title, message, severity, cluster)
         else:
-            payload = _generic_payload(title, message, severity)
+            payload = _generic_payload(title, message, severity, cluster)
 
         data = json.dumps(payload).encode("utf-8")
         req = urllib.request.Request(
@@ -95,7 +109,6 @@ def _send_webhook(hook, title, message, severity):
         )
         urllib.request.urlopen(req, timeout=10)
     except Exception as e:
-        # Log webhook failures for debugging
         import sys
         print(
             f"[webhook] Failed to send to {hook_type}: {e}",
@@ -103,7 +116,7 @@ def _send_webhook(hook, title, message, severity):
         )
 
 
-def _slack_payload(title, message, severity):
+def _slack_payload(title, message, severity, cluster):
     color = (
         "#ef4444" if severity == "critical"
         else "#eab308" if severity == "warning"
@@ -114,6 +127,8 @@ def _slack_payload(title, message, severity):
         else ":warning:" if severity == "warning"
         else ":white_check_mark:"
     )
+    ctx = cluster["context"]
+    ns = cluster["namespace"]
     return {
         "blocks": [
             {
@@ -126,23 +141,23 @@ def _slack_payload(title, message, severity):
             },
             {
                 "type": "context",
-                "elements": [{"type": "mrkdwn", "text": f"*Severity:* {severity.upper()} | *Source:* Kubsome"}]
+                "elements": [{"type": "mrkdwn", "text": f":kubernetes: `{ctx}` / `{ns}` • *{severity.upper()}*"}]
             }
         ],
         "attachments": [{"color": color, "blocks": []}]
     }
 
 
-def _teams_payload(title, message, severity):
+def _teams_payload(title, message, severity, cluster):
     color = (
         "FF0000" if severity == "critical"
         else "FFA500" if severity == "warning"
         else "00FF00"
     )
     icon = (
-        "🔴" if severity == "critical"
-        else "🟡" if severity == "warning"
-        else "🟢"
+        "\U0001f534" if severity == "critical"
+        else "\U0001f7e1" if severity == "warning"
+        else "\U0001f7e2"
     )
     return {
         "@type": "MessageCard",
@@ -151,34 +166,39 @@ def _teams_payload(title, message, severity):
         "text": message,
         "sections": [{
             "facts": [
+                {"name": "Cluster", "value": cluster["context"]},
+                {"name": "Namespace", "value": cluster["namespace"]},
                 {"name": "Severity", "value": severity.upper()},
-                {"name": "Source", "value": "Kubsome"},
             ]
         }]
     }
 
 
-def _generic_payload(title, message, severity):
+def _generic_payload(title, message, severity, cluster):
     return {
         "source": "kubsome",
         "title": title,
         "message": message,
         "severity": severity,
+        "cluster": cluster["context"],
+        "namespace": cluster["namespace"],
     }
 
 
-def _webex_payload(title, message, severity):
+def _webex_payload(title, message, severity, cluster):
     icon = (
-        "🔴" if severity == "critical"
-        else "🟡" if severity == "warning"
-        else "🟢"
+        "\U0001f534" if severity == "critical"
+        else "\U0001f7e1" if severity == "warning"
+        else "\U0001f7e2"
     )
+    ctx = cluster["context"]
+    ns = cluster["namespace"]
     return {
         "markdown": (
             f"## {icon} {title}\n\n"
             f"{message}\n\n"
             f"---\n"
-            f"**Severity:** {severity.upper()} | **Source:** Kubsome"
+            f"**Cluster:** `{ctx}` | **Namespace:** `{ns}` | **Severity:** {severity.upper()}"
         )
     }
 
@@ -208,7 +228,7 @@ def notify_if_critical(alerts):
 
     if critical:
         details = "\n".join(
-            f"• {a.get('message', a.get('title', 'Unknown'))}"
+            f"\u2022 {a.get('message', a.get('title', 'Unknown'))}"
             for a in critical[:5]
         )
         msg = (
@@ -219,7 +239,7 @@ def notify_if_critical(alerts):
         notify_webhook("Critical Alert", msg, "critical")
     elif warnings:
         details = "\n".join(
-            f"• {a.get('message', a.get('title', 'Unknown'))}"
+            f"\u2022 {a.get('message', a.get('title', 'Unknown'))}"
             for a in warnings[:5]
         )
         msg = (
