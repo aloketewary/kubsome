@@ -1,5 +1,6 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { RouterOutlet, RouterLink } from '@angular/router';
+import { HttpClient } from '@angular/common/http';
 import { Select } from 'primeng/select';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from './core/services/api.service';
@@ -31,7 +32,7 @@ import { ConfirmDialogComponent } from './shared/components/confirm-dialog.compo
     <app-command-palette />
 
     <!-- Topbar -->
-    <header class="topbar glass">
+    <header class="topbar glass" [class]="'topbar-env-' + clusterEnv">
       <div class="topbar-left">
         <div class="workspace-label" (click)="dashMenuOpen = !dashMenuOpen">
           <i class="pi pi-th-large"></i>
@@ -211,6 +212,19 @@ import { ConfirmDialogComponent } from './shared/components/confirm-dialog.compo
       z-index: 1000;
       gap: 16px;
       box-sizing: border-box;
+      transition: background 0.3s, border-color 0.3s;
+    }
+    .topbar-env-prod {
+      background: linear-gradient(90deg, rgba(239,68,68,0.08), var(--bg-card) 40%);
+      border-bottom-color: rgba(239,68,68,0.3);
+    }
+    .topbar-env-sit {
+      background: linear-gradient(90deg, rgba(245,158,11,0.08), var(--bg-card) 40%);
+      border-bottom-color: rgba(245,158,11,0.3);
+    }
+    .topbar-env-dev {
+      background: linear-gradient(90deg, rgba(34,197,94,0.08), var(--bg-card) 40%);
+      border-bottom-color: rgba(34,197,94,0.3);
     }
     .topbar-left {
       display: flex;
@@ -548,6 +562,7 @@ import { ConfirmDialogComponent } from './shared/components/confirm-dialog.compo
 })
 export class AppComponent implements OnInit {
   private api = inject(ApiService);
+  private http = inject(HttpClient);
   loadingService = inject(LoadingService);
   private prefsService = inject(PreferencesService); // ensures prefs load on startup
 
@@ -558,6 +573,7 @@ export class AppComponent implements OnInit {
   currentContext = '...';
   private initialContext = '';
   clusterHealth: 'healthy' | 'degraded' | 'critical' = 'healthy';
+  clusterEnv: 'prod' | 'sit' | 'dev' | 'default' = 'default';
   anomalyCount = 0;
   showNotifications = false;
   anomalies: any[] = [];
@@ -569,6 +585,16 @@ export class AppComponent implements OnInit {
   ngOnInit() {
     this.sidebarCollapsed = localStorage.getItem('sidebar_collapsed') === 'true';
     this.loadDashList();
+    this.http.get<any>('/api/context-info').subscribe({
+      next: (res) => {
+        const env = (res.environment || '').toLowerCase();
+        if (env === 'prod') this.clusterEnv = 'prod';
+        else if (env === 'sit' || env === 'cit') this.clusterEnv = 'sit';
+        else if (env === 'dev') this.clusterEnv = 'dev';
+        else this.clusterEnv = 'default';
+      },
+      error: () => {},
+    });
     this.api.getNamespaces().subscribe(res => {
       this.namespaces = res.namespaces;
       this.currentNamespace = res.current;
