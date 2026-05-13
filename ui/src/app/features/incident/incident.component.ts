@@ -239,7 +239,7 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
             @for (res of (active.affected || affectedResources); track res) {
               <span class="affected-chip">
                 <i class="pi pi-box"></i> {{ res }}
-                <i class="pi pi-times chip-remove" (click)="removeAffected(res)"></i>
+                <i class="pi pi-times chip-remove" (click)="removeAffected(res)" (keydown.enter)="removeAffected(res)" (keydown.space)="$event.preventDefault(); removeAffected(res)" tabindex="0" role="button" aria-label="Remove resource"></i>
               </span>
             }
           </div>
