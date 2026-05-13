@@ -226,6 +226,18 @@ import { ConfirmDialogComponent } from './shared/components/confirm-dialog.compo
       background: linear-gradient(to top, rgba(34,197,94,0.08) 70.17%, #0f0f11) !important;
       border-bottom-color: rgb(34, 197, 94);
     }
+    :host-context([data-theme="light"]) .topbar-env-prod {
+      background: linear-gradient(66deg, rgba(220, 38, 38, 0.12) 2.52%, #ffffff 92.44%) !important;
+      border-bottom-color: rgba(220, 38, 38, 0.3);
+    }
+    :host-context([data-theme="light"]) .topbar-env-sit {
+      background: linear-gradient(to top, rgba(202, 138, 4, 0.1) 70.17%, #ffffff) !important;
+      border-bottom-color: rgba(202, 138, 4, 0.4);
+    }
+    :host-context([data-theme="light"]) .topbar-env-dev {
+      background: linear-gradient(to top, rgba(22, 163, 74, 0.08) 70.17%, #ffffff) !important;
+      border-bottom-color: rgba(22, 163, 74, 0.4);
+    }
     .topbar-left {
       display: flex;
       align-items: center;
@@ -501,6 +513,15 @@ import { ConfirmDialogComponent } from './shared/components/confirm-dialog.compo
     }
     .sidebar-env-dev {
       background: linear-gradient(to right, rgba(34,197,94,0.08) 70.17%, #0f0f11) !important;
+    }
+    :host-context([data-theme="light"]) .sidebar-env-prod {
+      background: linear-gradient(66deg, rgba(220, 38, 38, 0.1) 2.52%, #ffffff 92.44%) !important;
+    }
+    :host-context([data-theme="light"]) .sidebar-env-sit {
+      background: linear-gradient(to right, rgba(202, 138, 4, 0.08) 70.17%, #ffffff) !important;
+    }
+    :host-context([data-theme="light"]) .sidebar-env-dev {
+      background: linear-gradient(to right, rgba(22, 163, 74, 0.06) 70.17%, #ffffff) !important;
     }
     .sidebar.rail {
       width: 48px;
