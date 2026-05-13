@@ -11,7 +11,7 @@ from core.cache import cached
 def get_raw_resources(kind, context_name, namespace=None, selector=None):
     """Unified raw resource fetcher with caching."""
     command = [
-        "kubectl", "--context", context_name,
+        "kubectl", "--context", str(context_name or ""),
         "get", kind, "-o", "json"
     ]
     if namespace:

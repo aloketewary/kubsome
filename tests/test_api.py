@@ -128,8 +128,8 @@ class TestAIEndpoint:
         data = response.json()
         assert "answer" in data
 
-    @patch("core.collectors.pods.subprocess.run")
-    @patch("core.collectors.pods.context")
+    @patch("core.k8s.subprocess.run")
+    @patch("core.k8s.context")
     def test_ai_ambiguity(self, mock_ctx, mock_run):
         import json as jsonlib
         mock_ctx.current_context = "test"
@@ -137,8 +137,8 @@ class TestAIEndpoint:
         mock_run.return_value = MagicMock(
             returncode=0,
             stdout=jsonlib.dumps({"items": [
-                {"metadata": {"name": "payment-api-abc"}, "status": {"phase": "Running", "containerStatuses": [{"restartCount": 0}]}},
-                {"metadata": {"name": "payment-worker-xyz"}, "status": {"phase": "Running", "containerStatuses": [{"restartCount": 0}]}},
+                {"metadata": {"name": "payment-api-abc", "labels": {}, "creationTimestamp": "2024-01-01T00:00:00Z"}, "status": {"phase": "Running", "containerStatuses": [{"restartCount": 0}]}},
+                {"metadata": {"name": "payment-worker-xyz", "labels": {}, "creationTimestamp": "2024-01-01T00:00:00Z"}, "status": {"phase": "Running", "containerStatuses": [{"restartCount": 0}]}},
             ]})
         )
 
