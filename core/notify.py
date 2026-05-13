@@ -109,13 +109,27 @@ def _slack_payload(title, message, severity):
         else "#eab308" if severity == "warning"
         else "#22c55e"
     )
+    icon = (
+        ":red_circle:" if severity == "critical"
+        else ":warning:" if severity == "warning"
+        else ":white_check_mark:"
+    )
     return {
-        "attachments": [{
-            "color": color,
-            "title": f"Kubsome: {title}",
-            "text": message,
-            "footer": "Kubsome Alert",
-        }]
+        "blocks": [
+            {
+                "type": "header",
+                "text": {"type": "plain_text", "text": f"{icon} {title}", "emoji": True}
+            },
+            {
+                "type": "section",
+                "text": {"type": "mrkdwn", "text": message}
+            },
+            {
+                "type": "context",
+                "elements": [{"type": "mrkdwn", "text": f"*Severity:* {severity.upper()} | *Source:* Kubsome"}]
+            }
+        ],
+        "attachments": [{"color": color, "blocks": []}]
     }
 
 
@@ -125,11 +139,22 @@ def _teams_payload(title, message, severity):
         else "FFA500" if severity == "warning"
         else "00FF00"
     )
+    icon = (
+        "🔴" if severity == "critical"
+        else "🟡" if severity == "warning"
+        else "🟢"
+    )
     return {
         "@type": "MessageCard",
         "themeColor": color,
-        "title": f"Kubsome: {title}",
+        "title": f"{icon} Kubsome: {title}",
         "text": message,
+        "sections": [{
+            "facts": [
+                {"name": "Severity", "value": severity.upper()},
+                {"name": "Source", "value": "Kubsome"},
+            ]
+        }]
     }
 
 
@@ -150,8 +175,10 @@ def _webex_payload(title, message, severity):
     )
     return {
         "markdown": (
-            f"{icon} **Kubsome: {title}**\n\n"
-            f"{message}"
+            f"## {icon} {title}\n\n"
+            f"{message}\n\n"
+            f"---\n"
+            f"**Severity:** {severity.upper()} | **Source:** Kubsome"
         )
     }
 
@@ -180,9 +207,23 @@ def notify_if_critical(alerts):
     ]
 
     if critical:
-        msg = f"{len(critical)} critical issues detected"
-        notify("Critical Alert", msg)
+        details = "\n".join(
+            f"• {a.get('message', a.get('title', 'Unknown'))}"
+            for a in critical[:5]
+        )
+        msg = (
+            f"{len(critical)} critical issue(s) detected:\n\n"
+            f"{details}"
+        )
+        notify("Critical Alert", f"{len(critical)} critical issues")
         notify_webhook("Critical Alert", msg, "critical")
     elif warnings:
-        msg = f"{len(warnings)} warning(s) detected"
+        details = "\n".join(
+            f"• {a.get('message', a.get('title', 'Unknown'))}"
+            for a in warnings[:5]
+        )
+        msg = (
+            f"{len(warnings)} warning(s) detected:\n\n"
+            f"{details}"
+        )
         notify_webhook("Warning Alert", msg, "warning")
