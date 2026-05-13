@@ -32,7 +32,7 @@ import { ConfirmDialogComponent } from './shared/components/confirm-dialog.compo
     <app-command-palette />
 
     <!-- Topbar -->
-    <header class="topbar glass" [class]="'topbar-env-' + clusterEnv">
+    <header class="topbar glass" [class.topbar-env-prod]="clusterEnv === 'prod'" [class.topbar-env-sit]="clusterEnv === 'sit'" [class.topbar-env-dev]="clusterEnv === 'dev'">
       <div class="topbar-left">
         <div class="workspace-label" (click)="dashMenuOpen = !dashMenuOpen">
           <i class="pi pi-th-large"></i>
