@@ -51,8 +51,8 @@ const WIDGET_CATALOG = [
           @if (editingName) {
             <input class="dash-name-input" [(ngModel)]="dashboardName" (keyup.enter)="editingName = false; saveDashboard()" (blur)="editingName = false; saveDashboard()" autofocus />
           } @else {
-            <h1 (click)="editingName = true">{{ dashboardName || 'My Dashboard' }}</h1>
-            <i class="pi pi-pencil edit-name-icon" (click)="editingName = true" pTooltip="Rename"></i>
+            <h1 (click)="editingName = true" (keydown.enter)="editingName = true" (keydown.space)="$event.preventDefault(); editingName = true" tabindex="0" role="button" aria-label="Rename dashboard">{{ dashboardName || 'My Dashboard' }}</h1>
+            <i class="pi pi-pencil edit-name-icon" (click)="editingName = true" (keydown.enter)="editingName = true" (keydown.space)="$event.preventDefault(); editingName = true" tabindex="0" role="button" aria-label="Rename" pTooltip="Rename"></i>
           }
         </div>
         <p class="subtitle">{{ widgets.length }} widgets</p>
@@ -107,8 +107,8 @@ const WIDGET_CATALOG = [
               <option [ngValue]="300">5m</option>
             </select>
             <div class="widget-actions">
-              <i class="pi pi-refresh" pTooltip="Refresh" (click)="refreshWidget(widget)"></i>
-              <i class="pi pi-times" pTooltip="Remove" (click)="removeWidget(widget.id)"></i>
+              <i class="pi pi-refresh" pTooltip="Refresh" (click)="refreshWidget(widget); $event.stopPropagation()" (keydown.enter)="refreshWidget(widget); $event.stopPropagation()" (keydown.space)="$event.preventDefault(); refreshWidget(widget); $event.stopPropagation()" tabindex="0" role="button" aria-label="Refresh widget"></i>
+              <i class="pi pi-times" pTooltip="Remove" (click)="removeWidget(widget.id); $event.stopPropagation()" (keydown.enter)="removeWidget(widget.id); $event.stopPropagation()" (keydown.space)="$event.preventDefault(); removeWidget(widget.id); $event.stopPropagation()" tabindex="0" role="button" aria-label="Remove widget"></i>
             </div>
           </div>
           <div class="widget-body">
