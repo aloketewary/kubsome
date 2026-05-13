@@ -44,6 +44,7 @@ interface ColumnDef {
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [FormsModule, ButtonModule, TooltipModule, TagModule, InputTextModule, PageInfoComponent],
+  host: { '[class.gw-fullscreen]': 'fullscreen' },
   template: `
     <div class="page-header">
       <div>
@@ -78,6 +79,7 @@ interface ColumnDef {
         </div>
 
         <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="manualRefresh()" pTooltip="Manual refresh"></button>
+        <button pButton [icon]="fullscreen ? 'pi pi-window-minimize' : 'pi pi-window-maximize'" class="p-button-outlined p-button-sm p-button-rounded" (click)="fullscreen = !fullscreen" [pTooltip]="fullscreen ? 'Exit fullscreen' : 'Fullscreen'"></button>
         <app-page-info title="Gateway Monitor" description="Deployment-level resource metrics. Configure visible columns via the gear icon."
           [tips]="['Click gear icon to show/hide columns', 'Column config is saved to browser', 'Red rows = pods not ready', 'Change refresh interval while live']"
           [commands]="['top pods', 'top nodes', 'overview']" />
@@ -219,6 +221,11 @@ interface ColumnDef {
     }
   `,
   styles: [`
+    :host.gw-fullscreen {
+      position: fixed; inset: 0; z-index: 9999;
+      background: var(--bg); overflow-y: auto;
+      padding: 20px 24px;
+    }
     .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 12px; }
     .page-header h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.03em; }
     .subtitle { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
@@ -381,6 +388,7 @@ export class GatewayMonitorComponent implements OnInit, OnDestroy {
   searchQuery = '';
   loading = false;
   streaming = false;
+  fullscreen = false;
   lastUpdated = '';
   refreshInterval = 10;
   configOpen = false;
