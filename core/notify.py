@@ -94,8 +94,13 @@ def _send_webhook(hook, title, message, severity):
             headers={"Content-Type": "application/json"}
         )
         urllib.request.urlopen(req, timeout=10)
-    except Exception:
-        pass
+    except Exception as e:
+        # Log webhook failures for debugging
+        import sys
+        print(
+            f"[webhook] Failed to send to {hook_type}: {e}",
+            file=sys.stderr
+        )
 
 
 def _slack_payload(title, message, severity):
@@ -169,8 +174,15 @@ def notify_if_critical(alerts):
         a for a in alerts
         if a.get("severity") == "critical"
     ]
+    warnings = [
+        a for a in alerts
+        if a.get("severity") == "warning"
+    ]
 
     if critical:
         msg = f"{len(critical)} critical issues detected"
         notify("Critical Alert", msg)
         notify_webhook("Critical Alert", msg, "critical")
+    elif warnings:
+        msg = f"{len(warnings)} warning(s) detected"
+        notify_webhook("Warning Alert", msg, "warning")

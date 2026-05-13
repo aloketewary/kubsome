@@ -373,15 +373,18 @@ def list_playbooks():
 def test_webhook():
     """Send a test notification to all configured webhooks."""
     from core.notify import notify_webhook
+    from core.config import load_config
+    config = load_config()
+    webhooks = config.get("webhooks", [])
+    count = len(webhooks)
+    if count == 0:
+        return {"sent_to": 0, "message": "No webhooks configured. Add them in Settings."}
     notify_webhook(
         "Test Notification",
         "This is a test from Kubsome. Webhooks are working!",
         "info"
     )
-    from core.config import load_config
-    config = load_config()
-    count = len(config.get("webhooks", []))
-    return {"sent_to": count, "message": f"Test sent to {count} webhook(s)"}
+    return {"sent_to": count, "message": f"Test sent to {count} webhook(s). Check your channel."}
 
 @router.get("/webhooks")
 def get_webhooks():

@@ -33,9 +33,17 @@ def get_health_check():
     return run_health_check()
 
 
+_last_alert_count = 0
+
 @router.get("/anomalies")
 def get_anomalies():
+    global _last_alert_count
     alerts = detect_anomalies()
+    # Only notify webhook if alert count increased (avoid spam)
+    if alerts and len(alerts) > _last_alert_count:
+        from core.notify import notify_if_critical
+        notify_if_critical(alerts)
+    _last_alert_count = len(alerts) if alerts else 0
     return {"alerts": alerts}
 
 
