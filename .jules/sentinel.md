@@ -12,3 +12,8 @@
 **Vulnerability:** WebSocket endpoints (`/ws/logs/{pod}`, `/ws/shell/{pod}`) were vulnerable to command injection as they passed user-provided path and query parameters into shell commands executed via `subprocess.Popen(..., shell=True)`.
 **Learning:** Security audits must cover all entry points, including WebSockets, which are often overlooked compared to standard REST endpoints. The same `shell=True` risk applies across all transports.
 **Prevention:** Use list-based arguments for `subprocess.Popen` and avoid `shell=True` regardless of the protocol.
+
+## 2026-05-13 - [HIGH] Command Injection in Core K8s Utilities
+**Vulnerability:** Core utility functions `get_pods` and `get_pod_names` in `core/k8s.py` were using `shell=True` with f-strings containing user-influenced context and namespace names.
+**Learning:** Hardening API routes is insufficient if the underlying core utilities still use vulnerable patterns. Security must be implemented at the lowest possible level of command execution.
+**Prevention:** Standardize on list-based arguments and `shell=False` for all `subprocess` calls in core utility modules.
