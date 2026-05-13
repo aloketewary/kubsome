@@ -206,7 +206,7 @@ import { ConfirmDialogComponent } from './shared/components/confirm-dialog.compo
     .topbar {
       position: fixed;
       top: 0;
-      left: 240px;
+      left: 0;
       right: 0;
       height: 56px;
       display: flex;
@@ -214,7 +214,7 @@ import { ConfirmDialogComponent } from './shared/components/confirm-dialog.compo
       padding: 0 24px;
       background: var(--bg-card);
       border-bottom: 1px solid var(--border);
-      z-index: 1000;
+      z-index: 1002;
       gap: 16px;
       box-sizing: border-box;
       transition: background 0.3s, border-color 0.3s;
@@ -499,9 +499,11 @@ import { ConfirmDialogComponent } from './shared/components/confirm-dialog.compo
       background: var(--bg);
       padding-top: 56px;
       padding-bottom: 24px;
+      margin-left: 240px;
       box-sizing: border-box;
       overflow-y: auto;
       overflow-x: hidden;
+      transition: margin-left 0.2s ease;
     }
     .content-inner {
       padding: 20px 20px;
@@ -515,13 +517,12 @@ import { ConfirmDialogComponent } from './shared/components/confirm-dialog.compo
       background: var(--bg-card);
       padding: 0;
       z-index: 1001;
-      height: 100vh;
+      height: calc(100vh - 56px);
       position: fixed;
-      top: 0;
+      top: 56px;
       left: 0;
       padding: 8px 6px;
       transition: width 0.2s ease, background 0.3s, border-color 0.3s;
-      position: relative;
     }
     .sidebar-env-prod {
       background: linear-gradient(66deg, rgba(123, 3, 3, 0.53) 2.52%, #0f0f11 92.44%) !important;
@@ -565,6 +566,7 @@ import { ConfirmDialogComponent } from './shared/components/confirm-dialog.compo
     }
     .collapse-toggle:hover { border-color: var(--accent); color: var(--accent); }
     .sidebar-collapsed .status-bar { left: 48px; }
+    .sidebar-collapsed .content { margin-left: 48px; }
 
     .status-bar {
       position: fixed;

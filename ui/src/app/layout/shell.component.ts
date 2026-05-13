@@ -12,10 +12,6 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
   imports: [RouterLink, RouterLinkActive, HelpDialogComponent],
   template: `
     <div class="sidebar-header" [class.header-mini]="collapsed">
-      <div class="logo-area">
-        <i class="pi pi-box logo-icon"></i>
-        @if (!collapsed) { <span class="logo-text">Kubsome</span> }
-      </div>
       <div class="ctx-block" [class.glass]="!collapsed">
         <div class="ctx-dot" [class.dot-ok]="clusterOk" [class.dot-bad]="!clusterOk"></div>
         @if (!collapsed) {
