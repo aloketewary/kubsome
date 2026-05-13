@@ -9,17 +9,17 @@ from core.cache import cached
 
 @cached(ttl=5)
 def get_pods():
-    command = (
-        f"kubectl "
-        f"--context {context.current_context} "
-        f"get pods "
-        f"-n {context.namespace} "
-        f"-o json"
-    )
+    command = [
+        "kubectl",
+        "--context", str(context.current_context or ""),
+        "get", "pods",
+        "-n", str(context.namespace),
+        "-o", "json"
+    ]
 
     result = subprocess.run(
         command,
-        shell=True,
+        shell=False,
         capture_output=True,
         text=True
     )
@@ -65,14 +65,16 @@ def get_pods():
 @cached(ttl=10)
 def get_pod_names():
     """Fast pod name list using jsonpath (no full JSON parse)."""
-    command = (
-        f"kubectl --context {context.current_context} "
-        f"get pods -n {context.namespace} "
-        f"-o jsonpath='{{.items[*].metadata.name}}'"
-    )
+    command = [
+        "kubectl",
+        "--context", str(context.current_context or ""),
+        "get", "pods",
+        "-n", str(context.namespace),
+        "-o", "jsonpath={.items[*].metadata.name}"
+    ]
 
     result = subprocess.run(
-        command, shell=True,
+        command, shell=False,
         capture_output=True, text=True
     )
 
