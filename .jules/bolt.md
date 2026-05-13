@@ -10,3 +10,8 @@
 ## 2025-05-15 - [Parallel Log Fetching]
 **Learning:** Sequential log fetching via `kubectl logs` for multiple pods (e.g., log correlation) creates a significant bottleneck that scales linearly with the number of pods. Since these are I/O-bound subprocess calls, parallelization using `ThreadPoolExecutor` reduces the total latency to that of the slowest single request.
 **Action:** Use `ThreadPoolExecutor` for batch resource operations (logs, describe, etc.) across multiple pods. Always handle empty input lists to avoid `ValueError` in `max_workers`.
+
+## 2026-05-13 - [Unified Cached Resource Fetching]
+**Learning:** Multiple collectors independently fetching the same Kubernetes resources (pods, nodes, etc.) create redundant I/O and shell overhead. Centralizing resource fetching into a unified, cached raw fetcher (`get_raw_resources`) allows different components to share the same data within the cache window, significantly reducing the total number of `kubectl` executions.
+
+**Action:** Use a shared, cached raw resource fetcher for primary Kubernetes objects and parallelize top-level data aggregation (like overviews) to minimize latency.

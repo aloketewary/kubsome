@@ -12,13 +12,13 @@ from core.collectors.events import collect_events
 from core.collectors.nodes import collect_nodes
 
 
-def detect_anomalies():
+def detect_anomalies(pods=None, events=None, nodes=None):
     """Run all anomaly detectors, return list of alerts."""
     alerts = []
 
-    pods = collect_pods()
-    events = collect_events(limit=50)
-    nodes = collect_nodes()
+    pods = pods if pods is not None else collect_pods()
+    events = events if events is not None else collect_events(limit=50)
+    nodes = nodes if nodes is not None else collect_nodes()
 
     alerts.extend(_restart_spike(pods))
     alerts.extend(_event_storm(events))

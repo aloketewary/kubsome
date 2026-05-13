@@ -5,6 +5,7 @@ Keeps main.py clean and makes handlers testable.
 
 import time
 import subprocess
+from concurrent.futures import ThreadPoolExecutor
 
 from rich.console import Console
 from rich.panel import Panel
@@ -202,10 +203,18 @@ def _handle_pods_watch(cmd, env):
 
 def _handle_overview(cmd, env):
     with loading("Fetching cluster overview..."):
-        pods = collect_pods()
-        nodes = collect_nodes()
-        deployments = collect_deployments()
-        alerts = detect_anomalies()
+        with ThreadPoolExecutor(max_workers=3) as executor:
+            f_pods = executor.submit(collect_pods)
+            f_nodes = executor.submit(collect_nodes)
+            f_deps = executor.submit(collect_deployments)
+
+            pods = f_pods.result()
+            nodes = f_nodes.result()
+            deployments = f_deps.result()
+
+        # Pass pre-fetched data to detect_anomalies to avoid redundant calls
+        alerts = detect_anomalies(pods=pods, nodes=nodes)
+
     render_overview(
         analyze_pods(pods),
         analyze_nodes(nodes),
