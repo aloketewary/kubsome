@@ -289,15 +289,16 @@ export class RbacComponent implements OnInit {
   ngOnInit() { this.load(); this.loadServiceAccounts(); }
 
   load() {
-    this.http.get<any>('/api/rbac').subscribe(res => {
-      this.bindings = res.bindings || [];
-      this.applyFilter();
+    this.http.get<any>('/api/rbac').subscribe({
+      next: (res) => { this.bindings = res.bindings || []; this.applyFilter(); },
+      error: () => { this.bindings = []; this.applyFilter(); },
     });
   }
 
   loadServiceAccounts() {
-    this.http.get<any>('/api/rbac/service-accounts').subscribe(res => {
-      this.serviceAccounts = res.accounts || [];
+    this.http.get<any>('/api/rbac/service-accounts').subscribe({
+      next: (res) => { this.serviceAccounts = res.accounts || []; },
+      error: () => { this.serviceAccounts = []; },
     });
   }
 
