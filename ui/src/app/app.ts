@@ -34,6 +34,11 @@ import { ConfirmDialogComponent } from './shared/components/confirm-dialog.compo
     <!-- Topbar -->
     <header class="topbar glass" [class.topbar-env-prod]="clusterEnv === 'prod'" [class.topbar-env-sit]="clusterEnv === 'sit'" [class.topbar-env-dev]="clusterEnv === 'dev'">
       <div class="topbar-left">
+        <a class="topbar-brand" routerLink="/dashboard">
+          <i class="pi pi-box"></i>
+          <span class="brand-text">Kubsome</span>
+        </a>
+        <div class="topbar-divider"></div>
         <div class="workspace-label" (click)="dashMenuOpen = !dashMenuOpen">
           <i class="pi pi-th-large"></i>
           <span>{{ activeDashName || 'Workspace' }}</span>
@@ -243,6 +248,19 @@ import { ConfirmDialogComponent } from './shared/components/confirm-dialog.compo
       align-items: center;
       min-width: 200px;
       position: relative;
+    }
+    .topbar-brand {
+      display: flex; align-items: center; gap: 8px;
+      text-decoration: none; color: var(--text);
+      font-size: 14px; font-weight: 700; letter-spacing: -0.02em;
+      padding: 6px 10px; border-radius: 6px;
+      transition: all 0.15s;
+    }
+    .topbar-brand:hover { background: var(--bg-elevated); }
+    .topbar-brand i { font-size: 16px; color: var(--accent); }
+    .brand-text { }
+    .topbar-divider {
+      width: 1px; height: 20px; background: var(--border); margin: 0 10px;
     }
     .workspace-label {
       display: flex;
