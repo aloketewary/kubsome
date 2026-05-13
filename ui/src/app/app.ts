@@ -147,7 +147,7 @@ import { ConfirmDialogComponent } from './shared/components/confirm-dialog.compo
 
     <!-- Layout -->
     <div class="layout" [class.sidebar-collapsed]="sidebarCollapsed">
-      <aside class="sidebar" [class.rail]="sidebarCollapsed">
+      <aside class="sidebar" [class.rail]="sidebarCollapsed" [class.sidebar-env-prod]="clusterEnv === 'prod'" [class.sidebar-env-sit]="clusterEnv === 'sit'" [class.sidebar-env-dev]="clusterEnv === 'dev'">
         <app-shell [collapsed]="sidebarCollapsed" />
         <button class="collapse-toggle" (click)="toggleSidebar()">
           <i class="pi" [class.pi-chevron-left]="!sidebarCollapsed" [class.pi-chevron-right]="sidebarCollapsed"></i>
@@ -215,16 +215,16 @@ import { ConfirmDialogComponent } from './shared/components/confirm-dialog.compo
       transition: background 0.3s, border-color 0.3s;
     }
     .topbar-env-prod {
-      background: linear-gradient(90deg, rgba(239,68,68,0.08), var(--bg-card) 40%);
+      background: linear-gradient(to top, rgb(239, 68, 68) 70.17%, #0f0f11) !important;
       border-bottom-color: rgba(239,68,68,0.3);
     }
     .topbar-env-sit {
-      background: linear-gradient(90deg, rgba(245,158,11,0.08), var(--bg-card) 40%);
-      border-bottom-color: rgba(245,158,11,0.3);
+      background: linear-gradient(to top, rgba(245, 158, 11, 0.08) 70.17%, #0f0f11) !important;
+      border-bottom-color: #f59e0bff;
     }
     .topbar-env-dev {
-      background: linear-gradient(90deg, rgba(34,197,94,0.08), var(--bg-card) 40%);
-      border-bottom-color: rgba(34,197,94,0.3);
+      background: linear-gradient(to top, rgba(34,197,94,0.08) 70.17%, #0f0f11) !important;
+      border-bottom-color: rgb(34, 197, 94);
     }
     .topbar-left {
       display: flex;
@@ -490,8 +490,20 @@ import { ConfirmDialogComponent } from './shared/components/confirm-dialog.compo
       top: 0;
       left: 0;
       padding: 8px 6px;
-      transition: width 0.2s ease;
+      transition: width 0.2s ease, background 0.3s, border-color 0.3s;
       position: relative;
+    }
+    .sidebar-env-prod {
+      background: linear-gradient(to right, rgb(239, 68, 68) 70.17%, #0f0f11) !important;
+      border-right-color: rgba(239,68,68,0.3);
+    }
+    .sidebar-env-sit {
+      background: linear-gradient(to right, rgba(245, 158, 11, 0.08) 70.17%, #0f0f11) !important;
+      border-right-color: #f59e0bff;
+    }
+    .sidebar-env-dev {
+      background: linear-gradient(to right, rgba(34,197,94,0.08) 70.17%, #0f0f11) !important;
+      border-right-color: rgb(34, 197, 94);
     }
     .sidebar.rail {
       width: 48px;
