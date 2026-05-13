@@ -123,6 +123,78 @@ def get_rbac():
     from core.collectors.rbac import list_role_bindings
     return {"bindings": list_role_bindings()}
 
+@router.get("/rbac/check")
+def rbac_check(subject: str, kind: str = "ServiceAccount"):
+    """Check permissions for a subject."""
+    from core.collectors.rbac import check_permissions
+    return check_permissions(subject, kind)
+
+@router.get("/rbac/service-accounts")
+def rbac_service_accounts():
+    from core.collectors.rbac import list_service_accounts
+    return {"accounts": list_service_accounts()}
+
+@router.get("/revision-diff/{name}")
+def get_revision_diff(name: str):
+    """Get deployment revision history as diffs."""
+    import subprocess
+    from core.context import context as ctx
+    ns = ctx.namespace
+    kctx = ctx.current_context
+
+    # Get revision history
+    cmd = (
+        f"kubectl --context {kctx} "
+        f"rollout history deployment/{name} -n {ns}"
+    )
+    r = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+    if r.returncode != 0:
+        return {"error": r.stderr.strip(), "revisions": []}
+
+    # Parse revisions
+    lines = r.stdout.strip().split("\n")
+    revisions = []
+    for line in lines[1:]:
+        parts = line.split()
+        if parts and parts[0].isdigit():
+            revisions.append(int(parts[0]))
+
+    if len(revisions) < 2:
+        return {"name": name, "revisions": revisions, "diffs": []}
+
+    # Get diff between last two revisions
+    diffs = []
+    for i in range(len(revisions) - 1, max(len(revisions) - 4, 0), -1):
+        rev_a = revisions[i - 1]
+        rev_b = revisions[i]
+        cmd_a = (
+            f"kubectl --context {kctx} "
+            f"rollout history deployment/{name} "
+            f"--revision={rev_a} -n {ns}"
+        )
+        cmd_b = (
+            f"kubectl --context {kctx} "
+            f"rollout history deployment/{name} "
+            f"--revision={rev_b} -n {ns}"
+        )
+        ra = subprocess.run(cmd_a, shell=True, capture_output=True, text=True)
+        rb = subprocess.run(cmd_b, shell=True, capture_output=True, text=True)
+
+        if ra.returncode == 0 and rb.returncode == 0:
+            # Simple line diff
+            lines_a = set(ra.stdout.strip().split("\n"))
+            lines_b = set(rb.stdout.strip().split("\n"))
+            added = lines_b - lines_a
+            removed = lines_a - lines_b
+            diffs.append({
+                "from_rev": rev_a,
+                "to_rev": rev_b,
+                "added": [l.strip() for l in added if l.strip()],
+                "removed": [l.strip() for l in removed if l.strip()],
+            })
+
+    return {"name": name, "revisions": revisions, "diffs": diffs}
+
 
 # ─── CronJobs / Jobs ─────────────────────────────────────────────────────────
 

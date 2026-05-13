@@ -99,3 +99,63 @@ def can_i(verb, resource):
     )
 
     return "yes" in r.stdout.lower()
+
+
+def check_permissions(subject, subject_kind="ServiceAccount"):
+    """
+    Check what a subject can do in the current namespace.
+    Returns a permission matrix.
+    """
+    ns = context.namespace
+    ctx = context.current_context
+
+    resources = [
+        "pods", "deployments", "services", "secrets",
+        "configmaps", "ingresses", "jobs", "cronjobs",
+    ]
+    verbs = ["get", "list", "create", "delete", "update"]
+
+    results = []
+    for resource in resources:
+        perms = {}
+        for verb in verbs:
+            cmd = (
+                f"kubectl --context {ctx} "
+                f"auth can-i {verb} {resource} "
+                f"--as=system:{subject_kind.lower()}:{ns}:{subject} "
+                f"-n {ns}"
+            )
+            r = subprocess.run(
+                cmd, shell=True,
+                capture_output=True, text=True
+            )
+            perms[verb] = "yes" in r.stdout.lower()
+        results.append({
+            "resource": resource,
+            "permissions": perms,
+        })
+
+    return {
+        "subject": subject,
+        "subject_kind": subject_kind,
+        "namespace": ns,
+        "resources": results,
+    }
+
+
+def list_service_accounts():
+    """List service accounts in the namespace."""
+    ns = context.namespace
+    ctx = context.current_context
+
+    cmd = (
+        f"kubectl --context {ctx} "
+        f"get serviceaccounts -n {ns} "
+        f"-o jsonpath='{{.items[*].metadata.name}}'"
+    )
+    r = subprocess.run(
+        cmd, shell=True,
+        capture_output=True, text=True
+    )
+    names = r.stdout.strip("'").split()
+    return [n for n in names if n]

@@ -50,6 +50,43 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
       }
     </div>
 
+    <!-- Permission Checker -->
+    <div class="checker-card">
+      <div class="checker-header">
+        <i class="pi pi-question-circle"></i>
+        <span>Can user/SA do X?</span>
+      </div>
+      <div class="checker-form">
+        <select class="checker-select" [(ngModel)]="checkSubject">
+          <option value="">Select service account...</option>
+          @for (sa of serviceAccounts; track sa) {
+            <option [value]="sa">{{ sa }}</option>
+          }
+        </select>
+        <button pButton label="Check Permissions" icon="pi pi-search" class="p-button-sm" (click)="checkPermissions()" [disabled]="!checkSubject || checkLoading"></button>
+      </div>
+      @if (permMatrix) {
+        <div class="perm-matrix">
+          <div class="pm-header">
+            <span class="pm-resource-col">Resource</span>
+            @for (v of permVerbs; track v) {
+              <span class="pm-verb">{{ v }}</span>
+            }
+          </div>
+          @for (row of permMatrix.resources; track row.resource) {
+            <div class="pm-row">
+              <span class="pm-resource">{{ row.resource }}</span>
+              @for (v of permVerbs; track v) {
+                <span class="pm-cell" [class.pm-yes]="row.permissions[v]" [class.pm-no]="!row.permissions[v]">
+                  {{ row.permissions[v] ? '✓' : '✗' }}
+                </span>
+              }
+            </div>
+          }
+        </div>
+      }
+    </div>
+
     <!-- Filters -->
     <div class="filter-bar">
       <div class="filter-pills">
@@ -125,6 +162,37 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     .dot-warn { background: var(--warning); }
     .pill-val { font-weight: 700; }
     .pill-label { color: var(--text-muted); }
+
+    /* Permission Checker */
+    .checker-card {
+      padding: 16px 18px; margin-bottom: 16px;
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+    }
+    .checker-header { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; margin-bottom: 12px; }
+    .checker-header i { color: var(--accent); }
+    .checker-form { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; }
+    .checker-select {
+      padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border);
+      background: var(--bg-elevated); color: var(--text); font-size: 12px; outline: none; min-width: 200px;
+    }
+    .checker-select:focus { border-color: var(--accent); }
+    .perm-matrix { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+    .pm-header {
+      display: grid; grid-template-columns: 120px repeat(5, 1fr);
+      padding: 8px 12px; background: var(--bg-elevated); border-bottom: 1px solid var(--border);
+      font-size: 10px; font-weight: 600; color: var(--text-muted); text-transform: uppercase;
+    }
+    .pm-row {
+      display: grid; grid-template-columns: 120px repeat(5, 1fr);
+      padding: 6px 12px; border-bottom: 1px solid var(--border); font-size: 12px;
+    }
+    .pm-row:last-child { border-bottom: none; }
+    .pm-row:hover { background: var(--bg-hover); }
+    .pm-resource { font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+    .pm-resource-col { font-family: 'JetBrains Mono', monospace; }
+    .pm-verb, .pm-cell { text-align: center; }
+    .pm-yes { color: var(--success); font-weight: 700; }
+    .pm-no { color: var(--danger); opacity: 0.5; }
 
     /* Filters */
     .filter-bar {
@@ -208,17 +276,38 @@ export class RbacComponent implements OnInit {
   filtered: any[] = [];
   searchQuery = '';
   kindFilter: 'all' | 'RoleBinding' | 'ClusterRoleBinding' = 'all';
+  serviceAccounts: string[] = [];
+  checkSubject = '';
+  checkLoading = false;
+  permMatrix: any = null;
+  permVerbs = ['get', 'list', 'create', 'delete', 'update'];
 
   get uniqueRoles() { return [...new Set(this.bindings.map(b => b.role))]; }
   get uniqueSubjects() { return new Set(this.bindings.map(b => b.subjects)).size; }
   get adminCount() { return this.bindings.filter(b => this.isAdmin(b)).length; }
 
-  ngOnInit() { this.load(); }
+  ngOnInit() { this.load(); this.loadServiceAccounts(); }
 
   load() {
     this.http.get<any>('/api/rbac').subscribe(res => {
       this.bindings = res.bindings || [];
       this.applyFilter();
+    });
+  }
+
+  loadServiceAccounts() {
+    this.http.get<any>('/api/rbac/service-accounts').subscribe(res => {
+      this.serviceAccounts = res.accounts || [];
+    });
+  }
+
+  checkPermissions() {
+    if (!this.checkSubject) return;
+    this.checkLoading = true;
+    this.permMatrix = null;
+    this.http.get<any>('/api/rbac/check', { params: { subject: this.checkSubject } }).subscribe({
+      next: (res) => { this.permMatrix = res; this.checkLoading = false; },
+      error: () => { this.checkLoading = false; },
     });
   }
 
