@@ -215,8 +215,8 @@ import { ConfirmDialogComponent } from './shared/components/confirm-dialog.compo
       transition: background 0.3s, border-color 0.3s;
     }
     .topbar-env-prod {
-      background: linear-gradient(to top, rgb(239, 68, 68) 70.17%, #0f0f11) !important;
-      border-bottom-color: rgba(239,68,68,0.3);
+      background: linear-gradient(66deg, rgba(123, 3, 3, 0.53) 2.52%, #0f0f11 92.44%) !important;
+      border-bottom-color: #f9464630;
     }
     .topbar-env-sit {
       background: linear-gradient(to top, rgba(245, 158, 11, 0.08) 70.17%, #0f0f11) !important;
@@ -494,16 +494,13 @@ import { ConfirmDialogComponent } from './shared/components/confirm-dialog.compo
       position: relative;
     }
     .sidebar-env-prod {
-      background: linear-gradient(to right, rgb(239, 68, 68) 70.17%, #0f0f11) !important;
-      border-right-color: rgba(239,68,68,0.3);
+      background: linear-gradient(66deg, rgba(123, 3, 3, 0.53) 2.52%, #0f0f11 92.44%) !important;
     }
     .sidebar-env-sit {
       background: linear-gradient(to right, rgba(245, 158, 11, 0.08) 70.17%, #0f0f11) !important;
-      border-right-color: #f59e0bff;
     }
     .sidebar-env-dev {
       background: linear-gradient(to right, rgba(34,197,94,0.08) 70.17%, #0f0f11) !important;
-      border-right-color: rgb(34, 197, 94);
     }
     .sidebar.rail {
       width: 48px;
