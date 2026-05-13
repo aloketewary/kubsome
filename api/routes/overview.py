@@ -1,4 +1,5 @@
 from fastapi import APIRouter
+from concurrent.futures import ThreadPoolExecutor
 
 from core.collectors.pods import collect_pods
 from core.collectors.nodes import collect_nodes
@@ -10,9 +11,14 @@ router = APIRouter(tags=["overview"])
 
 @router.get("/overview")
 def get_overview():
-    pods = collect_pods()
-    nodes = collect_nodes()
-    deployments = collect_deployments()
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        f_pods = executor.submit(collect_pods)
+        f_nodes = executor.submit(collect_nodes)
+        f_deps = executor.submit(collect_deployments)
+
+        pods = f_pods.result()
+        nodes = f_nodes.result()
+        deployments = f_deps.result()
 
     pod_health = {
         "healthy": sum(1 for p in pods if p["status"] == "Running"),

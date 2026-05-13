@@ -1,36 +1,18 @@
-import subprocess
-import json
-
 from core.context import context
 from core.cache import cached
+from core.k8s import get_raw_resources
 
 
 @cached(ttl=5)
 def collect_deployments():
 
-    command = (
-        f"kubectl "
-        f"--context {context.current_context} "
-        f"get deployments "
-        f"-n {context.namespace} "
-        f"-o json"
+    data = get_raw_resources(
+        "deployments", context.current_context, context.namespace
     )
-
-    result = subprocess.run(
-        command,
-        shell=True,
-        capture_output=True,
-        text=True
-    )
-
-    if result.returncode != 0:
-        return []
-
-    data = json.loads(result.stdout)
 
     deployments = []
 
-    for item in data["items"]:
+    for item in data.get("items", []):
 
         desired = item["spec"]["replicas"]
 

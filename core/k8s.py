@@ -8,30 +8,41 @@ from core.cache import cached
 
 
 @cached(ttl=5)
-def get_pods():
-    command = (
-        f"kubectl "
-        f"--context {context.current_context} "
-        f"get pods "
-        f"-n {context.namespace} "
-        f"-o json"
-    )
+def get_raw_resources(kind, context_name, namespace=None, selector=None):
+    """Unified raw resource fetcher with caching."""
+    command = [
+        "kubectl", "--context", context_name,
+        "get", kind, "-o", "json"
+    ]
+    if namespace:
+        command.extend(["-n", namespace])
+    if selector:
+        command.extend(["-l", selector])
 
     result = subprocess.run(
         command,
-        shell=True,
         capture_output=True,
         text=True
     )
 
-    if result.returncode != 0:
-        return []
+    if result.returncode != 0 or not result.stdout.strip():
+        return {"items": []}
 
-    data = json.loads(result.stdout)
+    try:
+        return json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return {"items": []}
+
+
+@cached(ttl=5)
+def get_pods():
+    data = get_raw_resources(
+        "pods", context.current_context, context.namespace
+    )
 
     pods = []
 
-    for item in data["items"]:
+    for item in data.get("items", []):
         container_statuses = item["status"].get(
             "containerStatuses",
             []

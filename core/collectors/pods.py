@@ -1,28 +1,16 @@
-import subprocess
-import json
-
 from core.context import context
 from core.cache import cached
+from core.k8s import get_raw_resources
 
 
 @cached(ttl=5)
 def collect_pods():
     """Collect pod summary data with labels and age."""
-    cmd = (
-        f"kubectl --context {context.current_context} "
-        f"get pods -n {context.namespace} -o json"
+    data = get_raw_resources(
+        "pods", context.current_context, context.namespace
     )
-
-    result = subprocess.run(
-        cmd, shell=True,
-        capture_output=True, text=True
-    )
-
-    if result.returncode != 0 or not result.stdout.strip():
-        return []
 
     from datetime import datetime, timezone
-    data = json.loads(result.stdout)
     pods = []
     for item in data.get("items", []):
         meta = item.get("metadata", {})
