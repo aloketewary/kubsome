@@ -51,7 +51,7 @@ interface HeatmapCell {
     <div class="page-header">
       <div>
         <h1>Events</h1>
-        <p class="subtitle">Cluster activity stream</p>
+        <p class="subtitle">{{ filteredEvents.length }} events · {{ warningCount }} warnings</p>
       </div>
       <div class="header-actions">
         <button pButton [class]="watching ? 'p-button-danger p-button-sm' : 'p-button-outlined p-button-sm'" (click)="toggleWatch()">
@@ -102,7 +102,7 @@ interface HeatmapCell {
               </div>
               <p class="event-message" [class.expanded]="expandedIndex === $index">{{ event.message }}</p>
               @if (event.last_seen) {
-                <span class="event-time">{{ event.last_seen }}</span>
+                <span class="event-time" [pTooltip]="event.last_seen">{{ relativeTime(event.last_seen) }}</span>
               }
             </div>
             <div class="event-type-tag">
@@ -354,4 +354,19 @@ export class EventsComponent implements OnInit, OnDestroy {
 
   ngOnInit() { this.refresh(); }
   ngOnDestroy() { this.stopWatch(); }
+
+  relativeTime(ts: string): string {
+    if (!ts) return '';
+    try {
+      const date = new Date(ts);
+      const now = Date.now();
+      const diff = Math.floor((now - date.getTime()) / 1000);
+      if (diff < 60) return `${diff}s ago`;
+      if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+      if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+      return `${Math.floor(diff / 86400)}d ago`;
+    } catch {
+      return ts;
+    }
+  }
 }
