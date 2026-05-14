@@ -17,9 +17,9 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
         <div class="page-header">
       <div>
         <h1>Cost Estimation</h1>
-        <p class="subtitle">Estimated monthly spend based on resource requests</p>
+        <p class="subtitle">Estimated monthly spend based on resource requests · {{ lastUpdated }}</p>
       </div>
-      <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="refresh()"></button>
+      <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="refresh()" [loading]="loading"></button>
       <app-page-info title="Cost Estimation" description="Estimated monthly spend per deployment based on CPU and memory resource requests."
         [tips]="['Based on AWS on-demand pricing (~$30/vCPU, ~$4/GB)', 'Sorted by highest cost first', 'Reduce cost by right-sizing: optimize command']"
         [commands]="['cost-estimate', 'optimize', 'top pods']" />
@@ -139,13 +139,16 @@ export class CostEstimateComponent implements OnInit {
   private http = inject(HttpClient);
   data: any = null;
   Math = Math;
+  loading = false;
+  lastUpdated = '';
 
   ngOnInit() { this.refresh(); }
 
   refresh() {
+    this.loading = true;
     this.http.get<any>('/api/cost-estimate').subscribe({
-      next: (res) => { this.data = res; },
-      error: () => { this.data = { deployments: [], total: 0, pricing: { note: 'Error' } }; },
+      next: (res) => { this.data = res; this.loading = false; this.lastUpdated = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }); },
+      error: () => { this.data = { deployments: [], total: 0, pricing: { note: 'Error' } }; this.loading = false; },
     });
   }
 
