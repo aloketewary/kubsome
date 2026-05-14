@@ -9,6 +9,10 @@ import json
 from core.context import context
 from core.collectors.metrics import top_pods
 
+# Constants for rough cost estimation
+CPU_COST_PER_CORE = 30.0
+MEM_COST_PER_GB = 4.0
+
 
 def resource_recommendations():
     """
@@ -49,6 +53,9 @@ def resource_recommendations():
             savings_pct = int(
                 (1 - cpu_actual / cpu_req) * 100
             )
+            waste_m = cpu_req - cpu_actual
+            savings_monthly = (waste_m / 1000.0) * CPU_COST_PER_CORE
+
             recommendations.append({
                 "pod": pod_name,
                 "type": "cpu_over",
@@ -63,6 +70,7 @@ def resource_recommendations():
                     f"Reduce CPU request to "
                     f"{max(cpu_actual * 2, 50)}m"
                 ),
+                "savings_monthly": round(savings_monthly, 2),
             })
 
         # Over-provisioned Memory
@@ -70,6 +78,9 @@ def resource_recommendations():
             savings_pct = int(
                 (1 - mem_actual / mem_req) * 100
             )
+            waste_mb = mem_req - mem_actual
+            savings_monthly = (waste_mb / 1024.0) * MEM_COST_PER_GB
+
             recommendations.append({
                 "pod": pod_name,
                 "type": "mem_over",
@@ -84,6 +95,7 @@ def resource_recommendations():
                     f"Reduce memory request to "
                     f"{max(mem_actual * 2, 64)}Mi"
                 ),
+                "savings_monthly": round(savings_monthly, 2),
             })
 
         # Under-provisioned (using > 90% of limit)

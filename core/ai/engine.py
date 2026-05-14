@@ -47,6 +47,9 @@ def handle_ai_query(query):
             return _high_restart_pods()
         return _why_query(query, target)
 
+    if intent == "recommend":
+        return _recommend_next_steps()
+
     if intent == "summarize":
         return _summarize_cluster()
 
@@ -90,6 +93,26 @@ def handle_ai_query(query):
         return explain(query)
 
     # Fallback
+    from core.incident.manager import get_active
+    active_incident = get_active()
+
+    if active_incident:
+        return {
+            "title": "🚨 Active Incident",
+            "content": (
+                f"[bold red]Tracking: {active_incident['title']}[/bold red]\n"
+                f"Started: [dim]{active_incident['started'][:19].replace('T', ' ')}[/dim]\n\n"
+                f"I am in [bold]Incident Mode[/bold]. I can help you record your investigation:\n\n"
+                "  • [cyan]note <text>[/cyan] — add an observation\n"
+                "  • [cyan]snapshot[/cyan] — capture current state\n"
+                "  • [cyan]incident stop[/cyan] — resolve & export report\n\n"
+                "[bold]Contextual Queries:[/bold]\n"
+                "  • [cyan]what changed recently[/cyan]\n"
+                "  • [cyan]diagnose unhealthy pods[/cyan]\n"
+            ),
+            "severity": "critical",
+        }
+
     return {
         "title": "🤖 AI Assistant",
         "content": (
@@ -100,8 +123,8 @@ def handle_ai_query(query):
             "  • [cyan]which pods are unhealthy[/cyan]\n\n"
             "  [bold]ANALYZE[/bold]\n"
             "  • [cyan]summarize cluster health[/cyan]\n"
-            "  • [cyan]top resource consumers[/cyan]\n"
-            "  • [cyan]is <deployment> healthy[/cyan]\n\n"
+            "  • [cyan]recommend next steps[/cyan] [dim](NEW)[/dim]\n"
+            "  • [cyan]top resource consumers[/cyan]\n\n"
             "  [bold]INVESTIGATE[/bold]\n"
             "  • [cyan]what changed recently[/cyan]\n"
             "  • [cyan]show warning events[/cyan]\n"
@@ -965,4 +988,80 @@ def _health_check(query, target=None):
             else "warning" if warnings
             else "healthy"
         ),
+    }
+
+
+def _recommend_next_steps():
+    """Aggregate insights to recommend operational improvements."""
+    from core.collectors.scorecard import cluster_scorecard
+    from core.collectors.cost import resource_recommendations
+    from core.collectors.security import security_scan
+    from core.ai.anomaly import detect_anomalies
+
+    scorecard = cluster_scorecard()
+    anomalies = detect_anomalies()
+    costs = resource_recommendations()
+    security = security_scan()
+
+    lines = [
+        "[bold]Operational Recommendations:[/bold]\n",
+    ]
+
+    # 1. Critical Anomalies First
+    critical_anomalies = [
+        a for a in anomalies if a["severity"] == "critical"
+    ]
+    if critical_anomalies:
+        lines.append("[bold red]⛔ Critical Issues (Fix Now):[/bold red]")
+        for a in critical_anomalies[:2]:
+            lines.append(f"  • {a['title']}: [dim]{a['action']}[/dim]")
+        lines.append("")
+
+    # 2. Scorecard Insights
+    if scorecard["overall_score"] < 90:
+        lines.append(
+            f"[bold]📈 Cluster Health (Grade: {scorecard['overall_grade']}):[/bold]"
+        )
+        for rec in scorecard["recommendations"][:2]:
+            lines.append(f"  • {rec['issue']}: [cyan]{rec['action']}[/cyan]")
+        lines.append("")
+
+    # 3. Cost Savings (Growth/ROI)
+    potential_savings = sum(
+        r.get("savings_monthly", 0) for r in costs
+    )
+    if potential_savings > 0:
+        lines.append("[bold green]💰 Potential Savings:[/bold green]")
+        lines.append(
+            f"  You can save approximately [green]${potential_savings}/mo[/green] "
+            "by right-sizing workloads."
+        )
+        lines.append("  → Run [cyan]optimize[/cyan] to see details.\n")
+
+    # 4. Security Wins
+    critical_security = [
+        f for f in security if f["severity"] == "critical"
+    ]
+    if critical_security:
+        lines.append("[bold yellow]🔒 Security Hardening:[/bold yellow]")
+        lines.append(
+            f"  Found {len(critical_security)} critical security misconfigurations."
+        )
+        lines.append("  → Run [cyan]security[/cyan] to review.\n")
+
+    if len(lines) <= 2:
+        return {
+            "title": "🤖 Recommendations",
+            "content": (
+                "[green]✓ Your cluster looks great![/green]\n\n"
+                "I don't have any major recommendations at the moment. "
+                "Keep monitoring with [cyan]overview[/cyan]."
+            ),
+            "severity": "healthy",
+        }
+
+    return {
+        "title": "🤖 Operational Recommendations",
+        "content": "\n".join(lines),
+        "severity": "info",
     }

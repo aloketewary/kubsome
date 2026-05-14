@@ -89,6 +89,9 @@ _REGEX_INTENTS_RAW = {
     "trace": [
         r"trace\s+(?:the\s+)?(\S+)",
     ],
+    "recommend": [
+        r"(?:show|give|get)?\s*(?:me\s+)?(?:recommend|suggest|tips|next steps)",
+    ],
 }
 
 # Compiled regex for performance
@@ -110,6 +113,10 @@ PRIORITY_CHECK = [
     ("why is", "why_failing"),
     ("why ", "why_failing"),
     ("is ", "health_check"),
+    ("recommend", "recommend"),
+    ("suggest", "recommend"),
+    ("what should i do", "recommend"),
+    ("how to improve", "recommend"),
 ]
 
 _CONTEXTUAL_PRONOUNS_LIST = [
