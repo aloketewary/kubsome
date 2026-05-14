@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { RouterOutlet, RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { Select } from 'primeng/select';
@@ -610,7 +610,7 @@ import { ConfirmDialogComponent } from './shared/components/confirm-dialog.compo
     }
   `],
 })
-export class AppComponent implements OnInit {
+export class AppComponent implements OnInit, OnDestroy {
   private api = inject(ApiService);
   private http = inject(HttpClient);
   loadingService = inject(LoadingService);
@@ -627,6 +627,7 @@ export class AppComponent implements OnInit {
   anomalyCount = 0;
   showNotifications = false;
   anomalies: any[] = [];
+  private anomalyPollInterval: any;
   sidebarCollapsed = false;
   dashMenuOpen = false;
   savedDashList: { name: string; widgets: any[] }[] = [];
@@ -669,6 +670,15 @@ export class AppComponent implements OnInit {
     });
 
     // Check anomalies for notification badge
+    this.pollAnomalies();
+    this.anomalyPollInterval = setInterval(() => this.pollAnomalies(), 30000);
+  }
+
+  ngOnDestroy() {
+    clearInterval(this.anomalyPollInterval);
+  }
+
+  pollAnomalies() {
     this.api.anomalies().subscribe(res => {
       this.anomalies = res.alerts || [];
       this.anomalyCount = this.anomalies.length;
