@@ -187,13 +187,15 @@ def _handle_pods_table(cmd, env):
 
 
 def _handle_pods_watch(cmd, env):
+    from core.cache import invalidate
     with Live(
         build_watch_view(get_pods(), context.namespace),
-        refresh_per_second=2,
+        refresh_per_second=1,
         console=console
     ) as live:
         while True:
             time.sleep(SETTINGS["refresh_interval"])
+            invalidate("get_pods")
             live.update(
                 build_watch_view(
                     get_pods(), context.namespace
@@ -246,15 +248,17 @@ def _handle_events(cmd, env):
 
 
 def _handle_events_watch(cmd, env):
+    from core.cache import invalidate
     with Live(
         build_events_watch_view(
             collect_events(), context.namespace
         ),
-        refresh_per_second=2,
+        refresh_per_second=1,
         console=console
     ) as live:
         while True:
             time.sleep(SETTINGS["refresh_interval"])
+            invalidate("collect_events")
             live.update(
                 build_events_watch_view(
                     collect_events(), context.namespace
@@ -795,9 +799,11 @@ def _handle_workflow_run(cmd, env):
 def _handle_watch_cmd(cmd, env):
     watch_input = cmd["command"]
     from datetime import datetime
+    from core.cache import invalidate
     import shlex
     with Live(console=console, refresh_per_second=1) as live:
         while True:
+            invalidate()
             resolved = resolve_command(watch_input)
             if resolved and isinstance(resolved, str):
                 result = subprocess.run(
