@@ -199,16 +199,6 @@ def _start_server(args):
                 "[dim]No UI dist cache to clear[/dim]"
             )
 
-    console.print(
-        Panel.fit(
-            f"[bold green]Kubsome Server[/bold green]\n"
-            f"[dim]API:[/dim]  http://localhost:{port}/api\n"
-            f"[dim]UI:[/dim]   http://localhost:{port}/app\n"
-            f"[dim]Docs:[/dim] http://localhost:{port}/docs",
-            border_style="green"
-        )
-    )
-
     try:
         from api.serve import start
         start(port=port, no_browser=no_browser)
