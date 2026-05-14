@@ -39,8 +39,8 @@ def render_banner():
     env = _env_badge()
 
     content = (
-        f"[bold green]Kubsome[/bold green] "
-        f"[dim]v1.0.0[/dim]  {env}\n"
+        f"[bold green]◆ Kubsome[/bold green] "
+        f"[dim]v1.10.4[/dim]  {env}\n"
         f"[dim]Context:[/dim] {context.current_context}\n"
         f"[dim]Namespace:[/dim] {context.namespace}"
         f"{incident_line}\n\n"
