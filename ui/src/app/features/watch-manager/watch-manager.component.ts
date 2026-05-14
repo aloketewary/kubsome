@@ -1,25 +1,61 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
+import { TooltipModule } from 'primeng/tooltip';
 import { SpotlightComponent } from '../../shared/components/spotlight.component';
 
 @Component({
   selector: 'app-watch-manager',
   standalone: true,
-  imports: [ButtonModule, TagModule, SpotlightComponent],
+  imports: [FormsModule, ButtonModule, TagModule, TooltipModule, SpotlightComponent],
   template: `
     <app-spotlight id="watch-manager" title="Watch Manager" icon="pi pi-eye"
       description="Manage background watchers that trigger alerts."
       [capabilities]="['Condition monitoring', 'Crash detection', 'Alert notifications']" [compact]="true" />
 
-        <div class="page-header">
+    <div class="page-header">
       <div>
         <h1>Watch Manager</h1>
         <p class="subtitle">Background condition monitors</p>
       </div>
-      <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="refresh()"></button>
+      <div class="header-actions">
+        <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="refresh()" pTooltip="Refresh"></button>
+        <button pButton icon="pi pi-plus" label="Add Watch" class="p-button-sm" (click)="showForm = !showForm"></button>
+      </div>
     </div>
+
+    <!-- Add Watch Form -->
+    @if (showForm) {
+      <div class="add-form">
+        <div class="form-row">
+          <div class="form-field">
+            <label>App / Pod pattern</label>
+            <input type="text" [(ngModel)]="newTarget" placeholder="e.g. payment, billing-api" class="form-input" />
+          </div>
+          <div class="form-field">
+            <label>Condition</label>
+            <div class="condition-pills">
+              <button class="pill" [class.pill-active]="newCondition === 'crash'" (click)="newCondition = 'crash'">
+                <i class="pi pi-times-circle"></i> Crash
+              </button>
+              <button class="pill" [class.pill-active]="newCondition === 'restart'" (click)="newCondition = 'restart'">
+                <i class="pi pi-replay"></i> Restart > 5
+              </button>
+              <button class="pill" [class.pill-active]="newCondition === 'count'" (click)="newCondition = 'count'">
+                <i class="pi pi-sort-amount-down"></i> Count < 1
+              </button>
+            </div>
+          </div>
+          <button pButton label="Create" icon="pi pi-check" class="p-button-sm form-submit"
+                  [disabled]="!newTarget.trim()" (click)="createWatch()"></button>
+        </div>
+        @if (formError) {
+          <div class="form-error"><i class="pi pi-exclamation-triangle"></i> {{ formError }}</div>
+        }
+      </div>
+    }
 
     @if (status) {
       <div class="status-bar-info">
@@ -51,6 +87,8 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
               @if (watch.last_check) {
                 <span class="watch-time">{{ formatTime(watch.last_check) }}</span>
               }
+              <button pButton icon="pi pi-trash" class="p-button-text p-button-sm p-button-rounded p-button-danger"
+                      pTooltip="Remove watch" (click)="removeWatch(watch.name)"></button>
             </div>
           }
         </div>
@@ -58,13 +96,7 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
         <div class="empty">
           <i class="pi pi-eye"></i>
           <p>No active watches</p>
-          <span class="empty-hint">Add a watch using the CLI:</span>
-          <div class="cmd-examples">
-            <code>watch-alert payment crash</code>
-            <code>watch-alert billing restart</code>
-            <code>watch-alert gateway count</code>
-          </div>
-          <span class="empty-hint">Watches monitor in background and send desktop notifications</span>
+          <span class="empty-hint">Click "Add Watch" to create a background monitor</span>
         </div>
       }
     } @else {
@@ -75,6 +107,33 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; }
     .page-header h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.03em; }
     .subtitle { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+    .header-actions { display: flex; gap: 8px; }
+
+    /* Add Form */
+    .add-form {
+      padding: 16px 18px; margin-bottom: 16px;
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+    }
+    .form-row { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+    .form-field { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 160px; }
+    .form-field label { font-size: 10px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+    .form-input {
+      padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px;
+      background: var(--bg-elevated); color: var(--text); font-size: 13px; outline: none;
+    }
+    .form-input:focus { border-color: var(--accent); }
+    .condition-pills { display: flex; gap: 6px; }
+    .pill {
+      display: flex; align-items: center; gap: 5px;
+      padding: 7px 12px; border: 1px solid var(--border); border-radius: 6px;
+      background: var(--bg-elevated); color: var(--text-muted); font-size: 12px;
+      cursor: pointer; transition: all 0.12s;
+    }
+    .pill:hover { border-color: var(--border-hover); color: var(--text); }
+    .pill-active { border-color: var(--accent); background: var(--accent-subtle); color: var(--accent); font-weight: 600; }
+    .pill i { font-size: 12px; }
+    .form-submit { align-self: flex-end; }
+    .form-error { margin-top: 10px; font-size: 12px; color: var(--danger); display: flex; align-items: center; gap: 6px; }
 
     .status-bar-info {
       display: flex; align-items: center; gap: 8px; margin-bottom: 16px;
@@ -105,23 +164,54 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     .empty { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 60px; color: var(--text-muted); }
     .empty i { font-size: 28px; opacity: 0.3; }
     .empty-hint { font-size: 12px; }
-    .cmd-examples { display: flex; flex-direction: column; gap: 4px; margin: 8px 0; }
-    .cmd-examples code { background: var(--bg-elevated); padding: 6px 12px; border-radius: 6px; font-size: 11px; border: 1px solid var(--border); }
     .loading { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 60px; color: var(--text-muted); }
     .spin { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
   `],
 })
-export class WatchManagerComponent implements OnInit {
+export class WatchManagerComponent implements OnInit, OnDestroy {
   private http = inject(HttpClient);
   status: any = null;
+  showForm = false;
+  newTarget = '';
+  newCondition: 'crash' | 'restart' | 'count' = 'crash';
+  formError = '';
+  private pollInterval: any;
 
-  ngOnInit() { this.refresh(); }
+  ngOnInit() {
+    this.refresh();
+    this.pollInterval = setInterval(() => this.refresh(), 15000);
+  }
+
+  ngOnDestroy() { clearInterval(this.pollInterval); }
 
   refresh() {
     this.http.get<any>('/api/watch-status').subscribe({
       next: (res) => (this.status = res),
       error: () => (this.status = { running: false, watches: [] }),
+    });
+  }
+
+  createWatch() {
+    const target = this.newTarget.trim();
+    if (!target) return;
+    this.formError = '';
+    this.http.post<any>('/api/watch-alert', { target, condition: this.newCondition }).subscribe({
+      next: () => {
+        this.newTarget = '';
+        this.showForm = false;
+        this.refresh();
+      },
+      error: (err) => {
+        this.formError = err.error?.detail || 'Failed to create watch';
+      },
+    });
+  }
+
+  removeWatch(name: string) {
+    this.http.delete<any>(`/api/watch-alert/${name}`).subscribe({
+      next: () => this.refresh(),
+      error: () => this.refresh(),
     });
   }
 
