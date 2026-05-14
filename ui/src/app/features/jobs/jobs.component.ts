@@ -1,5 +1,6 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { FormsModule } from '@angular/forms';
 import { TagModule } from 'primeng/tag';
 import { ButtonModule } from 'primeng/button';
 import { TooltipModule } from 'primeng/tooltip';
@@ -8,7 +9,7 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
 @Component({
   selector: 'app-jobs',
   standalone: true,
-  imports: [TagModule, ButtonModule, TooltipModule, SpotlightComponent],
+  imports: [FormsModule, TagModule, ButtonModule, TooltipModule, SpotlightComponent],
   template: `
     <app-spotlight id="jobs" title="Jobs & CronJobs" icon="pi pi-clock"
       description="View and manage Jobs and CronJobs. Trigger manual runs."
@@ -17,9 +18,18 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
         <div class="page-header">
       <div>
         <h1>Jobs</h1>
-        <p class="subtitle">Scheduled tasks and batch workloads</p>
+        <p class="subtitle">Scheduled tasks and batch workloads · {{ lastUpdated }}</p>
       </div>
-      <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="load()" pTooltip="Refresh"></button>
+      <div class="header-actions">
+        <div class="search-wrap">
+          <i class="pi pi-search"></i>
+          <input type="text" [(ngModel)]="searchQuery" placeholder="Filter..." (ngModelChange)="applyFilter()" />
+        </div>
+        <button class="ar-btn" [class.ar-active]="autoRefresh" (click)="toggleAutoRefresh()" [pTooltip]="autoRefresh ? 'Auto-refresh on (30s)' : 'Auto-refresh off'">
+          <i class="pi" [class.pi-sync]="autoRefresh" [class.pi-pause]="!autoRefresh"></i>
+        </button>
+        <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="load()" pTooltip="Refresh" [loading]="loading"></button>
+      </div>
     </div>
 
     <!-- Summary -->
@@ -152,6 +162,23 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; }
     .page-header h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.03em; }
     .subtitle { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+    .header-actions { display: flex; align-items: center; gap: 8px; }
+    .search-wrap { position: relative; display: flex; align-items: center; }
+    .search-wrap i { position: absolute; left: 8px; font-size: 12px; color: var(--text-muted); }
+    .search-wrap input {
+      padding: 6px 10px 6px 28px; width: 150px; border: 1px solid var(--border); border-radius: 6px;
+      background: var(--bg-elevated); color: var(--text); font-size: 12px; outline: none;
+    }
+    .search-wrap input:focus { border-color: var(--accent); }
+    .ar-btn {
+      width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--border);
+      background: var(--bg-card); color: var(--text-muted); cursor: pointer; transition: all 0.15s;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .ar-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .ar-btn.ar-active { border-color: var(--success); color: var(--success); background: var(--success-subtle); }
+    .ar-btn.ar-active i { animation: spin2 2s linear infinite; }
+    @keyframes spin2 { to { transform: rotate(360deg); } }
 
     /* Summary */
     .summary-strip {
@@ -252,26 +279,65 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     .empty-state i { font-size: 16px; opacity: 0.5; }
   `],
 })
-export class JobsComponent implements OnInit {
+export class JobsComponent implements OnInit, OnDestroy {
   private http = inject(HttpClient);
   cronjobs: any[] = [];
   jobs: any[] = [];
   sortedJobs: any[] = [];
+  searchQuery = '';
+  loading = false;
+  autoRefresh = true;
+  lastUpdated = '';
+  private refreshTimer: any;
 
   get completedCount() { return this.jobs.filter(j => this.jobStatus(j) === 'complete').length; }
   get failedCount() { return this.jobs.filter(j => this.jobStatus(j) === 'failed').length; }
   get runningCount() { return this.jobs.filter(j => this.jobStatus(j) === 'running').length; }
 
-  ngOnInit() { this.load(); }
+  ngOnInit() {
+    this.load();
+    this.startAutoRefresh();
+  }
+
+  ngOnDestroy() { clearInterval(this.refreshTimer); }
+
+  toggleAutoRefresh() {
+    this.autoRefresh = !this.autoRefresh;
+    if (this.autoRefresh) this.startAutoRefresh();
+    else clearInterval(this.refreshTimer);
+  }
+
+  private startAutoRefresh() {
+    clearInterval(this.refreshTimer);
+    this.refreshTimer = setInterval(() => this.load(), 30000);
+  }
+
+  applyFilter() {
+    const q = this.searchQuery.toLowerCase();
+    if (!q) {
+      this.sortedJobs = this.sortJobs(this.jobs);
+      return;
+    }
+    this.sortedJobs = this.sortJobs(this.jobs.filter(j => j.name.toLowerCase().includes(q)));
+  }
+
+  private sortJobs(jobs: any[]): any[] {
+    return [...jobs].sort((a, b) => {
+      const order: Record<string, number> = { failed: 0, running: 1, pending: 2, complete: 3 };
+      return (order[this.jobStatus(a)] ?? 4) - (order[this.jobStatus(b)] ?? 4);
+    });
+  }
 
   load() {
-    this.http.get<any>('/api/cronjobs').subscribe(r => this.cronjobs = (r.cronjobs || []).map((c: any) => ({ ...c, triggered: false })));
+    this.loading = true;
+    this.http.get<any>('/api/cronjobs').subscribe(r => {
+      this.cronjobs = (r.cronjobs || []).map((c: any) => ({ ...c, triggered: false }));
+    });
     this.http.get<any>('/api/jobs').subscribe(r => {
       this.jobs = r.jobs || [];
-      this.sortedJobs = [...this.jobs].sort((a, b) => {
-        const order: Record<string, number> = { failed: 0, running: 1, pending: 2, complete: 3 };
-        return (order[this.jobStatus(a)] ?? 4) - (order[this.jobStatus(b)] ?? 4);
-      });
+      this.applyFilter();
+      this.loading = false;
+      this.lastUpdated = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     });
   }
 
