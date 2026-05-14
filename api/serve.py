@@ -12,7 +12,7 @@ from rich.panel import Panel
 
 console = Console()
 
-VERSION = "1.10.4"
+VERSION = "1.11.0"
 
 
 def _print_banner(host: str, port: int):
