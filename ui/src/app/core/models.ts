@@ -3,6 +3,7 @@ export interface Pod {
   status: string;
   restarts: number;
   labels?: string[];
+  age?: string;
 }
 
 export interface PodsResponse {

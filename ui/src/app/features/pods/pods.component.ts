@@ -59,31 +59,45 @@ interface PodGroup {
       </div>
     </div>
 
-    <!-- Summary Strip -->
+    <!-- Summary Strip + Status Filters -->
     <div class="summary-strip">
-      <div class="summary-pill">
-        <span class="pill-value">{{ pods.length }}</span>
-        <span class="pill-label">Total</span>
+      <div class="filter-pills">
+        <button class="filter-pill" [class.fp-active]="statusFilter === 'all'" (click)="setStatusFilter('all')">
+          <span class="pill-value">{{ pods.length }}</span>
+          <span class="pill-label">All</span>
+        </button>
+        <button class="filter-pill fp-ok" [class.fp-active]="statusFilter === 'healthy'" (click)="setStatusFilter('healthy')">
+          <span class="pill-dot dot-ok"></span>
+          <span class="pill-value">{{ healthyCount }}</span>
+          <span class="pill-label">Healthy</span>
+        </button>
+        @if (warningCount > 0) {
+          <button class="filter-pill fp-warn" [class.fp-active]="statusFilter === 'warning'" (click)="setStatusFilter('warning')">
+            <span class="pill-dot dot-warn"></span>
+            <span class="pill-value">{{ warningCount }}</span>
+            <span class="pill-label">Warning</span>
+          </button>
+        }
+        @if (criticalCount > 0) {
+          <button class="filter-pill fp-crit" [class.fp-active]="statusFilter === 'critical'" (click)="setStatusFilter('critical')">
+            <span class="pill-dot dot-crit"></span>
+            <span class="pill-value">{{ criticalCount }}</span>
+            <span class="pill-label">Critical</span>
+          </button>
+        }
+        @if (pendingCount > 0) {
+          <button class="filter-pill fp-pending" [class.fp-active]="statusFilter === 'pending'" (click)="setStatusFilter('pending')">
+            <span class="pill-dot dot-warn"></span>
+            <span class="pill-value">{{ pendingCount }}</span>
+            <span class="pill-label">Pending</span>
+          </button>
+        }
       </div>
-      <div class="summary-pill pill-ok">
-        <span class="pill-dot dot-ok"></span>
-        <span class="pill-value">{{ healthyCount }}</span>
-        <span class="pill-label">Healthy</span>
+      <div class="strip-actions">
+        <button class="collapse-toggle" (click)="toggleAllGroups()" [pTooltip]="allExpanded ? 'Collapse all' : 'Expand all'">
+          <i class="pi" [class.pi-minus]="allExpanded" [class.pi-plus]="!allExpanded"></i>
+        </button>
       </div>
-      @if (warningCount > 0) {
-        <div class="summary-pill pill-warn">
-          <span class="pill-dot dot-warn"></span>
-          <span class="pill-value">{{ warningCount }}</span>
-          <span class="pill-label">Warning</span>
-        </div>
-      }
-      @if (criticalCount > 0) {
-        <div class="summary-pill pill-crit">
-          <span class="pill-dot dot-crit"></span>
-          <span class="pill-value">{{ criticalCount }}</span>
-          <span class="pill-label">Critical</span>
-        </div>
-      }
     </div>
 
     <!-- Action Bar -->
@@ -107,6 +121,10 @@ interface PodGroup {
     }
 
     <!-- Groups -->
+    <p class="group-count-hint" *ngIf="false"><!-- hidden --></p>
+    @if (filteredGroups.length > 0 && statusFilter !== 'all') {
+      <p class="filter-hint">Showing {{ filteredGroups.length }} deployment(s) matching "{{ statusFilter }}"</p>
+    }
     @for (group of filteredGroups; track group.deployment) {
       <div class="pod-group" [class.group-unhealthy]="group.unhealthyCount > 0">
         <div class="group-header" (click)="group.expanded = !group.expanded" tabindex="0" role="button" aria-label="Toggle deployment group"
@@ -135,6 +153,9 @@ interface PodGroup {
                 <div class="pod-main">
                   <div class="pod-status-dot" [class.dot-running]="pod.status === 'Running' || pod.status === 'Succeeded'" [class.dot-pending]="pod.status === 'Pending'" [class.dot-error]="pod.status !== 'Running' && pod.status !== 'Pending' && pod.status !== 'Succeeded'"></div>
                   <span class="pod-name mono" (click)="openDrawer(pod, $event)" [pTooltip]="pod.name">{{ shortName(pod.name) }}</span>
+                  @if (pod.age) {
+                    <span class="pod-age" [pTooltip]="'Running for ' + pod.age">{{ pod.age }}</span>
+                  }
                   <p-tag [value]="pod.status" [severity]="statusSeverity(pod.status)" />
                   @if (pod.restarts > 0) {
                     <span class="pod-restarts" [class.high]="pod.restarts > 5" [pTooltip]="pod.restarts + ' restarts'">
@@ -286,32 +307,53 @@ interface PodGroup {
     /* Summary Strip */
     .summary-strip {
       display: flex;
+      align-items: center;
+      justify-content: space-between;
       gap: 8px;
       margin-bottom: 16px;
-      padding: 14px 18px;
+      padding: 10px 18px;
       background: var(--bg-card);
       border: 1px solid var(--border);
       border-radius: var(--radius);
       backdrop-filter: blur(8px);
     }
-    .summary-pill {
+    .filter-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+    .filter-pill {
       display: flex;
       align-items: center;
       gap: 6px;
-      padding: 4px 12px;
+      padding: 5px 12px;
       border-radius: 20px;
       background: var(--bg-elevated);
+      border: 1px solid transparent;
       font-size: 12px;
+      cursor: pointer;
+      transition: all 0.12s;
     }
-    .pill-ok { background: var(--success-subtle); }
-    .pill-warn { background: var(--warning-subtle); }
-    .pill-crit { background: var(--danger-subtle); }
+    .filter-pill:hover { border-color: var(--border-hover); }
+    .filter-pill.fp-active { border-color: var(--accent); background: var(--accent-subtle); }
+    .fp-ok.fp-active { border-color: var(--success); background: var(--success-subtle); }
+    .fp-warn.fp-active { border-color: var(--warning); background: var(--warning-subtle); }
+    .fp-crit.fp-active { border-color: var(--danger); background: var(--danger-subtle); }
+    .fp-pending.fp-active { border-color: var(--warning); background: var(--warning-subtle); }
+    .strip-actions { display: flex; gap: 6px; }
+    .collapse-toggle {
+      width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--border);
+      background: var(--bg-elevated); color: var(--text-muted); cursor: pointer;
+      display: flex; align-items: center; justify-content: center; transition: all 0.12s;
+    }
+    .collapse-toggle:hover { border-color: var(--accent); color: var(--accent); }
     .pill-dot { width: 6px; height: 6px; border-radius: 50%; }
     .dot-ok { background: var(--success); }
     .dot-warn { background: var(--warning); }
     .dot-crit { background: var(--danger); }
     .pill-value { font-weight: 600; }
     .pill-label { color: var(--text-muted); }
+    .filter-hint { font-size: 11px; color: var(--text-muted); margin-bottom: 10px; padding-left: 4px; }
+    .pod-age {
+      font-size: 10px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace;
+      padding: 2px 6px; background: var(--bg-elevated); border-radius: 4px; white-space: nowrap;
+    }
 
     /* Action Bar */
     .action-bar {
@@ -493,7 +535,11 @@ export class PodsComponent implements OnInit, OnDestroy {
 
   get healthyCount() { return this.pods.filter(p => this.isHealthy(p)).length; }
   get warningCount() { return this.pods.filter(p => p.status === 'Running' && p.restarts > 5).length; }
-  get criticalCount() { return this.pods.filter(p => p.status !== 'Running' && p.status !== 'Pending').length; }
+  get criticalCount() { return this.pods.filter(p => p.status !== 'Running' && p.status !== 'Pending' && p.status !== 'Succeeded').length; }
+  get pendingCount() { return this.pods.filter(p => p.status === 'Pending').length; }
+  get allExpanded() { return this.filteredGroups.length > 0 && this.filteredGroups.every(g => g.expanded); }
+
+  statusFilter: 'all' | 'healthy' | 'warning' | 'critical' | 'pending' = 'all';
 
   statusSeverity(status: string): 'success' | 'warn' | 'danger' | 'secondary' | undefined {
     switch (status) { case 'Running': return 'success'; case 'Succeeded': return 'secondary'; case 'Pending': return 'warn'; default: return 'danger'; }
@@ -538,6 +584,38 @@ export class PodsComponent implements OnInit, OnDestroy {
       this.pods = [];
       this.fetchPods();
     }, 300);
+  }
+
+  setStatusFilter(filter: 'all' | 'healthy' | 'warning' | 'critical' | 'pending') {
+    this.statusFilter = filter;
+    this.applyStatusFilter();
+  }
+
+  toggleAllGroups() {
+    const expand = !this.allExpanded;
+    this.filteredGroups.forEach(g => g.expanded = expand);
+  }
+
+  private applyStatusFilter() {
+    if (this.statusFilter === 'all') {
+      this.filteredGroups = this.groups;
+      return;
+    }
+    this.filteredGroups = this.groups
+      .map(g => {
+        const filtered = g.pods.filter(p => {
+          switch (this.statusFilter) {
+            case 'healthy': return this.isHealthy(p);
+            case 'warning': return p.status === 'Running' && p.restarts > 5;
+            case 'critical': return p.status !== 'Running' && p.status !== 'Pending' && p.status !== 'Succeeded';
+            case 'pending': return p.status === 'Pending';
+            default: return true;
+          }
+        });
+        if (filtered.length === 0) return null;
+        return { ...g, pods: filtered, expanded: true, unhealthyCount: filtered.filter(p => !this.isHealthy(p)).length };
+      })
+      .filter((g): g is PodGroup => g !== null);
   }
 
   viewLogs() { const pod = this.selected[0]; this.logsTitle = `Logs — ${pod.name}`; this.logsVisible = true; this.logsLoading = true; this.logLines = []; this.api.getLogs(pod.name, 200).subscribe(res => { this.logLines = res.lines; this.logsLoading = false; }); }
@@ -608,7 +686,7 @@ export class PodsComponent implements OnInit, OnDestroy {
       this.totalPods = res.total;
       this.hasMore = this.pods.length < res.total;
       this.groupPods();
-      this.filteredGroups = this.groups;
+      this.applyStatusFilter();
       this.loading = false;
     });
   }
@@ -619,7 +697,7 @@ export class PodsComponent implements OnInit, OnDestroy {
     this.groups = Array.from(map.entries()).map(([deployment, pods]) => {
       const unhealthyCount = pods.filter(p => !this.isHealthy(p)).length;
       const commonLabels = this.extractCommonLabels(pods);
-      return { deployment, pods, expanded: true, unhealthyCount, healthPct: pods.length > 0 ? Math.round(((pods.length - unhealthyCount) / pods.length) * 100) : 100, commonLabels };
+      return { deployment, pods, expanded: unhealthyCount > 0 || pods.length <= 3, unhealthyCount, healthPct: pods.length > 0 ? Math.round(((pods.length - unhealthyCount) / pods.length) * 100) : 100, commonLabels };
     }).sort((a, b) => { if (a.unhealthyCount > 0 && b.unhealthyCount === 0) return -1; if (a.unhealthyCount === 0 && b.unhealthyCount > 0) return 1; return a.deployment.localeCompare(b.deployment); });
   }
 
@@ -644,7 +722,7 @@ export class PodsComponent implements OnInit, OnDestroy {
   }
   ngOnDestroy() { this.stopWatch(); }
   toggleWatch() { this.watching ? this.stopWatch() : this.startWatch(); }
-  private startWatch() { this.watching = true; const conn = this.ws.connect('/ws/pods'); this.watchClose = conn.close; this.watchSub = conn.messages$.subscribe({ next: (data) => { const incoming = JSON.parse(data); this.pods = incoming.slice(0, this.currentPage * this.pageSize); this.totalPods = incoming.length; this.hasMore = this.pods.length < this.totalPods; this.groupPods(); this.filteredGroups = this.groups; }, complete: () => { this.watching = false; } }); }
+  private startWatch() { this.watching = true; const conn = this.ws.connect('/ws/pods'); this.watchClose = conn.close; this.watchSub = conn.messages$.subscribe({ next: (data) => { const incoming = JSON.parse(data); this.pods = incoming.slice(0, this.currentPage * this.pageSize); this.totalPods = incoming.length; this.hasMore = this.pods.length < this.totalPods; this.groupPods(); this.applyStatusFilter(); }, complete: () => { this.watching = false; } }); }
   private stopWatch() { this.watching = false; this.watchSub?.unsubscribe(); this.watchClose?.(); this.watchSub = null; this.watchClose = null; }
   viewLiveLogs() {
     const pod = this.selected[0];
