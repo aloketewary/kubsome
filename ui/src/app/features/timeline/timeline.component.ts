@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { TagModule } from 'primeng/tag';
 import { ButtonModule } from 'primeng/button';
@@ -17,7 +17,7 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
         <div class="page-header">
       <div>
         <h1>Timeline</h1>
-        <p class="subtitle">Cluster activity stream</p>
+        <p class="subtitle">Cluster activity stream · {{ lastUpdated }}</p>
       </div>
       <div class="header-actions">
         <div class="time-range">
@@ -25,7 +25,7 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
             <button class="range-btn" [class.active]="selectedRange === r.value" (click)="setRange(r.value)">{{ r.label }}</button>
           }
         </div>
-        <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="load()" pTooltip="Refresh"></button>
+        <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="load()" pTooltip="Refresh" [loading]="loading"></button>
       </div>
     </div>
 
@@ -193,13 +193,16 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     .empty-state i { font-size: 28px; opacity: 0.3; }
   `],
 })
-export class TimelineComponent implements OnInit {
+export class TimelineComponent implements OnInit, OnDestroy {
   private http = inject(HttpClient);
   events: any[] = [];
   filteredEvents: any[] = [];
   heatmapBars: { height: number; hasWarning: boolean; tooltip: string }[] = [];
   selectedRange = 60;
   severityFilter: 'all' | 'warning' | 'success' = 'all';
+  loading = false;
+  lastUpdated = '';
+  private refreshTimer: any;
 
   ranges = [
     { label: '5m', value: 5 },
@@ -210,7 +213,12 @@ export class TimelineComponent implements OnInit {
 
   get warningCount() { return this.events.filter(e => e.type === 'Warning').length; }
 
-  ngOnInit() { this.load(); }
+  ngOnInit() {
+    this.load();
+    this.refreshTimer = setInterval(() => this.load(), 30000);
+  }
+
+  ngOnDestroy() { clearInterval(this.refreshTimer); }
 
   setRange(minutes: number) {
     this.selectedRange = minutes;
@@ -228,10 +236,13 @@ export class TimelineComponent implements OnInit {
   }
 
   load() {
+    this.loading = true;
     this.http.get<any>(`/api/timeline?minutes=${this.selectedRange}`).subscribe(res => {
       this.events = res.events || [];
       this.filteredEvents = this.events;
       this.buildHeatmap();
+      this.loading = false;
+      this.lastUpdated = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     });
   }
 
