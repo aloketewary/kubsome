@@ -123,11 +123,30 @@ def get_overview_for(ctx: str, ns: str, app: str = None):
             "events": events,
         }
 
-    # Cluster/namespace level
-    r = subprocess.run(["kubectl", "--context", ctx, "get", "nodes", "-o", "json"], capture_output=True, text=True)
-    nodes = []
-    if r.returncode == 0:
-        nodes = json.loads(r.stdout).get("items", [])
+    # Cluster/namespace level — parallel fetch
+    from concurrent.futures import ThreadPoolExecutor
+
+    def _get_nodes():
+        r = subprocess.run(["kubectl", "--context", ctx, "get", "nodes", "-o", "json"], capture_output=True, text=True)
+        return json.loads(r.stdout).get("items", []) if r.returncode == 0 else []
+
+    def _get_deps():
+        r = subprocess.run(["kubectl", "--context", ctx, "get", "deployments", "-n", ns, "-o", "json"], capture_output=True, text=True)
+        return json.loads(r.stdout).get("items", []) if r.returncode == 0 else []
+
+    def _get_events():
+        r = subprocess.run(["kubectl", "--context", ctx, "get", "events", "-n", ns, "--sort-by=.lastTimestamp", "-o", "json"], capture_output=True, text=True)
+        if r.returncode != 0:
+            return []
+        return [
+            {"type": i.get("type", "Normal"), "reason": i.get("reason", ""), "object": i.get("involvedObject", {}).get("name", ""), "message": i.get("message", "")}
+            for i in json.loads(r.stdout).get("items", [])[-50:]
+        ]
+
+    with ThreadPoolExecutor(max_workers=3) as ex:
+        nodes = ex.submit(_get_nodes).result()
+        deps = ex.submit(_get_deps).result()
+        events = ex.submit(_get_events).result()
 
     node_health = {
         "healthy": sum(1 for n in nodes if any(c["type"] == "Ready" and c["status"] == "True" for c in n["status"].get("conditions", []))),
@@ -135,27 +154,11 @@ def get_overview_for(ctx: str, ns: str, app: str = None):
         "critical": 0, "unavailable": 0,
     }
 
-    r = subprocess.run(["kubectl", "--context", ctx, "get", "deployments", "-n", ns, "-o", "json"], capture_output=True, text=True)
-    deps = []
-    if r.returncode == 0:
-        deps = json.loads(r.stdout).get("items", [])
-
     dep_health = {
         "healthy": sum(1 for d in deps if d["status"].get("availableReplicas", 0) >= d["spec"].get("replicas", 1)),
         "unavailable": sum(1 for d in deps if d["status"].get("availableReplicas", 0) < d["spec"].get("replicas", 1)),
         "warning": 0, "critical": 0,
     }
-
-    r = subprocess.run(["kubectl", "--context", ctx, "get", "events", "-n", ns, "--sort-by=.lastTimestamp", "-o", "json"], capture_output=True, text=True)
-    events = []
-    if r.returncode == 0:
-        for item in json.loads(r.stdout).get("items", [])[-50:]:
-            events.append({
-                "type": item.get("type", "Normal"),
-                "reason": item.get("reason", ""),
-                "object": item.get("involvedObject", {}).get("name", ""),
-                "message": item.get("message", ""),
-            })
 
     return {
         "context": ctx, "namespace": ns,

@@ -1,35 +1,23 @@
-import subprocess
-import json
-
 from core.context import context
 from core.cache import cached
+from core.k8s import get_raw_resources
 
 
 @cached(ttl=5)
 def collect_events(limit=50):
-    command = (
-        f"kubectl "
-        f"--context {context.current_context} "
-        f"get events "
-        f"-n {context.namespace} "
-        f"--sort-by=.lastTimestamp "
-        f"-o json"
+    data = get_raw_resources(
+        "events", context.current_context, context.namespace
     )
 
-    result = subprocess.run(
-        command,
-        shell=True,
-        capture_output=True,
-        text=True
+    items = data.get("items", [])
+    # Sort by lastTimestamp descending, take last N
+    items.sort(
+        key=lambda x: x.get("lastTimestamp", ""),
+        reverse=True
     )
-
-    if result.returncode != 0:
-        return []
-
-    data = json.loads(result.stdout)
 
     events = []
-    for item in data.get("items", [])[-limit:]:
+    for item in items[:limit]:
         events.append({
             "type": item.get("type", "Normal"),
             "reason": item.get("reason", ""),
