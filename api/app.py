@@ -57,7 +57,7 @@ def health():
 
 @app.get("/api/version")
 def version():
-    return {"version": "1.7.6"}
+    return {"version": "1.11.0"}
 
 
 # Serve Angular build in production
@@ -69,16 +69,14 @@ _project_dir = _api_dir.parent
 _dev_build = _project_dir / "ui" / "dist" / "ui" / "browser"
 _bundled = _api_dir / "ui_dist"
 
-# If dev build exists and is newer, sync to api/ui_dist
+# Only sync dev build to bundled if index.html is newer (avoid expensive copy on every reload)
 if _dev_build.exists() and (_dev_build / "index.html").exists():
-    import shutil
-    if _bundled.exists():
-        dev_mtime = (_dev_build / "index.html").stat().st_mtime
-        bundled_mtime = (_bundled / "index.html").stat().st_mtime if (_bundled / "index.html").exists() else 0
-        if dev_mtime > bundled_mtime:
+    dev_mtime = (_dev_build / "index.html").stat().st_mtime
+    bundled_mtime = (_bundled / "index.html").stat().st_mtime if (_bundled / "index.html").exists() else 0
+    if dev_mtime > bundled_mtime:
+        import shutil
+        if _bundled.exists():
             shutil.rmtree(_bundled)
-            shutil.copytree(_dev_build, _bundled)
-    else:
         shutil.copytree(_dev_build, _bundled)
 
 ui_dist = _bundled if _bundled.exists() else _dev_build

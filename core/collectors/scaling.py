@@ -7,8 +7,10 @@ import subprocess
 import json
 
 from core.context import context
+from core.cache import cached
 
 
+@cached(ttl=10)
 def list_hpa():
     """List HorizontalPodAutoscalers with current state."""
     ns = context.namespace
@@ -59,6 +61,7 @@ def list_hpa():
     return hpas
 
 
+@cached(ttl=10)
 def list_pdb():
     """List PodDisruptionBudgets."""
     ns = context.namespace

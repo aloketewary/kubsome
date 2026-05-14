@@ -6,8 +6,10 @@ import subprocess
 import json
 
 from core.context import context
+from core.cache import cached
 
 
+@cached(ttl=15)
 def list_role_bindings():
     """List RoleBindings and ClusterRoleBindings affecting this namespace."""
     ns = context.namespace

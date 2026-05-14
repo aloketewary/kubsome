@@ -6,8 +6,10 @@ import subprocess
 import json
 
 from core.context import context
+from core.cache import cached
 
 
+@cached(ttl=10)
 def list_cronjobs():
     """List all cronjobs in namespace."""
     ns = context.namespace
@@ -50,6 +52,7 @@ def list_cronjobs():
     return cronjobs
 
 
+@cached(ttl=10)
 def list_jobs(limit=20):
     """List recent jobs."""
     ns = context.namespace
