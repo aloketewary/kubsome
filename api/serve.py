@@ -35,7 +35,11 @@ def start(
     port: int = 8000,
     no_browser: bool = False,
 ):
-    _print_banner(host, port)
+    import os
+    # Only print banner in the main process (not the reloader child)
+    if os.environ.get("WATCHFILES_FORCE_POLLING") is None and "UVICORN_STARTED" not in os.environ:
+        os.environ["UVICORN_STARTED"] = "1"
+        _print_banner(host, port)
 
     if not no_browser:
         import webbrowser
