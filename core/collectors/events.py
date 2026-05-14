@@ -12,7 +12,7 @@ def collect_events(limit=50):
     items = data.get("items", [])
     # Sort by lastTimestamp descending, take last N
     items.sort(
-        key=lambda x: x.get("lastTimestamp", ""),
+        key=lambda x: x.get("lastTimestamp") or "",
         reverse=True
     )
 
