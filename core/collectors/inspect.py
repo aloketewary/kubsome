@@ -9,9 +9,9 @@ from core.context import context
 
 def inspect_pod(pod_name):
     command = [
-        "kubectl", "--context", context.current_context,
+        "kubectl", "--context", str(context.current_context or ""),
         "get", "pod", pod_name,
-        "-n", context.namespace, "-o", "json"
+        "-n", str(context.namespace or "default"), "-o", "json"
     ]
 
     result = subprocess.run(
@@ -28,9 +28,9 @@ def inspect_pod(pod_name):
 
 def pod_events(pod_name):
     command = [
-        "kubectl", "--context", context.current_context,
+        "kubectl", "--context", str(context.current_context or ""),
         "get", "events",
-        "-n", context.namespace,
+        "-n", str(context.namespace or "default"),
         "--field-selector", f"involvedObject.name={pod_name}",
         "-o", "json"
     ]
@@ -63,9 +63,9 @@ def pod_events(pod_name):
 
 def pod_logs(pod_name, tail=50, previous=False):
     cmd = [
-        "kubectl", "--context", context.current_context,
+        "kubectl", "--context", str(context.current_context or ""),
         "logs", pod_name,
-        "-n", context.namespace,
+        "-n", str(context.namespace or "default"),
         f"--tail={tail}"
     ]
 
