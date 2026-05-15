@@ -83,6 +83,8 @@ app-graph, app-network, app-rbac, app-resources,
 app-scorecard, app-search, app-timeline, app-monitor,
 app-namespace, app-yaml-editor, app-yaml-diff,
 app-log-correlation, app-pins, app-watch-manager,
+app-gateway-monitor, app-custom-dashboard,
+app-audit, app-policy, app-doctor, app-schedule,
 app-contexts {
   display: block;
   width: 100%;
@@ -902,4 +904,123 @@ body:has(.log-fullscreen) .content-inner {
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(0, 0, 0, 0.06) !important;
+}
+
+
+/* ─── Micro-interactions & Polish (v1.12) ────────────────────────────── */
+
+/* Hover lift effect for cards */
+.hover-lift {
+  transition: transform 0.25s var(--transition-spring), box-shadow 0.25s var(--transition-smooth);
+}
+.hover-lift:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* Pulse animation for live indicators */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.pulse { animation: pulse 2s ease-in-out infinite; }
+
+/* Glow effect for active/important elements */
+.glow-accent { box-shadow: 0 0 20px rgba(59, 130, 246, 0.15); }
+.glow-success { box-shadow: 0 0 20px rgba(16, 185, 129, 0.15); }
+.glow-danger { box-shadow: 0 0 20px rgba(244, 63, 94, 0.15); }
+
+/* Stagger animation for lists */
+@keyframes staggerIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.stagger-item {
+  animation: staggerIn 0.3s var(--transition-smooth) both;
+}
+.stagger-item:nth-child(1) { animation-delay: 0ms; }
+.stagger-item:nth-child(2) { animation-delay: 40ms; }
+.stagger-item:nth-child(3) { animation-delay: 80ms; }
+.stagger-item:nth-child(4) { animation-delay: 120ms; }
+.stagger-item:nth-child(5) { animation-delay: 160ms; }
+.stagger-item:nth-child(6) { animation-delay: 200ms; }
+.stagger-item:nth-child(7) { animation-delay: 240ms; }
+.stagger-item:nth-child(8) { animation-delay: 280ms; }
+
+/* Gradient text for headings */
+.gradient-text {
+  background: linear-gradient(135deg, var(--accent), var(--purple));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Status dot with glow */
+.status-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  display: inline-block; flex-shrink: 0;
+}
+.status-dot.dot-ok { background: var(--success); box-shadow: 0 0 6px var(--success); }
+.status-dot.dot-warn { background: var(--warning); box-shadow: 0 0 6px var(--warning); }
+.status-dot.dot-err { background: var(--danger); box-shadow: 0 0 6px var(--danger); animation: pulse 1.5s ease-in-out infinite; }
+.status-dot.dot-idle { background: var(--text-muted); }
+
+/* Metric value with mono font */
+.metric-val {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+  font-size: 20px;
+  letter-spacing: -0.02em;
+}
+.metric-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Empty state pattern */
+.empty-state-global {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 12px; padding: 60px 20px; text-align: center;
+}
+.empty-state-global .empty-icon {
+  width: 64px; height: 64px; border-radius: 16px;
+  background: var(--bg-elevated); color: var(--text-muted);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px;
+}
+.empty-state-global h3 { font-size: 16px; font-weight: 600; margin: 0; }
+.empty-state-global p { font-size: 13px; color: var(--text-muted); margin: 0; max-width: 360px; }
+
+/* Notification badge (absolute positioned) */
+.notif-badge {
+  position: absolute; top: -4px; right: -4px;
+  width: 16px; height: 16px; border-radius: 50%;
+  background: var(--danger); color: #fff;
+  font-size: 9px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  border: 2px solid var(--bg-card);
+}
+
+/* Keyboard shortcut badge */
+kbd {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; font-weight: 600;
+  padding: 2px 6px; border-radius: 4px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
+/* Responsive grid utilities */
+.grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+@media (max-width: 768px) {
+  .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+}
+@media (max-width: 1024px) {
+  .grid-3, .grid-4 { grid-template-columns: repeat(2, 1fr); }
 }
