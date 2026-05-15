@@ -4,7 +4,6 @@ workloads by comparing requests/limits vs actual usage.
 """
 
 import subprocess
-import json
 
 from core.context import context
 from core.collectors.metrics import top_pods
@@ -179,18 +178,11 @@ def find_unused_resources():
 
 
 def _get_pod_specs(ns, ctx):
-    cmd = (
-        f"kubectl --context {ctx} "
-        f"get pods -n {ns} -o json"
-    )
-    r = subprocess.run(
-        cmd, shell=True,
-        capture_output=True, text=True
-    )
-    if r.returncode != 0:
+    from core.k8s import get_raw_resources
+    data = get_raw_resources("pods", ctx, ns)
+    if not data.get("items"):
         return {}
 
-    data = json.loads(r.stdout)
     specs = {}
 
     for item in data.get("items", []):
@@ -223,31 +215,24 @@ def _get_pod_specs(ns, ctx):
 
 
 def _get_configmaps(ns, ctx):
-    cmd = (
-        f"kubectl --context {ctx} "
-        f"get configmaps -n {ns} "
-        f"-o jsonpath='{{.items[*].metadata.name}}'"
-    )
+    cmd = [
+        "kubectl", "--context", str(ctx),
+        "get", "configmaps", "-n", str(ns),
+        "-o", "jsonpath={.items[*].metadata.name}"
+    ]
     r = subprocess.run(
-        cmd, shell=True,
+        cmd,
         capture_output=True, text=True
     )
-    return r.stdout.strip("'").split()
+    return r.stdout.strip().split()
 
 
 def _get_mounted_configmaps(ns, ctx):
-    cmd = (
-        f"kubectl --context {ctx} "
-        f"get pods -n {ns} -o json"
-    )
-    r = subprocess.run(
-        cmd, shell=True,
-        capture_output=True, text=True
-    )
-    if r.returncode != 0:
+    from core.k8s import get_raw_resources
+    data = get_raw_resources("pods", ctx, ns)
+    if not data.get("items"):
         return set()
 
-    data = json.loads(r.stdout)
     mounted = set()
 
     for item in data.get("items", []):
@@ -268,18 +253,8 @@ def _get_mounted_configmaps(ns, ctx):
 
 
 def _get_unbound_pvcs(ns, ctx):
-    cmd = (
-        f"kubectl --context {ctx} "
-        f"get pvc -n {ns} -o json"
-    )
-    r = subprocess.run(
-        cmd, shell=True,
-        capture_output=True, text=True
-    )
-    if r.returncode != 0:
-        return []
-
-    data = json.loads(r.stdout)
+    from core.k8s import get_raw_resources
+    data = get_raw_resources("pvc", ctx, ns)
     unbound = []
 
     for item in data.get("items", []):

@@ -11,14 +11,21 @@ router = APIRouter(tags=["overview"])
 
 @router.get("/overview")
 def get_overview():
-    with ThreadPoolExecutor(max_workers=3) as executor:
+    from core.collectors.scorecard import cluster_scorecard
+    with ThreadPoolExecutor(max_workers=4) as executor:
         f_pods = executor.submit(collect_pods)
         f_nodes = executor.submit(collect_nodes)
         f_deps = executor.submit(collect_deployments)
+        f_score = executor.submit(cluster_scorecard)
 
         pods = f_pods.result()
         nodes = f_nodes.result()
         deployments = f_deps.result()
+        scorecard = f_score.result()
+
+    top_rec = None
+    if scorecard.get("recommendations"):
+        top_rec = scorecard["recommendations"][0]
 
     pod_health = {
         "healthy": sum(1 for p in pods if p["status"] == "Running"),
@@ -46,6 +53,7 @@ def get_overview():
         "pods": pod_health,
         "nodes": node_health,
         "deployments": dep_health,
+        "top_recommendation": top_rec,
     }
 
 
@@ -99,7 +107,7 @@ def get_overview_for(ctx: str, ns: str, app: str = None):
         # Events filtered to app pods
         r = subprocess.run(
             ["kubectl", "--context", ctx, "get", "events", "-n", ns,
-             "--field-selector", f"involvedObject.kind=Pod",
+             "--field-selector", "involvedObject.kind=Pod",
              "--sort-by=.lastTimestamp", "-o", "json"],
             capture_output=True, text=True
         )
@@ -144,9 +152,13 @@ def get_overview_for(ctx: str, ns: str, app: str = None):
         ]
 
     with ThreadPoolExecutor(max_workers=3) as ex:
-        nodes = ex.submit(_get_nodes).result()
-        deps = ex.submit(_get_deps).result()
-        events = ex.submit(_get_events).result()
+        f_nodes = ex.submit(_get_nodes)
+        f_deps = ex.submit(_get_deps)
+        f_events = ex.submit(_get_events)
+
+        nodes = f_nodes.result()
+        deps = f_deps.result()
+        events = f_events.result()
 
     node_health = {
         "healthy": sum(1 for n in nodes if any(c["type"] == "Ready" and c["status"] == "True" for c in n["status"].get("conditions", []))),

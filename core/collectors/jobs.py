@@ -3,7 +3,6 @@ Job & CronJob management — list, inspect, trigger.
 """
 
 import subprocess
-import json
 
 from core.context import context
 from core.cache import cached
@@ -12,23 +11,10 @@ from core.cache import cached
 @cached(ttl=10)
 def list_cronjobs():
     """List all cronjobs in namespace."""
-    ns = context.namespace
-    ctx = context.current_context
-
-    cmd = (
-        f"kubectl --context {ctx} "
-        f"get cronjobs -n {ns} -o json"
+    from core.k8s import get_raw_resources
+    data = get_raw_resources(
+        "cronjobs", context.current_context, context.namespace
     )
-
-    r = subprocess.run(
-        cmd, shell=True,
-        capture_output=True, text=True
-    )
-
-    if r.returncode != 0:
-        return []
-
-    data = json.loads(r.stdout)
     cronjobs = []
 
     for item in data.get("items", []):
@@ -55,23 +41,10 @@ def list_cronjobs():
 @cached(ttl=10)
 def list_jobs(limit=20):
     """List recent jobs."""
-    ns = context.namespace
-    ctx = context.current_context
-
-    cmd = (
-        f"kubectl --context {ctx} "
-        f"get jobs -n {ns} -o json"
+    from core.k8s import get_raw_resources
+    data = get_raw_resources(
+        "jobs", context.current_context, context.namespace
     )
-
-    r = subprocess.run(
-        cmd, shell=True,
-        capture_output=True, text=True
-    )
-
-    if r.returncode != 0:
-        return []
-
-    data = json.loads(r.stdout)
     jobs = []
 
     for item in data.get("items", [])[-limit:]:
@@ -138,20 +111,17 @@ def list_jobs(limit=20):
 
 def trigger_cronjob(name):
     """Manually trigger a cronjob."""
-    ns = context.namespace
-    ctx = context.current_context
-
     job_name = f"{name}-manual-trigger"
 
-    cmd = (
-        f"kubectl --context {ctx} "
-        f"create job {job_name} "
-        f"--from=cronjob/{name} "
-        f"-n {ns}"
-    )
+    cmd = [
+        "kubectl", "--context", str(context.current_context),
+        "create", "job", job_name,
+        f"--from=cronjob/{name}",
+        "-n", str(context.namespace)
+    ]
 
     r = subprocess.run(
-        cmd, shell=True,
+        cmd,
         capture_output=True, text=True
     )
 

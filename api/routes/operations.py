@@ -1,5 +1,5 @@
 import re
-from fastapi import APIRouter, Query
+from fastapi import APIRouter
 from pydantic import BaseModel
 from typing import Optional
 
@@ -143,11 +143,11 @@ def get_revision_diff(name: str):
     kctx = ctx.current_context
 
     # Get revision history
-    cmd = (
-        f"kubectl --context {kctx} "
-        f"rollout history deployment/{name} -n {ns}"
-    )
-    r = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+    cmd = [
+        "kubectl", "--context", str(kctx),
+        "rollout", "history", f"deployment/{name}", "-n", str(ns)
+    ]
+    r = subprocess.run(cmd, capture_output=True, text=True)
     if r.returncode != 0:
         return {"error": r.stderr.strip(), "revisions": []}
 
@@ -167,18 +167,18 @@ def get_revision_diff(name: str):
     for i in range(len(revisions) - 1, max(len(revisions) - 4, 0), -1):
         rev_a = revisions[i - 1]
         rev_b = revisions[i]
-        cmd_a = (
-            f"kubectl --context {kctx} "
-            f"rollout history deployment/{name} "
-            f"--revision={rev_a} -n {ns}"
-        )
-        cmd_b = (
-            f"kubectl --context {kctx} "
-            f"rollout history deployment/{name} "
-            f"--revision={rev_b} -n {ns}"
-        )
-        ra = subprocess.run(cmd_a, shell=True, capture_output=True, text=True)
-        rb = subprocess.run(cmd_b, shell=True, capture_output=True, text=True)
+        cmd_a = [
+            "kubectl", "--context", str(kctx),
+            "rollout", "history", f"deployment/{name}",
+            f"--revision={rev_a}", "-n", str(ns)
+        ]
+        cmd_b = [
+            "kubectl", "--context", str(kctx),
+            "rollout", "history", f"deployment/{name}",
+            f"--revision={rev_b}", "-n", str(ns)
+        ]
+        ra = subprocess.run(cmd_a, capture_output=True, text=True)
+        rb = subprocess.run(cmd_b, capture_output=True, text=True)
 
         if ra.returncode == 0 and rb.returncode == 0:
             # Simple line diff
@@ -189,8 +189,8 @@ def get_revision_diff(name: str):
             diffs.append({
                 "from_rev": rev_a,
                 "to_rev": rev_b,
-                "added": [l.strip() for l in added if l.strip()],
-                "removed": [l.strip() for l in removed if l.strip()],
+                "added": [line.strip() for line in added if line.strip()],
+                "removed": [line.strip() for line in removed if line.strip()],
             })
 
     return {"name": name, "revisions": revisions, "diffs": diffs}

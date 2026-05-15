@@ -65,6 +65,14 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
 
       <!-- Growth: Smart Insights -->
       <div class="insights-row stagger-1">
+        @if (data && data.top_recommendation) {
+          <div class="insight-pill proactive" (click)="router.navigate(['/scorecard'])" tabindex="0" role="button"
+            (keydown)="onKey($event, router.navigate.bind(router, ['/scorecard']))"
+            [pTooltip]="data.top_recommendation.issue" tooltipPosition="bottom">
+            <i class="pi pi-lightbulb"></i>
+            <span>{{ data.top_recommendation.action }}</span>
+          </div>
+        }
         <div class="insight-pill" (click)="router.navigate(['/scorecard'])" tabindex="0" role="button" (keydown)="onKey($event, router.navigate.bind(router, ['/scorecard']))">
           <i class="pi pi-trophy"></i>
           <span>Check Cluster Scorecard</span>
@@ -330,6 +338,8 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     }
     .insight-pill:hover { border-color: var(--accent); background: var(--accent-subtle); color: var(--accent); transform: translateY(-1px); }
     .insight-pill.suggested { border-style: dashed; opacity: 0.8; }
+    .insight-pill.proactive { border-color: var(--success); color: var(--success); background: var(--success-subtle); }
+    .insight-pill.proactive:hover { background: rgba(34,197,94,0.15); }
     .insight-pill i { font-size: 14px; }
 
     /* Hero — Glassmorphism + Mesh Gradient */

@@ -22,12 +22,19 @@ export interface HealthCount {
   unavailable: number;
 }
 
+export interface Recommendation {
+  category: string;
+  issue: string;
+  action: string;
+}
+
 export interface OverviewResponse {
   context: string;
   namespace: string;
   pods: HealthCount;
   nodes: HealthCount;
   deployments: HealthCount;
+  top_recommendation?: Recommendation;
 }
 
 export interface KubeContext {
