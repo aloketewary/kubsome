@@ -30,11 +30,18 @@ def handle_ai_query(query):
     analysis functions. Returns a structured response.
     """
     from core.nlp.matcher import parse_query
+    from core.context import context
+
     parsed = parse_query(query)
 
     intent = parsed["intent"] if parsed else None
     entities = parsed["entities"] if parsed else {}
     target = entities.get("target")
+
+    # Update conversation memory
+    if target:
+        context.remember_target(target)
+    context.last_intent = intent
 
     if intent == "count_pods":
         return _count_pods(query, target)
@@ -115,7 +122,14 @@ def get_follow_up_suggestions(intent, target=None):
     """
     Return contextual follow-up questions based on
     the intent that was just answered.
+    Uses conversation memory for richer suggestions.
     """
+    from core.context import context
+
+    # Use conversation memory if no explicit target
+    if not target and context.last_target:
+        target = context.last_target
+
     suggestions = {
         "why_failing": [
             f"show logs for {target}" if target else "show warning events",
@@ -133,7 +147,7 @@ def get_follow_up_suggestions(intent, target=None):
             "top resource consumers",
         ],
         "unhealthy": [
-            "diagnose high restart pods",
+            f"diagnose {target}" if target else "diagnose high restart pods",
             "what changed recently",
             "show warning events",
         ],
@@ -151,6 +165,21 @@ def get_follow_up_suggestions(intent, target=None):
             "any anomalies detected",
             "which pods are unhealthy",
             "summarize cluster health",
+        ],
+        "health_check": [
+            f"diagnose {target}" if target else "summarize cluster health",
+            f"logs for {target}" if target else "show warning events",
+            "any anomalies detected",
+        ],
+        "logs": [
+            f"diagnose {target}" if target else "which pods are unhealthy",
+            f"why is {target} failing" if target else "any anomalies",
+            "what changed recently",
+        ],
+        "inspect": [
+            f"diagnose {target}" if target else "which pods are unhealthy",
+            f"trace {target}" if target else "summarize cluster health",
+            "show warning events",
         ],
     }
     return suggestions.get(intent, [])

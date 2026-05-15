@@ -20,8 +20,9 @@ def get_overview():
         nodes = f_nodes.result()
         deployments = f_deps.result()
 
+    healthy_statuses = {"Running", "Succeeded", "Completed"}
     pod_health = {
-        "healthy": sum(1 for p in pods if p["status"] == "Running"),
+        "healthy": sum(1 for p in pods if p["status"] in healthy_statuses),
         "warning": sum(1 for p in pods if p["restarts"] > 5),
         "critical": sum(1 for p in pods if p["status"] in ("CrashLoopBackOff", "Error", "Failed")),
     }
