@@ -8,7 +8,6 @@ class Kubsome < Formula
   license "MIT"
 
   depends_on "python@3.12"
-  depends_on "kubernetes-cli" => :recommended
 
   resource "rich" do
     url "https://files.pythonhosted.org/packages/source/r/rich/rich-13.9.4.tar.gz"
