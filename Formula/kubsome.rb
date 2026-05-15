@@ -1,4 +1,6 @@
 class Kubsome < Formula
+  include Language::Python::Virtualenv
+
   desc "AI-native Kubernetes Operational Workspace"
   homepage "https://github.com/aloketewary/kubsome"
   url "https://files.pythonhosted.org/packages/source/k/kubsome/kubsome-1.12.1.tar.gz"
