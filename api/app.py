@@ -49,6 +49,22 @@ def _on_startup():
     from core.cache import prewarm
     prewarm()
 
+    # Start background metrics recorder (every 5 min)
+    import threading
+
+    def _record_loop():
+        import time
+        time.sleep(30)  # Wait for cluster connection
+        while True:
+            try:
+                from core.collectors.metrics_history import record_snapshot
+                record_snapshot()
+            except Exception:
+                pass
+            time.sleep(300)  # 5 min
+
+    threading.Thread(target=_record_loop, daemon=True).start()
+
 
 @app.get("/api/health")
 def health():
