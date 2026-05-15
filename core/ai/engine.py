@@ -164,7 +164,8 @@ def _count_pods(query, target=None):
         # General count
         pods = collect_pods()
         running = sum(
-            1 for p in pods if p["status"] == "Running"
+            1 for p in pods
+            if p["status"] in {"Running", "Succeeded", "Completed"}
         )
         return {
             "title": "🤖 Pod Count",
@@ -194,11 +195,11 @@ def _count_pods(query, target=None):
 
     running = [
         p for p in matching
-        if p["status"] == "Running"
+        if p["status"] in {"Running", "Succeeded", "Completed"}
     ]
     not_running = [
         p for p in matching
-        if p["status"] != "Running"
+        if p["status"] not in {"Running", "Succeeded", "Completed"}
     ]
 
     lines = [
@@ -536,7 +537,8 @@ def _summarize_cluster():
 
     total_pods = len(pods)
     running = sum(
-        1 for p in pods if p["status"] == "Running"
+        1 for p in pods
+        if p["status"] in {"Running", "Succeeded", "Completed"}
     )
     crashing = sum(
         1 for p in pods if p["restarts"] >= 5
@@ -687,9 +689,10 @@ def _unhealthy_pods():
     """List all unhealthy pods with reasons."""
     pods = collect_pods()
 
+    healthy_statuses = {"Running", "Succeeded", "Completed"}
     unhealthy = [
         p for p in pods
-        if p["status"] != "Running" or p["restarts"] >= 3
+        if p["status"] not in healthy_statuses or p["restarts"] >= 3
     ]
 
     if not unhealthy:
