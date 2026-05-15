@@ -8,17 +8,16 @@ from core.cache import cached
 
 @cached(ttl=5)
 def top_pods():
-    command = (
-        f"kubectl "
-        f"--context {context.current_context} "
-        f"top pods "
-        f"-n {context.namespace} "
-        f"--no-headers"
-    )
+    command = [
+        "kubectl",
+        "--context", str(context.current_context or ""),
+        "top", "pods",
+        "-n", str(context.namespace),
+        "--no-headers"
+    ]
 
     result = subprocess.run(
         command,
-        shell=True,
         capture_output=True,
         text=True
     )
@@ -48,16 +47,15 @@ def top_pods():
 
 @cached(ttl=5)
 def top_nodes():
-    command = (
-        f"kubectl "
-        f"--context {context.current_context} "
-        f"top nodes "
-        f"--no-headers"
-    )
+    command = [
+        "kubectl",
+        "--context", str(context.current_context or ""),
+        "top", "nodes",
+        "--no-headers"
+    ]
 
     result = subprocess.run(
         command,
-        shell=True,
         capture_output=True,
         text=True
     )
