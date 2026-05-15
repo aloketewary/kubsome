@@ -1,0 +1,29 @@
+# Kubsome Policies — cluster guardrails
+# Place in .kubsome/policies.yaml (project) or ~/.kubsome/policies.yaml (user)
+# Run: policy (CLI) or GET /api/policy-check (API)
+
+- name: no-latest-tag
+  description: Reject deployments using :latest tag
+  resource: deployment
+  rule: no_latest_image
+  severity: high
+
+- name: memory-limit-required
+  description: All containers must have memory limits
+  resource: deployment
+  rule: memory_limits_set
+  severity: medium
+
+- name: no-privileged
+  description: No container should run privileged
+  resource: deployment
+  rule: no_privileged
+  severity: high
+
+- name: max-replicas-20
+  description: No deployment should exceed 20 replicas
+  resource: deployment
+  rule: max_replicas
+  params:
+    max: 20
+  severity: low

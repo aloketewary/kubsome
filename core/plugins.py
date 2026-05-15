@@ -83,3 +83,49 @@ def run_plugin(name, context):
 def list_plugins():
     """Return list of available plugins."""
     return discover_plugins()
+
+
+def install_plugin(name):
+    """
+    Install a plugin from the Kubsome plugin registry.
+    Downloads from GitHub: aloketewary/kubsome-plugins/<name>.py
+    """
+    import urllib.request
+    import urllib.error
+
+    ensure_plugins_dir()
+
+    registry_url = (
+        f"https://raw.githubusercontent.com/"
+        f"aloketewary/kubsome-plugins/main/{name}.py"
+    )
+
+    try:
+        req = urllib.request.Request(registry_url)
+        response = urllib.request.urlopen(req, timeout=10)
+        content = response.read().decode("utf-8")
+
+        # Basic validation
+        if "NAME" not in content or "def run" not in content:
+            return False, "Invalid plugin format (missing NAME or run function)"
+
+        path = PLUGINS_DIR / f"{name}.py"
+        with open(path, "w") as f:
+            f.write(content)
+
+        return True, f"Installed to {path}"
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            return False, f"Plugin '{name}' not found in registry"
+        return False, f"HTTP error: {e.code}"
+    except Exception as e:
+        return False, f"Install failed: {e}"
+
+
+def uninstall_plugin(name):
+    """Remove an installed plugin."""
+    path = PLUGINS_DIR / f"{name}.py"
+    if not path.exists():
+        return False, f"Plugin '{name}' not installed"
+    path.unlink()
+    return True, f"Removed {name}"

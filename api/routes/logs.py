@@ -20,10 +20,13 @@ def get_logs(
     errors: bool = False,
     previous: bool = False,
     container: str = Query(None),
+    since: str = Query(None),
+    regex: str = Query(None),
 ):
     lines = fetch_logs(
         pod, tail=tail, previous=previous,
-        errors_only=errors, container=container
+        errors_only=errors, container=container,
+        since=since, regex=regex,
     )
     return {
         "pod": pod,
@@ -31,6 +34,11 @@ def get_logs(
         "container": container,
         "lines": lines,
         "count": len(lines),
+        "filters": {
+            "since": since,
+            "regex": regex,
+            "errors_only": errors,
+        },
     }
 
 

@@ -28,7 +28,9 @@ def fetch_logs(
     previous=False,
     follow=False,
     errors_only=False,
-    container=None
+    container=None,
+    since=None,
+    regex=None,
 ):
     cmd = (
         f"kubectl "
@@ -46,6 +48,9 @@ def fetch_logs(
 
     if follow:
         cmd += " --follow"
+
+    if since:
+        cmd += f" --since={since}"
 
     result = subprocess.run(
         cmd,
@@ -67,6 +72,17 @@ def fetch_logs(
                 ]
             )
         ]
+
+    if regex:
+        import re
+        try:
+            pattern = re.compile(regex, re.IGNORECASE)
+            lines = [
+                line for line in lines
+                if pattern.search(line)
+            ]
+        except re.error:
+            pass
 
     return lines
 

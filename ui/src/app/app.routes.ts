@@ -34,4 +34,8 @@ export const routes: Routes = [
   { path: 'log-correlation', loadComponent: () => import('./features/log-correlation/log-correlation.component').then(m => m.LogCorrelationComponent) },
   { path: 'gateway-monitor', loadComponent: () => import('./features/gateway-monitor/gateway-monitor.component').then(m => m.GatewayMonitorComponent) },
   { path: 'my-dashboard', loadComponent: () => import('./features/custom-dashboard/custom-dashboard.component').then(m => m.CustomDashboardComponent) },
+  { path: 'audit', loadComponent: () => import('./features/audit/audit.component').then(m => m.AuditComponent) },
+  { path: 'policy', loadComponent: () => import('./features/policy/policy.component').then(m => m.PolicyComponent) },
+  { path: 'doctor', loadComponent: () => import('./features/doctor/doctor.component').then(m => m.DoctorComponent) },
+  { path: 'schedule', loadComponent: () => import('./features/schedule/schedule.component').then(m => m.ScheduleComponent) },
 ];

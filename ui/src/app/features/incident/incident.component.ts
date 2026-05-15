@@ -280,6 +280,7 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
       <div class="quick-actions">
         <button pButton icon="pi pi-sparkles" label="AI Analysis" class="p-button-sm p-button-warning" (click)="runAiAnalysis()" [loading]="analyzing"></button>
         <button pButton icon="pi pi-camera" label="Snapshot" class="p-button-sm p-button-outlined" (click)="snapshot()" pTooltip="Capture cluster state"></button>
+        <button pButton icon="pi pi-share-alt" label="Share" class="p-button-sm p-button-outlined" (click)="shareIncident()" pTooltip="Share via webhook" [loading]="sharing"></button>
         <button pButton icon="pi pi-wrench" label="Log Action" class="p-button-sm p-button-outlined" (click)="showActionInput = !showActionInput" pTooltip="Record remediation action"></button>
         <button pButton icon="pi pi-box" label="Pods" class="p-button-sm p-button-outlined" (click)="router.navigate(['/pods'])"></button>
         <button pButton icon="pi pi-bolt" label="Events" class="p-button-sm p-button-outlined" (click)="router.navigate(['/events'])"></button>
@@ -753,6 +754,8 @@ export class IncidentComponent implements OnInit, OnDestroy {
   elapsedTime = '00:00';
   snapshotTaken = false;
   analyzing = false;
+  sharing = false;
+  shareMsg = '';
   probableCause = '';
   blastRadius = '';
   healthScore = 100;
@@ -940,6 +943,18 @@ export class IncidentComponent implements OnInit, OnDestroy {
         this.healthScore = 95;
       }
       this.analyzing = false;
+    });
+  }
+
+  shareIncident() {
+    this.sharing = true;
+    this.http.post<any>(`${this.base}/incident/share`, {}).subscribe({
+      next: (res) => {
+        this.sharing = false;
+        this.shareMsg = res.success ? '✓ Shared to webhooks' : res.message;
+        setTimeout(() => this.shareMsg = '', 4000);
+      },
+      error: () => { this.sharing = false; },
     });
   }
 

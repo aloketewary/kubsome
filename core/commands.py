@@ -62,10 +62,15 @@ def resolve_command(user_input: str):
 
         flags = tokens[2:]
         container = None
+        since = None
+        regex = None
         for i, f in enumerate(flags):
             if f in ("-c", "--container") and i + 1 < len(flags):
                 container = flags[i + 1]
-                break
+            if f == "--since" and i + 1 < len(flags):
+                since = flags[i + 1]
+            if f == "--regex" and i + 1 < len(flags):
+                regex = flags[i + 1]
         follow = (
             "--follow" in flags or "-f" in flags
             or "watch" in flags
@@ -77,6 +82,8 @@ def resolve_command(user_input: str):
             "errors": "--errors" in flags,
             "previous": "--previous" in flags,
             "container": container,
+            "since": since,
+            "regex": regex,
         }
 
     # Logcat (combined logs from all pods of a deployment)
@@ -170,6 +177,16 @@ def resolve_command(user_input: str):
 
     # Plugins
     if cmd == "plugin" and len(tokens) > 1:
+        if tokens[1] == "install" and len(tokens) > 2:
+            return {
+                "type": "plugin_install",
+                "name": tokens[2],
+            }
+        if tokens[1] == "rm" and len(tokens) > 2:
+            return {
+                "type": "plugin_uninstall",
+                "name": tokens[2],
+            }
         return {
             "type": "plugin",
             "name": tokens[1]
@@ -177,6 +194,10 @@ def resolve_command(user_input: str):
 
     if cmd == "plugins":
         return {"type": "plugins_list"}
+
+    # Policy check
+    if cmd == "policy" or cmd == "policies":
+        return {"type": "policy_check"}
 
     # Compare (multi-cluster)
     if cmd == "compare" and len(tokens) > 2:
@@ -218,6 +239,12 @@ def resolve_command(user_input: str):
                 return {"type": "incident_status"}
             if sub == "history":
                 return {"type": "incident_history"}
+            if sub == "share":
+                incident_id = tokens[2] if len(tokens) > 2 else None
+                return {
+                    "type": "incident_share",
+                    "id": incident_id,
+                }
         return {"type": "incident_status"}
 
     if cmd == "note" and len(tokens) > 1:
@@ -278,6 +305,59 @@ def resolve_command(user_input: str):
     # Health check
     if cmd == "check":
         return {"type": "check"}
+
+    # Doctor (pre-flight)
+    if cmd == "doctor":
+        return {"type": "doctor"}
+
+    # Usage stats
+    if cmd == "stats":
+        return {"type": "stats"}
+
+    # Cost trend
+    if cmd == "cost-trend":
+        return {"type": "cost_trend"}
+
+    # Schedules
+    if cmd == "schedule" or cmd == "schedules":
+        if len(tokens) > 1 and tokens[1] == "add":
+            # schedule add <name> "<cron>" <cmd1,cmd2>
+            rest = user_input.split(None, 3)
+            if len(rest) >= 4:
+                # Parse: schedule add name cron_or_quoted commands
+                inner = rest[3]  # everything after "schedule add name"
+                # Extract cron (quoted or single-word)
+                if inner.startswith('"'):
+                    end_q = inner.find('"', 1)
+                    if end_q > 0:
+                        cron = inner[1:end_q]
+                        remainder = inner[end_q+1:].strip()
+                    else:
+                        cron = inner[1:]
+                        remainder = ""
+                else:
+                    parts = inner.split(None, 1)
+                    cron = parts[0]
+                    remainder = parts[1] if len(parts) > 1 else ""
+                name = rest[2] if len(rest) > 2 else ""
+                commands = (
+                    [c.strip() for c in remainder.split(",")]
+                    if remainder else []
+                )
+                if name and cron and commands:
+                    return {
+                        "type": "schedule_add",
+                        "name": name,
+                        "cron": cron,
+                        "commands": commands,
+                    }
+        elif len(tokens) > 1 and tokens[1] == "rm":
+            if len(tokens) >= 3:
+                return {
+                    "type": "schedule_rm",
+                    "name": tokens[2],
+                }
+        return {"type": "schedule_list"}
 
     # Export report
     if cmd == "export":

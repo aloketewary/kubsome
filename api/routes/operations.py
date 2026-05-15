@@ -116,6 +116,14 @@ def incident_history():
     return {"incidents": reports}
 
 
+@router.post("/incident/share")
+def incident_share(incident_id: Optional[str] = None):
+    """Share incident report via configured webhooks."""
+    from core.incident.manager import share_incident
+    success, message = share_incident(incident_id)
+    return {"success": success, "message": message}
+
+
 # ─── RBAC ─────────────────────────────────────────────────────────────────────
 
 @router.get("/rbac")
@@ -358,11 +366,12 @@ def get_playbook(issue: str):
 
 @router.get("/playbooks")
 def list_playbooks():
-    from core.ai.playbooks import PLAYBOOKS
+    from core.ai.playbooks import list_all_playbooks
+    all_pb = list_all_playbooks()
     return {
         "playbooks": [
-            {"id": key, "title": pb["title"], "steps": pb["steps"]}
-            for key, pb in PLAYBOOKS.items()
+            {"id": key, "title": pb["title"], "steps": pb["steps"], "source": pb.get("source", "built-in")}
+            for key, pb in all_pb.items()
         ]
     }
 
@@ -431,9 +440,24 @@ def get_labels(resource_type: str, name: Optional[str] = None):
 # ─── Audit ────────────────────────────────────────────────────────────────────
 
 @router.get("/audit")
-def get_audit():
+def get_audit(limit: int = 50, action: Optional[str] = None):
     from core.audit import get_audit_log
-    return {"log": get_audit_log()}
+    entries = get_audit_log(limit=limit)
+    if action:
+        entries = [
+            e for e in entries
+            if e.get("action") == action
+        ]
+    # Summary stats
+    actions = {}
+    for e in entries:
+        a = e.get("action", "unknown")
+        actions[a] = actions.get(a, 0) + 1
+    return {
+        "log": entries,
+        "total": len(entries),
+        "summary": actions,
+    }
 
 
 # ─── Export ───────────────────────────────────────────────────────────────────
@@ -443,6 +467,80 @@ def get_export(format: str = "md"):
     from core.export import export_report
     path = export_report(format=format)
     return {"path": path, "format": format}
+
+
+@router.get("/cost-trend")
+def get_cost_trend():
+    from core.collectors.cost_trend import cost_trend
+    return cost_trend()
+
+
+@router.get("/metrics-history")
+def get_metrics_history(
+    pod: str = None,
+    hours: int = 24,
+):
+    from core.collectors.metrics_history import (
+        get_time_series, get_pod_history
+    )
+    series = get_time_series(pod_name=pod, hours=hours)
+    summary = None
+    if pod:
+        summary = get_pod_history(pod)
+    return {
+        "series": series,
+        "summary": summary,
+        "hours": hours,
+        "pod": pod,
+        "points": len(series),
+    }
+
+
+@router.get("/policy-check")
+def get_policy_check():
+    from core.policy import check_policies, load_policies
+    policies = load_policies()
+    result = check_policies()
+    return {
+        "policies": [
+            {"name": p["name"], "description": p.get("description", ""), "rule": p.get("rule", ""), "severity": p.get("severity", "medium")}
+            for p in policies
+        ],
+        **result,
+    }
+
+
+@router.get("/doctor")
+def get_doctor():
+    from core.doctor import run_doctor
+    return {"checks": run_doctor()}
+
+
+@router.get("/schedules")
+def get_schedules():
+    from core.scheduler import get_scheduler
+    return {"schedules": get_scheduler().list_schedules()}
+
+
+class ScheduleAddRequest(BaseModel):
+    name: str
+    cron: str
+    commands: list
+    notify: bool = True
+
+
+@router.post("/schedules")
+def add_schedule(req: ScheduleAddRequest):
+    from core.scheduler import get_scheduler
+    get_scheduler().add(req.name, req.cron, req.commands, req.notify)
+    return {"added": True, "name": req.name}
+
+
+@router.delete("/schedules/{name}")
+def delete_schedule(name: str):
+    from core.scheduler import get_scheduler
+    get_scheduler().remove(name)
+    return {"removed": True, "name": name}
 
 
 # ─── Explain / Generate ───────────────────────────────────────────────────────

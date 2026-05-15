@@ -2,6 +2,69 @@
 
 All notable changes to Kubsome are documented here.
 
+## [1.12.0] — 2025-07-16
+
+### Growth & Activation
+- **`kubsome doctor`** — Pre-flight diagnostics (kubectl, cluster, metrics-server, config, namespace, optional deps)
+- **Smart suggestions** — Contextual next-step hints after every command ("Try: diagnose <pod>")
+- **Context-aware banner** — Shows pod health snapshot on startup from cache
+- **Interactive first-run** — Enhanced onboarding with quick start guide
+
+### Distribution
+- **GitHub Action** — `kubsome scorecard` in CI/CD with configurable grade threshold
+- **kubectl krew plugin** — `kubectl kubsome <command>` via krew index
+- **Homebrew formula** — `brew install aloketewary/tap/kubsome`
+
+### Retention & Automation
+- **Scheduled workflows** — Cron-like recurring command sequences (`schedule add daily "0 8 * * *" scorecard,export`)
+- **Usage telemetry** — Local-only opt-in command frequency tracking (`stats`)
+- **Command failure tracking** — Unresolved NLP queries logged for intent improvement
+- **Cost trend & forecast** — Projects next month's cost based on usage trend (`cost-trend`)
+
+### Collaboration
+- **Incident sharing** — One-click export to Slack/Teams/Webex via webhooks (`incident share`)
+- **Team runbooks** — Git-synced `.kubsome/runbooks/*.yaml` with "Team" badge in UI
+- **Audit log dashboard** — New Web UI page showing who-did-what-when with filters
+
+### Intelligence
+- **AI follow-up suggestions** — Contextual next questions after each AI response
+- **PagerDuty integration** — Events API v2 incident triggers from anomaly alerts
+- **OpsGenie integration** — Alert API with priority mapping (P1-P5)
+- **Log regex search** — `logs <pod> --regex "OOM|timeout" --since 1h`
+
+### Governance
+- **Policy engine** — Define guardrails in `.kubsome/policies.yaml` with 7 built-in rules
+  - no_latest_image, memory_limits_set, cpu_limits_set, max_replicas
+  - no_privileged, run_as_non_root, read_only_root
+- **7-day metrics history** — Extended from 24h, with time-series API for charting
+- **Plugin marketplace** — `plugin install <name>` / `plugin rm <name>` from registry
+
+### Web UI
+- **4 new pages:** Audit, Policy, Doctor (Health), Schedules
+- **Incident page** — Added Share button for webhook export
+- **Cost Estimate page** — Added cost trend/forecast card
+- **Runbooks page** — Team badge for project-local runbooks
+- **AI Chat** — Follow-up suggestion buttons after responses
+- **Sidebar** — Added Policy, Schedules, Health, Audit entries
+
+### API
+- 7 new endpoints: `/api/doctor`, `/api/policy-check`, `/api/metrics-history`, `/api/cost-trend`, `/api/schedules`, `/api/schedules/{name}`, `/api/incident/share`
+- Enhanced `/api/audit` with filter + summary stats
+- Enhanced `/api/logs/{pod}` with `regex` and `since` params
+- Enhanced `/api/playbooks` to include team runbooks with `source` field
+- Enhanced `/api/ai` with `follow_ups` array
+
+### Testing
+- **57 new tests** for all growth features (171 total, 0 regressions)
+- Covers: doctor, suggestions, telemetry, scheduler, cost-trend, incident share, team runbooks, AI follow-ups, log regex, policy engine, plugin install, metrics history, command resolution
+
+### Stats
+- CLI handlers: 89 → 99 (+10)
+- API routes: ~115 → 126 (+11)
+- UI pages: 32 → 38 (+6 including enhanced)
+- Tests: 114 → 171 (+57)
+- Zero new external dependencies
+
 ## [1.11.0] — 2025-07-15
 
 ### UX Overhaul

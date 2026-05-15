@@ -35,6 +35,8 @@ kubsome init               # Generate default config
 | `logs <pod> --errors` | Error lines only |
 | `logs <pod> --previous` | Previous container |
 | `logs <pod> -c <container>` | Specific container |
+| `logs <pod> --regex "pattern"` | Filter by regex |
+| `logs <pod> --since 1h` | Time range filter |
 | `logcat <deployment>` | Combined logs from all pods |
 | `logcat <dep> --follow` | Live combined stream |
 | `correlate-logs <pod1> <pod2>` | Merged timeline |
@@ -100,9 +102,24 @@ kubsome init               # Generate default config
 |---------|-------------|
 | `incident start <title>` | Start tracking |
 | `note <text>` | Add observation |
+| `incident share` | Share to Slack/Teams/webhooks |
+| `incident share <id>` | Share past incident |
 | `incident stop` | Close + export |
 | `incident status` | Current state |
 | `incident history` | Past incidents |
+
+### Growth & Governance
+| Command | Description |
+|---------|-------------|
+| `doctor` | Pre-flight diagnostics |
+| `policy` | Check cluster guardrails |
+| `cost-trend` | Cost forecast + savings |
+| `stats` | Usage analytics |
+| `schedule` | List scheduled workflows |
+| `schedule add <name> "<cron>" <cmds>` | Add recurring schedule |
+| `schedule rm <name>` | Remove schedule |
+| `plugin install <name>` | Install from registry |
+| `plugin rm <name>` | Uninstall plugin |
 
 ### Utilities
 | Command | Description |
@@ -184,13 +201,65 @@ Place `.py` files in `~/.kubsome/plugins/`:
 
 ```python
 # ~/.kubsome/plugins/my_check.py
-PLUGIN_INFO = {
-    "name": "my-check",
-    "description": "Custom health check",
-}
+NAME = "my-check"
+DESCRIPTION = "Custom health check"
 
 def run(context):
     return f"Context: {context.current_context}"
 ```
 
 Use with: `plugin my-check` or list with `plugins`.
+
+Install from registry: `plugin install <name>`
+Uninstall: `plugin rm <name>`
+
+## Policies
+
+Define guardrails in `.kubsome/policies.yaml` (project-level, Git-synced):
+
+```yaml
+- name: no-latest-tag
+  description: Reject deployments using :latest tag
+  resource: deployment
+  rule: no_latest_image
+  severity: high
+
+- name: memory-limit-required
+  description: All containers must have memory limits
+  resource: deployment
+  rule: memory_limits_set
+  severity: medium
+```
+
+Available rules: `no_latest_image`, `memory_limits_set`, `cpu_limits_set`, `max_replicas`, `no_privileged`, `run_as_non_root`, `read_only_root`
+
+Check with: `policy`
+
+## Schedules
+
+Recurring command sequences:
+
+```bash
+schedule add daily-health "0 8 * * *" scorecard,export
+schedule add quick-check "*/30 * * * *" alerts,pods
+schedule rm daily-health
+schedules                    # List all
+```
+
+Stored in `~/.kubsome/schedules.yaml`. Runs in background during CLI session.
+
+## Team Runbooks
+
+Place `.yaml` files in `.kubsome/runbooks/` (project root, Git-synced):
+
+```yaml
+title: Payment Service Recovery
+steps:
+  - "Check payment pods: pods"
+  - "Verify database connectivity"
+  - "Check downstream: dep-health payment"
+  - "If OOM: increase memory and restart"
+```
+
+Access with: `playbook <filename>` (without .yaml extension)
+

@@ -1,0 +1,105 @@
+name: "Kubsome Cluster Scorecard"
+description: "Run Kubsome cluster health scorecard and fail if grade drops below threshold"
+author: "Aloke Tewary"
+
+branding:
+  icon: "activity"
+  color: "green"
+
+inputs:
+  min-grade:
+    description: "Minimum acceptable grade (A, B, C, D). Fails if below."
+    required: false
+    default: "C"
+  command:
+    description: "Kubsome command to run (default: scorecard)"
+    required: false
+    default: "scorecard"
+  kubeconfig:
+    description: "Path to kubeconfig file"
+    required: false
+    default: ""
+  namespace:
+    description: "Kubernetes namespace to check"
+    required: false
+    default: "default"
+
+outputs:
+  grade:
+    description: "Cluster health grade (A-F)"
+  score:
+    description: "Numeric score (0-100)"
+  report:
+    description: "Path to exported report file"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install Kubsome
+      shell: bash
+      run: pip install kubsome
+
+    - name: Set namespace
+      shell: bash
+      run: |
+        if [ -n "${{ inputs.kubeconfig }}" ]; then
+          export KUBECONFIG="${{ inputs.kubeconfig }}"
+        fi
+        if [ "${{ inputs.namespace }}" != "default" ]; then
+          kubsome --exec "use ${{ inputs.namespace }}"
+        fi
+
+    - name: Run scorecard
+      id: scorecard
+      shell: bash
+      run: |
+        OUTPUT=$(kubsome --exec "${{ inputs.command }}" 2>&1) || true
+        echo "$OUTPUT"
+
+        # Extract grade from health-check JSON
+        RESULT=$(python3 -c "
+        from core.healthcheck import run_health_check
+        r = run_health_check()
+        print(f\"grade={r['grade']}\")
+        print(f\"score={r['score']}\")
+        ")
+
+        GRADE=$(echo "$RESULT" | grep "^grade=" | cut -d= -f2)
+        SCORE=$(echo "$RESULT" | grep "^score=" | cut -d= -f2)
+
+        echo "grade=$GRADE" >> $GITHUB_OUTPUT
+        echo "score=$SCORE" >> $GITHUB_OUTPUT
+
+    - name: Export report
+      id: report
+      shell: bash
+      run: |
+        REPORT=$(python3 -c "from core.export import export_report; print(export_report('md'))")
+        echo "report=$REPORT" >> $GITHUB_OUTPUT
+
+    - name: Check threshold
+      shell: bash
+      run: |
+        GRADE="${{ steps.scorecard.outputs.grade }}"
+        MIN="${{ inputs.min-grade }}"
+
+        # Grade to number for comparison
+        grade_to_num() {
+          case "$1" in
+            A) echo 5 ;; B) echo 4 ;; C) echo 3 ;;
+            D) echo 2 ;; F) echo 1 ;; *) echo 0 ;;
+          esac
+        }
+
+        ACTUAL=$(grade_to_num "$GRADE")
+        REQUIRED=$(grade_to_num "$MIN")
+
+        echo "Cluster grade: $GRADE (score: ${{ steps.scorecard.outputs.score }})"
+        echo "Minimum required: $MIN"
+
+        if [ "$ACTUAL" -lt "$REQUIRED" ]; then
+          echo "::error::Cluster health grade $GRADE is below minimum $MIN"
+          exit 1
+        fi
+
+        echo "✓ Cluster health check passed"

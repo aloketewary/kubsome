@@ -111,6 +111,51 @@ def handle_ai_query(query):
     }
 
 
+def get_follow_up_suggestions(intent, target=None):
+    """
+    Return contextual follow-up questions based on
+    the intent that was just answered.
+    """
+    suggestions = {
+        "why_failing": [
+            f"show logs for {target}" if target else "show warning events",
+            f"is it safe to restart {target}" if target else "which pods are unhealthy",
+            "what changed recently",
+        ],
+        "count_pods": [
+            "which pods are unhealthy",
+            "summarize cluster health",
+            "top resource consumers",
+        ],
+        "summarize": [
+            "any anomalies detected",
+            "what changed recently",
+            "top resource consumers",
+        ],
+        "unhealthy": [
+            "diagnose high restart pods",
+            "what changed recently",
+            "show warning events",
+        ],
+        "what_changed": [
+            "any anomalies detected",
+            "which pods are unhealthy",
+            "summarize cluster health",
+        ],
+        "anomalies": [
+            "which pods are unhealthy",
+            "what changed recently",
+            "summarize cluster health",
+        ],
+        "top_pods": [
+            "any anomalies detected",
+            "which pods are unhealthy",
+            "summarize cluster health",
+        ],
+    }
+    return suggestions.get(intent, [])
+
+
 def _count_pods(query, target=None):
     """Count pods matching a name pattern."""
     if not target or target in {

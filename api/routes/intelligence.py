@@ -84,12 +84,19 @@ def post_ai(req: AiRequest):
     # Also provide plain text fallback
     plain = re.sub(r'\[/?[^\]]+\]', '', content)
 
+    # Get follow-up suggestions
+    from core.ai.engine import get_follow_up_suggestions
+    intent = parsed["intent"] if parsed else None
+    target = parsed["entities"].get("target") if parsed else None
+    follow_ups = get_follow_up_suggestions(intent, target) if intent else []
+
     return {
         "title": response.get("title", "").replace("🤖 ", ""),
         "answer": plain,
         "html": html,
         "severity": response.get("severity", "info"),
-        "last_target": context.last_target
+        "last_target": context.last_target,
+        "follow_ups": follow_ups,
     }
 
 

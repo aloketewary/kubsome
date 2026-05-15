@@ -15,8 +15,8 @@ from core.collectors.metrics import top_pods
 
 
 HISTORY_DIR = Path.home() / ".kubsome" / "metrics_history"
-RETENTION_HOURS = 24
-MAX_SNAPSHOTS = 288  # 24h at 5min intervals
+RETENTION_HOURS = 168  # 7 days
+MAX_SNAPSHOTS = 2016   # 7 days at 5min intervals
 
 
 def record_snapshot():
@@ -183,3 +183,52 @@ def _prune(path):
 
     with open(path, "w") as f:
         f.write("\n".join(lines) + "\n" if lines else "")
+
+
+def get_time_series(pod_name=None, hours=24):
+    """
+    Get time-series data points for charting.
+    Returns [{ts, cpu_total, mem_total}] or per-pod if specified.
+    """
+    ns = context.namespace or "default"
+    path = HISTORY_DIR / f"{ns}_metrics.jsonl"
+
+    if not path.exists():
+        return []
+
+    cutoff = time.time() - (hours * 3600)
+    series = []
+
+    with open(path, "r") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                snap = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if snap["ts"] < cutoff:
+                continue
+
+            if pod_name:
+                pod_data = snap.get("pods", {}).get(pod_name)
+                if pod_data:
+                    series.append({
+                        "ts": snap["ts"],
+                        "cpu": pod_data["cpu"],
+                        "mem": pod_data["mem"],
+                    })
+            else:
+                # Aggregate all pods
+                pods = snap.get("pods", {})
+                total_cpu = sum(p["cpu"] for p in pods.values())
+                total_mem = sum(p["mem"] for p in pods.values())
+                series.append({
+                    "ts": snap["ts"],
+                    "cpu": total_cpu,
+                    "mem": total_mem,
+                    "pod_count": len(pods),
+                })
+
+    return series

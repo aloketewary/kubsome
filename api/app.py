@@ -73,7 +73,7 @@ def health():
 
 @app.get("/api/version")
 def version():
-    return {"version": "1.11.0"}
+    return {"version": "1.12.0"}
 
 
 # Serve Angular build in production

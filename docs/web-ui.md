@@ -137,3 +137,40 @@ Natural language chat interface:
 - **Resources** — All resource types
 - **Pins** — Saved queries
 - **Watches** — Background alert management
+
+## New Pages (v1.12)
+
+### Audit
+Team operation log dashboard:
+- Summary cards showing action counts (restart, rollback, scale, delete)
+- Filterable by action type (click card or dropdown)
+- Relative timestamps (just now, 5m ago, 2h ago)
+- Color-coded icons per action type
+- Context + namespace per entry
+
+### Policy
+Cluster guardrail compliance:
+- Pass/fail score banner with counts
+- Policy list with check/cross status
+- Severity badges (high/medium/low)
+- Violation details with resource name and description
+- Configurable via `.kubsome/policies.yaml`
+
+### Doctor (Health)
+Pre-flight system diagnostics:
+- kubectl connectivity check
+- Cluster reachability
+- metrics-server availability
+- Config file validation
+- Namespace existence
+- Optional dependency status
+- Pass/Warning/Fail badges per check
+
+### Schedules
+Recurring command manager:
+- Create schedules with name, cron expression, commands
+- Cron presets (Every 30min, Hourly, Daily 8am, etc.)
+- Shows next run estimate and last run time
+- Command chips per schedule
+- Notify badge for desktop notifications
+- Delete button per schedule
