@@ -32,8 +32,11 @@ def resource_recommendations():
     from core.collectors.metrics_history import (
         get_all_pod_history, record_snapshot
     )
-    record_snapshot()  # Record current data point
-    history = get_all_pod_history()
+    try:
+        record_snapshot()
+        history = get_all_pod_history()
+    except Exception:
+        history = {}
 
     # Build usage map
     usage_map = {
@@ -115,8 +118,10 @@ def resource_recommendations():
         # Under-provisioned (using > 90% of limit)
         cpu_lim = spec.get("cpu_limit_m", 0)
         mem_lim = spec.get("mem_limit_mb", 0)
+        cpu_now = actual["cpu_millicores"]
+        mem_now = actual["memory_mb"]
 
-        if cpu_lim > 0 and cpu_actual > cpu_lim * 0.9:
+        if cpu_lim > 0 and cpu_now > cpu_lim * 0.9:
             recommendations.append({
                 "pod": pod_name,
                 "type": "cpu_under",
@@ -124,15 +129,15 @@ def resource_recommendations():
                 "title": "CPU near limit",
                 "detail": (
                     f"Limit: {cpu_lim}m, "
-                    f"Using: {cpu_actual}m (throttling likely)"
+                    f"Using: {cpu_now}m (throttling likely)"
                 ),
                 "suggestion": (
                     f"Increase CPU limit to "
-                    f"{int(cpu_actual * 1.5)}m"
+                    f"{int(cpu_now * 1.5)}m"
                 ),
             })
 
-        if mem_lim > 0 and mem_actual > mem_lim * 0.85:
+        if mem_lim > 0 and mem_now > mem_lim * 0.85:
             recommendations.append({
                 "pod": pod_name,
                 "type": "mem_under",
@@ -140,11 +145,11 @@ def resource_recommendations():
                 "title": "Memory near limit",
                 "detail": (
                     f"Limit: {mem_lim}Mi, "
-                    f"Using: {mem_actual}Mi (OOM risk)"
+                    f"Using: {mem_now}Mi (OOM risk)"
                 ),
                 "suggestion": (
                     f"Increase memory limit to "
-                    f"{int(mem_actual * 1.5)}Mi"
+                    f"{int(mem_now * 1.5)}Mi"
                 ),
             })
 
@@ -157,8 +162,8 @@ def resource_recommendations():
                 "title": "No resource requests",
                 "detail": "Pod has no CPU/memory requests set",
                 "suggestion": (
-                    f"Set requests: cpu={cpu_actual * 2}m "
-                    f"mem={mem_actual * 2}Mi"
+                    f"Set requests: cpu={cpu_now * 2}m "
+                    f"mem={mem_now * 2}Mi"
                 ),
             })
 

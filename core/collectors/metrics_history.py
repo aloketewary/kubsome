@@ -21,6 +21,9 @@ MAX_SNAPSHOTS = 288  # 24h at 5min intervals
 
 def record_snapshot():
     """Record current pod metrics to history."""
+    if not context.current_context:
+        return
+
     HISTORY_DIR.mkdir(parents=True, exist_ok=True)
 
     usage = top_pods()
