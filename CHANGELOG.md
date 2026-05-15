@@ -2,6 +2,44 @@
 
 All notable changes to Kubsome are documented here.
 
+## [1.11.0] — 2025-07-15
+
+### UX Overhaul
+- **15 screens improved** with consistent auto-refresh, loading states, and timestamps
+- **Pods** — Status filter pills, auto-collapse healthy groups, pod age display, collapse all toggle
+- **Events** — Relative time, reason filter chips, clickable heatmap cells, auto-refresh
+- **Metrics** — Cluster summary strip, pod search, hot node badges, top 3 rank badges, auto-refresh
+- **Monitor** — Parallel card loading with forkJoin, batched refresh timers
+- **Logs** — Word wrap toggle, download as .log file
+- **Watch Manager** — Create/delete watches from UI (no CLI needed)
+- **Scorecard** — Categories sorted by worst score first, auto-refresh (60s)
+- **Deployments, Jobs, Namespace, Network, RBAC, Secrets, Timeline, Cost** — Auto-refresh + loading + timestamp
+
+### Performance
+- Parallelize cluster overview (CLI + API) with ThreadPoolExecutor
+- Parallelize scorecard (4 collectors), diagnosis (events + logs), overview-for-context (3 calls)
+- Unified `get_raw_resources()` cached fetcher in core/k8s.py
+- Add `@cached` to list_cronjobs, list_jobs, list_hpa, list_pdb, list_role_bindings
+- CLI watch: invalidate cache before each refresh for fresh data
+- Reduce Live refresh_per_second from 2 to 1 (matches data rate)
+- Optimize startup: lazy shutil import for UI dist sync
+
+### Security
+- Remove `shell=True` from user-facing API endpoints (inspect, diagnose, revision-diff)
+- Keep `shell=False` in get_pod_names (prevent regression)
+
+### Fixes
+- Handle None lastTimestamp in events sort
+- Fix test_ai_ambiguity patch target after collector refactor
+- Fix None context_name in get_raw_resources
+- Poll anomalies every 30s so alerts propagate after page load
+- Remove duplicate server banner (main.py + serve.py)
+- Fix /api/version returning stale 1.7.6
+
+### Other
+- Server startup banner with version and URLs
+- Refactor events collector to use get_raw_resources
+
 ## [1.10.0] — 2025-07-14
 
 ### Features
