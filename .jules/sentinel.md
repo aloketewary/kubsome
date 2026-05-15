@@ -17,3 +17,8 @@
 **Vulnerability:** Core utility functions `get_pods` and `get_pod_names` in `core/k8s.py` were using `shell=True` with f-strings containing user-influenced context and namespace names.
 **Learning:** Hardening API routes is insufficient if the underlying core utilities still use vulnerable patterns. Security must be implemented at the lowest possible level of command execution.
 **Prevention:** Standardize on list-based arguments and `shell=False` for all `subprocess` calls in core utility modules.
+
+## 2026-06-01 - [CRITICAL] Command Injection in Log Collectors
+**Vulnerability:** Multiple functions in `core/collectors/logs.py` were using `shell=True` with f-strings containing pod names, container names, and contexts, allowing for arbitrary command execution.
+**Learning:** Even internal collectors can be vectors for command injection if they ingest user-influenced data (like pod names from the UI). Relying on `shell=True` for convenience in command construction is a common but dangerous pattern.
+**Prevention:** Avoid `shell=True` and use list-based arguments for all `subprocess` calls. Removed shell-specific quoting (like `.strip("'")`) when moving to list-based arguments as they are no longer needed.
