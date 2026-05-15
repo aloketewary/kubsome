@@ -49,6 +49,8 @@ def resource_recommendations():
             savings_pct = int(
                 (1 - cpu_actual / cpu_req) * 100
             )
+            # Suggest 3x current usage as buffer for spikes
+            suggested = max(cpu_actual * 3, 50)
             recommendations.append({
                 "pod": pod_name,
                 "type": "cpu_over",
@@ -56,13 +58,16 @@ def resource_recommendations():
                 "title": "CPU over-provisioned",
                 "detail": (
                     f"Requested: {cpu_req}m, "
-                    f"Using: {cpu_actual}m "
-                    f"({savings_pct}% waste)"
+                    f"Current: {cpu_actual}m "
+                    f"({savings_pct}% idle)"
                 ),
                 "suggestion": (
-                    f"Reduce CPU request to "
-                    f"{max(cpu_actual * 2, 50)}m"
+                    f"Consider reducing CPU request to "
+                    f"{int(suggested)}m (3x current + buffer)"
                 ),
+                "current": f"{cpu_req}m",
+                "suggested": f"{int(suggested)}m",
+                "note": "Based on point-in-time usage. Monitor over 24h before resizing.",
             })
 
         # Over-provisioned Memory
@@ -70,6 +75,8 @@ def resource_recommendations():
             savings_pct = int(
                 (1 - mem_actual / mem_req) * 100
             )
+            # Suggest 2x current usage as buffer (memory is less spiky)
+            suggested = max(mem_actual * 2, 64)
             recommendations.append({
                 "pod": pod_name,
                 "type": "mem_over",
@@ -77,13 +84,16 @@ def resource_recommendations():
                 "title": "Memory over-provisioned",
                 "detail": (
                     f"Requested: {mem_req}Mi, "
-                    f"Using: {mem_actual}Mi "
-                    f"({savings_pct}% waste)"
+                    f"Current: {mem_actual}Mi "
+                    f"({savings_pct}% idle)"
                 ),
                 "suggestion": (
-                    f"Reduce memory request to "
-                    f"{max(mem_actual * 2, 64)}Mi"
+                    f"Consider reducing memory request to "
+                    f"{int(suggested)}Mi (2x current + buffer)"
                 ),
+                "current": f"{mem_req}Mi",
+                "suggested": f"{int(suggested)}Mi",
+                "note": "Based on point-in-time usage. Monitor over 24h before resizing.",
             })
 
         # Under-provisioned (using > 90% of limit)
