@@ -524,3 +524,99 @@ class TestNewCommands:
         from core.commands import resolve_command
         r = resolve_command("incident share 20250715_120000")
         assert r == {"type": "incident_share", "id": "20250715_120000"}
+
+
+# ─── Performance: Resolver at Scale ─────────────────
+
+class TestResolverPerformance:
+    """Ensure resolver stays fast with 10000+ pods."""
+
+    def _generate_pods(self, count=10000):
+        names = []
+        services = [
+            "payment-api", "billing-svc", "auth-gateway",
+            "customer-db", "order-processor", "notification-worker",
+            "analytics-pipeline", "cache-redis", "queue-rabbitmq",
+            "search-elastic",
+        ]
+        for i in range(count):
+            svc = services[i % len(services)]
+            names.append(f"{svc}-{i:05d}-{'abcdef'[i%6]}x{i%99:02d}")
+        return names
+
+    def test_exact_substring_under_5ms(self):
+        import time
+        from core.resolver import _fuzzy_match
+
+        names = self._generate_pods(10000)
+        start = time.time()
+        result = _fuzzy_match("payment-api", names)
+        elapsed_ms = (time.time() - start) * 1000
+
+        assert result is not None
+        assert len(result) <= 8
+        assert elapsed_ms < 50, f"Took {elapsed_ms:.1f}ms (limit: 50ms)"
+
+    def test_specific_pod_under_5ms(self):
+        import time
+        from core.resolver import _fuzzy_match
+
+        names = self._generate_pods(10000)
+        target = names[5555]  # Pick a specific pod
+        start = time.time()
+        result = _fuzzy_match(target, names)
+        elapsed_ms = (time.time() - start) * 1000
+
+        assert result is not None
+        assert target in result
+        assert elapsed_ms < 5, f"Took {elapsed_ms:.1f}ms (limit: 5ms)"
+
+    def test_no_match_under_50ms(self):
+        import time
+        from core.resolver import _fuzzy_match
+
+        names = self._generate_pods(10000)
+        start = time.time()
+        result = _fuzzy_match("zzz-nonexistent-xyz", names)
+        elapsed_ms = (time.time() - start) * 1000
+
+        assert elapsed_ms < 50, f"Took {elapsed_ms:.1f}ms (limit: 50ms)"
+
+    def test_short_query_under_50ms(self):
+        import time
+        from core.resolver import _fuzzy_match
+
+        names = self._generate_pods(10000)
+        start = time.time()
+        result = _fuzzy_match("pay", names)
+        elapsed_ms = (time.time() - start) * 1000
+
+        assert result is not None
+        assert len(result) <= 8
+        assert elapsed_ms < 50, f"Took {elapsed_ms:.1f}ms (limit: 50ms)"
+
+    def test_results_never_exceed_max(self):
+        from core.resolver import _fuzzy_match, MAX_SELECTOR_CHOICES
+
+        names = self._generate_pods(10000)
+
+        queries = [
+            "payment", "billing", "auth", "customer",
+            "order", "cache", "queue", "search",
+        ]
+        for q in queries:
+            result = _fuzzy_match(q, names)
+            if result:
+                assert len(result) <= MAX_SELECTOR_CHOICES, (
+                    f"Query '{q}' returned {len(result)} results "
+                    f"(max: {MAX_SELECTOR_CHOICES})"
+                )
+
+    def test_hyphenated_target_preferred(self):
+        from core.resolver import _fuzzy_match
+
+        names = self._generate_pods(10000)
+        result = _fuzzy_match("billing-svc", names)
+
+        assert result is not None
+        assert all("billing-svc" in r for r in result)
