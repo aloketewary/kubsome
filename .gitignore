@@ -25,3 +25,7 @@ ui/.angular/
 
 # State
 ~/.kubeasy_state.json
+
+# Build Artifacts
+api/ui_dist/
+*.log

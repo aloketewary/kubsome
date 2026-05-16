@@ -4,6 +4,7 @@ from concurrent.futures import ThreadPoolExecutor
 from core.collectors.pods import collect_pods
 from core.collectors.nodes import collect_nodes
 from core.collectors.deployments import collect_deployments
+from core.collectors.cost import resource_recommendations
 from core.context import context
 
 router = APIRouter(tags=["overview"])
@@ -11,14 +12,16 @@ router = APIRouter(tags=["overview"])
 
 @router.get("/overview")
 def get_overview():
-    with ThreadPoolExecutor(max_workers=3) as executor:
+    with ThreadPoolExecutor(max_workers=4) as executor:
         f_pods = executor.submit(collect_pods)
         f_nodes = executor.submit(collect_nodes)
         f_deps = executor.submit(collect_deployments)
+        f_recs = executor.submit(resource_recommendations)
 
         pods = f_pods.result()
         nodes = f_nodes.result()
         deployments = f_deps.result()
+        recs = f_recs.result()
 
     healthy_statuses = {"Running", "Succeeded", "Completed"}
     pod_health = {
@@ -41,12 +44,16 @@ def get_overview():
         "unavailable": sum(1 for d in deployments if d["available"] < d["desired"]),
     }
 
+    # Growth: pick top recommendation
+    top_rec = recs[0] if recs else None
+
     return {
         "context": context.current_context,
         "namespace": context.namespace,
         "pods": pod_health,
         "nodes": node_health,
         "deployments": dep_health,
+        "top_recommendation": top_rec,
     }
 
 
