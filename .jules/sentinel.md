@@ -17,3 +17,8 @@
 **Vulnerability:** Core utility functions `get_pods` and `get_pod_names` in `core/k8s.py` were using `shell=True` with f-strings containing user-influenced context and namespace names.
 **Learning:** Hardening API routes is insufficient if the underlying core utilities still use vulnerable patterns. Security must be implemented at the lowest possible level of command execution.
 **Prevention:** Standardize on list-based arguments and `shell=False` for all `subprocess` calls in core utility modules.
+
+## 2026-05-24 - [HIGH] Path Traversal in Incident Report Endpoint
+**Vulnerability:** The `incident_report` endpoint in `api/routes/operations.py` performed a prefix check on a user-provided path without first resolving it. This allowed attackers to bypass the check using `..` (parent directory) segments.
+**Learning:** `startswith()` checks on un-canonicalized path strings are insufficient. Paths must be resolved to their absolute form before any validation or use.
+**Prevention:** Always use `Path(path).resolve()` on both the base directory and the user-provided path. Use `target_path.is_relative_to(base_dir)` (Python 3.9+) or similar path-aware logic for validation.
