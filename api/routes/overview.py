@@ -5,6 +5,7 @@ from core.collectors.pods import collect_pods
 from core.collectors.nodes import collect_nodes
 from core.collectors.deployments import collect_deployments
 from core.context import context
+from core.k8s import get_raw_resources
 
 router = APIRouter(tags=["overview"])
 
@@ -53,17 +54,27 @@ def get_overview():
 @router.get("/overview/{ctx}/{ns}")
 def get_overview_for(ctx: str, ns: str, app: str = None):
     """Get overview for a specific context/namespace, optionally filtered by app."""
-    import subprocess
-    import json
+    # Cluster/namespace level — parallel fetch
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        # Submit all tasks first for true parallelism
+        f_pods = executor.submit(get_raw_resources, "pods", ctx, ns, selector=f"app={app}" if app else None)
+        f_deps = executor.submit(get_raw_resources, "deployments", ctx, ns)
+        f_events = executor.submit(get_raw_resources, "events", ctx, ns)
 
-    # Pods
-    cmd = ["kubectl", "--context", ctx, "get", "pods", "-n", ns, "-o", "json"]
-    if app:
-        cmd += ["-l", f"app={app}"]
-    r = subprocess.run(cmd, capture_output=True, text=True)
-    pods = []
-    if r.returncode == 0:
-        pods = json.loads(r.stdout).get("items", [])
+        f_nodes = None
+        if not app:
+            f_nodes = executor.submit(get_raw_resources, "nodes", ctx)
+
+        # Retrieve results
+        pods_data = f_pods.result()
+        deps_data = f_deps.result()
+        events_data = f_events.result()
+        nodes_data = f_nodes.result() if f_nodes else {"items": []}
+
+    pods = pods_data.get("items", [])
+    deps = deps_data.get("items", [])
+    raw_events = events_data.get("items", [])
+    nodes = nodes_data.get("items", [])
 
     total_restarts = 0
     for p in pods:
@@ -79,42 +90,35 @@ def get_overview_for(ctx: str, ns: str, app: str = None):
         "restarts": total_restarts,
     }
 
-    # App-specific: get deployment replicas
+    # App-specific logic
     if app:
-        r = subprocess.run(
-            ["kubectl", "--context", ctx, "get", "deployment", app, "-n", ns, "-o", "json"],
-            capture_output=True, text=True
-        )
+        # Use pre-fetched deps_data to find target app
+        target_dep = next((d for d in deps if d["metadata"]["name"] == app), {})
         app_info = {}
-        if r.returncode == 0:
-            dep = json.loads(r.stdout)
-            desired = dep.get("spec", {}).get("replicas", 0)
-            available = dep.get("status", {}).get("availableReplicas", 0)
+        if target_dep:
+            desired = target_dep.get("spec", {}).get("replicas", 0)
+            available = target_dep.get("status", {}).get("availableReplicas", 0)
             app_info = {
                 "desired": desired,
                 "available": available,
-                "ready": dep.get("status", {}).get("readyReplicas", 0),
-                "image": (dep.get("spec", {}).get("template", {}).get("spec", {}).get("containers", [{}])[0].get("image", "")),
+                "ready": target_dep.get("status", {}).get("readyReplicas", 0),
+                "image": (target_dep.get("spec", {}).get("template", {}).get("spec", {}).get("containers", [{}])[0].get("image", "")),
             }
 
         # Events filtered to app pods
-        r = subprocess.run(
-            ["kubectl", "--context", ctx, "get", "events", "-n", ns,
-             "--field-selector", f"involvedObject.kind=Pod",
-             "--sort-by=.lastTimestamp", "-o", "json"],
-            capture_output=True, text=True
-        )
         events = []
-        if r.returncode == 0:
-            for item in json.loads(r.stdout).get("items", [])[-50:]:
-                obj_name = item.get("involvedObject", {}).get("name", "")
-                if app.lower() in obj_name.lower():
-                    events.append({
-                        "type": item.get("type", "Normal"),
-                        "reason": item.get("reason", ""),
-                        "object": obj_name,
-                        "message": item.get("message", ""),
-                    })
+        # Sort by lastTimestamp descending
+        sorted_events = sorted(raw_events, key=lambda x: x.get("lastTimestamp") or "", reverse=True)
+        for item in sorted_events[:50]:
+            obj_kind = item.get("involvedObject", {}).get("kind", "")
+            obj_name = item.get("involvedObject", {}).get("name", "")
+            if obj_kind == "Pod" and app.lower() in obj_name.lower():
+                events.append({
+                    "type": item.get("type", "Normal"),
+                    "reason": item.get("reason", ""),
+                    "object": obj_name,
+                    "message": item.get("message", ""),
+                })
 
         return {
             "context": ctx, "namespace": ns, "app": app,
@@ -124,31 +128,7 @@ def get_overview_for(ctx: str, ns: str, app: str = None):
             "events": events,
         }
 
-    # Cluster/namespace level — parallel fetch
-    from concurrent.futures import ThreadPoolExecutor
-
-    def _get_nodes():
-        r = subprocess.run(["kubectl", "--context", ctx, "get", "nodes", "-o", "json"], capture_output=True, text=True)
-        return json.loads(r.stdout).get("items", []) if r.returncode == 0 else []
-
-    def _get_deps():
-        r = subprocess.run(["kubectl", "--context", ctx, "get", "deployments", "-n", ns, "-o", "json"], capture_output=True, text=True)
-        return json.loads(r.stdout).get("items", []) if r.returncode == 0 else []
-
-    def _get_events():
-        r = subprocess.run(["kubectl", "--context", ctx, "get", "events", "-n", ns, "--sort-by=.lastTimestamp", "-o", "json"], capture_output=True, text=True)
-        if r.returncode != 0:
-            return []
-        return [
-            {"type": i.get("type", "Normal"), "reason": i.get("reason", ""), "object": i.get("involvedObject", {}).get("name", ""), "message": i.get("message", "")}
-            for i in json.loads(r.stdout).get("items", [])[-50:]
-        ]
-
-    with ThreadPoolExecutor(max_workers=3) as ex:
-        nodes = ex.submit(_get_nodes).result()
-        deps = ex.submit(_get_deps).result()
-        events = ex.submit(_get_events).result()
-
+    # Cluster level formatting
     node_health = {
         "healthy": sum(1 for n in nodes if any(c["type"] == "Ready" and c["status"] == "True" for c in n["status"].get("conditions", []))),
         "warning": sum(1 for n in nodes if not any(c["type"] == "Ready" and c["status"] == "True" for c in n["status"].get("conditions", []))),
@@ -161,6 +141,13 @@ def get_overview_for(ctx: str, ns: str, app: str = None):
         "warning": 0, "critical": 0,
     }
 
+    # Format events
+    sorted_events = sorted(raw_events, key=lambda x: x.get("lastTimestamp") or "", reverse=True)
+    events = [
+        {"type": i.get("type", "Normal"), "reason": i.get("reason", ""), "object": i.get("involvedObject", {}).get("name", ""), "message": i.get("message", "")}
+        for i in sorted_events[:50]
+    ]
+
     return {
         "context": ctx, "namespace": ns,
         "mode": "cluster",
@@ -172,15 +159,8 @@ def get_overview_for(ctx: str, ns: str, app: str = None):
 @router.get("/list-apps/{ctx}/{ns}")
 def get_apps_for(ctx: str, ns: str):
     """List deployments for a specific context/namespace."""
-    import subprocess
-    import json
-    r = subprocess.run(
-        ["kubectl", "--context", ctx, "get", "deployments", "-n", ns, "-o", "json"],
-        capture_output=True, text=True
-    )
-    if r.returncode != 0:
-        return {"deployments": []}
-    items = json.loads(r.stdout).get("items", [])
+    data = get_raw_resources("deployments", ctx, ns)
+    items = data.get("items", [])
     return {
         "deployments": [
             {"name": d["metadata"]["name"]}
@@ -192,17 +172,10 @@ def get_apps_for(ctx: str, ns: str):
 @router.get("/monitor/apps")
 def get_monitor_apps(ctx: str = "", ns: str = ""):
     """List deployments using query params (handles special chars in context)."""
-    import subprocess
-    import json
     if not ctx or not ns:
         return {"deployments": []}
-    r = subprocess.run(
-        ["kubectl", "--context", ctx, "get", "deployments", "-n", ns, "-o", "json"],
-        capture_output=True, text=True
-    )
-    if r.returncode != 0:
-        return {"deployments": []}
-    items = json.loads(r.stdout).get("items", [])
+    data = get_raw_resources("deployments", ctx, ns)
+    items = data.get("items", [])
     return {
         "deployments": [
             {"name": d["metadata"]["name"]}
