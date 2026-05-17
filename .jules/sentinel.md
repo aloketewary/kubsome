@@ -17,3 +17,8 @@
 **Vulnerability:** Core utility functions `get_pods` and `get_pod_names` in `core/k8s.py` were using `shell=True` with f-strings containing user-influenced context and namespace names.
 **Learning:** Hardening API routes is insufficient if the underlying core utilities still use vulnerable patterns. Security must be implemented at the lowest possible level of command execution.
 **Prevention:** Standardize on list-based arguments and `shell=False` for all `subprocess` calls in core utility modules.
+
+## 2026-05-17 - [HIGH] Path Traversal Bypass via Unresolved Paths
+**Vulnerability:** Path validation using `str(file).startswith(base_dir)` was bypassed using `..` sequences because the path was not resolved before comparison.
+**Learning:** String-based prefix checks are insufficient for path security. `/base/path/../etc/passwd` still "starts with" `/base/path` as a string.
+**Prevention:** Always use `Path.resolve()` to normalize paths and `Path.is_relative_to()` (or equivalent resolved path comparison) to enforce directory boundaries.
