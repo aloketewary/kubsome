@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy } from '@angular/core';
 import { Router } from '@angular/router';
 import { TagModule } from 'primeng/tag';
 import { ButtonModule } from 'primeng/button';
@@ -24,14 +24,17 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
         <div class="page-header">
       <div>
         <h1>Deployments</h1>
-        <p class="subtitle">{{ deployments.length }} deployments in namespace</p>
+        <p class="subtitle">{{ deployments.length }} deployments in namespace · {{ lastUpdated }}</p>
       </div>
       <div class="header-actions">
+        <button class="ar-btn" [class.ar-active]="autoRefresh" (click)="toggleAutoRefresh()" [pTooltip]="autoRefresh ? 'Auto-refresh on (30s)' : 'Auto-refresh off'">
+          <i class="pi" [class.pi-sync]="autoRefresh" [class.pi-pause]="!autoRefresh"></i>
+        </button>
         <div class="search-wrap">
           <i class="pi pi-search"></i>
           <input pInputText [(ngModel)]="searchQuery" placeholder="Filter..." (ngModelChange)="filter()" />
         </div>
-        <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="refresh()" pTooltip="Refresh"></button>
+        <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="refresh()" pTooltip="Refresh" [loading]="loading"></button>
       </div>
     </div>
 
@@ -156,6 +159,15 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     .page-header h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.03em; }
     .subtitle { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
     .header-actions { display: flex; align-items: center; gap: 8px; }
+    .ar-btn {
+      width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--border);
+      background: var(--bg-card); color: var(--text-muted); cursor: pointer; transition: all 0.15s;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .ar-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .ar-btn.ar-active { border-color: var(--success); color: var(--success); background: var(--success-subtle); }
+    .ar-btn.ar-active i { animation: spin 2s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
     .search-wrap { position: relative; }
     .search-wrap i { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 12px; }
     .search-wrap input { padding-left: 30px !important; width: 160px; }
@@ -241,13 +253,17 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     .empty-state i { font-size: 16px; }
   `],
 })
-export class DeploymentsComponent implements OnInit {
+export class DeploymentsComponent implements OnInit, OnDestroy {
   private api = inject(ApiService);
   private router = inject(Router);
   private confirmService = inject(ConfirmService);
   deployments: Deployment[] = [];
   filtered: Deployment[] = [];
   searchQuery = '';
+  loading = false;
+  autoRefresh = true;
+  lastUpdated = '';
+  private refreshTimer: any;
 
   rolloutVisible = false;
   rolloutName = '';
@@ -290,9 +306,12 @@ export class DeploymentsComponent implements OnInit {
   }
 
   refresh() {
+    this.loading = true;
     this.api.getDeployments().subscribe(res => {
       this.deployments = res.deployments;
       this.filter();
+      this.loading = false;
+      this.lastUpdated = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     });
   }
 
@@ -378,5 +397,21 @@ export class DeploymentsComponent implements OnInit {
     });
   }
 
-  ngOnInit() { this.refresh(); }
+  ngOnInit() {
+    this.refresh();
+    this.startAutoRefresh();
+  }
+
+  ngOnDestroy() { clearInterval(this.refreshTimer); }
+
+  toggleAutoRefresh() {
+    this.autoRefresh = !this.autoRefresh;
+    if (this.autoRefresh) this.startAutoRefresh();
+    else clearInterval(this.refreshTimer);
+  }
+
+  private startAutoRefresh() {
+    clearInterval(this.refreshTimer);
+    this.refreshTimer = setInterval(() => this.refresh(), 30000);
+  }
 }

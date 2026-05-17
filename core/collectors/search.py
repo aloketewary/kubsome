@@ -47,20 +47,20 @@ def search_resources(query):
 
 
 def _get_names(resource_type):
-    cmd = (
-        f"kubectl --context {context.current_context} "
-        f"get {resource_type} "
-        f"-n {context.namespace} "
-        f"-o jsonpath='{{.items[*].metadata.name}}'"
-    )
+    cmd = [
+        "kubectl", "--context", str(context.current_context or ""),
+        "get", resource_type,
+        "-n", str(context.namespace),
+        "-o", "jsonpath={.items[*].metadata.name}"
+    ]
 
     result = subprocess.run(
-        cmd, shell=True,
+        cmd,
         capture_output=True, text=True
     )
 
     if result.returncode != 0:
         return []
 
-    names = result.stdout.strip("'").split()
+    names = result.stdout.strip().split()
     return [n for n in names if n]

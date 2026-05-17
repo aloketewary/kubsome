@@ -6,20 +6,22 @@ import subprocess
 import json
 
 from core.context import context
+from core.cache import cached
 
 
+@cached(ttl=10)
 def list_cronjobs():
     """List all cronjobs in namespace."""
     ns = context.namespace
     ctx = context.current_context
 
-    cmd = (
-        f"kubectl --context {ctx} "
-        f"get cronjobs -n {ns} -o json"
-    )
+    cmd = [
+        "kubectl", "--context", str(ctx or ""),
+        "get", "cronjobs", "-n", str(ns), "-o", "json"
+    ]
 
     r = subprocess.run(
-        cmd, shell=True,
+        cmd,
         capture_output=True, text=True
     )
 
@@ -50,18 +52,19 @@ def list_cronjobs():
     return cronjobs
 
 
+@cached(ttl=10)
 def list_jobs(limit=20):
     """List recent jobs."""
     ns = context.namespace
     ctx = context.current_context
 
-    cmd = (
-        f"kubectl --context {ctx} "
-        f"get jobs -n {ns} -o json"
-    )
+    cmd = [
+        "kubectl", "--context", str(ctx or ""),
+        "get", "jobs", "-n", str(ns), "-o", "json"
+    ]
 
     r = subprocess.run(
-        cmd, shell=True,
+        cmd,
         capture_output=True, text=True
     )
 
@@ -140,15 +143,15 @@ def trigger_cronjob(name):
 
     job_name = f"{name}-manual-trigger"
 
-    cmd = (
-        f"kubectl --context {ctx} "
-        f"create job {job_name} "
-        f"--from=cronjob/{name} "
-        f"-n {ns}"
-    )
+    cmd = [
+        "kubectl", "--context", str(ctx or ""),
+        "create", "job", job_name,
+        f"--from=cronjob/{name}",
+        "-n", str(ns)
+    ]
 
     r = subprocess.run(
-        cmd, shell=True,
+        cmd,
         capture_output=True, text=True
     )
 

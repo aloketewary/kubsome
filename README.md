@@ -29,6 +29,12 @@ git clone https://github.com/aloketewary/kubsome.git && cd kubsome && ./install.
 docker run -p 8000:8000 -v ~/.kube:/root/.kube ghcr.io/aloketewary/kubsome:latest
 ```
 
+### Homebrew (macOS)
+```bash
+brew tap aloketewary/kubsome https://github.com/aloketewary/kubsome.git
+brew install kubsome
+```
+
 ### Helm
 ```bash
 helm install kubsome deploy/helm/kubsome/ -n kubsome --create-namespace
@@ -99,7 +105,17 @@ pins                             # List saved queries
 # Incident Mode
 incident start API outage        # Start tracking
 note found OOM in payment        # Add observation
+incident share                   # Share to Slack/Teams
 incident stop                    # Close & export report
+
+# Growth (v1.12)
+doctor                           # Pre-flight diagnostics
+policy                           # Check cluster guardrails
+cost-trend                       # Cost forecast + savings
+stats                            # Usage analytics
+schedule add daily "0 8 * * *" scorecard,export
+plugin install <name>            # Install from registry
+logs pod --regex "OOM" --since 1h
 ```
 
 ## Features
@@ -126,7 +142,16 @@ incident stop                    # Close & export report
 - **Export** — Markdown/JSON reports for sharing
 - **Audit log** — tracks all destructive operations
 - **Plugin system** — extend with custom commands
-- **114 tests** — comprehensive test coverage
+- **Plugin marketplace** — install from registry (`plugin install <name>`)
+- **Policy engine** — define guardrails in `.kubsome/policies.yaml`
+- **Scheduled workflows** — cron-like recurring commands
+- **Cost forecasting** — projected spend based on usage trend
+- **Incident sharing** — export to Slack/Teams/PagerDuty/OpsGenie
+- **Team runbooks** — Git-synced `.kubsome/runbooks/` directory
+- **AI follow-ups** — contextual next-question suggestions
+- **Log regex search** — `logs <pod> --regex "pattern" --since 1h`
+- **7-day metrics history** — usage trends for right-sizing
+- **171 tests** — comprehensive test coverage
 
 ## Requirements
 
@@ -173,17 +198,21 @@ core/diagnostics/    → Root cause engine
 core/remediation.py  → Auto-fix with safety guards
 core/watch_alert.py  → Background condition monitoring
 core/cache.py        → TTL cache for kubectl calls
-api/                 → FastAPI REST + WebSocket backend
-ui/                  → Angular 20 + PrimeNG web dashboard
+core/scheduler.py    → Cron-like recurring commands
+core/policy.py       → Cluster guardrail enforcement
+core/telemetry.py    → Local usage analytics
+api/                 → FastAPI REST + WebSocket backend (126 routes)
+ui/                  → Angular 20 + PrimeNG web dashboard (38 pages)
 deploy/helm/         → Helm chart for in-cluster deployment
-tests/               → 114 tests
+deploy/krew/         → kubectl plugin for krew
+tests/               → 171 tests
 ```
 
 ## Web UI
 
 Access at `http://localhost:8000/app` after `kubsome serve`.
 
-Pages: Dashboard, Monitor, Pods, Events, Metrics, Deployments, Logs, Jobs, RBAC, Network, Resources, Scorecard, Cost, Runbooks, Compare, AI Assistant, Terminal, Settings.
+Pages: Dashboard, Monitor, Pods, Events, Metrics, Deployments, Logs, Jobs, RBAC, Network, Resources, Scorecard, Cost, Runbooks, Compare, AI Assistant, Terminal, Settings, Audit, Policy, Health, Schedules.
 
 See [docs/web-ui.md](docs/web-ui.md) for detailed page descriptions.
 

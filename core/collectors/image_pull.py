@@ -74,11 +74,11 @@ def check_image_pull_secrets(pod_name=None):
 
 def _get_all_secrets(ctx, ns):
     """Get all secrets with type and registry info."""
-    cmd = (
-        f"kubectl --context {ctx} get secrets -n {ns} "
-        f"-o json"
-    )
-    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+    cmd = [
+        "kubectl", "--context", str(ctx or ""),
+        "get", "secrets", "-n", str(ns), "-o", "json"
+    ]
+    result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
         return {}
 
@@ -126,20 +126,20 @@ def _extract_registry(image):
 def _get_pod_specs(ctx, ns, pod_name=None):
     """Get pod specs."""
     if pod_name:
-        cmd = (
-            f"kubectl --context {ctx} get pod {pod_name} "
-            f"-n {ns} -o json"
-        )
-        result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+        cmd = [
+            "kubectl", "--context", str(ctx or ""),
+            "get", "pod", pod_name, "-n", str(ns), "-o", "json"
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode != 0:
             return []
         return [json.loads(result.stdout)]
     else:
-        cmd = (
-            f"kubectl --context {ctx} get pods "
-            f"-n {ns} -o json"
-        )
-        result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+        cmd = [
+            "kubectl", "--context", str(ctx or ""),
+            "get", "pods", "-n", str(ns), "-o", "json"
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode != 0:
             return []
         return json.loads(result.stdout).get("items", [])
@@ -161,11 +161,11 @@ def _get_sa_pull_secrets(ctx, ns, pods):
 
     sa_secrets = {}
     for sa_name in sa_names:
-        cmd = (
-            f"kubectl --context {ctx} get serviceaccount {sa_name} "
-            f"-n {ns} -o json"
-        )
-        result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+        cmd = [
+            "kubectl", "--context", str(ctx or ""),
+            "get", "serviceaccount", sa_name, "-n", str(ns), "-o", "json"
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode != 0:
             continue
         sa_data = json.loads(result.stdout)

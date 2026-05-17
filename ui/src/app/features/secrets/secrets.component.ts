@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { TagModule } from 'primeng/tag';
 import { ButtonModule } from 'primeng/button';
@@ -17,9 +17,9 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
         <div class="page-header">
       <div>
         <h1>Pull Secrets</h1>
-        <p class="subtitle">Image registry credential verification</p>
+        <p class="subtitle">Image registry credential verification · {{ lastScanned }}</p>
       </div>
-      <button pButton icon="pi pi-refresh" label="Scan" class="p-button-outlined p-button-sm" (click)="load()"></button>
+      <button pButton icon="pi pi-refresh" label="Scan" class="p-button-outlined p-button-sm" (click)="load()" [loading]="loading"></button>
     </div>
 
     @if (data) {
@@ -262,20 +262,31 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     @keyframes spin { to { transform: rotate(360deg); } }
   `],
 })
-export class SecretsComponent implements OnInit {
+export class SecretsComponent implements OnInit, OnDestroy {
   private http = inject(HttpClient);
   data: any = null;
   saEntries: { name: string; secrets: string[] }[] = [];
+  loading = false;
+  lastScanned = '';
+  private refreshTimer: any;
 
-  ngOnInit() { this.load(); }
+  ngOnInit() {
+    this.load();
+    this.refreshTimer = setInterval(() => this.load(), 60000);
+  }
+
+  ngOnDestroy() { clearInterval(this.refreshTimer); }
 
   load() {
+    this.loading = true;
     this.data = null;
     this.http.get<any>('/api/image-pull-secrets').subscribe(res => {
       this.data = res;
       this.saEntries = Object.entries(res.service_account_secrets || {}).map(
         ([name, secrets]) => ({ name, secrets: secrets as string[] })
       );
+      this.loading = false;
+      this.lastScanned = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     });
   }
 

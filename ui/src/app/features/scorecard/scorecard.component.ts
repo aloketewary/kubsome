@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
@@ -17,9 +17,14 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
         <div class="page-header">
       <div>
         <h1>Cluster Scorecard</h1>
-        <p class="subtitle">Health grade across availability, stability, resources & operations</p>
+        <p class="subtitle">Health grade across availability, stability, resources & operations · {{ lastUpdated }}</p>
       </div>
-      <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="refresh()"></button>
+      <div class="header-actions">
+        <button class="ar-btn" [class.ar-active]="autoRefresh" (click)="toggleAutoRefresh()">
+          <i class="pi" [class.pi-sync]="autoRefresh" [class.pi-pause]="!autoRefresh"></i>
+        </button>
+        <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="refresh()" [loading]="loading"></button>
+      </div>
       <app-page-info title="Scorecard" description="Cluster health graded A-F across availability, stability, resources, and operations. Refreshes on demand."
         [tips]="['Grade A-B = healthy, C = fair, D-F = needs attention', 'Click Refresh to re-evaluate', 'Recommendations link to CLI commands']"
         [commands]="['scorecard', 'check', 'security']" />
@@ -87,6 +92,15 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px; }
     .page-header h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.03em; }
     .subtitle { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+    .header-actions { display: flex; align-items: center; gap: 8px; }
+    .ar-btn {
+      width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--border);
+      background: var(--bg-card); color: var(--text-muted); cursor: pointer; transition: all 0.15s;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .ar-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .ar-btn.ar-active { border-color: var(--success); color: var(--success); background: var(--success-subtle); }
+    .ar-btn.ar-active i { animation: spin 2s linear infinite; }
 
     .grade-hero {
       display: flex; align-items: center; gap: 24px;
@@ -142,20 +156,45 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     @media (max-width: 768px) { .cat-grid { grid-template-columns: 1fr; } }
   `],
 })
-export class ScorecardComponent implements OnInit {
+export class ScorecardComponent implements OnInit, OnDestroy {
   private http = inject(HttpClient);
   data: any = null;
   categories: { key: string; data: any }[] = [];
+  loading = false;
+  autoRefresh = true;
+  lastUpdated = '';
+  private refreshTimer: any;
 
-  ngOnInit() { this.refresh(); }
+  ngOnInit() {
+    this.refresh();
+    this.startAutoRefresh();
+  }
+
+  ngOnDestroy() { clearInterval(this.refreshTimer); }
+
+  toggleAutoRefresh() {
+    this.autoRefresh = !this.autoRefresh;
+    if (this.autoRefresh) this.startAutoRefresh();
+    else clearInterval(this.refreshTimer);
+  }
+
+  private startAutoRefresh() {
+    clearInterval(this.refreshTimer);
+    this.refreshTimer = setInterval(() => this.refresh(), 60000);
+  }
 
   refresh() {
+    this.loading = true;
     this.http.get<any>('/api/scorecard').subscribe({
       next: (res) => {
         this.data = res;
-        this.categories = Object.entries(res.categories || {}).map(([key, data]) => ({ key, data }));
+        this.categories = Object.entries(res.categories || {})
+          .map(([key, data]) => ({ key, data }))
+          .sort((a, b) => (a.data as any).score - (b.data as any).score);
+        this.loading = false;
+        this.lastUpdated = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
       },
-      error: () => { this.data = { overall_grade: 'F', overall_score: 0, summary: 'Cannot reach cluster', categories: {}, recommendations: [] }; this.categories = []; },
+      error: () => { this.data = { overall_grade: 'F', overall_score: 0, summary: 'Cannot reach cluster', categories: {}, recommendations: [] }; this.categories = []; this.loading = false; },
     });
   }
 

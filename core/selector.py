@@ -1,5 +1,13 @@
+"""
+Interactive Selector — choose from fuzzy matches.
+Caps choices at 8 for usability in large clusters.
+"""
+
 import sys
 import questionary
+
+
+MAX_CHOICES = 8
 
 
 def _is_interactive():
@@ -8,35 +16,58 @@ def _is_interactive():
 
 
 def choose_pod(matches):
+    if not matches:
+        return None
     if len(matches) == 1:
         return matches[0]
     if not _is_interactive():
         return matches[0]
-    return questionary.select(
-        "Select Pod:",
-        choices=matches
+
+    choices = matches[:MAX_CHOICES]
+    if len(matches) > MAX_CHOICES:
+        choices.append(
+            f"... ({len(matches) - MAX_CHOICES} more — "
+            f"type a longer query to narrow)"
+        )
+
+    selected = questionary.select(
+        f"Select Pod ({len(matches)} matches):",
+        choices=choices
     ).ask()
+
+    # If user selected the "more" hint, return first match
+    if selected and selected.startswith("..."):
+        return matches[0]
+    return selected
 
 
 def choose_deployment(matches):
+    if not matches:
+        return None
     if len(matches) == 1:
         return matches[0]
     if not _is_interactive():
         return matches[0]
+
+    choices = matches[:MAX_CHOICES]
     return questionary.select(
-        "Select Deployment:",
-        choices=matches
+        f"Select Deployment ({len(matches)} matches):",
+        choices=choices
     ).ask()
 
 
 def choose_cronjob(matches):
+    if not matches:
+        return None
     if len(matches) == 1:
         return matches[0]
     if not _is_interactive():
         return matches[0]
+
+    choices = matches[:MAX_CHOICES]
     return questionary.select(
-        "Select CronJob:",
-        choices=matches
+        f"Select CronJob ({len(matches)} matches):",
+        choices=choices
     ).ask()
 
 
@@ -57,7 +88,7 @@ def choose_context(contexts):
 
     selected = questionary.select(
         "Select Context:",
-        choices=labels
+        choices=labels[:MAX_CHOICES]
     ).ask()
 
     for ctx in contexts:
