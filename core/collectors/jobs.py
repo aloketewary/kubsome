@@ -15,13 +15,13 @@ def list_cronjobs():
     ns = context.namespace
     ctx = context.current_context
 
-    cmd = (
-        f"kubectl --context {ctx} "
-        f"get cronjobs -n {ns} -o json"
-    )
+    cmd = [
+        "kubectl", "--context", str(ctx or ""),
+        "get", "cronjobs", "-n", str(ns), "-o", "json"
+    ]
 
     r = subprocess.run(
-        cmd, shell=True,
+        cmd,
         capture_output=True, text=True
     )
 
@@ -58,13 +58,13 @@ def list_jobs(limit=20):
     ns = context.namespace
     ctx = context.current_context
 
-    cmd = (
-        f"kubectl --context {ctx} "
-        f"get jobs -n {ns} -o json"
-    )
+    cmd = [
+        "kubectl", "--context", str(ctx or ""),
+        "get", "jobs", "-n", str(ns), "-o", "json"
+    ]
 
     r = subprocess.run(
-        cmd, shell=True,
+        cmd,
         capture_output=True, text=True
     )
 
@@ -143,15 +143,15 @@ def trigger_cronjob(name):
 
     job_name = f"{name}-manual-trigger"
 
-    cmd = (
-        f"kubectl --context {ctx} "
-        f"create job {job_name} "
-        f"--from=cronjob/{name} "
-        f"-n {ns}"
-    )
+    cmd = [
+        "kubectl", "--context", str(ctx or ""),
+        "create", "job", job_name,
+        f"--from=cronjob/{name}",
+        "-n", str(ns)
+    ]
 
     r = subprocess.run(
-        cmd, shell=True,
+        cmd,
         capture_output=True, text=True
     )
 

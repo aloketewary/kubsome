@@ -18,6 +18,16 @@
 **Learning:** Hardening API routes is insufficient if the underlying core utilities still use vulnerable patterns. Security must be implemented at the lowest possible level of command execution.
 **Prevention:** Standardize on list-based arguments and `shell=False` for all `subprocess` calls in core utility modules.
 
+## 2026-05-24 - [CRITICAL] Command Injection in Auto-Remediation via Shell=True
+**Vulnerability:** The auto-remediation module (`core/remediation.py`) was using `shell=True` with string-formatted commands containing user-controlled pod names and namespace/context strings.
+**Learning:** Even internal "safe" actions like restarts and deletions can be exploited if the resource names are manipulated to include shell metacharacters (e.g., `; rm -rf /`).
+**Prevention:** Eliminate `shell=True` and use list-based arguments for all `subprocess` calls. When redirecting stderr to null in list-mode, use `stderr=subprocess.DEVNULL` and avoid `capture_output=True` if explicit redirection is needed.
+
+## 2026-06-01 - [CRITICAL] Command Injection in Log Collectors
+**Vulnerability:** Multiple functions in `core/collectors/logs.py` were using `shell=True` with f-strings containing pod names, container names, and contexts, allowing for arbitrary command execution.
+**Learning:** Even internal collectors can be vectors for command injection if they ingest user-influenced data (like pod names from the UI). Relying on `shell=True` for convenience in command construction is a common but dangerous pattern.
+**Prevention:** Avoid `shell=True` and use list-based arguments for all `subprocess` calls. Removed shell-specific quoting (like `.strip("'")`) when moving to list-based arguments as they are no longer needed.
+
 ## 2026-05-24 - [HIGH] Path Traversal in Incident Report Endpoint
 **Vulnerability:** The `incident_report` endpoint in `api/routes/operations.py` performed a prefix check on a user-provided path without first resolving it. This allowed attackers to bypass the check using `..` (parent directory) segments.
 **Learning:** `startswith()` checks on un-canonicalized path strings are insufficient. Paths must be resolved to their absolute form before any validation or use.

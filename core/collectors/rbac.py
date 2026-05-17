@@ -18,12 +18,12 @@ def list_role_bindings():
     bindings = []
 
     # Namespace RoleBindings
-    cmd = (
-        f"kubectl --context {ctx} "
-        f"get rolebindings -n {ns} -o json"
-    )
+    cmd = [
+        "kubectl", "--context", str(ctx or ""),
+        "get", "rolebindings", "-n", str(ns), "-o", "json"
+    ]
     r = subprocess.run(
-        cmd, shell=True,
+        cmd,
         capture_output=True, text=True
     )
 
@@ -46,12 +46,12 @@ def list_role_bindings():
             })
 
     # ClusterRoleBindings (that reference this namespace's SAs)
-    cmd2 = (
-        f"kubectl --context {ctx} "
-        f"get clusterrolebindings -o json"
-    )
+    cmd2 = [
+        "kubectl", "--context", str(ctx or ""),
+        "get", "clusterrolebindings", "-o", "json"
+    ]
     r2 = subprocess.run(
-        cmd2, shell=True,
+        cmd2,
         capture_output=True, text=True
     )
 
@@ -90,13 +90,13 @@ def can_i(verb, resource):
     ns = context.namespace
     ctx = context.current_context
 
-    cmd = (
-        f"kubectl --context {ctx} "
-        f"auth can-i {verb} {resource} -n {ns}"
-    )
+    cmd = [
+        "kubectl", "--context", str(ctx or ""),
+        "auth", "can-i", verb, resource, "-n", str(ns)
+    ]
 
     r = subprocess.run(
-        cmd, shell=True,
+        cmd,
         capture_output=True, text=True
     )
 
@@ -121,14 +121,14 @@ def check_permissions(subject, subject_kind="ServiceAccount"):
     for resource in resources:
         perms = {}
         for verb in verbs:
-            cmd = (
-                f"kubectl --context {ctx} "
-                f"auth can-i {verb} {resource} "
-                f"--as=system:{subject_kind.lower()}:{ns}:{subject} "
-                f"-n {ns}"
-            )
+            cmd = [
+                "kubectl", "--context", str(ctx or ""),
+                "auth", "can-i", verb, resource,
+                f"--as=system:{subject_kind.lower()}:{ns}:{subject}",
+                "-n", str(ns)
+            ]
             r = subprocess.run(
-                cmd, shell=True,
+                cmd,
                 capture_output=True, text=True
             )
             perms[verb] = "yes" in r.stdout.lower()
@@ -150,14 +150,14 @@ def list_service_accounts():
     ns = context.namespace
     ctx = context.current_context
 
-    cmd = (
-        f"kubectl --context {ctx} "
-        f"get serviceaccounts -n {ns} "
-        f"-o jsonpath='{{.items[*].metadata.name}}'"
-    )
+    cmd = [
+        "kubectl", "--context", str(ctx or ""),
+        "get", "serviceaccounts", "-n", str(ns),
+        "-o", "jsonpath={.items[*].metadata.name}"
+    ]
     r = subprocess.run(
-        cmd, shell=True,
+        cmd,
         capture_output=True, text=True
     )
-    names = r.stdout.strip("'").split()
+    names = r.stdout.strip().split()
     return [n for n in names if n]

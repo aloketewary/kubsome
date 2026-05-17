@@ -122,13 +122,13 @@ def dependency_health(deployment_name):
 
 def _discover_dependencies(ctx, ns, deployment):
     """Discover dependencies from env vars and service refs."""
-    cmd = (
-        f"kubectl --context {ctx} "
-        f"get deployment {deployment} -n {ns} "
-        f"-o json"
-    )
+    cmd = [
+        "kubectl", "--context", str(ctx or ""),
+        "get", "deployment", deployment, "-n", str(ns),
+        "-o", "json"
+    ]
     result = subprocess.run(
-        cmd, shell=True,
+        cmd,
         capture_output=True, text=True,
         timeout=10,
     )
@@ -178,13 +178,12 @@ def _discover_dependencies(ctx, ns, deployment):
 
 def _check_service(ctx, ns, name):
     """Check if a service exists."""
-    cmd = (
-        f"kubectl --context {ctx} "
-        f"get svc {name} -n {ns} "
-        f"--no-headers 2>/dev/null"
-    )
+    cmd = [
+        "kubectl", "--context", str(ctx or ""),
+        "get", "svc", name, "-n", str(ns), "--no-headers"
+    ]
     result = subprocess.run(
-        cmd, shell=True,
+        cmd,
         capture_output=True, text=True,
         timeout=5,
     )

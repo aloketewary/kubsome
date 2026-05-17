@@ -39,8 +39,7 @@ def safe_kubectl(func):
 def check_kubectl():
     """Verify kubectl is available and configured."""
     result = subprocess.run(
-        "kubectl version --client --short 2>/dev/null || kubectl version --client",
-        shell=True,
+        ["kubectl", "version", "--client"],
         capture_output=True,
         text=True
     )
@@ -50,8 +49,7 @@ def check_kubectl():
 
     # Check if context is set
     result = subprocess.run(
-        "kubectl config current-context",
-        shell=True,
+        ["kubectl", "config", "current-context"],
         capture_output=True,
         text=True
     )
@@ -65,8 +63,7 @@ def check_kubectl():
 def check_cluster_access():
     """Quick connectivity check."""
     result = subprocess.run(
-        "kubectl cluster-info 2>/dev/null",
-        shell=True,
+        ["kubectl", "cluster-info"],
         capture_output=True,
         text=True,
         timeout=5

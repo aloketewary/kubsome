@@ -29,6 +29,12 @@ git clone https://github.com/aloketewary/kubsome.git && cd kubsome && ./install.
 docker run -p 8000:8000 -v ~/.kube:/root/.kube ghcr.io/aloketewary/kubsome:latest
 ```
 
+### Homebrew (macOS)
+```bash
+brew tap aloketewary/kubsome https://github.com/aloketewary/kubsome.git
+brew install kubsome
+```
+
 ### Helm
 ```bash
 helm install kubsome deploy/helm/kubsome/ -n kubsome --create-namespace

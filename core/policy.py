@@ -74,12 +74,13 @@ def check_policies(resource_type="deployment"):
         return {"violations": [], "passed": len(policies), "total": len(policies)}
 
     # Fetch deployments
-    cmd = (
-        f"kubectl --context {context.current_context} "
-        f"get deployments -n {context.namespace} -o json"
-    )
+    cmd = [
+        "kubectl", "--context", str(context.current_context or ""),
+        "get", "deployments",
+        "-n", str(context.namespace), "-o", "json"
+    ]
     result = subprocess.run(
-        cmd, shell=True, capture_output=True, text=True, timeout=15
+        cmd, capture_output=True, text=True, timeout=15
     )
     if result.returncode != 0:
         return {"violations": [], "passed": 0, "total": len(relevant), "error": "Cannot fetch resources"}
