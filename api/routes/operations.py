@@ -80,12 +80,18 @@ def incident_report(path: str = ""):
     """Read an exported incident report JSON file."""
     import json
     from pathlib import Path
-    file = Path(path)
-    if not file.exists() or not str(file).startswith(
-        str(Path.home() / ".kubsome" / "incidents")
-    ):
+
+    # Resolve the target path and base directory to prevent traversal
+    base_dir = (Path.home() / ".kubsome" / "incidents").resolve()
+    try:
+        target_path = Path(path).resolve()
+    except Exception:
+        return {"error": "Invalid path"}
+
+    if not target_path.is_file() or not target_path.is_relative_to(base_dir):
         return {"error": "File not found or access denied"}
-    with open(file, "r") as f:
+
+    with open(target_path, "r") as f:
         return json.load(f)
 
 
@@ -377,6 +383,17 @@ def list_playbooks():
 
 
 # ─── Changelog / Snap ─────────────────────────────────────────────────────────
+
+@router.get("/webhook/placeholders")
+def get_webhook_placeholders():
+    """Return placeholder hint strings for webhook URL inputs."""
+    return {
+        "slack": "https://hooks.slack.com/services/",
+        "teams": "https://outlook.office.com/webhook/",
+        "webex": "https://webexapis.com/v1/webhooks/incoming/",
+        "generic": "https://your-server.com/alert",
+    }
+
 
 @router.post("/webhook/test")
 def test_webhook():

@@ -22,8 +22,7 @@ def execute(command):
     command = _fuzzy_resolve(command)
     try:
         result = subprocess.run(
-            command,
-            shell=True,
+            command.split(),
             capture_output=True,
             text=True
         )

@@ -37,7 +37,9 @@ interface HeatmapCell {
         </div>
         <div class="heatmap-grid">
           @for (cell of heatmapCells; track $index) {
-            <div class="heatmap-cell" [class.hc-low]="cell.level === 1" [class.hc-med]="cell.level === 2" [class.hc-high]="cell.level === 3" [class.hc-warn]="cell.hasWarning" [class.hc-selected]="selectedBucket === $index" [pTooltip]="cell.label" (click)="selectBucket($index)"></div>
+            <div class="heatmap-cell" [class.hc-low]="cell.level === 1" [class.hc-med]="cell.level === 2" [class.hc-high]="cell.level === 3" [class.hc-warn]="cell.hasWarning" [class.hc-selected]="selectedBucket === $index" [pTooltip]="cell.label" (click)="selectBucket($index)"
+                 tabindex="0" role="button" [attr.aria-label]="cell.label" [attr.aria-pressed]="selectedBucket === $index"
+                 (keydown.enter)="selectBucket($index)" (keydown.space)="$event.preventDefault(); selectBucket($index)"></div>
           }
         </div>
         <div class="heatmap-labels">
@@ -158,10 +160,10 @@ interface HeatmapCell {
     }
     .heatmap-cell {
       aspect-ratio: 1; border-radius: 3px; background: var(--bg-elevated);
-      transition: all 0.2s; cursor: default;
+      transition: all 0.2s; cursor: pointer; outline: none;
     }
     .heatmap-cell:hover { transform: scale(1.3); z-index: 1; }
-    .heatmap-cell { cursor: pointer; }
+    .heatmap-cell:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; z-index: 1; }
     .hc-selected { outline: 2px solid var(--accent); outline-offset: 1px; }
     .hc-low { background: var(--accent); opacity: 0.25; }
     .hc-med { background: var(--accent); opacity: 0.55; }
