@@ -32,6 +32,7 @@ class ActionRequest(BaseModel):
 class IncidentStopRequest(BaseModel):
     root_cause: str = ""
     resolution: str = ""
+    lessons_learned: str = ""
 
 @router.post("/incident/start")
 def incident_start(req: IncidentStartRequest):
@@ -42,7 +43,9 @@ def incident_start(req: IncidentStartRequest):
 @router.post("/incident/stop")
 def incident_stop(req: IncidentStopRequest = IncidentStopRequest()):
     from core.incident.manager import stop_incident
-    result = stop_incident(req.root_cause, req.resolution)
+    result = stop_incident(
+        req.root_cause, req.resolution, req.lessons_learned
+    )
     if not result:
         return {"status": "no active incident"}
     incident, path = result
