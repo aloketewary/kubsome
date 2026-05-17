@@ -10,8 +10,7 @@ def fetch_containers(pod_name):
     """Get list of container names in a pod."""
     cmd = [
         "kubectl", "--context", str(context.current_context or ""),
-        "get", "pod", pod_name,
-        "-n", str(context.namespace),
+        "get", "pod", pod_name, "-n", str(context.namespace),
         "-o", "jsonpath={.spec.containers[*].name}"
     ]
     result = subprocess.run(
@@ -42,7 +41,7 @@ def fetch_logs(
     ]
 
     if container:
-        cmd += ["-c", container]
+        cmd.extend(["-c", container])
 
     if previous:
         cmd.append("--previous")
@@ -98,7 +97,7 @@ def stream_logs(pod_name, container=None):
     ]
 
     if container:
-        cmd += ["-c", container]
+        cmd.extend(["-c", container])
 
     process = subprocess.Popen(
         cmd,
@@ -115,25 +114,27 @@ def find_pods_for_deployment(query):
     Find all pods belonging to a deployment by label selector.
     Falls back to prefix matching.
     """
-    ns = context.namespace
-    ctx = context.current_context
+    ns = str(context.namespace)
+    ctx = str(context.current_context or "")
 
     # Try to get deployment selector
     cmd = [
-        "kubectl", "--context", str(ctx or ""),
-        "get", "deployment", "-n", str(ns), "-o", "json"
+        "kubectl", "--context", ctx,
+        "get", "deployment", "-n", ns, "-o", "json"
     ]
 
     r = subprocess.run(
-        cmd,
-        capture_output=True, text=True
+        cmd, capture_output=True, text=True
     )
 
     if r.returncode != 0:
         return []
 
     import json
-    data = json.loads(r.stdout)
+    try:
+        data = json.loads(r.stdout)
+    except json.JSONDecodeError:
+        return []
 
     # Find matching deployment
     target_dep = None
@@ -159,15 +160,14 @@ def find_pods_for_deployment(query):
     )
 
     cmd2 = [
-        "kubectl", "--context", str(ctx or ""),
-        "get", "pods", "-n", str(ns),
+        "kubectl", "--context", ctx,
+        "get", "pods", "-n", ns,
         "-l", selector,
         "-o", "jsonpath={.items[*].metadata.name}"
     ]
 
     r2 = subprocess.run(
-        cmd2,
-        capture_output=True, text=True
+        cmd2, capture_output=True, text=True
     )
 
     pods = r2.stdout.strip().split()
@@ -182,16 +182,16 @@ def fetch_combined_logs(pods, tail=50, errors_only=False):
     if not pods:
         return []
 
-    ctx = context.current_context
-    ns = context.namespace
+    ctx = str(context.current_context or "")
+    ns = str(context.namespace)
     all_lines = []
 
     def fetch_single(pod):
         cmd = [
             "kubectl",
-            "--context", str(ctx or ""),
+            "--context", ctx,
             "logs", pod,
-            "-n", str(ns),
+            "-n", ns,
             f"--tail={tail}", "--timestamps"
         ]
 
@@ -213,7 +213,7 @@ def fetch_combined_logs(pods, tail=50, errors_only=False):
             return []
 
     # Parallel fetch across pods
-    workers = min(len(pods), 10)
+    workers = max(1, min(len(pods), 10))
     with ThreadPoolExecutor(max_workers=workers) as executor:
         results = executor.map(fetch_single, pods)
 
