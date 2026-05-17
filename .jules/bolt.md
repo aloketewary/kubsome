@@ -16,6 +16,7 @@
 
 **Action:** Use a shared, cached raw resource fetcher for primary Kubernetes objects and parallelize top-level data aggregation (like overviews) to minimize latency.
 
-## 2024-05-16 - [Optimized Multi-Context Overview]
-**Learning:** Parallelizing Kubernetes resource fetching across different contexts/namespaces significantly improves dashboard responsiveness. However, a common anti-pattern is calling `.result()` immediately after `.submit()`, which serializes execution. Correct usage involves submitting all tasks before resolving results. Additionally, skipping unnecessary resources (like nodes in app-specific views) further reduces latency and cluster load.
-**Action:** Always submit all concurrent tasks to the `ThreadPoolExecutor` before calling `.result()` on any future, and use cached fetchers for shared resource data.
+## 2025-05-16 - [Sequential ThreadPoolExecutor Anti-pattern]
+**Learning:** A common anti-pattern in the codebase was calling `.result()` immediately after `executor.submit()`, which effectively serializes the execution. True parallelism requires submitting all tasks first and collecting their futures, then resolving them.
+
+**Action:** Always submit all background tasks to a `ThreadPoolExecutor` and store their future objects before calling `.result()` on any of them to ensure concurrent execution.

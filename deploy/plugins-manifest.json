@@ -1,0 +1,9 @@
+{
+  "_comment": "This manifest must be committed to aloketewary/kubsome-plugins and kept in sync with plugin files. Each sha256 is the hex digest of the raw .py file bytes.",
+  "plugins": {
+    "example_health": {
+      "sha256": "1ec6881f28c9b22f701cf319427ca60d697b6c16fa93958be520a82ac74db75e",
+      "description": "Example health check plugin"
+    }
+  }
+}

@@ -2,35 +2,34 @@ from fastapi.testclient import TestClient
 from api.app import app
 from unittest.mock import patch, MagicMock
 import json
-import subprocess
 from core.cache import invalidate
 
 client = TestClient(app)
 
+
 def test_get_overview_for_cluster_mode():
     invalidate()
-    with patch("subprocess.run") as mock_run:
-        # Mocking 4 calls: pods, nodes, deployments, events
-        def side_effect(cmd, *args, **kwargs):
-            if "pods" in cmd:
-                return MagicMock(returncode=0, stdout=json.dumps({"items": [
+    with patch("core.k8s.get_raw_resources") as mock_get:
+        def side_effect(kind, ctx, ns=None, **kwargs):
+            if kind == "pods":
+                return {"items": [
                     {"metadata": {"name": "pod-1"}, "status": {"phase": "Running", "containerStatuses": [{"restartCount": 0}]}}
-                ]}))
-            if "nodes" in cmd:
-                return MagicMock(returncode=0, stdout=json.dumps({"items": [
+                ]}
+            if kind == "nodes":
+                return {"items": [
                     {"metadata": {"name": "node-1"}, "status": {"conditions": [{"type": "Ready", "status": "True"}]}}
-                ]}))
-            if "deployments" in cmd:
-                return MagicMock(returncode=0, stdout=json.dumps({"items": [
-                    {"metadata": {"name": "dep-1"}, "status": {"availableReplicas": 1, "conditions": [{"type": "Available", "status": "True"}]}, "spec": {"replicas": 1}}
-                ]}))
-            if "events" in cmd:
-                return MagicMock(returncode=0, stdout=json.dumps({"items": [
+                ]}
+            if kind == "deployments":
+                return {"items": [
+                    {"metadata": {"name": "dep-1"}, "status": {"availableReplicas": 1}, "spec": {"replicas": 1}}
+                ]}
+            if kind == "events":
+                return {"items": [
                     {"type": "Normal", "reason": "Started", "involvedObject": {"name": "pod-1"}, "message": "Started container"}
-                ]}))
-            return MagicMock(returncode=0, stdout=json.dumps({"items": []}))
+                ]}
+            return {"items": []}
 
-        mock_run.side_effect = side_effect
+        mock_get.side_effect = side_effect
 
         response = client.get("/api/overview/test-ctx/test-ns")
         assert response.status_code == 200
@@ -46,30 +45,28 @@ def test_get_overview_for_cluster_mode():
         assert data["nodes"]["healthy"] == 1
         assert data["deployments"]["healthy"] == 1
 
+
 def test_get_overview_for_app_mode():
     invalidate()
-    with patch("subprocess.run") as mock_run:
-        # Mocking calls: pods, nodes, deployments, events
-        def side_effect(cmd, *args, **kwargs):
-            if "pods" in cmd:
-                return MagicMock(returncode=0, stdout=json.dumps({"items": [
+    with patch("core.k8s.get_raw_resources") as mock_get:
+        def side_effect(kind, ctx, ns=None, **kwargs):
+            if kind == "pods":
+                return {"items": [
                     {"metadata": {"name": "app-pod-1"}, "status": {"phase": "Running", "containerStatuses": [{"restartCount": 0}]}}
-                ]}))
-            if "deployments" in cmd:
-                return MagicMock(returncode=0, stdout=json.dumps({"items": [
-                    {
-                        "metadata": {"name": "app"},
-                        "spec": {"replicas": 2, "template": {"spec": {"containers": [{"image": "nginx"}]}}},
-                        "status": {"availableReplicas": 1, "readyReplicas": 1}
-                    }
-                ]}))
-            if "events" in cmd:
-                return MagicMock(returncode=0, stdout=json.dumps({"items": [
+                ]}
+            if "deployment/" in kind:
+                return {
+                    "metadata": {"name": "app"},
+                    "spec": {"replicas": 2, "template": {"spec": {"containers": [{"image": "nginx"}]}}},
+                    "status": {"availableReplicas": 1, "readyReplicas": 1}
+                }
+            if kind == "events":
+                return {"items": [
                     {"type": "Normal", "reason": "Started", "involvedObject": {"kind": "Pod", "name": "app-pod-1"}, "message": "Started"}
-                ]}))
-            return MagicMock(returncode=0, stdout=json.dumps({"items": []}))
+                ]}
+            return {"items": []}
 
-        mock_run.side_effect = side_effect
+        mock_get.side_effect = side_effect
 
         response = client.get("/api/overview/app-ctx/app-ns?app=app")
         assert response.status_code == 200

@@ -133,4 +133,8 @@ export class ApiService {
   askAi(query: string): Observable<AiResponse> {
     return this.http.post<AiResponse>(`${this.base}/ai`, { query });
   }
+
+  getStats(): Observable<any> {
+    return this.http.get<any>(`${this.base}/stats`);
+  }
 }
