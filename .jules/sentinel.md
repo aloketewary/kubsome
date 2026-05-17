@@ -27,3 +27,8 @@
 **Vulnerability:** Multiple functions in `core/collectors/logs.py` were using `shell=True` with f-strings containing pod names, container names, and contexts, allowing for arbitrary command execution.
 **Learning:** Even internal collectors can be vectors for command injection if they ingest user-influenced data (like pod names from the UI). Relying on `shell=True` for convenience in command construction is a common but dangerous pattern.
 **Prevention:** Avoid `shell=True` and use list-based arguments for all `subprocess` calls. Removed shell-specific quoting (like `.strip("'")`) when moving to list-based arguments as they are no longer needed.
+
+## 2026-05-24 - [HIGH] Path Traversal in Incident Report Endpoint
+**Vulnerability:** The `incident_report` endpoint in `api/routes/operations.py` performed a prefix check on a user-provided path without first resolving it. This allowed attackers to bypass the check using `..` (parent directory) segments.
+**Learning:** `startswith()` checks on un-canonicalized path strings are insufficient. Paths must be resolved to their absolute form before any validation or use.
+**Prevention:** Always use `Path(path).resolve()` on both the base directory and the user-provided path. Use `target_path.is_relative_to(base_dir)` (Python 3.9+) or similar path-aware logic for validation.
