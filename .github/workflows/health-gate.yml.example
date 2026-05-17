@@ -1,0 +1,45 @@
+name: Cluster Health Gate
+
+on:
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "0 8 * * *"  # Daily at 8am
+
+jobs:
+  health-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Set kubeconfig
+        run: echo "${{ secrets.KUBECONFIG }}" | base64 -d > /tmp/kubeconfig
+        env:
+          KUBECONFIG: /tmp/kubeconfig
+
+      - name: Kubsome Scorecard
+        uses: aloketewary/kubsome/.github/actions/scorecard@main
+        id: health
+        with:
+          min-grade: "B"
+          namespace: "production"
+          kubeconfig: /tmp/kubeconfig
+
+      - name: Post result to PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const grade = '${{ steps.health.outputs.grade }}';
+            const score = '${{ steps.health.outputs.score }}';
+            const emoji = grade <= 'B' ? '✅' : grade === 'C' ? '⚠️' : '❌';
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## ${emoji} Cluster Health: Grade ${grade} (${score}/100)\n\nRun \`kubsome scorecard\` locally for details.`
+            });

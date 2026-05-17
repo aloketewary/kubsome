@@ -41,7 +41,8 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
     }
 
     <nav class="nav-section">
-      <span class="nav-label" (click)="monitorCollapsed = !monitorCollapsed" (keydown)="onKey($event, toggleMonitor.bind(this))" tabindex="0" role="button" aria-label="Toggle Monitor Section">
+      <span class="nav-label" (click)="monitorCollapsed = !monitorCollapsed" (keydown)="onKey($event, toggleMonitor.bind(this))"
+            tabindex="0" role="button" aria-label="Toggle Monitor Section" [attr.aria-expanded]="!monitorCollapsed">
         <i class="pi collapse-icon" [class.pi-chevron-down]="!monitorCollapsed" [class.pi-chevron-right]="monitorCollapsed"></i>
         Monitor
       </span>
@@ -62,7 +63,8 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
     </nav>
 
     <nav class="nav-section">
-      <span class="nav-label" (click)="opsCollapsed = !opsCollapsed" (keydown)="onKey($event, toggleOps.bind(this))" tabindex="0" role="button" aria-label="Toggle Operations Section">
+      <span class="nav-label" (click)="opsCollapsed = !opsCollapsed" (keydown)="onKey($event, toggleOps.bind(this))"
+            tabindex="0" role="button" aria-label="Toggle Operations Section" [attr.aria-expanded]="!opsCollapsed">
         <i class="pi collapse-icon" [class.pi-chevron-down]="!opsCollapsed" [class.pi-chevron-right]="opsCollapsed"></i>
         Operations
       </span>
@@ -83,7 +85,8 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
     </nav>
 
     <nav class="nav-section">
-      <span class="nav-label" (click)="aiCollapsed = !aiCollapsed" (keydown)="onKey($event, toggleAi.bind(this))" tabindex="0" role="button" aria-label="Toggle Intelligence Section">
+      <span class="nav-label" (click)="aiCollapsed = !aiCollapsed" (keydown)="onKey($event, toggleAi.bind(this))"
+            tabindex="0" role="button" aria-label="Toggle Intelligence Section" [attr.aria-expanded]="!aiCollapsed">
         <i class="pi collapse-icon" [class.pi-chevron-down]="!aiCollapsed" [class.pi-chevron-right]="aiCollapsed"></i>
         Intelligence
       </span>
@@ -347,6 +350,7 @@ export class ShellComponent implements OnInit {
     { path: '/namespace', icon: 'pi pi-th-large', label: 'Namespace' },
     { path: '/timeline', icon: 'pi pi-history', label: 'Timeline' },
     { path: '/scorecard', icon: 'pi pi-trophy', label: 'Scorecard' },
+    { path: '/policy', icon: 'pi pi-verified', label: 'Policy' },
     { path: '/cost', icon: 'pi pi-dollar', label: 'Optimization' },
     { path: '/cost-estimate', icon: 'pi pi-calculator', label: 'Cost' },
   ];
@@ -360,6 +364,7 @@ export class ShellComponent implements OnInit {
     { path: '/resources', icon: 'pi pi-database', label: 'Resources' },
     { path: '/secrets', icon: 'pi pi-lock', label: 'Pull Secrets' },
     { path: '/incident', icon: 'pi pi-exclamation-circle', label: 'Incident', badge: 'NEW' },
+    { path: '/audit', icon: 'pi pi-shield', label: 'Audit' },
     { path: '/graph', icon: 'pi pi-sitemap', label: 'Service Map', badge: 'NEW' },
     { path: '/yaml', icon: 'pi pi-file-edit', label: 'YAML Editor' },
     { path: '/yaml-diff', icon: 'pi pi-copy', label: 'YAML Diff' },
@@ -372,7 +377,9 @@ export class ShellComponent implements OnInit {
     { path: '/log-correlation', icon: 'pi pi-link', label: 'Log Correlate' },
     { path: '/pins', icon: 'pi pi-bookmark', label: 'Pins' },
     { path: '/watches', icon: 'pi pi-eye', label: 'Watches' },
+    { path: '/schedule', icon: 'pi pi-calendar', label: 'Schedules' },
     { path: '/terminal', icon: 'pi pi-code', label: 'Terminal' },
+    { path: '/doctor', icon: 'pi pi-heart', label: 'Health' },
     { path: '/settings', icon: 'pi pi-cog', label: 'Settings' },
   ];
 

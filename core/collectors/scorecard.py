@@ -14,10 +14,18 @@ def cluster_scorecard():
     Generate a cluster health scorecard with
     A-F grades per category and overall.
     """
-    pods = collect_pods()
-    nodes = collect_nodes()
-    deployments = collect_deployments()
-    events = collect_events(limit=100)
+    from concurrent.futures import ThreadPoolExecutor
+
+    with ThreadPoolExecutor(max_workers=4) as ex:
+        f_pods = ex.submit(collect_pods)
+        f_nodes = ex.submit(collect_nodes)
+        f_deps = ex.submit(collect_deployments)
+        f_events = ex.submit(collect_events, 100)
+
+        pods = f_pods.result()
+        nodes = f_nodes.result()
+        deployments = f_deps.result()
+        events = f_events.result()
 
     scores = {
         "availability": _score_availability(

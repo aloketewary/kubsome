@@ -37,7 +37,9 @@ interface HeatmapCell {
         </div>
         <div class="heatmap-grid">
           @for (cell of heatmapCells; track $index) {
-            <div class="heatmap-cell" [class.hc-low]="cell.level === 1" [class.hc-med]="cell.level === 2" [class.hc-high]="cell.level === 3" [class.hc-warn]="cell.hasWarning" [pTooltip]="cell.label"></div>
+            <div class="heatmap-cell" [class.hc-low]="cell.level === 1" [class.hc-med]="cell.level === 2" [class.hc-high]="cell.level === 3" [class.hc-warn]="cell.hasWarning" [class.hc-selected]="selectedBucket === $index" [pTooltip]="cell.label" (click)="selectBucket($index)"
+                 tabindex="0" role="button" [attr.aria-label]="cell.label" [attr.aria-pressed]="selectedBucket === $index"
+                 (keydown.enter)="selectBucket($index)" (keydown.space)="$event.preventDefault(); selectBucket($index)"></div>
           }
         </div>
         <div class="heatmap-labels">
@@ -51,14 +53,17 @@ interface HeatmapCell {
     <div class="page-header">
       <div>
         <h1>Events</h1>
-        <p class="subtitle">Cluster activity stream</p>
+        <p class="subtitle">{{ filteredEvents.length }} events · {{ warningCount }} warnings</p>
       </div>
       <div class="header-actions">
+        <button class="ar-btn" [class.ar-active]="autoRefresh" (click)="toggleAutoRefresh()" [pTooltip]="autoRefresh ? 'Auto-refresh on (30s)' : 'Auto-refresh off'">
+          <i class="pi" [class.pi-sync]="autoRefresh" [class.pi-pause]="!autoRefresh"></i>
+        </button>
         <button pButton [class]="watching ? 'p-button-danger p-button-sm' : 'p-button-outlined p-button-sm'" (click)="toggleWatch()">
           <span class="watch-dot" [class.pulsing]="watching"></span>
           {{ watching ? 'Live' : 'Watch' }}
         </button>
-        <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="refresh()" pTooltip="Refresh"></button>
+        <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="refresh()" pTooltip="Refresh" [loading]="loading"></button>
       </div>
     </div>
 
@@ -75,11 +80,24 @@ interface HeatmapCell {
           <span class="pill-dot normal"></span> Normal <strong>{{ normalCount }}</strong>
         </span>
       </div>
-      <div class="search-wrap">
-        <i class="pi pi-search"></i>
-        <input [(ngModel)]="searchQuery" placeholder="Filter events..." (ngModelChange)="applyFilters()" />
+      <div class="controls-right">
+        @if (topReasons.length > 0) {
+          <div class="reason-chips">
+            @for (r of topReasons; track r) {
+              <button class="reason-chip" [class.rc-active]="reasonFilter === r" (click)="toggleReasonFilter(r)">{{ r }}</button>
+            }
+          </div>
+        }
+        <div class="search-wrap">
+          <i class="pi pi-search"></i>
+          <input [(ngModel)]="searchQuery" placeholder="Filter events..." (ngModelChange)="applyFilters()" />
+        </div>
       </div>
     </div>
+
+    @if (loading && events.length === 0) {
+      <div class="loading-state"><i class="pi pi-spin pi-spinner"></i> Loading events...</div>
+    }
 
     <!-- Events List -->
     <div class="events-container">
@@ -102,7 +120,7 @@ interface HeatmapCell {
               </div>
               <p class="event-message" [class.expanded]="expandedIndex === $index">{{ event.message }}</p>
               @if (event.last_seen) {
-                <span class="event-time">{{ event.last_seen }}</span>
+                <span class="event-time" [pTooltip]="event.last_seen">{{ relativeTime(event.last_seen) }}</span>
               }
             </div>
             <div class="event-type-tag">
@@ -142,9 +160,11 @@ interface HeatmapCell {
     }
     .heatmap-cell {
       aspect-ratio: 1; border-radius: 3px; background: var(--bg-elevated);
-      transition: all 0.2s; cursor: default;
+      transition: all 0.2s; cursor: pointer; outline: none;
     }
     .heatmap-cell:hover { transform: scale(1.3); z-index: 1; }
+    .heatmap-cell:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; z-index: 1; }
+    .hc-selected { outline: 2px solid var(--accent); outline-offset: 1px; }
     .hc-low { background: var(--accent); opacity: 0.25; }
     .hc-med { background: var(--accent); opacity: 0.55; }
     .hc-high { background: var(--accent); opacity: 0.9; }
@@ -158,6 +178,15 @@ interface HeatmapCell {
     .page-header h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.03em; }
     .subtitle { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
     .header-actions { display: flex; align-items: center; gap: 8px; }
+    .ar-btn {
+      width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--border);
+      background: var(--bg-card); color: var(--text-muted); cursor: pointer; transition: all 0.15s;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .ar-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .ar-btn.ar-active { border-color: var(--success); color: var(--success); background: var(--success-subtle); }
+    .ar-btn.ar-active i { animation: spin 2s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
     .watch-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-muted); display: inline-block; margin-right: 6px; }
     .watch-dot.pulsing { background: var(--danger); animation: pulse 1.5s infinite; }
     @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
@@ -190,6 +219,23 @@ interface HeatmapCell {
       color: var(--text); font-size: 12px; outline: none;
     }
     .search-wrap input:focus { border-color: var(--accent); }
+
+    /* Reason Chips */
+    .controls-right { display: flex; align-items: center; gap: 10px; }
+    .reason-chips { display: flex; gap: 4px; flex-wrap: wrap; }
+    .reason-chip {
+      padding: 4px 10px; border-radius: 12px; border: 1px solid var(--border);
+      background: var(--bg-elevated); color: var(--text-muted); font-size: 10px;
+      cursor: pointer; transition: all 0.12s; font-weight: 500;
+    }
+    .reason-chip:hover { border-color: var(--border-hover); color: var(--text); }
+    .reason-chip.rc-active { border-color: var(--accent); background: var(--accent-subtle); color: var(--accent); }
+
+    /* Loading */
+    .loading-state {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 48px; color: var(--text-muted); font-size: 13px;
+    }
 
     /* Events */
     .events-container { display: flex; flex-direction: column; gap: 4px; }
@@ -257,6 +303,7 @@ export class EventsComponent implements OnInit, OnDestroy {
   private ws = inject(WsService);
   private watchSub: Subscription | null = null;
   private watchClose: (() => void) | null = null;
+  private refreshTimer: any;
 
   events: KubeEvent[] = [];
   filteredEvents: KubeEvent[] = [];
@@ -265,6 +312,11 @@ export class EventsComponent implements OnInit, OnDestroy {
   searchQuery = '';
   watching = false;
   expandedIndex = -1;
+  loading = false;
+  autoRefresh = true;
+  reasonFilter = '';
+  selectedBucket = -1;
+  topReasons: string[] = [];
 
   get warningCount() { return this.events.filter(e => e.type === 'Warning').length; }
   get normalCount() { return this.events.filter(e => e.type !== 'Warning').length; }
@@ -282,8 +334,19 @@ export class EventsComponent implements OnInit, OnDestroy {
 
   applyFilters() {
     let result = this.events;
+
+    // Heatmap bucket filter
+    if (this.selectedBucket >= 0) {
+      const total = this.events.length;
+      const bucketSize = Math.max(Math.ceil(total / 24), 1);
+      const start = this.selectedBucket * bucketSize;
+      const end = Math.min(start + bucketSize, total);
+      result = result.slice(start, end);
+    }
+
     if (this.filter === 'warning') result = result.filter(e => e.type === 'Warning');
     if (this.filter === 'normal') result = result.filter(e => e.type !== 'Warning');
+    if (this.reasonFilter) result = result.filter(e => e.reason === this.reasonFilter);
     if (this.searchQuery) {
       const q = this.searchQuery.toLowerCase();
       result = result.filter(e =>
@@ -323,10 +386,13 @@ export class EventsComponent implements OnInit, OnDestroy {
   }
 
   refresh() {
+    this.loading = true;
     this.api.getEvents(100).subscribe(res => {
       this.events = res.events;
       this.buildHeatmap();
+      this.buildTopReasons();
       this.applyFilters();
+      this.loading = false;
     });
   }
 
@@ -352,6 +418,58 @@ export class EventsComponent implements OnInit, OnDestroy {
     this.heatmapCells = cells;
   }
 
-  ngOnInit() { this.refresh(); }
-  ngOnDestroy() { this.stopWatch(); }
+  ngOnInit() {
+    this.refresh();
+    this.startAutoRefresh();
+  }
+  ngOnDestroy() { this.stopWatch(); clearInterval(this.refreshTimer); }
+
+  toggleAutoRefresh() {
+    this.autoRefresh = !this.autoRefresh;
+    if (this.autoRefresh) this.startAutoRefresh();
+    else clearInterval(this.refreshTimer);
+  }
+
+  private startAutoRefresh() {
+    clearInterval(this.refreshTimer);
+    this.refreshTimer = setInterval(() => {
+      if (!this.watching) this.refresh();
+    }, 30000);
+  }
+
+  relativeTime(ts: string): string {
+    if (!ts) return '';
+    try {
+      const date = new Date(ts);
+      const now = Date.now();
+      const diff = Math.floor((now - date.getTime()) / 1000);
+      if (diff < 60) return `${diff}s ago`;
+      if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+      if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+      return `${Math.floor(diff / 86400)}d ago`;
+    } catch {
+      return ts;
+    }
+  }
+
+  toggleReasonFilter(reason: string) {
+    this.reasonFilter = this.reasonFilter === reason ? '' : reason;
+    this.applyFilters();
+  }
+
+  selectBucket(index: number) {
+    this.selectedBucket = this.selectedBucket === index ? -1 : index;
+    this.applyFilters();
+  }
+
+  private buildTopReasons() {
+    const counts = new Map<string, number>();
+    for (const e of this.events) {
+      counts.set(e.reason, (counts.get(e.reason) || 0) + 1);
+    }
+    this.topReasons = [...counts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([reason]) => reason);
+  }
 }

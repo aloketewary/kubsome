@@ -25,10 +25,15 @@ kubeasy/
 │   ├── audit.py               → Destructive operation logging
 │   ├── remediation.py         → Auto-fix with safety guards
 │   ├── watch_alert.py         → Background condition monitoring
-│   ├── plugins.py             → Plugin loader (~/.kubsome/plugins/)
+│   ├── plugins.py             → Plugin loader + marketplace
 │   ├── chaining.py            → Command chaining (&&)
 │   ├── bookmarks.py           → Saved command shortcuts
 │   ├── workflows.py           → Multi-step command sequences
+│   ├── scheduler.py           → Cron-like recurring commands
+│   ├── policy.py              → Cluster guardrail enforcement
+│   ├── telemetry.py           → Local usage analytics
+│   ├── doctor.py              → Pre-flight diagnostics
+│   ├── suggestions.py         → Contextual next-step hints
 │   ├── k8s.py                 → Low-level kubectl wrappers
 │   ├── health.py              → kubectl connectivity check
 │   ├── banner.py              → Startup banner
@@ -111,12 +116,13 @@ kubeasy/
 │   ├── helm/kubsome/          → Helm chart
 │   └── kubsome.yaml           → Raw Kubernetes manifest
 │
-└── tests/                     → Test suite (114 tests)
+└── tests/                     → Test suite (171 tests)
     ├── test_core.py           → Core module tests
     ├── test_features.py       → Feature integration tests
     ├── test_nlp_ai.py         → NLP/AI tests
     ├── test_api.py            → API endpoint tests
-    └── test_v15.py            → Version 1.5 feature tests
+    ├── test_v15.py            → Version 1.5 feature tests
+    └── test_growth.py         → Growth features tests (Batches 1-6)
 ```
 
 ## Architectural Patterns

@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { TagModule } from 'primeng/tag';
 import { ButtonModule } from 'primeng/button';
@@ -19,9 +19,14 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
         <div class="page-header">
       <div>
         <h1>RBAC</h1>
-        <p class="subtitle">Access control bindings</p>
+        <p class="subtitle">Access control bindings · {{ lastUpdated }}</p>
       </div>
-      <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="load()" pTooltip="Refresh"></button>
+      <div class="header-actions">
+        <button class="ar-btn" [class.ar-active]="autoRefresh" (click)="toggleAutoRefresh()" [pTooltip]="autoRefresh ? 'Auto-refresh on (30s)' : 'Auto-refresh off'">
+          <i class="pi" [class.pi-sync]="autoRefresh" [class.pi-pause]="!autoRefresh"></i>
+        </button>
+        <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="load()" pTooltip="Refresh" [loading]="loading"></button>
+      </div>
     </div>
 
     <!-- Summary -->
@@ -149,6 +154,16 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; }
     .page-header h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.03em; }
     .subtitle { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+    .header-actions { display: flex; align-items: center; gap: 8px; }
+    .ar-btn {
+      width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--border);
+      background: var(--bg-card); color: var(--text-muted); cursor: pointer; transition: all 0.15s;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .ar-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .ar-btn.ar-active { border-color: var(--success); color: var(--success); background: var(--success-subtle); }
+    .ar-btn.ar-active i { animation: spin 2s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
 
     /* Summary */
     .summary-strip {
@@ -270,7 +285,7 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     .empty-state i { font-size: 16px; opacity: 0.5; }
   `],
 })
-export class RbacComponent implements OnInit {
+export class RbacComponent implements OnInit, OnDestroy {
   private http = inject(HttpClient);
   bindings: any[] = [];
   filtered: any[] = [];
@@ -281,17 +296,39 @@ export class RbacComponent implements OnInit {
   checkLoading = false;
   permMatrix: any = null;
   permVerbs = ['get', 'list', 'create', 'delete', 'update'];
+  loading = false;
+  autoRefresh = true;
+  lastUpdated = '';
+  private refreshTimer: any;
 
   get uniqueRoles() { return [...new Set(this.bindings.map(b => b.role))]; }
   get uniqueSubjects() { return new Set(this.bindings.map(b => b.subjects)).size; }
   get adminCount() { return this.bindings.filter(b => this.isAdmin(b)).length; }
 
-  ngOnInit() { this.load(); this.loadServiceAccounts(); }
+  ngOnInit() {
+    this.load();
+    this.loadServiceAccounts();
+    this.startAutoRefresh();
+  }
+
+  ngOnDestroy() { clearInterval(this.refreshTimer); }
+
+  toggleAutoRefresh() {
+    this.autoRefresh = !this.autoRefresh;
+    if (this.autoRefresh) this.startAutoRefresh();
+    else clearInterval(this.refreshTimer);
+  }
+
+  private startAutoRefresh() {
+    clearInterval(this.refreshTimer);
+    this.refreshTimer = setInterval(() => this.load(), 30000);
+  }
 
   load() {
+    this.loading = true;
     this.http.get<any>('/api/rbac').subscribe({
-      next: (res) => { this.bindings = res.bindings || []; this.applyFilter(); },
-      error: () => { this.bindings = []; this.applyFilter(); },
+      next: (res) => { this.bindings = res.bindings || []; this.applyFilter(); this.loading = false; this.lastUpdated = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }); },
+      error: () => { this.bindings = []; this.applyFilter(); this.loading = false; },
     });
   }
 

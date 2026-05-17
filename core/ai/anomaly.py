@@ -191,7 +191,8 @@ def _cascading_failure(pods):
 
     failing = [
         p for p in pods
-        if p["status"] != "Running" or p["restarts"] >= 5
+        if p["status"] not in {"Running", "Succeeded", "Completed"}
+        or p["restarts"] >= 5
     ]
 
     if len(failing) < 2:

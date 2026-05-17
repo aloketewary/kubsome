@@ -1,8 +1,10 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy } from '@angular/core';
 import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
+import { FormsModule } from '@angular/forms';
 import { TagModule } from 'primeng/tag';
 import { ButtonModule } from 'primeng/button';
+import { TooltipModule } from 'primeng/tooltip';
 import { SpotlightComponent } from '../../shared/components/spotlight.component';
 
 interface ResourceItem {
@@ -16,7 +18,7 @@ interface ResourceItem {
 @Component({
   selector: 'app-namespace',
   standalone: true,
-  imports: [TagModule, ButtonModule, SpotlightComponent],
+  imports: [FormsModule, TagModule, ButtonModule, TooltipModule, SpotlightComponent],
   template: `
     <app-spotlight id="namespace" title="Namespace Overview" icon="pi pi-folder"
       description="Summary of resources in the current namespace."
@@ -25,9 +27,14 @@ interface ResourceItem {
         <div class="page-header">
       <div>
         <h1>Namespace</h1>
-        <p class="subtitle">Resource inventory for <strong>{{ data?.namespace || '...' }}</strong></p>
+        <p class="subtitle">Resource inventory for <strong>{{ data?.namespace || '...' }}</strong> · {{ lastUpdated }}</p>
       </div>
-      <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="load()"></button>
+      <div class="header-actions">
+        <button class="ar-btn" [class.ar-active]="autoRefresh" (click)="toggleAutoRefresh()" [pTooltip]="autoRefresh ? 'Auto-refresh on (30s)' : 'Auto-refresh off'">
+          <i class="pi" [class.pi-sync]="autoRefresh" [class.pi-pause]="!autoRefresh"></i>
+        </button>
+        <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="load()" [loading]="loading" pTooltip="Refresh"></button>
+      </div>
     </div>
 
     @if (data) {
@@ -80,9 +87,15 @@ interface ResourceItem {
       </div>
 
       <!-- Resource Cards -->
-      <h3 class="section-title">Resources</h3>
+      <div class="resources-header">
+        <h3 class="section-title">Resources</h3>
+        <div class="resource-search">
+          <i class="pi pi-search"></i>
+          <input type="text" [(ngModel)]="resourceSearch" placeholder="Filter resources..." />
+        </div>
+      </div>
       <div class="resource-grid">
-        @for (item of resourceList; track item.type) {
+        @for (item of filteredResources; track item.type) {
           <div class="resource-card" [class.clickable]="item.route" (click)="item.route && router.navigate([item.route])">
             <div class="rc-icon" [style.background]="item.color + '18'" [style.color]="item.color">
               <i [class]="item.icon"></i>
@@ -120,6 +133,16 @@ interface ResourceItem {
     .page-header h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.03em; }
     .subtitle { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
     .subtitle strong { color: var(--text); }
+    .header-actions { display: flex; align-items: center; gap: 8px; }
+    .ar-btn {
+      width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--border);
+      background: var(--bg-card); color: var(--text-muted); cursor: pointer; transition: all 0.15s;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .ar-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .ar-btn.ar-active { border-color: var(--success); color: var(--success); background: var(--success-subtle); }
+    .ar-btn.ar-active i { animation: spin 2s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
 
     /* Hero */
     .ns-hero {
@@ -154,6 +177,18 @@ interface ResourceItem {
     .legend-dot { width: 8px; height: 8px; border-radius: 2px; }
 
     /* Resource Cards */
+    .resources-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    .resource-search {
+      display: flex; align-items: center; gap: 6px;
+      padding: 5px 10px; border: 1px solid var(--border); border-radius: 6px;
+      background: var(--bg-elevated); transition: border-color 0.12s;
+    }
+    .resource-search:focus-within { border-color: var(--accent); }
+    .resource-search i { font-size: 12px; color: var(--text-muted); }
+    .resource-search input {
+      border: none; background: transparent; outline: none; color: var(--text);
+      font-size: 12px; width: 120px;
+    }
     .resource-grid {
       display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
       gap: 10px; margin-bottom: 28px;
@@ -196,12 +231,17 @@ interface ResourceItem {
     .loading { display: flex; align-items: center; gap: 10px; padding: 40px; color: var(--text-muted); }
   `],
 })
-export class NamespaceComponent implements OnInit {
+export class NamespaceComponent implements OnInit, OnDestroy {
   private http = inject(HttpClient);
   router = inject(Router);
   data: any = null;
   resourceList: ResourceItem[] = [];
   podStatuses: { status: string; count: number }[] = [];
+  resourceSearch = '';
+  loading = false;
+  autoRefresh = true;
+  lastUpdated = '';
+  private refreshTimer: any;
 
   private colorMap: Record<string, string> = {
     pods: '#3b82f6',
@@ -252,20 +292,46 @@ export class NamespaceComponent implements OnInit {
     return 'crit';
   }
 
-  ngOnInit() { this.load(); }
+  get filteredResources(): ResourceItem[] {
+    if (!this.resourceSearch) return this.resourceList;
+    const q = this.resourceSearch.toLowerCase();
+    return this.resourceList.filter(r => r.type.toLowerCase().includes(q));
+  }
+
+  ngOnInit() {
+    this.load();
+    this.startAutoRefresh();
+  }
+
+  ngOnDestroy() { clearInterval(this.refreshTimer); }
+
+  toggleAutoRefresh() {
+    this.autoRefresh = !this.autoRefresh;
+    if (this.autoRefresh) this.startAutoRefresh();
+    else clearInterval(this.refreshTimer);
+  }
+
+  private startAutoRefresh() {
+    clearInterval(this.refreshTimer);
+    this.refreshTimer = setInterval(() => this.load(), 30000);
+  }
 
   load() {
-    this.data = null;
+    this.loading = true;
     this.http.get<any>('/api/ns-overview').subscribe(res => {
       this.data = res;
-      this.resourceList = Object.entries(res.resources || {}).map(([type, count]) => ({
-        type,
-        count: count as number,
-        icon: this.iconMap[type] || 'pi pi-th-large',
-        color: this.colorMap[type] || '#6b7280',
-        route: this.routeMap[type],
-      }));
+      this.resourceList = Object.entries(res.resources || {})
+        .map(([type, count]) => ({
+          type,
+          count: count as number,
+          icon: this.iconMap[type] || 'pi pi-th-large',
+          color: this.colorMap[type] || '#6b7280',
+          route: this.routeMap[type],
+        }))
+        .sort((a, b) => b.count - a.count);
       this.podStatuses = Object.entries(res.pod_statuses || {}).map(([status, count]) => ({ status, count: count as number }));
+      this.loading = false;
+      this.lastUpdated = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     });
   }
 }

@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { JsonPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -20,9 +20,14 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
         <div class="page-header">
       <div>
         <h1>Network</h1>
-        <p class="subtitle">Ingress routing, DNS, and service mesh</p>
+        <p class="subtitle">Ingress routing, DNS, and service mesh · {{ lastUpdated }}</p>
       </div>
-      <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="load()" pTooltip="Refresh"></button>
+      <div class="header-actions">
+        <button class="ar-btn" [class.ar-active]="autoRefresh" (click)="toggleAutoRefresh()" [pTooltip]="autoRefresh ? 'Auto-refresh on (30s)' : 'Auto-refresh off'">
+          <i class="pi" [class.pi-sync]="autoRefresh" [class.pi-pause]="!autoRefresh"></i>
+        </button>
+        <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="load()" pTooltip="Refresh" [loading]="loading"></button>
+      </div>
     </div>
 
     <!-- Summary -->
@@ -207,9 +212,13 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
         <span class="section-count">{{ endpoints.length }}</span>
       </div>
 
-      @if (endpoints.length > 0) {
+      @if (filteredEndpoints.length > 0) {
+        <div class="ep-filter">
+          <i class="pi pi-search"></i>
+          <input type="text" [(ngModel)]="epSearch" placeholder="Filter endpoints..." (ngModelChange)="filterEndpoints()" />
+        </div>
         <div class="ep-list">
-          @for (ep of endpoints; track ep.name) {
+          @for (ep of filteredEndpoints; track ep.name) {
             <div class="ep-card" [class.ep-unhealthy]="!ep.healthy">
               <div class="ep-status-dot" [class.dot-ok]="ep.healthy" [class.dot-bad]="!ep.healthy"></div>
               <div class="ep-body">
@@ -236,6 +245,16 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; }
     .page-header h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.03em; }
     .subtitle { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+    .header-actions { display: flex; align-items: center; gap: 8px; }
+    .ar-btn {
+      width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--border);
+      background: var(--bg-card); color: var(--text-muted); cursor: pointer; transition: all 0.15s;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .ar-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .ar-btn.ar-active { border-color: var(--success); color: var(--success); background: var(--success-subtle); }
+    .ar-btn.ar-active i { animation: spin 2s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
 
     /* Summary */
     .summary-strip {
@@ -327,6 +346,17 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
 
     /* Endpoints */
     .ep-list { display: flex; flex-direction: column; gap: 6px; }
+    .ep-filter {
+      display: flex; align-items: center; gap: 6px; margin-bottom: 10px;
+      padding: 5px 10px; border: 1px solid var(--border); border-radius: 6px;
+      background: var(--bg-elevated); width: fit-content; transition: border-color 0.12s;
+    }
+    .ep-filter:focus-within { border-color: var(--accent); }
+    .ep-filter i { font-size: 12px; color: var(--text-muted); }
+    .ep-filter input {
+      border: none; background: transparent; outline: none; color: var(--text);
+      font-size: 12px; width: 150px;
+    }
     .ep-card {
       display: flex; align-items: center; gap: 12px;
       padding: 12px 16px; background: var(--bg-card);
@@ -356,27 +386,60 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     .empty-state i { font-size: 16px; opacity: 0.5; }
   `],
 })
-export class NetworkComponent implements OnInit {
+export class NetworkComponent implements OnInit, OnDestroy {
   private http = inject(HttpClient);
   ingresses: any[] = [];
   endpoints: any[] = [];
+  filteredEndpoints: any[] = [];
   netPolicies = 0;
   dnsQuery = '';
   dnsResult: any = null;
   meshDetected = false;
   meshType = '';
+  epSearch = '';
+  loading = false;
+  autoRefresh = true;
+  lastUpdated = '';
+  private refreshTimer: any;
 
   get unhealthyEndpoints() { return this.endpoints.filter(e => !e.healthy).length; }
 
-  ngOnInit() { this.load(); }
+  ngOnInit() {
+    this.load();
+    this.startAutoRefresh();
+  }
+
+  ngOnDestroy() { clearInterval(this.refreshTimer); }
+
+  toggleAutoRefresh() {
+    this.autoRefresh = !this.autoRefresh;
+    if (this.autoRefresh) this.startAutoRefresh();
+    else clearInterval(this.refreshTimer);
+  }
+
+  private startAutoRefresh() {
+    clearInterval(this.refreshTimer);
+    this.refreshTimer = setInterval(() => this.load(), 30000);
+  }
+
+  filterEndpoints() {
+    const q = this.epSearch.toLowerCase();
+    this.filteredEndpoints = q ? this.endpoints.filter(e => e.name.toLowerCase().includes(q)) : this.endpoints;
+  }
 
   load() {
+    this.loading = true;
     this.http.get<any>('/api/ingress').subscribe(r => this.ingresses = r.ingresses || []);
     this.http.get<any>('/api/mesh').subscribe(r => {
       this.meshDetected = r.detected || false;
       this.meshType = r.type || '';
     });
-    this.http.get<any>('/api/endpoints').subscribe(r => this.endpoints = r.services || []);
+    this.http.get<any>('/api/endpoints').subscribe(r => {
+      this.endpoints = r.services || [];
+      this.filterEndpoints();
+      this.loading = false;
+      this.lastUpdated = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    });
     this.http.get<any>('/api/network-policies').subscribe(r => this.netPolicies = r.count || 0);
   }
 

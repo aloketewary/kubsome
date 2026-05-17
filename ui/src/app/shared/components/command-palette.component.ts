@@ -28,18 +28,27 @@ interface PaletteItem {
                    (keydown.arrowDown)="moveDown()"
                    (keydown.arrowUp)="moveUp()"
                    (keydown.enter)="execute()"
+                   role="combobox"
+                   aria-autocomplete="list"
+                   [attr.aria-expanded]="visible"
+                   aria-haspopup="listbox"
+                   aria-controls="palette-results"
+                   [attr.aria-activedescendant]="visible ? 'option-' + activeIndex : null"
                    placeholder="Search pages, pods, commands..."
                    spellcheck="false"
                    autocomplete="off" />
             <kbd>ESC</kbd>
           </div>
 
-          <div class="palette-results">
+          <div class="palette-results" id="palette-results" role="listbox" aria-label="Search results">
             @if (filtered.length === 0 && query) {
               <div class="no-results">No results for "{{ query }}"</div>
             }
             @for (item of filtered; track $index) {
               <div class="palette-item" [class.active]="$index === activeIndex"
+                   role="option"
+                   [id]="'option-' + $index"
+                   [attr.aria-selected]="$index === activeIndex"
                    (click)="executeItem(item)" (mouseenter)="activeIndex = $index">
                 <i [class]="item.icon"></i>
                 <span class="item-label">{{ item.label }}</span>
