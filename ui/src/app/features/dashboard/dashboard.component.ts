@@ -79,6 +79,12 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
             <span>Tip: Pin your favorite AI queries</span>
           </div>
         }
+        @if (stats && stats.unresolved_count > 0) {
+          <div class="insight-pill suggested" (click)="router.navigate(['/stats'])" tabindex="0" role="button" (keydown)="onKey($event, router.navigate.bind(router, ['/stats']))">
+            <i class="pi pi-question-circle"></i>
+            <span>Review {{ stats.unresolved_count }} unresolved queries</span>
+          </div>
+        }
       </div>
 
       <!-- Alert -->
@@ -737,6 +743,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private refreshInterval: any;
   uptime: any = null;
   pins: any[] = [];
+  stats: any = null;
 
   get podTotal() {
     return (this.data?.pods.healthy || 0) + (this.data?.pods.warning || 0) + (this.data?.pods.critical || 0);
@@ -823,6 +830,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   refresh() {
     this.refreshing = true;
     this.loadPins();
+    this.loadStats();
     this.api.getOverview().subscribe({
       next: (res) => { this.data = res; },
       error: () => {
@@ -856,6 +864,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.http.get<any>('/api/saved-queries').subscribe({
       next: (res) => (this.pins = res.queries || []),
       error: () => (this.pins = []),
+    });
+  }
+
+  loadStats() {
+    this.api.getStats().subscribe({
+      next: (res) => (this.stats = res),
+      error: () => (this.stats = null),
     });
   }
 

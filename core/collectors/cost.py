@@ -210,12 +210,12 @@ def find_unused_resources():
 
 
 def _get_pod_specs(ns, ctx):
-    cmd = (
-        f"kubectl --context {ctx} "
-        f"get pods -n {ns} -o json"
-    )
+    cmd = [
+        "kubectl", "--context", str(ctx or ""),
+        "get", "pods", "-n", str(ns), "-o", "json"
+    ]
     r = subprocess.run(
-        cmd, shell=True,
+        cmd,
         capture_output=True, text=True
     )
     if r.returncode != 0:
@@ -254,25 +254,25 @@ def _get_pod_specs(ns, ctx):
 
 
 def _get_configmaps(ns, ctx):
-    cmd = (
-        f"kubectl --context {ctx} "
-        f"get configmaps -n {ns} "
-        f"-o jsonpath='{{.items[*].metadata.name}}'"
-    )
+    cmd = [
+        "kubectl", "--context", str(ctx or ""),
+        "get", "configmaps", "-n", str(ns),
+        "-o", "jsonpath={.items[*].metadata.name}"
+    ]
     r = subprocess.run(
-        cmd, shell=True,
+        cmd,
         capture_output=True, text=True
     )
-    return r.stdout.strip("'").split()
+    return r.stdout.strip().split()
 
 
 def _get_mounted_configmaps(ns, ctx):
-    cmd = (
-        f"kubectl --context {ctx} "
-        f"get pods -n {ns} -o json"
-    )
+    cmd = [
+        "kubectl", "--context", str(ctx or ""),
+        "get", "pods", "-n", str(ns), "-o", "json"
+    ]
     r = subprocess.run(
-        cmd, shell=True,
+        cmd,
         capture_output=True, text=True
     )
     if r.returncode != 0:
@@ -299,12 +299,12 @@ def _get_mounted_configmaps(ns, ctx):
 
 
 def _get_unbound_pvcs(ns, ctx):
-    cmd = (
-        f"kubectl --context {ctx} "
-        f"get pvc -n {ns} -o json"
-    )
+    cmd = [
+        "kubectl", "--context", str(ctx or ""),
+        "get", "pvc", "-n", str(ns), "-o", "json"
+    ]
     r = subprocess.run(
-        cmd, shell=True,
+        cmd,
         capture_output=True, text=True
     )
     if r.returncode != 0:

@@ -97,18 +97,18 @@ def resolve_deployment_name(query: str):
     import subprocess
     from core.context import context
 
-    cmd = (
-        f"kubectl --context {context.current_context} "
-        f"get deployments -n {context.namespace} "
-        f"-o jsonpath='{{.items[*].metadata.name}}'"
-    )
+    cmd = [
+        "kubectl", "--context", str(context.current_context or ""),
+        "get", "deployments", "-n", str(context.namespace),
+        "-o", "jsonpath={.items[*].metadata.name}"
+    ]
 
     r = subprocess.run(
-        cmd, shell=True,
+        cmd,
         capture_output=True, text=True
     )
 
-    names = r.stdout.strip("'").split()
+    names = r.stdout.strip().split()
     if not names:
         return None
     return _fuzzy_match(query, names)
@@ -122,18 +122,18 @@ def resolve_cronjob_name(query: str):
     import subprocess
     from core.context import context
 
-    cmd = (
-        f"kubectl --context {context.current_context} "
-        f"get cronjobs -n {context.namespace} "
-        f"-o jsonpath='{{.items[*].metadata.name}}'"
-    )
+    cmd = [
+        "kubectl", "--context", str(context.current_context or ""),
+        "get", "cronjobs", "-n", str(context.namespace),
+        "-o", "jsonpath={.items[*].metadata.name}"
+    ]
 
     r = subprocess.run(
-        cmd, shell=True,
+        cmd,
         capture_output=True, text=True
     )
 
-    names = r.stdout.strip("'").split()
+    names = r.stdout.strip().split()
     if not names:
         return None
     return _fuzzy_match(query, names)

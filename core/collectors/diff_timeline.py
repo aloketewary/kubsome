@@ -33,13 +33,13 @@ def collect_diff_timeline(hours=24):
 
 def _get_recent_events(ctx, ns, hours):
     """Get events from the last N hours."""
-    cmd = (
-        f"kubectl --context {ctx} "
-        f"get events -n {ns} -o json "
-        f"--sort-by=.lastTimestamp"
-    )
+    cmd = [
+        "kubectl", "--context", str(ctx or ""),
+        "get", "events", "-n", str(ns), "-o", "json",
+        "--sort-by=.lastTimestamp"
+    ]
     result = subprocess.run(
-        cmd, shell=True,
+        cmd,
         capture_output=True, text=True,
         timeout=15,
     )

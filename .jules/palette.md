@@ -1,3 +1,11 @@
-## 2025-05-16 - [ARIA Pattern for Command Palettes]
-**Learning:** Command palettes require a specific ARIA pattern (combobox + listbox) to be accessible to screen readers, allowing them to track the active selection using `aria-activedescendant`.
-**Action:** Always implement `role="combobox"`, `aria-activedescendant`, and `role="listbox"` when building interactive search-and-select components.
+## 2026-05-10 - [Keyboard Accessibility in Lists]
+**Learning:** For complex lists with nested actions, both the list item and the action icons need independent keyboard support (tabindex, role, listeners). Crucially, action icons must stop event propagation to avoid triggering the parent item's primary action (like selection).
+**Action:** Always add `$event.stopPropagation()` to keyboard listeners of nested interactive elements. Use `:focus-visible` with `box-shadow: inset` to provide clear focus indicators without shifting the layout.
+
+## 2026-05-11 - [Consistency in Icon-Only Buttons]
+**Learning:** This application frequently uses `<i>` tags as interactive elements. These must consistently have `aria-label`, `tabindex="0"`, `role="button"`, and both `(click)` and `(keydown)` listeners (handling both Enter and Space) to ensure they are accessible.
+**Action:** When encountering icon-only interactions, verify they fulfill the full accessibility checklist (Label + Role + Tabindex + Click + Enter/Space Keyboard support).
+
+## 2026-05-14 - [Granular Feedback for Copy Actions]
+**Learning:** For components with multiple copyable elements (like step-based runbooks), a global "copied" state causes confusing UI updates across all items. Tracking the state per-item (e.g., in the item interface) provides precise visual feedback and improves the user's confidence that the correct content was copied.
+**Action:** Use per-item boolean flags (e.g., `copied`, `outputCopied`) to toggle icons and tooltips for individual clipboard actions.

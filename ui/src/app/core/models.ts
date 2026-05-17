@@ -121,3 +121,11 @@ export interface AiResponse {
   summary?: string;
   [key: string]: any;
 }
+
+export interface UsageStats {
+  total_commands: number;
+  top_commands: [string, number][];
+  unresolved_count: number;
+  top_unresolved: [string, number][];
+  days_tracked: number;
+}

@@ -19,13 +19,13 @@ def list_hpa():
     if not ctx:
         return []
 
-    cmd = (
-        f"kubectl --context {ctx} "
-        f"get hpa -n {ns} -o json"
-    )
+    cmd = [
+        "kubectl", "--context", str(ctx or ""),
+        "get", "hpa", "-n", str(ns), "-o", "json"
+    ]
 
     r = subprocess.run(
-        cmd, shell=True,
+        cmd,
         capture_output=True, text=True
     )
 
@@ -67,13 +67,13 @@ def list_pdb():
     ns = context.namespace
     ctx = context.current_context
 
-    cmd = (
-        f"kubectl --context {ctx} "
-        f"get pdb -n {ns} -o json"
-    )
+    cmd = [
+        "kubectl", "--context", str(ctx or ""),
+        "get", "pdb", "-n", str(ns), "-o", "json"
+    ]
 
     r = subprocess.run(
-        cmd, shell=True,
+        cmd,
         capture_output=True, text=True
     )
 
@@ -117,13 +117,13 @@ def cluster_capacity():
     ctx = context.current_context
 
     # Get node allocatable resources
-    cmd = (
-        f"kubectl --context {ctx} "
-        f"get nodes -o json"
-    )
+    cmd = [
+        "kubectl", "--context", str(ctx or ""),
+        "get", "nodes", "-o", "json"
+    ]
 
     r = subprocess.run(
-        cmd, shell=True,
+        cmd,
         capture_output=True, text=True
     )
 
@@ -147,13 +147,13 @@ def cluster_capacity():
         )
 
     # Get total requested across all pods
-    cmd2 = (
-        f"kubectl --context {ctx} "
-        f"get pods --all-namespaces -o json"
-    )
+    cmd2 = [
+        "kubectl", "--context", str(ctx or ""),
+        "get", "pods", "--all-namespaces", "-o", "json"
+    ]
 
     r2 = subprocess.run(
-        cmd2, shell=True,
+        cmd2,
         capture_output=True, text=True
     )
 
@@ -206,13 +206,13 @@ def namespace_quota():
     ns = context.namespace
     ctx = context.current_context
 
-    cmd = (
-        f"kubectl --context {ctx} "
-        f"get resourcequota -n {ns} -o json"
-    )
+    cmd = [
+        "kubectl", "--context", str(ctx or ""),
+        "get", "resourcequota", "-n", str(ns), "-o", "json"
+    ]
 
     r = subprocess.run(
-        cmd, shell=True,
+        cmd,
         capture_output=True, text=True
     )
 
@@ -247,15 +247,15 @@ def drain_check(node_name):
     """Preview impact of draining a node."""
     ctx = context.current_context
 
-    cmd = (
-        f"kubectl --context {ctx} "
-        f"get pods --all-namespaces "
-        f"--field-selector spec.nodeName={node_name} "
-        f"-o json"
-    )
+    cmd = [
+        "kubectl", "--context", str(ctx or ""),
+        "get", "pods", "--all-namespaces",
+        f"--field-selector=spec.nodeName={node_name}",
+        "-o", "json"
+    ]
 
     r = subprocess.run(
-        cmd, shell=True,
+        cmd,
         capture_output=True, text=True
     )
 

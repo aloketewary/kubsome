@@ -8,17 +8,17 @@ from core.context import context
 
 def fetch_containers(pod_name):
     """Get list of container names in a pod."""
-    cmd = (
-        f"kubectl --context {context.current_context} "
-        f"get pod {pod_name} -n {context.namespace} "
-        f"-o jsonpath='{{.spec.containers[*].name}}'"
-    )
+    cmd = [
+        "kubectl", "--context", str(context.current_context or ""),
+        "get", "pod", pod_name, "-n", str(context.namespace),
+        "-o", "jsonpath={.spec.containers[*].name}"
+    ]
     result = subprocess.run(
-        cmd, shell=True, capture_output=True, text=True
+        cmd, capture_output=True, text=True
     )
     if result.returncode != 0:
         return []
-    names = result.stdout.strip("'").split()
+    names = result.stdout.strip().split()
     return [n for n in names if n]
 
 
@@ -32,29 +32,28 @@ def fetch_logs(
     since=None,
     regex=None,
 ):
-    cmd = (
-        f"kubectl "
-        f"--context {context.current_context} "
-        f"logs {pod_name} "
-        f"-n {context.namespace} "
+    cmd = [
+        "kubectl",
+        "--context", str(context.current_context or ""),
+        "logs", pod_name,
+        "-n", str(context.namespace),
         f"--tail={tail}"
-    )
+    ]
 
     if container:
-        cmd += f" -c {container}"
+        cmd.extend(["-c", container])
 
     if previous:
-        cmd += " --previous"
+        cmd.append("--previous")
 
     if follow:
-        cmd += " --follow"
+        cmd.append("--follow")
 
     if since:
-        cmd += f" --since={since}"
+        cmd.append(f"--since={since}")
 
     result = subprocess.run(
         cmd,
-        shell=True,
         capture_output=True,
         text=True
     )
@@ -89,20 +88,19 @@ def fetch_logs(
 
 def stream_logs(pod_name, container=None):
     """Returns a Popen process for live log streaming."""
-    cmd = (
-        f"kubectl "
-        f"--context {context.current_context} "
-        f"logs {pod_name} "
-        f"-n {context.namespace} "
-        f"--follow --tail=20"
-    )
+    cmd = [
+        "kubectl",
+        "--context", str(context.current_context or ""),
+        "logs", pod_name,
+        "-n", str(context.namespace),
+        "--follow", "--tail=20"
+    ]
 
     if container:
-        cmd += f" -c {container}"
+        cmd.extend(["-c", container])
 
     process = subprocess.Popen(
         cmd,
-        shell=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True
@@ -116,25 +114,27 @@ def find_pods_for_deployment(query):
     Find all pods belonging to a deployment by label selector.
     Falls back to prefix matching.
     """
-    ns = context.namespace
-    ctx = context.current_context
+    ns = str(context.namespace)
+    ctx = str(context.current_context or "")
 
     # Try to get deployment selector
-    cmd = (
-        f"kubectl --context {ctx} "
-        f"get deployment -n {ns} -o json"
-    )
+    cmd = [
+        "kubectl", "--context", ctx,
+        "get", "deployment", "-n", ns, "-o", "json"
+    ]
 
     r = subprocess.run(
-        cmd, shell=True,
-        capture_output=True, text=True
+        cmd, capture_output=True, text=True
     )
 
     if r.returncode != 0:
         return []
 
     import json
-    data = json.loads(r.stdout)
+    try:
+        data = json.loads(r.stdout)
+    except json.JSONDecodeError:
+        return []
 
     # Find matching deployment
     target_dep = None
@@ -159,19 +159,18 @@ def find_pods_for_deployment(query):
         f"{k}={v}" for k, v in labels.items()
     )
 
-    cmd2 = (
-        f"kubectl --context {ctx} "
-        f"get pods -n {ns} "
-        f"-l {selector} "
-        f"-o jsonpath='{{.items[*].metadata.name}}'"
-    )
+    cmd2 = [
+        "kubectl", "--context", ctx,
+        "get", "pods", "-n", ns,
+        "-l", selector,
+        "-o", "jsonpath={.items[*].metadata.name}"
+    ]
 
     r2 = subprocess.run(
-        cmd2, shell=True,
-        capture_output=True, text=True
+        cmd2, capture_output=True, text=True
     )
 
-    pods = r2.stdout.strip("'").split()
+    pods = r2.stdout.strip().split()
     return [p for p in pods if p]
 
 
@@ -183,22 +182,22 @@ def fetch_combined_logs(pods, tail=50, errors_only=False):
     if not pods:
         return []
 
-    ctx = context.current_context
-    ns = context.namespace
+    ctx = str(context.current_context or "")
+    ns = str(context.namespace)
     all_lines = []
 
     def fetch_single(pod):
-        cmd = (
-            f"kubectl "
-            f"--context {ctx} "
-            f"logs {pod} "
-            f"-n {ns} "
-            f"--tail={tail} --timestamps"
-        )
+        cmd = [
+            "kubectl",
+            "--context", ctx,
+            "logs", pod,
+            "-n", ns,
+            f"--tail={tail}", "--timestamps"
+        ]
 
         try:
             result = subprocess.run(
-                cmd, shell=True,
+                cmd,
                 capture_output=True, text=True,
                 timeout=15
             )
@@ -214,7 +213,7 @@ def fetch_combined_logs(pods, tail=50, errors_only=False):
             return []
 
     # Parallel fetch across pods
-    workers = min(len(pods), 10)
+    workers = max(1, min(len(pods), 10))
     with ThreadPoolExecutor(max_workers=workers) as executor:
         results = executor.map(fetch_single, pods)
 
@@ -255,16 +254,16 @@ def stream_combined_logs(pods):
         log_queue.put((pod, None))  # Signal done
 
     for pod in pods:
-        cmd = (
-            f"kubectl "
-            f"--context {context.current_context} "
-            f"logs {pod} "
-            f"-n {context.namespace} "
-            f"--follow --tail=5"
-        )
+        cmd = [
+            "kubectl",
+            "--context", str(context.current_context or ""),
+            "logs", pod,
+            "-n", str(context.namespace),
+            "--follow", "--tail=5"
+        ]
 
         proc = subprocess.Popen(
-            cmd, shell=True,
+            cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True

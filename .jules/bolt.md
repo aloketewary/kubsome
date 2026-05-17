@@ -15,3 +15,8 @@
 **Learning:** Multiple collectors independently fetching the same Kubernetes resources (pods, nodes, etc.) create redundant I/O and shell overhead. Centralizing resource fetching into a unified, cached raw fetcher (`get_raw_resources`) allows different components to share the same data within the cache window, significantly reducing the total number of `kubectl` executions.
 
 **Action:** Use a shared, cached raw resource fetcher for primary Kubernetes objects and parallelize top-level data aggregation (like overviews) to minimize latency.
+
+## 2025-05-16 - [Sequential ThreadPoolExecutor Anti-pattern]
+**Learning:** A common anti-pattern in the codebase was calling `.result()` immediately after `executor.submit()`, which effectively serializes the execution. True parallelism requires submitting all tasks first and collecting their futures, then resolving them.
+
+**Action:** Always submit all background tasks to a `ThreadPoolExecutor` and store their future objects before calling `.result()` on any of them to ensure concurrent execution.
