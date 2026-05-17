@@ -72,13 +72,13 @@ def collect_uptime():
 
 def _check_api(ctx):
     """Check if API server responds."""
-    cmd = (
-        f"kubectl --context {ctx} "
-        f"api-versions --request-timeout=5s"
-    )
+    cmd = [
+        "kubectl", "--context", str(ctx or ""),
+        "api-versions", "--request-timeout=5s"
+    ]
     try:
         result = subprocess.run(
-            cmd, shell=True,
+            cmd,
             capture_output=True, text=True,
             timeout=8,
         )
@@ -89,13 +89,13 @@ def _check_api(ctx):
 
 def _get_nodes(ctx):
     """Get node status and uptime."""
-    cmd = (
-        f"kubectl --context {ctx} "
-        f"get nodes -o json"
-    )
+    cmd = [
+        "kubectl", "--context", str(ctx or ""),
+        "get", "nodes", "-o", "json"
+    ]
     try:
         result = subprocess.run(
-            cmd, shell=True,
+            cmd,
             capture_output=True, text=True,
             timeout=10,
         )
@@ -139,13 +139,13 @@ def _get_nodes(ctx):
 
 def _get_pod_summary(ctx, ns):
     """Quick pod count summary."""
-    cmd = (
-        f"kubectl --context {ctx} "
-        f"get pods -n {ns} -o json"
-    )
+    cmd = [
+        "kubectl", "--context", str(ctx or ""),
+        "get", "pods", "-n", str(ns), "-o", "json"
+    ]
     try:
         result = subprocess.run(
-            cmd, shell=True,
+            cmd,
             capture_output=True, text=True,
             timeout=10,
         )

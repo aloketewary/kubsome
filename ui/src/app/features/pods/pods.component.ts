@@ -121,7 +121,6 @@ interface PodGroup {
     }
 
     <!-- Groups -->
-    <p class="group-count-hint" *ngIf="false"><!-- hidden --></p>
     @if (filteredGroups.length > 0 && statusFilter !== 'all') {
       <p class="filter-hint">Showing {{ filteredGroups.length }} deployment(s) matching "{{ statusFilter }}"</p>
     }

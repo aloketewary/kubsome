@@ -57,7 +57,7 @@ def start_incident(title=""):
     return incident
 
 
-def stop_incident(root_cause="", resolution=""):
+def stop_incident(root_cause="", resolution="", lessons_learned=""):
     """Stop active incident and export report."""
     incident = _load()
     if not incident:
@@ -68,6 +68,8 @@ def stop_incident(root_cause="", resolution=""):
         incident["root_cause"] = root_cause
     if resolution:
         incident["resolution"] = resolution
+    if lessons_learned:
+        incident["lessons_learned"] = lessons_learned
     incident["timeline"].append({
         "time": datetime.now().isoformat(),
         "event": "Incident closed",

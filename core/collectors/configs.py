@@ -15,13 +15,13 @@ def get_configmap(name):
     ns = context.namespace
     ctx = context.current_context
 
-    cmd = (
-        f"kubectl --context {ctx} "
-        f"get configmap {name} -n {ns} -o json"
-    )
+    cmd = [
+        "kubectl", "--context", str(ctx or ""),
+        "get", "configmap", name, "-n", str(ns), "-o", "json"
+    ]
 
     r = subprocess.run(
-        cmd, shell=True,
+        cmd,
         capture_output=True, text=True
     )
 
@@ -46,13 +46,13 @@ def get_secret(name, reveal=False):
     ns = context.namespace
     ctx = context.current_context
 
-    cmd = (
-        f"kubectl --context {ctx} "
-        f"get secret {name} -n {ns} -o json"
-    )
+    cmd = [
+        "kubectl", "--context", str(ctx or ""),
+        "get", "secret", name, "-n", str(ns), "-o", "json"
+    ]
 
     r = subprocess.run(
-        cmd, shell=True,
+        cmd,
         capture_output=True, text=True
     )
 
