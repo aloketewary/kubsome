@@ -536,6 +536,12 @@ def get_doctor():
     return {"checks": run_doctor()}
 
 
+@router.get("/stats")
+def get_usage_stats():
+    from core.telemetry import get_stats
+    return get_stats()
+
+
 @router.get("/schedules")
 def get_schedules():
     from core.scheduler import get_scheduler
