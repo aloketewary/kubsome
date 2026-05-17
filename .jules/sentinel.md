@@ -17,3 +17,8 @@
 **Vulnerability:** Core utility functions `get_pods` and `get_pod_names` in `core/k8s.py` were using `shell=True` with f-strings containing user-influenced context and namespace names.
 **Learning:** Hardening API routes is insufficient if the underlying core utilities still use vulnerable patterns. Security must be implemented at the lowest possible level of command execution.
 **Prevention:** Standardize on list-based arguments and `shell=False` for all `subprocess` calls in core utility modules.
+
+## 2026-05-24 - [CRITICAL] Command Injection in Auto-Remediation via Shell=True
+**Vulnerability:** The auto-remediation module (`core/remediation.py`) was using `shell=True` with string-formatted commands containing user-controlled pod names and namespace/context strings.
+**Learning:** Even internal "safe" actions like restarts and deletions can be exploited if the resource names are manipulated to include shell metacharacters (e.g., `; rm -rf /`).
+**Prevention:** Eliminate `shell=True` and use list-based arguments for all `subprocess` calls. When redirecting stderr to null in list-mode, use `stderr=subprocess.DEVNULL` and avoid `capture_output=True` if explicit redirection is needed.

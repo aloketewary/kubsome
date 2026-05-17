@@ -104,8 +104,7 @@ def _safe_action(title, pod, ctx, ns):
                 "description": f"Rolling restart {dep}",
                 "command": [
                     "kubectl", "--context", str(ctx),
-                    "rollout", "restart",
-                    f"deployment/{dep}",
+                    "rollout", "restart", f"deployment/{dep}",
                     "-n", str(ns)
                 ],
             }
@@ -118,8 +117,7 @@ def _safe_action(title, pod, ctx, ns):
                 "description": f"Rolling restart {dep}",
                 "command": [
                     "kubectl", "--context", str(ctx),
-                    "rollout", "restart",
-                    f"deployment/{dep}",
+                    "rollout", "restart", f"deployment/{dep}",
                     "-n", str(ns)
                 ],
             }
@@ -130,7 +128,7 @@ def _safe_action(title, pod, ctx, ns):
             "description": f"Delete stuck pod {pod}",
             "command": [
                 "kubectl", "--context", str(ctx),
-                "delete", "pod", pod,
+                "delete", "pod", str(pod),
                 "-n", str(ns),
                 "--grace-period=30"
             ],
@@ -141,8 +139,10 @@ def _safe_action(title, pod, ctx, ns):
 
 def _execute_action(action):
     """Execute a remediation command."""
+    # Use shell=False with list-based arguments for safety
     result = subprocess.run(
         action["command"],
+        shell=False,
         capture_output=True,
         text=True,
         timeout=30,
@@ -155,8 +155,11 @@ def _execute_action(action):
 
 def _get_deployment_for_pod(pod, ctx, ns):
     """Find the deployment that owns a pod."""
+    # Extract deployment name from pod name
+    # (pod: dep-name-replicaset-hash)
     parts = pod.split("-")
     if len(parts) > 2:
+        # Try progressively shorter names
         for i in range(len(parts) - 1, 1, -1):
             candidate = "-".join(parts[:i])
             cmd = [
@@ -164,10 +167,13 @@ def _get_deployment_for_pod(pod, ctx, ns):
                 "get", "deployment", candidate,
                 "-n", str(ns), "--no-headers"
             ]
+            # Use shell=False and redirect stderr to DEVNULL to replace 2>/dev/null
             result = subprocess.run(
-                cmd,
-                capture_output=True, text=True,
-                timeout=5,
+                cmd, shell=False,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+                text=True,
+                timeout=5
             )
             if result.returncode == 0:
                 return candidate
