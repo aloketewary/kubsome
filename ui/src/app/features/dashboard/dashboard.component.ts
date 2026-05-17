@@ -48,38 +48,95 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
         </div>
       </div>
 
-      <!-- Growth: Empty State -->
+      <!-- Growth: Quick Start Checklist -->
       @if (isClusterEmpty) {
-        <div class="empty-state-card glass stagger-1">
-          <div class="empty-icon"><i class="pi pi-compass"></i></div>
-          <div class="empty-content">
-            <h3>Welcome to Kubsome!</h3>
-            <p>We didn't find any resources in the current namespace. Try exploring other namespaces or use the AI Assistant to get started.</p>
-            <div class="empty-actions">
-              <button class="btn-primary" (click)="router.navigate(['/namespace'])">Switch Namespace</button>
-              <button class="btn-secondary" (click)="router.navigate(['/ai'])">Ask AI Assistant</button>
+        <div class="checklist-card glass stagger-1">
+          <div class="checklist-header">
+            <div class="checklist-icon"><i class="pi pi-flag-fill"></i></div>
+            <div class="checklist-title">
+              <h3>Getting Started Checklist</h3>
+              <p>Complete these steps to activate your workspace and unlock insights.</p>
+            </div>
+          </div>
+          <div class="checklist-items">
+            <div class="check-item" [class.done]="podTotal > 0" (click)="router.navigate(['/namespace'])">
+              <div class="check-box"><i class="pi" [class.pi-check]="podTotal > 0" [class.pi-circle]="podTotal === 0"></i></div>
+              <div class="check-label">
+                <span>Connect to a Namespace</span>
+                <small>Select a namespace with active workloads to begin analysis.</small>
+              </div>
+              <i class="pi pi-chevron-right"></i>
+            </div>
+            <div class="check-item" [class.done]="pins.length > 0" (click)="router.navigate(['/ai'])">
+              <div class="check-box"><i class="pi" [class.pi-check]="pins.length > 0" [class.pi-circle]="pins.length === 0"></i></div>
+              <div class="check-label">
+                <span>Pin a Query</span>
+                <small>Save a frequent AI query or command for quick dashboard access.</small>
+              </div>
+              <i class="pi pi-chevron-right"></i>
+            </div>
+            <div class="check-item" (click)="router.navigate(['/scorecard'])">
+              <div class="check-box"><i class="pi pi-circle"></i></div>
+              <div class="check-label">
+                <span>Run Health Scorecard</span>
+                <small>Get an A-F grade across Security, Reliability, and Efficiency.</small>
+              </div>
+              <i class="pi pi-chevron-right"></i>
             </div>
           </div>
         </div>
       }
 
-      <!-- Growth: Smart Insights -->
+      <!-- Growth: Dynamic Smart Insights -->
       <div class="insights-row stagger-1">
-        <div class="insight-pill" (click)="router.navigate(['/scorecard'])" tabindex="0" role="button" (keydown)="onKey($event, router.navigate.bind(router, ['/scorecard']))">
-          <i class="pi pi-trophy"></i>
-          <span>Check Cluster Scorecard</span>
-        </div>
-        <div class="insight-pill" (click)="router.navigate(['/cost'])" tabindex="0" role="button" (keydown)="onKey($event, router.navigate.bind(router, ['/cost']))">
-          <i class="pi pi-chart-line"></i>
-          <span>Optimize Resource Costs</span>
-        </div>
+        @if (overallHealth !== 'healthy') {
+          <div class="insight-pill critical" (click)="router.navigate(['/pods'])" tabindex="0" role="button" (keydown)="onKey($event, router.navigate.bind(router, ['/pods']))">
+            <i class="pi pi-exclamation-circle"></i>
+            <span>Diagnose Unhealthy Pods</span>
+          </div>
+          <div class="insight-pill" (click)="router.navigate(['/events'])" tabindex="0" role="button" (keydown)="onKey($event, router.navigate.bind(router, ['/events']))">
+            <i class="pi pi-calendar"></i>
+            <span>Analyze Recent Events</span>
+          </div>
+        } @else {
+          <div class="insight-pill" (click)="router.navigate(['/scorecard'])" tabindex="0" role="button" (keydown)="onKey($event, router.navigate.bind(router, ['/scorecard']))">
+            <i class="pi pi-trophy"></i>
+            <span>Check Cluster Scorecard</span>
+          </div>
+          <div class="insight-pill" (click)="router.navigate(['/cost'])" tabindex="0" role="button" (keydown)="onKey($event, router.navigate.bind(router, ['/cost']))">
+            <i class="pi pi-chart-line"></i>
+            <span>Optimize Resource Costs</span>
+          </div>
+        }
+
         @if (data && pins.length === 0) {
           <div class="insight-pill suggested" (click)="router.navigate(['/ai'])" tabindex="0" role="button" (keydown)="onKey($event, router.navigate.bind(router, ['/ai']))">
             <i class="pi pi-bookmark"></i>
             <span>Tip: Pin your favorite AI queries</span>
           </div>
+        } @else {
+          <div class="insight-pill" (click)="router.navigate(['/audit'])" tabindex="0" role="button" (keydown)="onKey($event, router.navigate.bind(router, ['/audit']))">
+            <i class="pi pi-history"></i>
+            <span>Review Audit Logs</span>
+          </div>
         }
       </div>
+
+      <!-- Proactive Insight -->
+      @if (data.top_recommendation) {
+        <div class="proactive-card glass stagger-1" (click)="router.navigate(['/cost'])">
+          <div class="proactive-icon"><i class="pi pi-sparkles"></i></div>
+          <div class="proactive-content">
+            <div class="proactive-top">
+              <span class="proactive-tag">Proactive Recommendation</span>
+              <span class="proactive-severity" [class]="data.top_recommendation.severity">{{ data.top_recommendation.severity }}</span>
+            </div>
+            <h3>{{ data.top_recommendation.title }}</h3>
+            <p>{{ data.top_recommendation.suggestion }}</p>
+          </div>
+          <button class="proactive-btn">View Optimization <i class="pi pi-arrow-right"></i></button>
+        </div>
+      }
 
       <!-- Alert -->
       @if ((data.pods.critical) > 0 || data.nodes.warning > 0) {
@@ -163,9 +220,12 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
             </div>
             <div class="uptime-info">
               <span class="uptime-title">{{ uptime?.cluster_down ? 'Cluster Down' : 'Cluster Operational' }}</span>
-              <span class="uptime-ctx" [pTooltip]="uptime?.context" tooltipPosition="bottom"
+              <span class="uptime-ctx" [pTooltip]="contextCopied ? 'Copied!' : uptime?.context" tooltipPosition="bottom"
                 (click)="copyContext()" (keydown)="onKey($event, copyContext.bind(this))"
-                tabindex="0" role="button" aria-label="Copy Context">{{ uptime?.context }}</span>
+                tabindex="0" role="button" aria-label="Copy Context">
+                {{ uptime?.context }}
+                <i class="pi ml-1" [class.pi-copy]="!contextCopied" [class.pi-check]="contextCopied" [class.text-success]="contextCopied"></i>
+              </span>
             </div>
             <div class="uptime-stats">
               @if (uptime?.nodes?.length && !uptime?.cluster_down) {
@@ -297,29 +357,39 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
       overflow: visible;
     }
 
-    /* Empty State */
-    .empty-state-card {
-      display: flex; align-items: center; gap: 24px;
-      padding: 24px 32px; margin-bottom: 24px;
+    /* Checklist Card */
+    .checklist-card {
+      padding: 28px 32px; margin-bottom: 24px;
       border-radius: 20px; border: 1px solid var(--border);
       background: var(--bg-card);
     }
-    .empty-icon {
-      width: 64px; height: 64px; border-radius: 16px;
+    .checklist-header { display: flex; align-items: center; gap: 20px; margin-bottom: 24px; }
+    .checklist-icon {
+      width: 48px; height: 48px; border-radius: 12px;
       background: var(--accent-subtle); color: var(--accent);
-      display: flex; align-items: center; justify-content: center; font-size: 28px;
+      display: flex; align-items: center; justify-content: center; font-size: 20px;
     }
-    .empty-content h3 { margin: 0 0 8px; font-size: 18px; font-weight: 700; }
-    .empty-content p { margin: 0 0 16px; color: var(--text-muted); font-size: 14px; line-height: 1.5; }
-    .empty-actions { display: flex; gap: 12px; }
-    .btn-primary {
-      background: var(--accent); color: #fff; border: none; padding: 8px 16px;
-      border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer;
+    .checklist-title h3 { margin: 0 0 4px; font-size: 18px; font-weight: 700; }
+    .checklist-title p { margin: 0; color: var(--text-muted); font-size: 13px; }
+    .checklist-items { display: flex; flex-direction: column; gap: 12px; }
+    .check-item {
+      display: flex; align-items: center; gap: 16px; padding: 14px 20px;
+      background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 12px;
+      cursor: pointer; transition: all 0.2s;
     }
-    .btn-secondary {
-      background: var(--bg-elevated); color: var(--text); border: 1px solid var(--border);
-      padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer;
+    .check-item:hover { border-color: var(--accent); background: var(--bg-hover); transform: translateX(4px); }
+    .check-item.done { opacity: 0.7; border-color: var(--success-subtle); }
+    .check-box {
+      width: 24px; height: 24px; border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; color: var(--text-muted);
     }
+    .done .check-box { color: var(--success); }
+    .check-label { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+    .check-label span { font-size: 14px; font-weight: 600; }
+    .check-label small { font-size: 12px; color: var(--text-muted); }
+    .check-item i.pi-chevron-right { font-size: 12px; color: var(--text-muted); opacity: 0; transition: all 0.2s; }
+    .check-item:hover i.pi-chevron-right { opacity: 1; transform: translateX(4px); }
 
     /* Insights Pill */
     .insights-row { display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
@@ -330,6 +400,8 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     }
     .insight-pill:hover { border-color: var(--accent); background: var(--accent-subtle); color: var(--accent); transform: translateY(-1px); }
     .insight-pill.suggested { border-style: dashed; opacity: 0.8; }
+    .insight-pill.critical { border-color: var(--danger-subtle); color: var(--danger); }
+    .insight-pill.critical:hover { background: var(--danger-subtle); border-color: var(--danger); }
     .insight-pill i { font-size: 14px; }
 
     /* Hero — Glassmorphism + Mesh Gradient */
@@ -425,6 +497,34 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     .refresh-btn:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--accent); }
     .refresh-btn.spinning i { animation: spin 0.8s linear infinite; }
     @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+    /* Proactive Insight Card */
+    .proactive-card {
+      display: flex; align-items: center; gap: 20px;
+      padding: 16px 24px; margin-bottom: 24px;
+      border-radius: 16px; border: 1px solid var(--accent-subtle);
+      background: linear-gradient(90deg, var(--accent-subtle), transparent);
+      cursor: pointer; transition: all 0.2s;
+    }
+    .proactive-card:hover { transform: translateY(-2px); border-color: var(--accent); box-shadow: 0 8px 32px -8px rgba(99,102,241,0.2); }
+    .proactive-icon {
+      width: 48px; height: 48px; border-radius: 12px; background: var(--accent); color: #fff;
+      display: flex; align-items: center; justify-content: center; font-size: 20px;
+    }
+    .proactive-content { flex: 1; }
+    .proactive-top { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+    .proactive-tag { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent); }
+    .proactive-severity { font-size: 9px; font-weight: 700; text-transform: uppercase; padding: 2px 6px; border-radius: 4px; }
+    .proactive-severity.warning { background: var(--warning-subtle); color: var(--warning); }
+    .proactive-severity.info { background: var(--accent-subtle); color: var(--accent); }
+    .proactive-content h3 { margin: 0 0 2px; font-size: 15px; font-weight: 700; }
+    .proactive-content p { margin: 0; font-size: 13px; color: var(--text-secondary); }
+    .proactive-btn {
+      background: none; border: 1px solid var(--accent); color: var(--accent);
+      padding: 8px 16px; border-radius: 8px; font-size: 12px; font-weight: 600;
+      cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.2s;
+    }
+    .proactive-btn:hover { background: var(--accent); color: #fff; }
 
     /* Alert Banner */
     .alert-banner {
@@ -734,6 +834,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   recentEvents: KubeEvent[] = [];
   lastUpdated = '';
   refreshing = false;
+  contextCopied = false;
   private refreshInterval: any;
   uptime: any = null;
   pins: any[] = [];
@@ -862,6 +963,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
   copyContext() {
     if (this.uptime?.context) {
       navigator.clipboard.writeText(this.uptime.context);
+      this.contextCopied = true;
+      setTimeout(() => this.contextCopied = false, 2000);
     }
   }
 

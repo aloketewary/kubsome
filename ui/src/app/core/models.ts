@@ -22,12 +22,24 @@ export interface HealthCount {
   unavailable: number;
 }
 
+export interface ResourceRecommendation {
+  pod: string;
+  type: string;
+  severity: 'warning' | 'info';
+  title: string;
+  detail: string;
+  suggestion: string;
+  current?: string;
+  suggested?: string;
+}
+
 export interface OverviewResponse {
   context: string;
   namespace: string;
   pods: HealthCount;
   nodes: HealthCount;
   deployments: HealthCount;
+  top_recommendation?: ResourceRecommendation;
 }
 
 export interface KubeContext {
