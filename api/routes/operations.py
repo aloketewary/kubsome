@@ -378,6 +378,17 @@ def list_playbooks():
 
 # ─── Changelog / Snap ─────────────────────────────────────────────────────────
 
+@router.get("/webhook/placeholders")
+def get_webhook_placeholders():
+    """Return placeholder hint strings for webhook URL inputs."""
+    return {
+        "slack": "https://hooks.slack.com/services/",
+        "teams": "https://outlook.office.com/webhook/",
+        "webex": "https://webexapis.com/v1/webhooks/incoming/",
+        "generic": "https://your-server.com/alert",
+    }
+
+
 @router.post("/webhook/test")
 def test_webhook():
     """Send a test notification to all configured webhooks."""

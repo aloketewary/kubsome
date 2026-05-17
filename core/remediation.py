@@ -102,11 +102,12 @@ def _safe_action(title, pod, ctx, ns):
         if dep:
             return {
                 "description": f"Rolling restart {dep}",
-                "command": (
-                    f"kubectl --context {ctx} "
-                    f"rollout restart deployment/{dep} "
-                    f"-n {ns}"
-                ),
+                "command": [
+                    "kubectl", "--context", str(ctx),
+                    "rollout", "restart",
+                    f"deployment/{dep}",
+                    "-n", str(ns)
+                ],
             }
 
     # High restarts → restart deployment
@@ -115,22 +116,24 @@ def _safe_action(title, pod, ctx, ns):
         if dep:
             return {
                 "description": f"Rolling restart {dep}",
-                "command": (
-                    f"kubectl --context {ctx} "
-                    f"rollout restart deployment/{dep} "
-                    f"-n {ns}"
-                ),
+                "command": [
+                    "kubectl", "--context", str(ctx),
+                    "rollout", "restart",
+                    f"deployment/{dep}",
+                    "-n", str(ns)
+                ],
             }
 
     # Stuck pod → delete pod (let deployment recreate)
     if "stuck" in lower or "terminating" in lower:
         return {
             "description": f"Delete stuck pod {pod}",
-            "command": (
-                f"kubectl --context {ctx} "
-                f"delete pod {pod} -n {ns} "
-                f"--grace-period=30"
-            ),
+            "command": [
+                "kubectl", "--context", str(ctx),
+                "delete", "pod", pod,
+                "-n", str(ns),
+                "--grace-period=30"
+            ],
         }
 
     return None
@@ -140,7 +143,6 @@ def _execute_action(action):
     """Execute a remediation command."""
     result = subprocess.run(
         action["command"],
-        shell=True,
         capture_output=True,
         text=True,
         timeout=30,
@@ -153,20 +155,17 @@ def _execute_action(action):
 
 def _get_deployment_for_pod(pod, ctx, ns):
     """Find the deployment that owns a pod."""
-    # Extract deployment name from pod name
-    # (pod: dep-name-replicaset-hash)
     parts = pod.split("-")
     if len(parts) > 2:
-        # Try progressively shorter names
         for i in range(len(parts) - 1, 1, -1):
             candidate = "-".join(parts[:i])
-            cmd = (
-                f"kubectl --context {ctx} "
-                f"get deployment {candidate} "
-                f"-n {ns} --no-headers 2>/dev/null"
-            )
+            cmd = [
+                "kubectl", "--context", str(ctx),
+                "get", "deployment", candidate,
+                "-n", str(ns), "--no-headers"
+            ]
             result = subprocess.run(
-                cmd, shell=True,
+                cmd,
                 capture_output=True, text=True,
                 timeout=5,
             )

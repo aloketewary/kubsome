@@ -5,17 +5,16 @@ from core.context import context
 
 
 def rollout_status(deployment_name):
-    command = (
-        f"kubectl "
-        f"--context {context.current_context} "
-        f"get deployment {deployment_name} "
-        f"-n {context.namespace} "
-        f"-o json"
-    )
+    command = [
+        "kubectl",
+        "--context", str(context.current_context or ""),
+        "get", "deployment", deployment_name,
+        "-n", str(context.namespace),
+        "-o", "json"
+    ]
 
     result = subprocess.run(
         command,
-        shell=True,
         capture_output=True,
         text=True
     )
@@ -68,16 +67,16 @@ def rollout_status(deployment_name):
 
 
 def rollout_history(deployment_name):
-    command = (
-        f"kubectl "
-        f"--context {context.current_context} "
-        f"rollout history deployment/{deployment_name} "
-        f"-n {context.namespace}"
-    )
+    command = [
+        "kubectl",
+        "--context", str(context.current_context or ""),
+        "rollout", "history",
+        f"deployment/{deployment_name}",
+        "-n", str(context.namespace)
+    ]
 
     result = subprocess.run(
         command,
-        shell=True,
         capture_output=True,
         text=True
     )
@@ -86,16 +85,16 @@ def rollout_history(deployment_name):
 
 
 def rollout_rollback(deployment_name):
-    command = (
-        f"kubectl "
-        f"--context {context.current_context} "
-        f"rollout undo deployment/{deployment_name} "
-        f"-n {context.namespace}"
-    )
+    command = [
+        "kubectl",
+        "--context", str(context.current_context or ""),
+        "rollout", "undo",
+        f"deployment/{deployment_name}",
+        "-n", str(context.namespace)
+    ]
 
     result = subprocess.run(
         command,
-        shell=True,
         capture_output=True,
         text=True
     )
@@ -104,16 +103,16 @@ def rollout_rollback(deployment_name):
 
 
 def rollout_restart(deployment_name):
-    command = (
-        f"kubectl "
-        f"--context {context.current_context} "
-        f"rollout restart deployment/{deployment_name} "
-        f"-n {context.namespace}"
-    )
+    command = [
+        "kubectl",
+        "--context", str(context.current_context or ""),
+        "rollout", "restart",
+        f"deployment/{deployment_name}",
+        "-n", str(context.namespace)
+    ]
 
     result = subprocess.run(
         command,
-        shell=True,
         capture_output=True,
         text=True
     )

@@ -75,14 +75,13 @@ def trace_resource(name):
 
 
 def _get_resource(kind, name, ns, ctx):
-    cmd = (
-        f"kubectl --context {ctx} "
-        f"get {kind} {name} "
-        f"-n {ns} -o json"
-    )
+    cmd = [
+        "kubectl", "--context", str(ctx or ""),
+        "get", kind, name,
+        "-n", str(ns), "-o", "json"
+    ]
     r = subprocess.run(
-        cmd, shell=True,
-        capture_output=True, text=True
+        cmd, capture_output=True, text=True
     )
     if r.returncode != 0:
         return None
@@ -90,13 +89,12 @@ def _get_resource(kind, name, ns, ctx):
 
 
 def _find_replicasets(dep_name, ns, ctx):
-    cmd = (
-        f"kubectl --context {ctx} "
-        f"get replicasets -n {ns} -o json"
-    )
+    cmd = [
+        "kubectl", "--context", str(ctx or ""),
+        "get", "replicasets", "-n", str(ns), "-o", "json"
+    ]
     r = subprocess.run(
-        cmd, shell=True,
-        capture_output=True, text=True
+        cmd, capture_output=True, text=True
     )
     if r.returncode != 0:
         return []
@@ -132,14 +130,13 @@ def _find_pods_by_labels(labels, ns, ctx):
     selector = ",".join(
         f"{k}={v}" for k, v in labels.items()
     )
-    cmd = (
-        f"kubectl --context {ctx} "
-        f"get pods -n {ns} "
-        f"-l {selector} -o json"
-    )
+    cmd = [
+        "kubectl", "--context", str(ctx or ""),
+        "get", "pods", "-n", str(ns),
+        "-l", selector, "-o", "json"
+    ]
     r = subprocess.run(
-        cmd, shell=True,
-        capture_output=True, text=True
+        cmd, capture_output=True, text=True
     )
     if r.returncode != 0:
         return []
@@ -161,13 +158,12 @@ def _find_pods_by_labels(labels, ns, ctx):
 
 
 def _find_service(name, ns, ctx):
-    cmd = (
-        f"kubectl --context {ctx} "
-        f"get services -n {ns} -o json"
-    )
+    cmd = [
+        "kubectl", "--context", str(ctx or ""),
+        "get", "services", "-n", str(ns), "-o", "json"
+    ]
     r = subprocess.run(
-        cmd, shell=True,
-        capture_output=True, text=True
+        cmd, capture_output=True, text=True
     )
     if r.returncode != 0:
         return None
@@ -194,13 +190,12 @@ def _find_service(name, ns, ctx):
 
 
 def _find_ingress(name, ns, ctx):
-    cmd = (
-        f"kubectl --context {ctx} "
-        f"get ingress -n {ns} -o json"
-    )
+    cmd = [
+        "kubectl", "--context", str(ctx or ""),
+        "get", "ingress", "-n", str(ns), "-o", "json"
+    ]
     r = subprocess.run(
-        cmd, shell=True,
-        capture_output=True, text=True
+        cmd, capture_output=True, text=True
     )
     if r.returncode != 0:
         return None

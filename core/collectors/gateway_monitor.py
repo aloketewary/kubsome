@@ -124,12 +124,12 @@ def collect_gateway_monitor():
 
 @cached(ttl=3)
 def _get_deployments(ctx, ns):
-    cmd = (
-        f"kubectl --context {ctx} get deployments "
-        f"-n {ns} -o json"
-    )
+    cmd = [
+        "kubectl", "--context", str(ctx or ""),
+        "get", "deployments", "-n", str(ns), "-o", "json"
+    ]
     result = subprocess.run(
-        cmd, shell=True, capture_output=True, text=True
+        cmd, capture_output=True, text=True
     )
     if result.returncode != 0:
         return []
@@ -139,12 +139,12 @@ def _get_deployments(ctx, ns):
 
 @cached(ttl=3)
 def _get_hpas(ctx, ns):
-    cmd = (
-        f"kubectl --context {ctx} get hpa "
-        f"-n {ns} -o json"
-    )
+    cmd = [
+        "kubectl", "--context", str(ctx or ""),
+        "get", "hpa", "-n", str(ns), "-o", "json"
+    ]
     result = subprocess.run(
-        cmd, shell=True, capture_output=True, text=True
+        cmd, capture_output=True, text=True
     )
     if result.returncode != 0:
         return {}
@@ -203,12 +203,12 @@ def _get_hpas(ctx, ns):
 
 @cached(ttl=3)
 def _get_pod_metrics(ctx, ns):
-    cmd = (
-        f"kubectl --context {ctx} top pods "
-        f"-n {ns} --no-headers"
-    )
+    cmd = [
+        "kubectl", "--context", str(ctx or ""),
+        "top", "pods", "-n", str(ns), "--no-headers"
+    ]
     result = subprocess.run(
-        cmd, shell=True, capture_output=True, text=True
+        cmd, capture_output=True, text=True
     )
     if result.returncode != 0:
         return {}

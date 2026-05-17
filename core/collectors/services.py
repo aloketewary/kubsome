@@ -15,13 +15,13 @@ def detect_mesh():
     ctx = context.current_context
 
     # Check for Istio sidecars
-    cmd = (
-        f"kubectl --context {ctx} "
-        f"get pods -n {ns} -o json"
-    )
+    cmd = [
+        "kubectl", "--context", str(ctx or ""),
+        "get", "pods", "-n", str(ns), "-o", "json"
+    ]
 
     r = subprocess.run(
-        cmd, shell=True,
+        cmd,
         capture_output=True, text=True
     )
 
@@ -76,13 +76,13 @@ def list_ingresses():
     ns = context.namespace
     ctx = context.current_context
 
-    cmd = (
-        f"kubectl --context {ctx} "
-        f"get ingress -n {ns} -o json"
-    )
+    cmd = [
+        "kubectl", "--context", str(ctx or ""),
+        "get", "ingress", "-n", str(ns), "-o", "json"
+    ]
 
     r = subprocess.run(
-        cmd, shell=True,
+        cmd,
         capture_output=True, text=True
     )
 
@@ -130,14 +130,14 @@ def service_dependencies(deployment_name):
     ns = context.namespace
     ctx = context.current_context
 
-    cmd = (
-        f"kubectl --context {ctx} "
-        f"get deployment {deployment_name} "
-        f"-n {ns} -o json"
-    )
+    cmd = [
+        "kubectl", "--context", str(ctx or ""),
+        "get", "deployment", deployment_name,
+        "-n", str(ns), "-o", "json"
+    ]
 
     r = subprocess.run(
-        cmd, shell=True,
+        cmd,
         capture_output=True, text=True
     )
 
@@ -187,13 +187,13 @@ def service_dependencies(deployment_name):
                     })
 
     # Check if any service points to this deployment
-    cmd2 = (
-        f"kubectl --context {ctx} "
-        f"get services -n {ns} -o json"
-    )
+    cmd2 = [
+        "kubectl", "--context", str(ctx or ""),
+        "get", "services", "-n", str(ns), "-o", "json"
+    ]
 
     r2 = subprocess.run(
-        cmd2, shell=True,
+        cmd2,
         capture_output=True, text=True
     )
 
@@ -236,17 +236,18 @@ def dns_debug(service_name):
     ]
 
     # Get service ClusterIP for comparison
-    cmd = (
-        f"kubectl --context {ctx} "
-        f"get service {service_name} -n {ns} "
-        f"-o jsonpath='{{.spec.clusterIP}}'"
-    )
+    cmd = [
+        "kubectl", "--context", str(ctx or ""),
+        "get", "service", service_name,
+        "-n", str(ns),
+        "-o", "jsonpath={.spec.clusterIP}"
+    ]
 
     r = subprocess.run(
-        cmd, shell=True,
+        cmd,
         capture_output=True, text=True
     )
-    expected_ip = r.stdout.strip("'") if r.returncode == 0 else ""
+    expected_ip = r.stdout.strip() if r.returncode == 0 else ""
 
     for dns_name in dns_names:
         # Use kubectl run to test DNS from inside cluster
@@ -281,13 +282,13 @@ def _sidecar_ready(pod, sidecar_name):
 
 
 def _get_service_names(ns, ctx):
-    cmd = (
-        f"kubectl --context {ctx} "
-        f"get services -n {ns} "
-        f"-o jsonpath='{{.items[*].metadata.name}}'"
-    )
+    cmd = [
+        "kubectl", "--context", str(ctx or ""),
+        "get", "services", "-n", str(ns),
+        "-o", "jsonpath={.items[*].metadata.name}"
+    ]
     r = subprocess.run(
-        cmd, shell=True,
+        cmd,
         capture_output=True, text=True
     )
-    return r.stdout.strip("'").split()
+    return r.stdout.strip().split()

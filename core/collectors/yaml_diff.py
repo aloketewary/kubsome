@@ -81,13 +81,13 @@ def yaml_diff(deployment_name, rev_a=None, rev_b=None):
 
 def _get_current_yaml(ctx, ns, deployment):
     """Get current deployment YAML."""
-    cmd = (
-        f"kubectl --context {ctx} "
-        f"get deployment {deployment} "
-        f"-n {ns} -o yaml"
-    )
+    cmd = [
+        "kubectl", "--context", str(ctx or ""),
+        "get", "deployment", deployment,
+        "-n", str(ns), "-o", "yaml"
+    ]
     result = subprocess.run(
-        cmd, shell=True,
+        cmd,
         capture_output=True, text=True,
         timeout=10,
     )
@@ -99,13 +99,14 @@ def _get_current_yaml(ctx, ns, deployment):
 def _get_previous_yaml(ctx, ns, deployment):
     """Get the previous revision YAML."""
     # Get revision list
-    hist_cmd = (
-        f"kubectl --context {ctx} "
-        f"rollout history deployment/{deployment} "
-        f"-n {ns}"
-    )
+    hist_cmd = [
+        "kubectl", "--context", str(ctx or ""),
+        "rollout", "history",
+        f"deployment/{deployment}",
+        "-n", str(ns)
+    ]
     hist_result = subprocess.run(
-        hist_cmd, shell=True,
+        hist_cmd,
         capture_output=True, text=True,
         timeout=10,
     )
@@ -128,13 +129,15 @@ def _get_previous_yaml(ctx, ns, deployment):
 
 def _get_revision_yaml(ctx, ns, deployment, revision):
     """Get YAML for a specific revision."""
-    cmd = (
-        f"kubectl --context {ctx} "
-        f"rollout history deployment/{deployment} "
-        f"-n {ns} --revision={revision} -o yaml"
-    )
+    cmd = [
+        "kubectl", "--context", str(ctx or ""),
+        "rollout", "history",
+        f"deployment/{deployment}",
+        "-n", str(ns),
+        f"--revision={revision}", "-o", "yaml"
+    ]
     result = subprocess.run(
-        cmd, shell=True,
+        cmd,
         capture_output=True, text=True,
         timeout=10,
     )

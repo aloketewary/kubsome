@@ -29,26 +29,25 @@ def _check_dns(pod_name, ns, ctx):
     """Test DNS resolution from inside the pod."""
     tests = [
         ("kubernetes.default", "Cluster DNS"),
-        (f"kubernetes.default.svc.cluster.local", "FQDN"),
+        ("kubernetes.default.svc.cluster.local", "FQDN"),
     ]
 
     results = []
     for host, label in tests:
-        cmd = (
-            f"kubectl --context {ctx} "
-            f"exec {pod_name} -n {ns} -- "
-            f"nslookup {host} 2>/dev/null || echo FAILED"
-        )
+        cmd = [
+            "kubectl", "--context", str(ctx or ""),
+            "exec", pod_name, "-n", str(ns),
+            "--", "nslookup", host
+        ]
 
         r = subprocess.run(
-            cmd, shell=True,
+            cmd,
             capture_output=True, text=True,
             timeout=10
         )
 
         success = (
             r.returncode == 0
-            and "FAILED" not in r.stdout
             and "can't resolve" not in r.stdout.lower()
         )
 
@@ -63,13 +62,13 @@ def _check_dns(pod_name, ns, ctx):
 
 def _check_service_endpoints(ns, ctx):
     """Check if services have healthy endpoints."""
-    cmd = (
-        f"kubectl --context {ctx} "
-        f"get endpoints -n {ns} -o json"
-    )
+    cmd = [
+        "kubectl", "--context", str(ctx or ""),
+        "get", "endpoints", "-n", str(ns), "-o", "json"
+    ]
 
     r = subprocess.run(
-        cmd, shell=True,
+        cmd,
         capture_output=True, text=True
     )
 
@@ -107,18 +106,18 @@ def _check_service_endpoints(ns, ctx):
 
 def _get_pod_ip(pod_name, ns, ctx):
     """Get pod IP and node."""
-    cmd = (
-        f"kubectl --context {ctx} "
-        f"get pod {pod_name} -n {ns} "
-        f"-o jsonpath='{{.status.podIP}} {{.status.hostIP}}'"
-    )
+    cmd = [
+        "kubectl", "--context", str(ctx or ""),
+        "get", "pod", pod_name, "-n", str(ns),
+        "-o", "jsonpath={.status.podIP} {.status.hostIP}"
+    ]
 
     r = subprocess.run(
-        cmd, shell=True,
+        cmd,
         capture_output=True, text=True
     )
 
-    parts = r.stdout.strip("'").split()
+    parts = r.stdout.strip().split()
     if len(parts) >= 2:
         return {"pod_ip": parts[0], "host_ip": parts[1]}
     return {"pod_ip": "unknown", "host_ip": "unknown"}
@@ -126,20 +125,16 @@ def _get_pod_ip(pod_name, ns, ctx):
 
 def _check_network_policies(ns, ctx):
     """Check if network policies exist in namespace."""
-    cmd = (
-        f"kubectl --context {ctx} "
-        f"get networkpolicies -n {ns} "
-        f"--no-headers 2>/dev/null | wc -l"
-    )
+    cmd = [
+        "kubectl", "--context", str(ctx or ""),
+        "get", "networkpolicies", "-n", str(ns),
+        "--no-headers"
+    ]
 
     r = subprocess.run(
-        cmd, shell=True,
+        cmd,
         capture_output=True, text=True
     )
 
-    try:
-        count = int(r.stdout.strip())
-    except ValueError:
-        count = 0
-
+    count = len([l for l in r.stdout.strip().splitlines() if l])
     return {"count": count, "exists": count > 0}
