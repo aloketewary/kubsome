@@ -80,12 +80,20 @@ def incident_report(path: str = ""):
     """Read an exported incident report JSON file."""
     import json
     from pathlib import Path
-    file = Path(path)
-    if not file.exists() or not str(file).startswith(
-        str(Path.home() / ".kubsome" / "incidents")
-    ):
-        return {"error": "File not found or access denied"}
-    with open(file, "r") as f:
+
+    if not path:
+        return {"error": "Path required"}
+
+    base_dir = (Path.home() / ".kubsome" / "incidents").resolve()
+    try:
+        # Resolve path to eliminate .. and symlinks for security
+        target_file = Path(path).resolve()
+        if not target_file.is_file() or not target_file.is_relative_to(base_dir):
+            return {"error": "File not found or access denied"}
+    except Exception:
+        return {"error": "Invalid path"}
+
+    with open(target_file, "r") as f:
         return json.load(f)
 
 
