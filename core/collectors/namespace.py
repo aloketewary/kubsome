@@ -35,31 +35,27 @@ def namespace_summary():
 
 
 def _count_resource(rtype, ns, ctx):
-    cmd = (
-        f"kubectl --context {ctx} "
-        f"get {rtype} -n {ns} "
-        f"--no-headers 2>/dev/null | wc -l"
-    )
+    cmd = [
+        "kubectl", "--context", str(ctx or ""),
+        "get", rtype, "-n", str(ns), "--no-headers"
+    ]
 
     result = subprocess.run(
-        cmd, shell=True,
+        cmd,
         capture_output=True, text=True
     )
 
-    try:
-        return int(result.stdout.strip())
-    except ValueError:
-        return 0
+    return len([l for l in result.stdout.strip().splitlines() if l])
 
 
 def _pod_status_breakdown(ns, ctx):
-    cmd = (
-        f"kubectl --context {ctx} "
-        f"get pods -n {ns} -o json"
-    )
+    cmd = [
+        "kubectl", "--context", str(ctx or ""),
+        "get", "pods", "-n", str(ns), "-o", "json"
+    ]
 
     result = subprocess.run(
-        cmd, shell=True,
+        cmd,
         capture_output=True, text=True
     )
 

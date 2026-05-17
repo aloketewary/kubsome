@@ -148,7 +148,7 @@ class TestRemediation:
                 "payment-api-abc", "ctx", "ns"
             )
             assert action is not None
-            assert "restart" in action["command"]
+            assert any("restart" in arg for arg in action["command"])
 
     def test_safe_action_unknown(self):
         from core.remediation import _safe_action

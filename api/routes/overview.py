@@ -20,8 +20,9 @@ def get_overview():
         nodes = f_nodes.result()
         deployments = f_deps.result()
 
+    healthy_statuses = {"Running", "Succeeded", "Completed"}
     pod_health = {
-        "healthy": sum(1 for p in pods if p["status"] == "Running"),
+        "healthy": sum(1 for p in pods if p["status"] in healthy_statuses),
         "warning": sum(1 for p in pods if p["restarts"] > 5),
         "critical": sum(1 for p in pods if p["status"] in ("CrashLoopBackOff", "Error", "Failed")),
     }
@@ -52,17 +53,31 @@ def get_overview():
 @router.get("/overview/{ctx}/{ns}")
 def get_overview_for(ctx: str, ns: str, app: str = None):
     """Get overview for a specific context/namespace, optionally filtered by app."""
-    import subprocess
-    import json
+    from core.k8s import get_raw_resources
 
-    # Pods
-    cmd = ["kubectl", "--context", ctx, "get", "pods", "-n", ns, "-o", "json"]
-    if app:
-        cmd += ["-l", f"app={app}"]
-    r = subprocess.run(cmd, capture_output=True, text=True)
-    pods = []
-    if r.returncode == 0:
-        pods = json.loads(r.stdout).get("items", [])
+    # Parallelize resource fetching to reduce latency and leverage unified cache
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        f_pods = executor.submit(
+            get_raw_resources, "pods", ctx, ns,
+            selector=f"app={app}" if app else None
+        )
+        f_events = executor.submit(
+            get_raw_resources, "events", ctx, ns,
+            field_selector="involvedObject.kind=Pod" if app else None,
+            sort_by=".lastTimestamp"
+        )
+
+        if app:
+            f_app = executor.submit(get_raw_resources, f"deployment/{app}", ctx, ns)
+            f_nodes = None
+            f_deps = None
+        else:
+            f_app = None
+            f_nodes = executor.submit(get_raw_resources, "nodes", ctx)
+            f_deps = executor.submit(get_raw_resources, "deployments", ctx, ns)
+
+        pods = f_pods.result().get("items", [])
+        events_items = f_events.result().get("items", [])
 
     total_restarts = 0
     for p in pods:
@@ -80,13 +95,9 @@ def get_overview_for(ctx: str, ns: str, app: str = None):
 
     # App-specific: get deployment replicas
     if app:
-        r = subprocess.run(
-            ["kubectl", "--context", ctx, "get", "deployment", app, "-n", ns, "-o", "json"],
-            capture_output=True, text=True
-        )
+        dep = f_app.result()
         app_info = {}
-        if r.returncode == 0:
-            dep = json.loads(r.stdout)
+        if dep and "metadata" in dep:
             desired = dep.get("spec", {}).get("replicas", 0)
             available = dep.get("status", {}).get("availableReplicas", 0)
             app_info = {
@@ -97,23 +108,16 @@ def get_overview_for(ctx: str, ns: str, app: str = None):
             }
 
         # Events filtered to app pods
-        r = subprocess.run(
-            ["kubectl", "--context", ctx, "get", "events", "-n", ns,
-             "--field-selector", f"involvedObject.kind=Pod",
-             "--sort-by=.lastTimestamp", "-o", "json"],
-            capture_output=True, text=True
-        )
         events = []
-        if r.returncode == 0:
-            for item in json.loads(r.stdout).get("items", [])[-50:]:
-                obj_name = item.get("involvedObject", {}).get("name", "")
-                if app.lower() in obj_name.lower():
-                    events.append({
-                        "type": item.get("type", "Normal"),
-                        "reason": item.get("reason", ""),
-                        "object": obj_name,
-                        "message": item.get("message", ""),
-                    })
+        for item in events_items[-50:]:
+            obj_name = item.get("involvedObject", {}).get("name", "")
+            if app.lower() in obj_name.lower():
+                events.append({
+                    "type": item.get("type", "Normal"),
+                    "reason": item.get("reason", ""),
+                    "object": obj_name,
+                    "message": item.get("message", ""),
+                })
 
         return {
             "context": ctx, "namespace": ns, "app": app,
@@ -123,42 +127,29 @@ def get_overview_for(ctx: str, ns: str, app: str = None):
             "events": events,
         }
 
-    # Cluster/namespace level — parallel fetch
-    from concurrent.futures import ThreadPoolExecutor
-
-    def _get_nodes():
-        r = subprocess.run(["kubectl", "--context", ctx, "get", "nodes", "-o", "json"], capture_output=True, text=True)
-        return json.loads(r.stdout).get("items", []) if r.returncode == 0 else []
-
-    def _get_deps():
-        r = subprocess.run(["kubectl", "--context", ctx, "get", "deployments", "-n", ns, "-o", "json"], capture_output=True, text=True)
-        return json.loads(r.stdout).get("items", []) if r.returncode == 0 else []
-
-    def _get_events():
-        r = subprocess.run(["kubectl", "--context", ctx, "get", "events", "-n", ns, "--sort-by=.lastTimestamp", "-o", "json"], capture_output=True, text=True)
-        if r.returncode != 0:
-            return []
-        return [
-            {"type": i.get("type", "Normal"), "reason": i.get("reason", ""), "object": i.get("involvedObject", {}).get("name", ""), "message": i.get("message", "")}
-            for i in json.loads(r.stdout).get("items", [])[-50:]
-        ]
-
-    with ThreadPoolExecutor(max_workers=3) as ex:
-        nodes = ex.submit(_get_nodes).result()
-        deps = ex.submit(_get_deps).result()
-        events = ex.submit(_get_events).result()
-
+    # Cluster/namespace level
+    nodes = f_nodes.result().get("items", [])
     node_health = {
         "healthy": sum(1 for n in nodes if any(c["type"] == "Ready" and c["status"] == "True" for c in n["status"].get("conditions", []))),
         "warning": sum(1 for n in nodes if not any(c["type"] == "Ready" and c["status"] == "True" for c in n["status"].get("conditions", []))),
         "critical": 0, "unavailable": 0,
     }
 
+    deps = f_deps.result().get("items", [])
     dep_health = {
         "healthy": sum(1 for d in deps if d["status"].get("availableReplicas", 0) >= d["spec"].get("replicas", 1)),
         "unavailable": sum(1 for d in deps if d["status"].get("availableReplicas", 0) < d["spec"].get("replicas", 1)),
         "warning": 0, "critical": 0,
     }
+
+    events = []
+    for item in events_items[-50:]:
+        events.append({
+            "type": item.get("type", "Normal"),
+            "reason": item.get("reason", ""),
+            "object": item.get("involvedObject", {}).get("name", ""),
+            "message": item.get("message", ""),
+        })
 
     return {
         "context": ctx, "namespace": ns,

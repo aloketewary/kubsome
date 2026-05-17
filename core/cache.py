@@ -193,3 +193,19 @@ def prewarm():
 
     t = threading.Thread(target=_warm, daemon=True)
     t.start()
+
+
+def get_cached(func_name):
+    """
+    Return cached value for a function if available.
+    Does NOT trigger a fetch. Returns None if not cached.
+    Used for non-blocking reads (e.g., startup banner).
+    """
+    now = time.time()
+    with _lock:
+        for key, entry in _cache.items():
+            if func_name in key:
+                # Return even if slightly stale
+                if now < entry["expires"] + STALE_GRACE:
+                    return entry["value"]
+    return None

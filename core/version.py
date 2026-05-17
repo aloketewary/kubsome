@@ -3,6 +3,7 @@ Version check — notify user if a newer version exists on PyPI.
 """
 
 import json
+import ssl
 import urllib.request
 from importlib.metadata import version
 
@@ -14,10 +15,11 @@ def check_update():
     """Return (latest, current) if update available, else None."""
     try:
         current = version(PACKAGE)
+        ctx = ssl.create_default_context()
         req = urllib.request.Request(
             PYPI_URL, headers={"Accept": "application/json"}
         )
-        with urllib.request.urlopen(req, timeout=3) as resp:
+        with urllib.request.urlopen(req, timeout=3, context=ctx) as resp:
             data = json.loads(resp.read())
         latest = data["info"]["version"]
         if _is_newer(latest, current):

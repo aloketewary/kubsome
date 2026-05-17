@@ -272,6 +272,10 @@ def _start_cli():
             f"[dim]Run:[/dim] pip install --upgrade kubsome\n"
         )
 
+    # Start background scheduler
+    from core.scheduler import get_scheduler
+    get_scheduler().start()
+
     last_command = ""
 
     while True:
@@ -361,6 +365,9 @@ def _execute_single(user_input, env):
                 "[red]Unknown command.[/red] "
                 "Type [cyan]help[/cyan] for options."
             )
+        # Track unresolved for NLP improvement
+        from core.telemetry import track_unresolved
+        track_unresolved(user_input)
         return
 
     # Execute

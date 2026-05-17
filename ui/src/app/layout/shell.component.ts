@@ -347,6 +347,7 @@ export class ShellComponent implements OnInit {
     { path: '/namespace', icon: 'pi pi-th-large', label: 'Namespace' },
     { path: '/timeline', icon: 'pi pi-history', label: 'Timeline' },
     { path: '/scorecard', icon: 'pi pi-trophy', label: 'Scorecard' },
+    { path: '/policy', icon: 'pi pi-verified', label: 'Policy' },
     { path: '/cost', icon: 'pi pi-dollar', label: 'Optimization' },
     { path: '/cost-estimate', icon: 'pi pi-calculator', label: 'Cost' },
   ];
@@ -360,6 +361,7 @@ export class ShellComponent implements OnInit {
     { path: '/resources', icon: 'pi pi-database', label: 'Resources' },
     { path: '/secrets', icon: 'pi pi-lock', label: 'Pull Secrets' },
     { path: '/incident', icon: 'pi pi-exclamation-circle', label: 'Incident', badge: 'NEW' },
+    { path: '/audit', icon: 'pi pi-shield', label: 'Audit' },
     { path: '/graph', icon: 'pi pi-sitemap', label: 'Service Map', badge: 'NEW' },
     { path: '/yaml', icon: 'pi pi-file-edit', label: 'YAML Editor' },
     { path: '/yaml-diff', icon: 'pi pi-copy', label: 'YAML Diff' },
@@ -372,7 +374,9 @@ export class ShellComponent implements OnInit {
     { path: '/log-correlation', icon: 'pi pi-link', label: 'Log Correlate' },
     { path: '/pins', icon: 'pi pi-bookmark', label: 'Pins' },
     { path: '/watches', icon: 'pi pi-eye', label: 'Watches' },
+    { path: '/schedule', icon: 'pi pi-calendar', label: 'Schedules' },
     { path: '/terminal', icon: 'pi pi-code', label: 'Terminal' },
+    { path: '/doctor', icon: 'pi pi-heart', label: 'Health' },
     { path: '/settings', icon: 'pi pi-cog', label: 'Settings' },
   ];
 
