@@ -29,6 +29,7 @@ interface Runbook {
   color: string;
   severity: string;
   estimatedTime: string;
+  source?: string;
   steps: RunbookStep[];
 }
 
@@ -104,7 +105,11 @@ interface Runbook {
               <div class="rb-icon" [style.background]="rb.color + '15'" [style.color]="rb.color">
                 <i [class]="rb.icon"></i>
               </div>
-              <p-tag [value]="rb.severity" [severity]="rb.severity === 'Critical' ? 'danger' : rb.severity === 'High' ? 'warn' : 'info'" [rounded]="true" />
+              @if (rb.source && rb.source !== 'built-in') {
+                <p-tag value="Team" severity="info" [rounded]="true" />
+              } @else {
+                <p-tag [value]="rb.severity" [severity]="rb.severity === 'Critical' ? 'danger' : rb.severity === 'High' ? 'warn' : 'info'" [rounded]="true" />
+              }
             </div>
             <h4 class="rb-name">{{ rb.name }}</h4>
             <p class="rb-desc">{{ rb.description }}</p>
@@ -541,6 +546,7 @@ export class RunbooksComponent implements OnInit {
           color: colors[pb.id] || '#3b82f6',
           severity: severities[pb.id] || 'Medium',
           estimatedTime: `${pb.steps.length * 2} min`,
+          source: pb.source || 'built-in',
           steps: pb.steps.map((s: string) => {
             const extracted = this.extractCommand(s);
             const cleaned = s.replace(/\[\/?[^\]]+\]/g, '').trim();

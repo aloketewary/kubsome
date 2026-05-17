@@ -14,14 +14,14 @@ def build_timeline(minutes=60):
     ns = context.namespace
     ctx = context.current_context
 
-    cmd = (
-        f"kubectl --context {ctx} "
-        f"get events -n {ns} "
-        f"--sort-by=.lastTimestamp -o json"
-    )
+    cmd = [
+        "kubectl", "--context", str(ctx or ""),
+        "get", "events", "-n", str(ns),
+        "--sort-by=.lastTimestamp", "-o", "json"
+    ]
 
     r = subprocess.run(
-        cmd, shell=True,
+        cmd,
         capture_output=True, text=True
     )
 

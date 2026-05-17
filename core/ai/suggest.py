@@ -18,7 +18,11 @@ KNOWN_COMMANDS = [
     "incident start", "incident stop", "snapshot",
     "note", "plugins", "tui", "help",
     "switch", "use", "contexts", "services",
-    "nodes", "summarize", "exit",
+    "nodes", "summarize", "exit", "doctor",
+    "scorecard", "cost-estimate", "uptime",
+    "watch-alert", "watch-status", "dep-health",
+    "rollback-preview", "diff-timeline",
+    "correlate-logs", "yaml-diff",
 ]
 
 

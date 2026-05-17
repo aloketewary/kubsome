@@ -12,16 +12,11 @@ from core.state import save_state
 
 def switch_context(ctx):
 
-    command = (
-        f"kubectl "
-        f"config use-context "
-        f"{ctx['name']}"
-    )
+    command = [
+        "kubectl", "config", "use-context", ctx["name"]
+    ]
 
-    subprocess.run(
-        command,
-        shell=True
-    )
+    subprocess.run(command)
 
     context.current_context = ctx["name"]
     context.namespace = ctx["namespace"]

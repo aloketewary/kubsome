@@ -1,0 +1,45 @@
+apiVersion: krew.googlecontainertools.github.com/v1alpha2
+kind: Plugin
+metadata:
+  name: kubsome
+spec:
+  version: v1.11.1
+  homepage: https://github.com/aloketewary/kubsome
+  shortDescription: AI-native Kubernetes operational workspace
+  description: |
+    Kubsome is an AI-native Kubernetes Operational Workspace that provides
+    faster debugging, safer operations, and less cognitive load.
+
+    Features:
+    - 100+ commands for observe, operate, diagnose, cost, security
+    - Natural language queries ("why is payment-api failing")
+    - Fuzzy resource name matching
+    - AI-powered root cause analysis and auto-remediation
+    - Cluster health scorecard (A-F grade)
+    - Cost estimation per deployment
+    - 26 remediation runbooks
+
+    Usage:
+      kubectl kubsome                    # Interactive CLI
+      kubectl kubsome pods               # Pod list
+      kubectl kubsome diagnose <pod>     # Root cause analysis
+      kubectl kubsome scorecard          # Health grade
+      kubectl kubsome doctor             # Pre-flight check
+  caveats: |
+    Requires Python 3.9+ and pip. Install via:
+      pip install kubsome
+
+    Requires kubectl configured with cluster access.
+    metrics-server required for 'top' commands.
+  platforms:
+    - selector:
+        matchExpressions:
+          - key: os
+            operator: In
+            values: [darwin, linux]
+      uri: https://github.com/aloketewary/kubsome/releases/download/v1.11.1/kubsome-v1.11.1.tar.gz
+      sha256: "PLACEHOLDER_SHA256"
+      bin: kubectl-kubsome
+      files:
+        - from: "*"
+          to: "."

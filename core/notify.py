@@ -99,13 +99,22 @@ def _send_webhook(hook, title, message, severity, cluster):
             payload = _teams_payload(title, message, severity, cluster)
         elif hook_type == "webex":
             payload = _webex_payload(title, message, severity, cluster)
+        elif hook_type == "pagerduty":
+            payload = _pagerduty_payload(title, message, severity, cluster)
+        elif hook_type == "opsgenie":
+            payload = _opsgenie_payload(title, message, severity, cluster, hook)
         else:
             payload = _generic_payload(title, message, severity, cluster)
 
         data = json.dumps(payload).encode("utf-8")
+        headers = {"Content-Type": "application/json"}
+
+        # OpsGenie needs API key in header
+        if hook_type == "opsgenie" and hook.get("api_key"):
+            headers["Authorization"] = f"GenieKey {hook['api_key']}"
+
         req = urllib.request.Request(
-            url, data=data,
-            headers={"Content-Type": "application/json"}
+            url, data=data, headers=headers
         )
         urllib.request.urlopen(req, timeout=10)
     except Exception as e:
@@ -200,6 +209,52 @@ def _webex_payload(title, message, severity, cluster):
             f"---\n"
             f"**Cluster:** `{ctx}` | **Namespace:** `{ns}` | **Severity:** {severity.upper()}"
         )
+    }
+
+
+def _pagerduty_payload(title, message, severity, cluster):
+    """PagerDuty Events API v2 payload."""
+    pd_severity = {
+        "critical": "critical",
+        "warning": "warning",
+        "info": "info",
+    }.get(severity, "warning")
+
+    return {
+        "routing_key": "",  # Filled from URL (integration key)
+        "event_action": "trigger",
+        "payload": {
+            "summary": f"[Kubsome] {title}: {message[:200]}",
+            "severity": pd_severity,
+            "source": f"kubsome/{cluster['context']}",
+            "component": cluster["namespace"],
+            "custom_details": {
+                "cluster": cluster["context"],
+                "namespace": cluster["namespace"],
+                "message": message,
+            },
+        },
+    }
+
+
+def _opsgenie_payload(title, message, severity, cluster, hook=None):
+    """OpsGenie Alert API payload."""
+    priority = {
+        "critical": "P1",
+        "warning": "P3",
+        "info": "P5",
+    }.get(severity, "P3")
+
+    return {
+        "message": f"[Kubsome] {title}",
+        "description": message,
+        "priority": priority,
+        "tags": ["kubsome", cluster["context"], cluster["namespace"]],
+        "details": {
+            "cluster": cluster["context"],
+            "namespace": cluster["namespace"],
+            "severity": severity,
+        },
     }
 
 

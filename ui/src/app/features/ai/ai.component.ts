@@ -25,6 +25,7 @@ interface Message {
   options?: string[];
   originalQuery?: string;
   copied?: boolean;
+  followUps?: string[];
 }
 
 @Component({
@@ -119,6 +120,14 @@ interface Message {
                 <div class="msg-options">
                   @for (opt of msg.options; track opt) {
                     <button class="opt-btn" (click)="selectOption(opt, msg)">{{ opt }}</button>
+                  }
+                </div>
+              }
+              @if (msg.followUps && msg.followUps.length > 0) {
+                <div class="msg-followups">
+                  <span class="followup-label">Follow up:</span>
+                  @for (fu of msg.followUps; track fu) {
+                    <button class="followup-btn" (click)="query = fu; ask()">{{ fu }}</button>
                   }
                 </div>
               }
@@ -373,6 +382,20 @@ interface Message {
       background: var(--accent); color: #fff;
     }
 
+    /* Follow-ups */
+    .msg-followups {
+      display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+      margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border);
+    }
+    .followup-label { font-size: 10px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; }
+    .followup-btn {
+      padding: 5px 10px; border-radius: 6px;
+      background: var(--bg-elevated); border: 1px solid var(--border);
+      color: var(--text-secondary); font-size: 11px;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .followup-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-subtle); }
+
     /* Typing Indicator */
     .typing-indicator {
       display: flex;
@@ -499,6 +522,7 @@ export class AiComponent implements AfterViewChecked {
             title: res.title || undefined,
             severity: res.severity || 'info',
             time: this.now(),
+            followUps: res.follow_ups || undefined,
           });
         }
         this.loading = false;

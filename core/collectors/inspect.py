@@ -8,17 +8,14 @@ from core.context import context
 
 
 def inspect_pod(pod_name):
-    command = (
-        f"kubectl "
-        f"--context {context.current_context} "
-        f"get pod {pod_name} "
-        f"-n {context.namespace} "
-        f"-o json"
-    )
+    command = [
+        "kubectl", "--context", str(context.current_context or ""),
+        "get", "pod", pod_name,
+        "-n", str(context.namespace or "default"), "-o", "json"
+    ]
 
     result = subprocess.run(
         command,
-        shell=True,
         capture_output=True,
         text=True
     )
@@ -30,18 +27,16 @@ def inspect_pod(pod_name):
 
 
 def pod_events(pod_name):
-    command = (
-        f"kubectl "
-        f"--context {context.current_context} "
-        f"get events "
-        f"-n {context.namespace} "
-        f"--field-selector involvedObject.name={pod_name} "
-        f"-o json"
-    )
+    command = [
+        "kubectl", "--context", str(context.current_context or ""),
+        "get", "events",
+        "-n", str(context.namespace or "default"),
+        "--field-selector", f"involvedObject.name={pod_name}",
+        "-o", "json"
+    ]
 
     result = subprocess.run(
         command,
-        shell=True,
         capture_output=True,
         text=True
     )
@@ -67,20 +62,18 @@ def pod_events(pod_name):
 
 
 def pod_logs(pod_name, tail=50, previous=False):
-    cmd = (
-        f"kubectl "
-        f"--context {context.current_context} "
-        f"logs {pod_name} "
-        f"-n {context.namespace} "
+    cmd = [
+        "kubectl", "--context", str(context.current_context or ""),
+        "logs", pod_name,
+        "-n", str(context.namespace or "default"),
         f"--tail={tail}"
-    )
+    ]
 
     if previous:
-        cmd += " --previous"
+        cmd.append("--previous")
 
     result = subprocess.run(
         cmd,
-        shell=True,
         capture_output=True,
         text=True
     )
