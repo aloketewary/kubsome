@@ -12,8 +12,10 @@ def collect_events(limit=50):
         sort_by=".lastTimestamp"
     )
 
+    items = data.get("items", [])
+
     events = []
-    for item in data.get("items", [])[-limit:]:
+    for item in items[-limit:]:
         events.append({
             "type": item.get("type", "Normal"),
             "reason": item.get("reason", ""),

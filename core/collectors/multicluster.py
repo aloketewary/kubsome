@@ -62,13 +62,13 @@ def compare_contexts(ctx_a, ctx_b, ns_a, ns_b):
 
 
 def _get_deployments(ctx, namespace):
-    cmd = (
-        f"kubectl --context {ctx} "
-        f"get deployments -n {namespace} -o json"
-    )
+    cmd = [
+        "kubectl", "--context", str(ctx or ""),
+        "get", "deployments", "-n", str(namespace), "-o", "json"
+    ]
 
     result = subprocess.run(
-        cmd, shell=True,
+        cmd,
         capture_output=True, text=True
     )
 

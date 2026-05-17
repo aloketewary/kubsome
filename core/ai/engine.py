@@ -30,11 +30,18 @@ def handle_ai_query(query):
     analysis functions. Returns a structured response.
     """
     from core.nlp.matcher import parse_query
+    from core.context import context
+
     parsed = parse_query(query)
 
     intent = parsed["intent"] if parsed else None
     entities = parsed["entities"] if parsed else {}
     target = entities.get("target")
+
+    # Update conversation memory
+    if target:
+        context.remember_target(target)
+    context.last_intent = intent
 
     if intent == "count_pods":
         return _count_pods(query, target)
@@ -111,6 +118,73 @@ def handle_ai_query(query):
     }
 
 
+def get_follow_up_suggestions(intent, target=None):
+    """
+    Return contextual follow-up questions based on
+    the intent that was just answered.
+    Uses conversation memory for richer suggestions.
+    """
+    from core.context import context
+
+    # Use conversation memory if no explicit target
+    if not target and context.last_target:
+        target = context.last_target
+
+    suggestions = {
+        "why_failing": [
+            f"show logs for {target}" if target else "show warning events",
+            f"is it safe to restart {target}" if target else "which pods are unhealthy",
+            "what changed recently",
+        ],
+        "count_pods": [
+            "which pods are unhealthy",
+            "summarize cluster health",
+            "top resource consumers",
+        ],
+        "summarize": [
+            "any anomalies detected",
+            "what changed recently",
+            "top resource consumers",
+        ],
+        "unhealthy": [
+            f"diagnose {target}" if target else "diagnose high restart pods",
+            "what changed recently",
+            "show warning events",
+        ],
+        "what_changed": [
+            "any anomalies detected",
+            "which pods are unhealthy",
+            "summarize cluster health",
+        ],
+        "anomalies": [
+            "which pods are unhealthy",
+            "what changed recently",
+            "summarize cluster health",
+        ],
+        "top_pods": [
+            "any anomalies detected",
+            "which pods are unhealthy",
+            "summarize cluster health",
+        ],
+        "health_check": [
+            f"diagnose {target}" if target else "summarize cluster health",
+            f"logs for {target}" if target else "show warning events",
+            "any anomalies detected",
+        ],
+        "logs": [
+            f"diagnose {target}" if target else "which pods are unhealthy",
+            f"why is {target} failing" if target else "any anomalies",
+            "what changed recently",
+        ],
+        "inspect": [
+            f"diagnose {target}" if target else "which pods are unhealthy",
+            f"trace {target}" if target else "summarize cluster health",
+            "show warning events",
+        ],
+    }
+    return suggestions.get(intent, [])
+
+
 def _count_pods(query, target=None):
     """Count pods matching a name pattern."""
     if not target or target in {
@@ -119,7 +193,8 @@ def _count_pods(query, target=None):
         # General count
         pods = collect_pods()
         running = sum(
-            1 for p in pods if p["status"] == "Running"
+            1 for p in pods
+            if p["status"] in {"Running", "Succeeded", "Completed"}
         )
         return {
             "title": "🤖 Pod Count",
@@ -149,11 +224,11 @@ def _count_pods(query, target=None):
 
     running = [
         p for p in matching
-        if p["status"] == "Running"
+        if p["status"] in {"Running", "Succeeded", "Completed"}
     ]
     not_running = [
         p for p in matching
-        if p["status"] != "Running"
+        if p["status"] not in {"Running", "Succeeded", "Completed"}
     ]
 
     lines = [
@@ -491,7 +566,8 @@ def _summarize_cluster():
 
     total_pods = len(pods)
     running = sum(
-        1 for p in pods if p["status"] == "Running"
+        1 for p in pods
+        if p["status"] in {"Running", "Succeeded", "Completed"}
     )
     crashing = sum(
         1 for p in pods if p["restarts"] >= 5
@@ -642,9 +718,10 @@ def _unhealthy_pods():
     """List all unhealthy pods with reasons."""
     pods = collect_pods()
 
+    healthy_statuses = {"Running", "Succeeded", "Completed"}
     unhealthy = [
         p for p in pods
-        if p["status"] != "Running" or p["restarts"] >= 3
+        if p["status"] not in healthy_statuses or p["restarts"] >= 3
     ]
 
     if not unhealthy:

@@ -155,6 +155,8 @@ from core.renderers.services_renderer import (
 )
 from core.commands import resolve_command
 from core.notify import notify_if_critical
+from core.suggestions import get_suggestion
+from core.telemetry import track_command, track_unresolved
 
 console = Console()
 
@@ -170,6 +172,10 @@ def dispatch(command, env="UNKNOWN"):
         handler = HANDLERS.get(cmd_type)
         if handler:
             handler(command, env)
+            # Track usage
+            track_command(cmd_type, command.get("target"))
+            # Smart next-step suggestion
+            _show_suggestion(cmd_type, command)
         else:
             console.print(
                 f"[red]Unhandled command type: "
@@ -181,19 +187,31 @@ def dispatch(command, env="UNKNOWN"):
         console.print(f"[red]Error: {e}[/red]")
 
 
+def _show_suggestion(cmd_type, command):
+    """Show contextual next-step hint after command."""
+    from config.settings import SETTINGS
+    if not SETTINGS.get("show_suggestions", True):
+        return
+    hint = get_suggestion(cmd_type, command)
+    if hint:
+        console.print(f"\n[dim]💡 {hint}[/dim]")
+
+
 def _handle_pods_table(cmd, env):
     pods = get_pods()
     render_pods_table(pods)
 
 
 def _handle_pods_watch(cmd, env):
+    from core.cache import invalidate
     with Live(
         build_watch_view(get_pods(), context.namespace),
-        refresh_per_second=2,
+        refresh_per_second=1,
         console=console
     ) as live:
         while True:
             time.sleep(SETTINGS["refresh_interval"])
+            invalidate("get_pods")
             live.update(
                 build_watch_view(
                     get_pods(), context.namespace
@@ -246,15 +264,17 @@ def _handle_events(cmd, env):
 
 
 def _handle_events_watch(cmd, env):
+    from core.cache import invalidate
     with Live(
         build_events_watch_view(
             collect_events(), context.namespace
         ),
-        refresh_per_second=2,
+        refresh_per_second=1,
         console=console
     ) as live:
         while True:
             time.sleep(SETTINGS["refresh_interval"])
+            invalidate("collect_events")
             live.update(
                 build_events_watch_view(
                     collect_events(), context.namespace
@@ -265,6 +285,8 @@ def _handle_events_watch(cmd, env):
 def _handle_logs(cmd, env):
     target = cmd["target"]
     container = cmd.get("container")
+    since = cmd.get("since")
+    regex = cmd.get("regex")
     if cmd["follow"]:
         console.print(
             f"[dim]Streaming {target}"
@@ -279,8 +301,14 @@ def _handle_logs(cmd, env):
             target,
             previous=cmd["previous"],
             errors_only=cmd["errors"],
-            container=container
+            container=container,
+            since=since,
+            regex=regex,
         )
+        if regex:
+            console.print(
+                f"[dim]Filter: /{regex}/[/dim]"
+            )
         render_logs(lines, target, errors_only=cmd["errors"])
 
 
@@ -560,9 +588,20 @@ def _handle_incident_history(cmd, env):
         except Exception:
             continue
     console.print(
-        Panel(table, title="[bold]📋 Past Incidents[/bold]",
+        Panel(table, title="[bold]\U0001f4cb Past Incidents[/bold]",
               border_style="cyan")
     )
+
+
+def _handle_incident_share(cmd, env):
+    from core.incident.manager import share_incident
+
+    incident_id = cmd.get("id")
+    success, message = share_incident(incident_id)
+    if success:
+        console.print(f"[green]\u2713 {message}[/green]")
+    else:
+        console.print(f"[red]{message}[/red]")
 
 
 def _handle_help(cmd, env):
@@ -617,6 +656,185 @@ def _handle_check(cmd, env):
     with loading("Running health checks..."):
         result = run_health_check()
     render_health_check(result)
+
+
+def _handle_doctor(cmd, env):
+    from core.doctor import run_doctor
+
+    console.print("[bold]🩺 Kubsome Doctor[/bold]\n")
+    checks = run_doctor()
+
+    all_ok = True
+    for c in checks:
+        status = c["status"]
+        if status == "ok":
+            icon = "[green]✓[/green]"
+        elif status == "warn":
+            icon = "[yellow]⚠[/yellow]"
+            all_ok = False
+        else:
+            icon = "[red]✗[/red]"
+            all_ok = False
+
+        console.print(
+            f"  {icon} [bold]{c['name']}[/bold]\n"
+            f"    [dim]{c['detail']}[/dim]"
+        )
+
+    console.print()
+    if all_ok:
+        console.print("[green]All checks passed. Ready to go![/green]")
+    else:
+        console.print("[yellow]Some checks need attention.[/yellow]")
+
+
+def _handle_stats(cmd, env):
+    from core.telemetry import get_stats, is_enabled
+
+    if not is_enabled():
+        console.print(
+            "[dim]Telemetry is disabled. Enable in config:[/dim]\n"
+            "  [cyan]telemetry: true[/cyan]"
+        )
+        return
+
+    stats = get_stats()
+
+    lines = [
+        f"[bold]Commands:[/bold] {stats['total_commands']} "
+        f"over {stats['days_tracked']} days\n",
+    ]
+
+    if stats["top_commands"]:
+        lines.append("[bold]Most Used:[/bold]")
+        for cmd_name, count in stats["top_commands"][:10]:
+            bar = "\u2588" * min(count // 2, 20)
+            lines.append(
+                f"  {cmd_name:18} {count:>4}  [cyan]{bar}[/cyan]"
+            )
+
+    if stats["top_unresolved"]:
+        lines.append(
+            f"\n[bold]Unresolved Queries "
+            f"({stats['unresolved_count']}):[/bold]"
+        )
+        for query, count in stats["top_unresolved"]:
+            lines.append(
+                f"  [yellow]{query}[/yellow] ({count}x)"
+            )
+
+    console.print(
+        Panel(
+            "\n".join(lines),
+            title="[bold]\U0001f4ca Usage Stats[/bold]",
+            border_style="cyan",
+        )
+    )
+
+
+def _handle_schedule_list(cmd, env):
+    from core.scheduler import get_scheduler
+
+    schedules = get_scheduler().list_schedules()
+    if not schedules:
+        console.print(
+            "[dim]No schedules. Use: "
+            "schedule add <name> <cron> <cmd1,cmd2,...>[/dim]"
+        )
+        return
+
+    lines = [f"[bold]Schedules ({len(schedules)}):[/bold]\n"]
+    for s in schedules:
+        cmds = ", ".join(s["commands"][:3])
+        last = (
+            s["last_run"][:16] if s["last_run"] else "never"
+        )
+        lines.append(
+            f"  [cyan]{s['name']}[/cyan] \u2014 {s['cron']}\n"
+            f"    Commands: {cmds}\n"
+            f"    Next: {s['next_run']}  "
+            f"Last: [dim]{last}[/dim]"
+        )
+
+    console.print(
+        Panel(
+            "\n".join(lines),
+            title="[bold]\u23f0 Schedules[/bold]",
+            border_style="cyan",
+        )
+    )
+
+
+def _handle_schedule_add(cmd, env):
+    from core.scheduler import get_scheduler
+
+    name = cmd["name"]
+    cron = cmd["cron"]
+    commands = cmd["commands"]
+
+    get_scheduler().add(name, cron, commands, notify=True)
+    console.print(
+        f"[green]\u2713 Schedule added:[/green] "
+        f"{name} ({cron})\n"
+        f"  Commands: {', '.join(commands)}"
+    )
+
+
+def _handle_schedule_rm(cmd, env):
+    from core.scheduler import get_scheduler
+
+    get_scheduler().remove(cmd["name"])
+    console.print(f"[green]\u2713 Removed:[/green] {cmd['name']}")
+
+
+def _handle_cost_trend(cmd, env):
+    from core.collectors.cost_trend import cost_trend
+
+    with loading("Analyzing cost trend..."):
+        data = cost_trend()
+
+    if data["current_monthly"] == 0:
+        console.print("[dim]No deployments found[/dim]")
+        return
+
+    trend_icon = {
+        "growing": "[red]\u2191[/red]",
+        "stable": "[green]\u2192[/green]",
+        "shrinking": "[cyan]\u2193[/cyan]",
+    }.get(data["trend"], "\u2192")
+
+    lines = [
+        f"[bold]Current:[/bold]   "
+        f"${data['current_monthly']:.2f}/month",
+        f"[bold]Projected:[/bold] "
+        f"${data['projected_monthly']:.2f}/month "
+        f"{trend_icon} {data['trend']}",
+        f"[bold]Savings:[/bold]   "
+        f"[green]${data['savings_opportunity']:.2f}"
+        f"/month[/green] possible\n",
+    ]
+
+    if data["deployments"]:
+        lines.append("[bold]Top savings opportunities:[/bold]")
+        for d in data["deployments"][:8]:
+            if d["savings"] > 0:
+                util = (
+                    f" ({d['utilization_pct']}% util)"
+                    if d.get("utilization_pct") else ""
+                )
+                lines.append(
+                    f"  ${d['savings']:.2f}  {d['name']}{util}"
+                )
+
+    lines.append(f"\n[dim]{data['note']}[/dim]")
+
+    console.print(
+        Panel(
+            "\n".join(lines),
+            title="[bold]\U0001f4c8 Cost Trend & Forecast[/bold]",
+            border_style="green",
+        )
+    )
 
 
 def _handle_export(cmd, env):
@@ -795,9 +1013,11 @@ def _handle_workflow_run(cmd, env):
 def _handle_watch_cmd(cmd, env):
     watch_input = cmd["command"]
     from datetime import datetime
+    from core.cache import invalidate
     import shlex
     with Live(console=console, refresh_per_second=1) as live:
         while True:
+            invalidate()
             resolved = resolve_command(watch_input)
             if resolved and isinstance(resolved, str):
                 result = subprocess.run(
@@ -1414,6 +1634,82 @@ def _handle_list_queries(cmd, env):
     console.print(Panel("\n".join(lines), title="[bold]📌 Saved Queries[/bold]", border_style="cyan"))
 
 
+def _handle_policy_check(cmd, env):
+    from core.policy import check_policies, load_policies
+
+    policies = load_policies()
+    if not policies:
+        console.print(
+            "[dim]No policies defined. Create "
+            "~/.kubsome/policies.yaml or "
+            ".kubsome/policies.yaml[/dim]"
+        )
+        return
+
+    with loading("Checking policies..."):
+        result = check_policies()
+
+    violations = result["violations"]
+    passed = result["passed"]
+    total = result["total"]
+
+    lines = [
+        f"[bold]Policy Check:[/bold] "
+        f"{passed}/{total} passed\n",
+    ]
+
+    if not violations:
+        lines.append("[green]\u2713 All policies pass![/green]")
+    else:
+        lines.append(
+            f"[red]{len(violations)} violation(s):[/red]\n"
+        )
+        for v in violations:
+            sev_color = (
+                "red" if v["severity"] == "high"
+                else "yellow" if v["severity"] == "medium"
+                else "dim"
+            )
+            lines.append(
+                f"  [{sev_color}]\u2717[/{sev_color}] "
+                f"[bold]{v['policy']}[/bold] \u2014 "
+                f"{v['resource']}\n"
+                f"    [dim]{v['detail']}[/dim]"
+            )
+
+    console.print(
+        Panel(
+            "\n".join(lines),
+            title="[bold]\U0001f6e1 Policy Check[/bold]",
+            border_style="cyan",
+        )
+    )
+
+
+def _handle_plugin_install(cmd, env):
+    from core.plugins import install_plugin
+
+    name = cmd["name"]
+    with loading(f"Installing plugin '{name}'..."):
+        success, message = install_plugin(name)
+
+    if success:
+        console.print(f"[green]\u2713 {message}[/green]")
+    else:
+        console.print(f"[red]{message}[/red]")
+
+
+def _handle_plugin_uninstall(cmd, env):
+    from core.plugins import uninstall_plugin
+
+    name = cmd["name"]
+    success, message = uninstall_plugin(name)
+    if success:
+        console.print(f"[green]\u2713 {message}[/green]")
+    else:
+        console.print(f"[red]{message}[/red]")
+
+
 # Handler registry
 HANDLERS = {
     "noop": lambda cmd, env: None,
@@ -1444,6 +1740,7 @@ HANDLERS = {
     "incident_note": _handle_incident_note,
     "incident_snapshot": _handle_incident_snapshot,
     "incident_history": _handle_incident_history,
+    "incident_share": _handle_incident_share,
     "help": _handle_help,
     "find": _handle_find,
     "ns_overview": _handle_ns_overview,
@@ -1505,4 +1802,13 @@ HANDLERS = {
     "yaml_diff": _handle_yaml_diff,
     "save_query": _handle_save_query,
     "list_queries": _handle_list_queries,
+    "doctor": _handle_doctor,
+    "stats": _handle_stats,
+    "schedule_list": _handle_schedule_list,
+    "schedule_add": _handle_schedule_add,
+    "schedule_rm": _handle_schedule_rm,
+    "cost_trend": _handle_cost_trend,
+    "policy_check": _handle_policy_check,
+    "plugin_install": _handle_plugin_install,
+    "plugin_uninstall": _handle_plugin_uninstall,
 }

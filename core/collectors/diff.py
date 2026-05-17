@@ -18,14 +18,15 @@ def deployment_diff(name):
     current = _get_revision(name, ns, ctx, 0)
 
     # Get previous revision number
-    history_cmd = (
-        f"kubectl --context {ctx} "
-        f"rollout history deployment/{name} "
-        f"-n {ns}"
-    )
+    history_cmd = [
+        "kubectl", "--context", str(ctx or ""),
+        "rollout", "history",
+        f"deployment/{name}",
+        "-n", str(ns)
+    ]
 
     r = subprocess.run(
-        history_cmd, shell=True,
+        history_cmd,
         capture_output=True, text=True
     )
 
@@ -75,13 +76,13 @@ def deployment_diff(name):
 
 def _get_revision(name, ns, ctx, rev):
     """Get current deployment spec."""
-    cmd = (
-        f"kubectl --context {ctx} "
-        f"get deployment {name} -n {ns} -o json"
-    )
+    cmd = [
+        "kubectl", "--context", str(ctx or ""),
+        "get", "deployment", name, "-n", str(ns), "-o", "json"
+    ]
 
     r = subprocess.run(
-        cmd, shell=True,
+        cmd,
         capture_output=True, text=True
     )
 
@@ -93,14 +94,14 @@ def _get_revision(name, ns, ctx, rev):
 
 def _get_revision_spec(name, ns, ctx, rev):
     """Get a specific revision's replicaset."""
-    cmd = (
-        f"kubectl --context {ctx} "
-        f"get replicasets -n {ns} -o json "
-        f"-l app={name}"
-    )
+    cmd = [
+        "kubectl", "--context", str(ctx or ""),
+        "get", "replicasets", "-n", str(ns), "-o", "json",
+        "-l", f"app={name}"
+    ]
 
     r = subprocess.run(
-        cmd, shell=True,
+        cmd,
         capture_output=True, text=True
     )
 

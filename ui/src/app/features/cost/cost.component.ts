@@ -1,5 +1,6 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { FormsModule } from '@angular/forms';
 import { TagModule } from 'primeng/tag';
 import { ButtonModule } from 'primeng/button';
 import { TooltipModule } from 'primeng/tooltip';
@@ -8,7 +9,7 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
 @Component({
   selector: 'app-cost',
   standalone: true,
-  imports: [TagModule, ButtonModule, TooltipModule, SpotlightComponent],
+  imports: [FormsModule, TagModule, ButtonModule, TooltipModule, SpotlightComponent],
   template: `
     <app-spotlight id="cost" title="Cost Analysis" icon="pi pi-chart-line"
       description="Analyze resource costs and identify optimization opportunities."
@@ -17,9 +18,15 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
         <div class="page-header">
       <div>
         <h1>Optimization</h1>
-        <p class="subtitle">Resource efficiency and waste detection</p>
+        <p class="subtitle">Resource efficiency and waste detection · {{ lastScanned }}</p>
       </div>
-      <button pButton icon="pi pi-refresh" label="Scan" class="p-button-outlined p-button-sm" (click)="load()"></button>
+      <div class="header-actions">
+        <div class="search-wrap">
+          <i class="pi pi-search"></i>
+          <input type="text" [(ngModel)]="searchQuery" placeholder="Filter..." (ngModelChange)="applyFilter()" />
+        </div>
+        <button pButton icon="pi pi-refresh" label="Scan" class="p-button-outlined p-button-sm" (click)="load()" [loading]="loading"></button>
+      </div>
     </div>
 
     <!-- Score Hero -->
@@ -54,14 +61,14 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     </div>
 
     <!-- Recommendations -->
-    @if (recommendations.length > 0) {
+    @if (filteredRecs.length > 0) {
       <div class="section">
         <div class="section-header">
           <h3><i class="pi pi-chart-line"></i> Recommendations</h3>
-          <span class="section-count">{{ recommendations.length }}</span>
+          <span class="section-count">{{ filteredRecs.length }}</span>
         </div>
         <div class="card-list">
-          @for (rec of recommendations; track $index) {
+          @for (rec of filteredRecs; track $index) {
             <div class="opt-card">
               <div class="opt-left">
                 <div class="opt-icon" [class]="impactClass($index)">
@@ -98,14 +105,14 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     }
 
     <!-- Unused Resources -->
-    @if (unused.length > 0) {
+    @if (filteredUnused.length > 0) {
       <div class="section">
         <div class="section-header">
           <h3><i class="pi pi-trash"></i> Unused Resources</h3>
-          <span class="section-count warn-bg">{{ unused.length }}</span>
+          <span class="section-count warn-bg">{{ filteredUnused.length }}</span>
         </div>
         <div class="card-list">
-          @for (res of unused; track $index) {
+          @for (res of filteredUnused; track $index) {
             <div class="opt-card unused-card">
               <div class="opt-left">
                 <div class="opt-icon unused-icon">
@@ -141,6 +148,14 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px; }
     .page-header h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.03em; }
     .subtitle { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+    .header-actions { display: flex; align-items: center; gap: 8px; }
+    .search-wrap { position: relative; display: flex; align-items: center; }
+    .search-wrap i { position: absolute; left: 8px; font-size: 12px; color: var(--text-muted); }
+    .search-wrap input {
+      padding: 6px 10px 6px 28px; width: 150px; border: 1px solid var(--border); border-radius: 6px;
+      background: var(--bg-elevated); color: var(--text); font-size: 12px; outline: none;
+    }
+    .search-wrap input:focus { border-color: var(--accent); }
 
     /* Score Hero */
     .score-hero {
@@ -245,7 +260,12 @@ export class CostComponent implements OnInit {
   private http = inject(HttpClient);
   recommendations: any[] = [];
   unused: any[] = [];
+  filteredRecs: any[] = [];
+  filteredUnused: any[] = [];
   loaded = false;
+  loading = false;
+  lastScanned = '';
+  searchQuery = '';
 
   get totalIssues() { return this.recommendations.length + this.unused.length; }
   get score() {
@@ -294,14 +314,30 @@ export class CostComponent implements OnInit {
 
   ngOnInit() { this.load(); }
 
+  applyFilter() {
+    const q = this.searchQuery.toLowerCase();
+    if (!q) {
+      this.filteredRecs = this.recommendations;
+      this.filteredUnused = this.unused;
+      return;
+    }
+    this.filteredRecs = this.recommendations.filter(r => (r.name || r.pod || '').toLowerCase().includes(q));
+    this.filteredUnused = this.unused.filter(r => (r.name || r || '').toString().toLowerCase().includes(q));
+  }
+
   load() {
+    this.loading = true;
     this.loaded = false;
     this.http.get<any>('/api/optimize').subscribe(res => {
       this.recommendations = res.recommendations || [];
+      this.applyFilter();
       this.loaded = true;
+      this.loading = false;
+      this.lastScanned = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     });
     this.http.get<any>('/api/unused').subscribe(res => {
       this.unused = res.resources || [];
+      this.applyFilter();
     });
   }
 }

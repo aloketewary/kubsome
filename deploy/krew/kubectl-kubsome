@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# kubectl-kubsome — kubectl plugin wrapper for Kubsome
+# Usage: kubectl kubsome [command] [args...]
+#
+# This script delegates to the kubsome CLI.
+# Install kubsome: pip install kubsome
+
+set -euo pipefail
+
+# Check if kubsome is installed
+if ! command -v kubsome &> /dev/null; then
+    echo "Error: kubsome is not installed."
+    echo ""
+    echo "Install with:"
+    echo "  pip install kubsome"
+    echo ""
+    echo "Then run:"
+    echo "  kubectl kubsome [command]"
+    exit 1
+fi
+
+# Pass all arguments to kubsome
+if [ $# -eq 0 ]; then
+    kubsome
+else
+    kubsome --exec "$*"
+fi

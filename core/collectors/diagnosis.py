@@ -10,6 +10,7 @@ from core.collectors.inspect import (
 
 def collect_diagnosis(pod_name):
     """Gather all diagnostic signals for a pod."""
+    from concurrent.futures import ThreadPoolExecutor
 
     pod_data = inspect_pod(pod_name)
     if not pod_data:
@@ -20,8 +21,12 @@ def collect_diagnosis(pod_name):
     except (KeyError, TypeError, IndexError):
         return None
 
-    events = pod_events(pod_name)
-    logs = pod_logs(pod_name, tail=100)
+    with ThreadPoolExecutor(max_workers=2) as ex:
+        f_events = ex.submit(pod_events, pod_name)
+        f_logs = ex.submit(pod_logs, pod_name, 100)
+
+        events = f_events.result()
+        logs = f_logs.result()
 
     return {
         "details": details,

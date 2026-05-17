@@ -84,12 +84,19 @@ def post_ai(req: AiRequest):
     # Also provide plain text fallback
     plain = re.sub(r'\[/?[^\]]+\]', '', content)
 
+    # Get follow-up suggestions
+    from core.ai.engine import get_follow_up_suggestions
+    intent = parsed["intent"] if parsed else None
+    target = parsed["entities"].get("target") if parsed else None
+    follow_ups = get_follow_up_suggestions(intent, target) if intent else []
+
     return {
         "title": response.get("title", "").replace("🤖 ", ""),
         "answer": plain,
         "html": html,
         "severity": response.get("severity", "info"),
-        "last_target": context.last_target
+        "last_target": context.last_target,
+        "follow_ups": follow_ups,
     }
 
 
@@ -169,7 +176,11 @@ def _check_ambiguity(query: str, parsed=None):
     if not target:
         return None
 
-    # Use substring matching to find ALL pods containing target
+    # Skip ambiguity check for very short targets (too many matches)
+    if len(target) < 3:
+        return None
+
+    # Use substring matching to find pods containing target
     pods = collect_pods()
     matching = [
         p["name"] for p in pods
@@ -178,6 +189,19 @@ def _check_ambiguity(query: str, parsed=None):
 
     if not matching or len(matching) <= 1:
         return None
+
+    # If too many matches, suggest being more specific
+    if len(matching) > 20:
+        return {
+            "title": f"Too many matches for '{target}'",
+            "answer": (
+                f"{len(matching)} pods match '{target}'. "
+                f"Be more specific (e.g., full deployment name)."
+            ),
+            "severity": "clarify",
+            "options": matching[:8],
+            "original_query": query,
+        }
 
     # Multiple matches — ask user to pick
     return {

@@ -199,16 +199,6 @@ def _start_server(args):
                 "[dim]No UI dist cache to clear[/dim]"
             )
 
-    console.print(
-        Panel.fit(
-            f"[bold green]Kubsome Server[/bold green]\n"
-            f"[dim]API:[/dim]  http://localhost:{port}/api\n"
-            f"[dim]UI:[/dim]   http://localhost:{port}/app\n"
-            f"[dim]Docs:[/dim] http://localhost:{port}/docs",
-            border_style="green"
-        )
-    )
-
     try:
         from api.serve import start
         start(port=port, no_browser=no_browser)
@@ -281,6 +271,10 @@ def _start_cli():
             f"[dim]{current}[/dim] → [green]{latest}[/green]  "
             f"[dim]Run:[/dim] pip install --upgrade kubsome\n"
         )
+
+    # Start background scheduler
+    from core.scheduler import get_scheduler
+    get_scheduler().start()
 
     last_command = ""
 
@@ -371,6 +365,9 @@ def _execute_single(user_input, env):
                 "[red]Unknown command.[/red] "
                 "Type [cyan]help[/cyan] for options."
             )
+        # Track unresolved for NLP improvement
+        from core.telemetry import track_unresolved
+        track_unresolved(user_input)
         return
 
     # Execute

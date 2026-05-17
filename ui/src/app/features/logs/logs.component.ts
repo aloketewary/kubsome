@@ -17,6 +17,7 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
   imports: [ButtonModule, Select, TooltipModule, FormsModule, InputTextModule, PageInfoComponent, SpotlightComponent],
   host: {
     '[class.logs-fullscreen-active]': 'fullscreen',
+    '[class.logs-nowrap]': '!wordWrap',
   },
   template: `
     <app-spotlight id="logs" title="Log Viewer" icon="pi pi-align-left"
@@ -86,6 +87,8 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
           </div>
           <button pButton icon="pi pi-arrow-down" class="p-button-sm p-button-text p-button-rounded" pTooltip="Scroll to bottom" (click)="scrollBottom()"></button>
           <button pButton icon="pi pi-copy" class="p-button-sm p-button-text p-button-rounded" pTooltip="Copy all" (click)="copyLogs()"></button>
+          <button pButton icon="pi pi-download" class="p-button-sm p-button-text p-button-rounded" pTooltip="Download .log" (click)="downloadLogs()"></button>
+          <button pButton [icon]="wordWrap ? 'pi pi-align-justify' : 'pi pi-arrows-h'" class="p-button-sm p-button-text p-button-rounded" [pTooltip]="wordWrap ? 'Wrap on' : 'Wrap off'" (click)="wordWrap = !wordWrap"></button>
           <button pButton [icon]="fullscreen ? 'pi pi-window-minimize' : 'pi pi-window-maximize'" class="p-button-sm p-button-text p-button-rounded" [pTooltip]="fullscreen ? 'Exit fullscreen' : 'Fullscreen'" (click)="fullscreen = !fullscreen"></button>
         </div>
       </div>
@@ -255,6 +258,7 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
       padding: 1px 0; text-align: center; letter-spacing: 0.03em;
     }
     .line-text { white-space: pre-wrap; word-break: break-all; padding-left: 8px; color: var(--text); }
+    :host-context(.logs-nowrap) .line-text { white-space: pre; word-break: normal; }
 
     /* Level colors */
     .log-line.level-error { background: var(--danger-subtle); }
@@ -297,6 +301,7 @@ export class LogsComponent implements OnInit, OnDestroy {
   searchQuery = '';
   levelFilter: 'all' | 'error' | 'warn' = 'all';
   fullscreen = false;
+  wordWrap = true;
 
   private streamSub: Subscription | null = null;
   private streamClose: (() => void) | null = null;
@@ -392,6 +397,17 @@ export class LogsComponent implements OnInit, OnDestroy {
 
   copyLogs() {
     navigator.clipboard.writeText(this.filteredLines.join('\n'));
+  }
+
+  downloadLogs() {
+    const content = this.filteredLines.join('\n');
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${this.selectedPod || 'logs'}-${new Date().toISOString().slice(0, 19)}.log`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   lineClass(line: string): string {

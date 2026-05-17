@@ -27,14 +27,14 @@ def correlate_logs(pod_names, tail=50):
     entries = []
 
     def fetch_pod_logs(pod):
-        cmd = (
-            f"kubectl --context {ctx} "
-            f"logs {pod} -n {ns} "
-            f"--tail={tail} --timestamps"
-        )
+        cmd = [
+            "kubectl", "--context", str(ctx or ""),
+            "logs", pod, "-n", str(ns),
+            f"--tail={tail}", "--timestamps"
+        ]
         try:
             result = subprocess.run(
-                cmd, shell=True,
+                cmd,
                 capture_output=True, text=True,
                 timeout=15,
             )

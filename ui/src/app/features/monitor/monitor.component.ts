@@ -2,6 +2,7 @@ import { Component, inject, OnInit, OnDestroy } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { SlicePipe } from '@angular/common';
+import { forkJoin } from 'rxjs';
 import { Select } from 'primeng/select';
 import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
@@ -622,12 +623,22 @@ export class MonitorComponent implements OnInit, OnDestroy {
 
   private startCardTimers() {
     this.stopCardTimers();
+    // Group cards by refresh interval and batch them
+    const grouped = new Map<number, MonitorCard[]>();
     for (const card of this.cards) {
       if (card.refreshInterval > 0 && card.context && card.namespace) {
-        const timer = setInterval(() => this.fetchCardData(card), card.refreshInterval * 1000);
-        this.cardTimers.set(card.id, timer);
+        const group = grouped.get(card.refreshInterval) || [];
+        group.push(card);
+        grouped.set(card.refreshInterval, group);
       }
     }
+    grouped.forEach((cards, interval) => {
+      const timer = setInterval(() => {
+        cards.filter(c => c.context && c.namespace).forEach(c => this.fetchCardData(c));
+      }, interval * 1000);
+      // Store timer with first card's id as key
+      this.cardTimers.set(cards[0].id, timer);
+    });
   }
 
   private stopCardTimers() {
@@ -814,6 +825,7 @@ export class MonitorComponent implements OnInit, OnDestroy {
       const raw = localStorage.getItem('kubsome_monitor_cards');
       if (raw) {
         const saved = JSON.parse(raw);
+        const cardsToFetch: MonitorCard[] = [];
         for (const s of saved) {
           const card: MonitorCard = {
             id: ++this.idCounter, context: s.context || '', namespace: s.namespace || '', app: s.app || '',
@@ -824,25 +836,22 @@ export class MonitorComponent implements OnInit, OnDestroy {
             actionLog: s.actionLog || [],
           };
           this.cards.push(card);
-          if (card.context && card.namespace) {
-            const savedNs = card.namespace;
-            const savedApp = card.app;
-            this.http.get<any>('/api/ns-for-context', { params: { ctx: card.context } }).subscribe({
-              next: (res) => {
-                card.namespaces = res.namespaces || [];
-                card.namespace = savedNs;
-                this.http.get<any>('/api/monitor/apps', { params: { ctx: card.context, ns: savedNs } }).subscribe({
-                  next: (appsRes) => {
-                    card.apps = (appsRes.deployments || []).map((d: any) => d.name);
-                    card.app = savedApp;
-                    this.fetchCardData(card);
-                  },
-                  error: () => { this.fetchCardData(card); },
-                });
-              },
-              error: () => { card.namespaces = []; },
+          if (card.context && card.namespace) cardsToFetch.push(card);
+        }
+        // Parallel init: fetch namespaces for all cards at once
+        if (cardsToFetch.length > 0) {
+          const nsRequests = cardsToFetch.map(c =>
+            this.http.get<any>('/api/ns-for-context', { params: { ctx: c.context } })
+          );
+          forkJoin(nsRequests).subscribe(results => {
+            results.forEach((res, i) => {
+              const card = cardsToFetch[i];
+              card.namespaces = res.namespaces || [];
             });
-          }
+            // Fetch data for all cards in parallel
+            cardsToFetch.forEach(card => this.fetchCardData(card));
+            this.startCardTimers();
+          });
         }
       } else {
         this.addCard();

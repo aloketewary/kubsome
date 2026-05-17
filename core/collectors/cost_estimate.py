@@ -25,12 +25,12 @@ def estimate_costs():
     ctx = context.current_context
     ns = context.namespace
 
-    cmd = (
-        f"kubectl --context {ctx} "
-        f"get deployments -n {ns} -o json"
-    )
+    cmd = [
+        "kubectl", "--context", str(ctx or ""),
+        "get", "deployments", "-n", str(ns), "-o", "json"
+    ]
     result = subprocess.run(
-        cmd, shell=True,
+        cmd,
         capture_output=True, text=True,
         timeout=15,
     )
