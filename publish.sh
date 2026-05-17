@@ -1,6 +1,6 @@
 #!/bin/bash
 # Kubsome — Build & Publish to PyPI
-# Usage: ./publish.sh [--test]
+# Usage: ./publish.sh [--test] [--no-publish]
 
 set -e
 
@@ -44,7 +44,7 @@ echo -e "${DIM}  Cleaned previous builds${NC}"
 
 # ── 5. Build sdist + wheel ────────────────────────────────────────────────────
 echo -e "${CYAN}  Building sdist + wheel...${NC}"
-pipx run build
+python3 -m build
 echo ""
 echo -e "${GREEN}✓ Build complete${NC}"
 ls -lh dist/
@@ -60,15 +60,17 @@ git push origin "v${NEW_VERSION}"
 echo -e "${DIM}  Pushed commit and tag v${NEW_VERSION}${NC}"
 
 # ── 7. Publish ────────────────────────────────────────────────────────────────
-if [ "$1" == "--test" ]; then
+if [ "$1" == "--no-publish" ]; then
+    echo -e "${GREEN}✓ Done — v${NEW_VERSION} (skipped PyPI upload)${NC}"
+elif [ "$1" == "--test" ]; then
     echo -e "${CYAN}  Uploading to TestPyPI...${NC}"
-    pipx run twine upload --repository testpypi dist/*
+    python3 -m twine upload --repository testpypi dist/*
     echo ""
     echo -e "${GREEN}✓ Published to TestPyPI${NC}"
     echo -e "  Install: pip install -i https://test.pypi.org/simple/ kubsome==${NEW_VERSION}"
 else
     echo -e "${CYAN}  Uploading to PyPI...${NC}"
-    pipx run twine upload dist/*
+    python3 -m twine upload dist/*
     echo ""
     echo -e "${GREEN}✓ Published to PyPI — v${NEW_VERSION}${NC}"
     echo -e "  Install: pip install kubsome==${NEW_VERSION}"
