@@ -44,7 +44,7 @@ echo -e "${DIM}  Cleaned previous builds${NC}"
 
 # ── 5. Build sdist + wheel ────────────────────────────────────────────────────
 echo -e "${CYAN}  Building sdist + wheel...${NC}"
-python3 -m build
+pipx run build
 echo ""
 echo -e "${GREEN}✓ Build complete${NC}"
 ls -lh dist/
@@ -62,13 +62,13 @@ echo -e "${DIM}  Pushed commit and tag v${NEW_VERSION}${NC}"
 # ── 7. Publish ────────────────────────────────────────────────────────────────
 if [ "$1" == "--test" ]; then
     echo -e "${CYAN}  Uploading to TestPyPI...${NC}"
-    # python3 -m twine upload --repository testpypi dist/*
+    pipx run twine upload --repository testpypi dist/*
     echo ""
     echo -e "${GREEN}✓ Published to TestPyPI${NC}"
     echo -e "  Install: pip install -i https://test.pypi.org/simple/ kubsome==${NEW_VERSION}"
 else
     echo -e "${CYAN}  Uploading to PyPI...${NC}"
-    # python3 -m twine upload dist/*
+    pipx run twine upload dist/*
     echo ""
     echo -e "${GREEN}✓ Published to PyPI — v${NEW_VERSION}${NC}"
     echo -e "  Install: pip install kubsome==${NEW_VERSION}"

@@ -100,11 +100,11 @@ def rollback_preview(deployment_name):
 def _get_revision(ctx, ns, deployment, offset):
     """Get deployment spec at a revision offset (0=current, 1=previous)."""
     if offset == 0:
-        cmd = (
-            f"kubectl --context {ctx} "
-            f"get deployment {deployment} "
-            f"-n {ns} -o json"
-        )
+        cmd = [
+            "kubectl", "--context", str(ctx or ""),
+            "get", "deployment", deployment,
+            "-n", str(ns), "-o", "json"
+        ]
     else:
         hist_cmd = [
             "kubectl", "--context", str(ctx or ""),
@@ -138,12 +138,6 @@ def _get_revision(ctx, ns, deployment, offset):
             f"deployment/{deployment}",
             "-n", str(ns),
             f"--revision={prev_rev}", "-o", "json"
-        ]
-    else:
-        cmd = [
-            "kubectl", "--context", str(ctx or ""),
-            "get", "deployment", deployment,
-            "-n", str(ns), "-o", "json"
         ]
 
     result = subprocess.run(
