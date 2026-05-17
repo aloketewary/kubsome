@@ -106,18 +106,31 @@ Query params:
 | POST | `/api/incident/action` | Log remediation action |
 | GET | `/api/incident/history` | Past incidents |
 | GET | `/api/incident/report?path=` | Read report |
+| POST | `/api/incident/share` | Share via webhooks |
 
 ### Operations
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/api/scorecard` | Cluster scorecard |
 | GET | `/api/cost-estimate` | Cost estimation |
+| GET | `/api/cost-trend` | Cost forecast + savings |
 | GET | `/api/uptime` | Cluster uptime |
 | GET | `/api/timeline?minutes=60` | Event timeline |
-| GET | `/api/playbooks` | List runbooks |
+| GET | `/api/playbooks` | List runbooks (incl. team) |
 | GET | `/api/playbook/{issue}` | Get specific playbook |
 | POST | `/api/compare` | Multi-cluster compare |
 | POST | `/api/exec` | Execute command |
+
+### Growth (v1.12)
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/doctor` | Pre-flight diagnostics |
+| GET | `/api/policy-check` | Policy violations |
+| GET | `/api/metrics-history?pod=&hours=24` | Time-series metrics |
+| GET | `/api/schedules` | List schedules |
+| POST | `/api/schedules` | Create schedule |
+| DELETE | `/api/schedules/{name}` | Remove schedule |
+| GET | `/api/audit?limit=50&action=` | Audit log with filters |
 
 ### WebSocket
 | Path | Description |

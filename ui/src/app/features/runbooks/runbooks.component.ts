@@ -19,6 +19,8 @@ interface RunbookStep {
   loading?: boolean;
   note?: string;
   isInfo?: boolean;
+  copied?: boolean;
+  outputCopied?: boolean;
 }
 
 interface Runbook {
@@ -29,6 +31,7 @@ interface Runbook {
   color: string;
   severity: string;
   estimatedTime: string;
+  source?: string;
   steps: RunbookStep[];
 }
 
@@ -104,7 +107,11 @@ interface Runbook {
               <div class="rb-icon" [style.background]="rb.color + '15'" [style.color]="rb.color">
                 <i [class]="rb.icon"></i>
               </div>
-              <p-tag [value]="rb.severity" [severity]="rb.severity === 'Critical' ? 'danger' : rb.severity === 'High' ? 'warn' : 'info'" [rounded]="true" />
+              @if (rb.source && rb.source !== 'built-in') {
+                <p-tag value="Team" severity="info" [rounded]="true" />
+              } @else {
+                <p-tag [value]="rb.severity" [severity]="rb.severity === 'Critical' ? 'danger' : rb.severity === 'High' ? 'warn' : 'info'" [rounded]="true" />
+              }
             </div>
             <h4 class="rb-name">{{ rb.name }}</h4>
             <p class="rb-desc">{{ rb.description }}</p>
@@ -181,7 +188,11 @@ interface Runbook {
               @if (step.command || step.commandTemplate) {
                 <div class="step-command">
                   <code>{{ step.commandTemplate || step.command }}</code>
-                  <button pButton icon="pi pi-copy" class="p-button-sm p-button-text p-button-rounded" pTooltip="Copy" (click)="copyCmd(step.command || step.commandTemplate!)"></button>
+                  <button pButton [icon]="step.copied ? 'pi pi-check' : 'pi pi-copy'"
+                          class="p-button-sm p-button-text p-button-rounded"
+                          [class.p-button-success]="step.copied"
+                          [pTooltip]="step.copied ? 'Copied!' : 'Copy'"
+                          (click)="copyCmd(step, step.command || step.commandTemplate!)"></button>
                 </div>
               }
 
@@ -224,7 +235,11 @@ interface Runbook {
                   <div class="output-header">
                     <span>Output</span>
                     <div class="output-actions">
-                      <button pButton icon="pi pi-copy" class="p-button-sm p-button-text p-button-rounded" (click)="copyCmd(step.output!)"></button>
+                      <button pButton [icon]="step.outputCopied ? 'pi pi-check' : 'pi pi-copy'"
+                              class="p-button-sm p-button-text p-button-rounded"
+                              [class.p-button-success]="step.outputCopied"
+                              [pTooltip]="step.outputCopied ? 'Copied!' : 'Copy'"
+                              (click)="copyCmd(step, step.output!, true)"></button>
                       <button pButton [icon]="step.outputExpanded ? 'pi pi-chevron-up' : 'pi pi-chevron-down'" class="p-button-sm p-button-text p-button-rounded" (click)="step.outputExpanded = !step.outputExpanded"></button>
                     </div>
                   </div>
@@ -470,7 +485,6 @@ export class RunbooksComponent implements OnInit {
   runbookElapsed = '00:00';
   private startTime = 0;
   private timerInterval: any;
-  copied = false;
 
   get completedSteps() { return this.activeRunbook?.steps.filter(s => s.done).length || 0; }
   get progressPct() { return this.activeRunbook ? Math.round((this.completedSteps / this.activeRunbook.steps.length) * 100) : 0; }
@@ -541,6 +555,7 @@ export class RunbooksComponent implements OnInit {
           color: colors[pb.id] || '#3b82f6',
           severity: severities[pb.id] || 'Medium',
           estimatedTime: `${pb.steps.length * 2} min`,
+          source: pb.source || 'built-in',
           steps: pb.steps.map((s: string) => {
             const extracted = this.extractCommand(s);
             const cleaned = s.replace(/\[\/?[^\]]+\]/g, '').trim();
@@ -683,9 +698,14 @@ export class RunbooksComponent implements OnInit {
     });
   }
 
-  copyCmd(text: string) {
+  copyCmd(step: any, text: string, isOutput = false) {
     navigator.clipboard.writeText(text);
-    this.copied = true;
-    setTimeout(() => this.copied = false, 1500);
+    if (isOutput) {
+      step.outputCopied = true;
+      setTimeout(() => step.outputCopied = false, 1500);
+    } else {
+      step.copied = true;
+      setTimeout(() => step.copied = false, 1500);
+    }
   }
 }

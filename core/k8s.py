@@ -8,7 +8,7 @@ from core.cache import cached
 
 
 @cached(ttl=5)
-def get_raw_resources(kind, context_name, namespace=None, selector=None):
+def get_raw_resources(kind, context_name, namespace=None, selector=None, field_selector=None, sort_by=None):
     """Unified raw resource fetcher with caching."""
     command = [
         "kubectl", "--context", str(context_name or ""),
@@ -18,6 +18,10 @@ def get_raw_resources(kind, context_name, namespace=None, selector=None):
         command.extend(["-n", namespace])
     if selector:
         command.extend(["-l", selector])
+    if field_selector:
+        command.extend(["--field-selector", field_selector])
+    if sort_by:
+        command.extend(["--sort-by", sort_by])
 
     result = subprocess.run(
         command,

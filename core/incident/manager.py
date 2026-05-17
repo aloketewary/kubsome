@@ -57,7 +57,7 @@ def start_incident(title=""):
     return incident
 
 
-def stop_incident(root_cause="", resolution=""):
+def stop_incident(root_cause="", resolution="", lessons_learned=""):
     """Stop active incident and export report."""
     incident = _load()
     if not incident:
@@ -68,6 +68,8 @@ def stop_incident(root_cause="", resolution=""):
         incident["root_cause"] = root_cause
     if resolution:
         incident["resolution"] = resolution
+    if lessons_learned:
+        incident["lessons_learned"] = lessons_learned
     incident["timeline"].append({
         "time": datetime.now().isoformat(),
         "event": "Incident closed",
@@ -198,3 +200,72 @@ def _load():
         return None
     with open(path, "r") as f:
         return json.load(f)
+
+
+def share_incident(incident_id=None):
+    """
+    Share an incident report via configured webhooks.
+    If incident_id is None, shares the active incident.
+    Returns (success, message).
+    """
+    if incident_id:
+        path = INCIDENTS_DIR / f"incident_{incident_id}.json"
+        if not path.exists():
+            return False, f"Incident {incident_id} not found"
+        with open(path, "r") as f:
+            incident = json.load(f)
+    else:
+        incident = _load()
+        if not incident:
+            return False, "No active incident"
+
+    # Build Markdown summary
+    md = _incident_to_markdown(incident)
+
+    # Send via webhook
+    from core.notify import notify_webhook
+    title = f"Incident: {incident.get('title', 'Untitled')}"
+    notify_webhook(title, md, "warning")
+
+    return True, f"Shared '{incident['title']}' to webhooks"
+
+
+def _incident_to_markdown(incident):
+    """Convert incident to shareable Markdown."""
+    lines = [
+        f"**{incident.get('title', 'Untitled')}**",
+        f"ID: {incident.get('id', '')}",
+        f"Context: {incident.get('context', '')} / "
+        f"{incident.get('namespace', '')}",
+        f"Started: {incident.get('started', '')[:16]}",
+    ]
+
+    if incident.get("ended"):
+        lines.append(f"Ended: {incident['ended'][:16]}")
+
+    if incident.get("root_cause"):
+        lines.append(f"\n**Root Cause:** {incident['root_cause']}")
+
+    if incident.get("resolution"):
+        lines.append(f"**Resolution:** {incident['resolution']}")
+
+    if incident.get("notes"):
+        lines.append(f"\n**Notes ({len(incident['notes'])}):**")
+        for note in incident["notes"][-5:]:
+            lines.append(
+                f"  • [{note['time'][11:16]}] {note['text']}"
+            )
+
+    if incident.get("actions"):
+        lines.append(f"\n**Actions ({len(incident['actions'])}):**")
+        for a in incident["actions"][-5:]:
+            lines.append(
+                f"  • {a['action']} → {a.get('result', '')}"
+            )
+
+    if incident.get("timeline"):
+        lines.append(
+            f"\n_Timeline: {len(incident['timeline'])} events_"
+        )
+
+    return "\n".join(lines)

@@ -396,7 +396,59 @@ PLAYBOOKS = {
 
 def get_playbook(issue_type):
     """Get remediation playbook for an issue type."""
+    # Check team runbooks first (project-local)
+    team = _load_team_runbooks()
+    if issue_type in team:
+        return team[issue_type]
     return PLAYBOOKS.get(issue_type)
+
+
+def list_all_playbooks():
+    """List all playbooks including team runbooks."""
+    all_pb = dict(PLAYBOOKS)
+    all_pb.update(_load_team_runbooks())
+    return all_pb
+
+
+def _load_team_runbooks():
+    """
+    Load team-shared runbooks from:
+    1. .kubsome/runbooks/*.yaml in current directory (project)
+    2. ~/.kubsome/runbooks/*.yaml (user-level)
+
+    Format:
+      title: My Custom Runbook
+      steps:
+        - Check the thing
+        - Fix the thing
+    """
+    import yaml
+    from pathlib import Path
+
+    runbooks = {}
+    search_paths = [
+        Path.cwd() / ".kubsome" / "runbooks",
+        Path.home() / ".kubsome" / "runbooks",
+    ]
+
+    for runbook_dir in search_paths:
+        if not runbook_dir.exists():
+            continue
+        for f in runbook_dir.glob("*.yaml"):
+            try:
+                with open(f, "r") as fh:
+                    data = yaml.safe_load(fh)
+                if data and "title" in data and "steps" in data:
+                    key = f.stem
+                    runbooks[key] = {
+                        "title": data["title"],
+                        "steps": data["steps"],
+                        "source": str(f),
+                    }
+            except Exception:
+                continue
+
+    return runbooks
 
 
 def match_playbook(findings):

@@ -15,6 +15,19 @@ class AppContext:
 
         # Contextual memory
         self.last_target = None
+        self.last_intent = None
+        self.conversation_targets = []  # Last 5 discussed resources
+
+    def remember_target(self, target):
+        """Track discussed resources for context memory."""
+        if target and target != self.last_target:
+            self.last_target = target
+            self.conversation_targets = (
+                [target] + [
+                    t for t in self.conversation_targets
+                    if t != target
+                ]
+            )[:5]
 
 
 context = AppContext()

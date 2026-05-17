@@ -13,7 +13,8 @@ from core.collectors.metrics import top_pods
 def resource_recommendations():
     """
     Compare pod resource requests vs actual usage.
-    Returns optimization suggestions.
+    Uses historical metrics when available (peak/p95),
+    falls back to current snapshot.
     """
     ns = context.namespace
     ctx = context.current_context
@@ -26,6 +27,16 @@ def resource_recommendations():
 
     if not specs or not usage:
         return []
+
+    # Try to get historical data
+    from core.collectors.metrics_history import (
+        get_all_pod_history, record_snapshot
+    )
+    try:
+        record_snapshot()
+        history = get_all_pod_history()
+    except Exception:
+        history = {}
 
     # Build usage map
     usage_map = {
@@ -41,14 +52,25 @@ def resource_recommendations():
 
         cpu_req = spec.get("cpu_request_m", 0)
         mem_req = spec.get("mem_request_mb", 0)
-        cpu_actual = actual["cpu_millicores"]
-        mem_actual = actual["memory_mb"]
 
-        # Over-provisioned CPU (using < 20% of request)
-        if cpu_req > 0 and cpu_actual < cpu_req * 0.2:
+        # Use historical peak/p95 if available, else current
+        hist = history.get(pod_name)
+        if hist and hist["samples"] >= 6:
+            cpu_peak = hist["cpu_p95"]
+            mem_peak = hist["mem_p95"]
+            data_source = f"{hist['samples']} samples"
+        else:
+            cpu_peak = actual["cpu_millicores"]
+            mem_peak = actual["memory_mb"]
+            data_source = "point-in-time"
+
+        # Over-provisioned CPU (p95 usage < 20% of request)
+        if cpu_req > 0 and cpu_peak < cpu_req * 0.2:
             savings_pct = int(
-                (1 - cpu_actual / cpu_req) * 100
+                (1 - cpu_peak / cpu_req) * 100
             )
+            # Suggest 1.5x p95 as safe headroom
+            suggested = max(int(cpu_peak * 1.5), 50)
             recommendations.append({
                 "pod": pod_name,
                 "type": "cpu_over",
@@ -56,20 +78,24 @@ def resource_recommendations():
                 "title": "CPU over-provisioned",
                 "detail": (
                     f"Requested: {cpu_req}m, "
-                    f"Using: {cpu_actual}m "
-                    f"({savings_pct}% waste)"
+                    f"Peak(p95): {cpu_peak}m "
+                    f"({savings_pct}% idle)"
                 ),
                 "suggestion": (
-                    f"Reduce CPU request to "
-                    f"{max(cpu_actual * 2, 50)}m"
+                    f"Consider reducing CPU request to "
+                    f"{suggested}m (1.5x p95)"
                 ),
+                "current": f"{cpu_req}m",
+                "suggested": f"{suggested}m",
+                "data_source": data_source,
             })
 
         # Over-provisioned Memory
-        if mem_req > 0 and mem_actual < mem_req * 0.3:
+        if mem_req > 0 and mem_peak < mem_req * 0.3:
             savings_pct = int(
-                (1 - mem_actual / mem_req) * 100
+                (1 - mem_peak / mem_req) * 100
             )
+            suggested = max(int(mem_peak * 1.3), 64)
             recommendations.append({
                 "pod": pod_name,
                 "type": "mem_over",
@@ -77,20 +103,25 @@ def resource_recommendations():
                 "title": "Memory over-provisioned",
                 "detail": (
                     f"Requested: {mem_req}Mi, "
-                    f"Using: {mem_actual}Mi "
-                    f"({savings_pct}% waste)"
+                    f"Peak(p95): {mem_peak}Mi "
+                    f"({savings_pct}% idle)"
                 ),
                 "suggestion": (
-                    f"Reduce memory request to "
-                    f"{max(mem_actual * 2, 64)}Mi"
+                    f"Consider reducing memory request to "
+                    f"{suggested}Mi (1.3x p95)"
                 ),
+                "current": f"{mem_req}Mi",
+                "suggested": f"{suggested}Mi",
+                "data_source": data_source,
             })
 
         # Under-provisioned (using > 90% of limit)
         cpu_lim = spec.get("cpu_limit_m", 0)
         mem_lim = spec.get("mem_limit_mb", 0)
+        cpu_now = actual["cpu_millicores"]
+        mem_now = actual["memory_mb"]
 
-        if cpu_lim > 0 and cpu_actual > cpu_lim * 0.9:
+        if cpu_lim > 0 and cpu_now > cpu_lim * 0.9:
             recommendations.append({
                 "pod": pod_name,
                 "type": "cpu_under",
@@ -98,15 +129,15 @@ def resource_recommendations():
                 "title": "CPU near limit",
                 "detail": (
                     f"Limit: {cpu_lim}m, "
-                    f"Using: {cpu_actual}m (throttling likely)"
+                    f"Using: {cpu_now}m (throttling likely)"
                 ),
                 "suggestion": (
                     f"Increase CPU limit to "
-                    f"{int(cpu_actual * 1.5)}m"
+                    f"{int(cpu_now * 1.5)}m"
                 ),
             })
 
-        if mem_lim > 0 and mem_actual > mem_lim * 0.85:
+        if mem_lim > 0 and mem_now > mem_lim * 0.85:
             recommendations.append({
                 "pod": pod_name,
                 "type": "mem_under",
@@ -114,11 +145,11 @@ def resource_recommendations():
                 "title": "Memory near limit",
                 "detail": (
                     f"Limit: {mem_lim}Mi, "
-                    f"Using: {mem_actual}Mi (OOM risk)"
+                    f"Using: {mem_now}Mi (OOM risk)"
                 ),
                 "suggestion": (
                     f"Increase memory limit to "
-                    f"{int(mem_actual * 1.5)}Mi"
+                    f"{int(mem_now * 1.5)}Mi"
                 ),
             })
 
@@ -131,8 +162,8 @@ def resource_recommendations():
                 "title": "No resource requests",
                 "detail": "Pod has no CPU/memory requests set",
                 "suggestion": (
-                    f"Set requests: cpu={cpu_actual * 2}m "
-                    f"mem={mem_actual * 2}Mi"
+                    f"Set requests: cpu={cpu_now * 2}m "
+                    f"mem={mem_now * 2}Mi"
                 ),
             })
 
@@ -179,12 +210,12 @@ def find_unused_resources():
 
 
 def _get_pod_specs(ns, ctx):
-    cmd = (
-        f"kubectl --context {ctx} "
-        f"get pods -n {ns} -o json"
-    )
+    cmd = [
+        "kubectl", "--context", str(ctx or ""),
+        "get", "pods", "-n", str(ns), "-o", "json"
+    ]
     r = subprocess.run(
-        cmd, shell=True,
+        cmd,
         capture_output=True, text=True
     )
     if r.returncode != 0:
@@ -223,25 +254,25 @@ def _get_pod_specs(ns, ctx):
 
 
 def _get_configmaps(ns, ctx):
-    cmd = (
-        f"kubectl --context {ctx} "
-        f"get configmaps -n {ns} "
-        f"-o jsonpath='{{.items[*].metadata.name}}'"
-    )
+    cmd = [
+        "kubectl", "--context", str(ctx or ""),
+        "get", "configmaps", "-n", str(ns),
+        "-o", "jsonpath={.items[*].metadata.name}"
+    ]
     r = subprocess.run(
-        cmd, shell=True,
+        cmd,
         capture_output=True, text=True
     )
-    return r.stdout.strip("'").split()
+    return r.stdout.strip().split()
 
 
 def _get_mounted_configmaps(ns, ctx):
-    cmd = (
-        f"kubectl --context {ctx} "
-        f"get pods -n {ns} -o json"
-    )
+    cmd = [
+        "kubectl", "--context", str(ctx or ""),
+        "get", "pods", "-n", str(ns), "-o", "json"
+    ]
     r = subprocess.run(
-        cmd, shell=True,
+        cmd,
         capture_output=True, text=True
     )
     if r.returncode != 0:
@@ -268,12 +299,12 @@ def _get_mounted_configmaps(ns, ctx):
 
 
 def _get_unbound_pvcs(ns, ctx):
-    cmd = (
-        f"kubectl --context {ctx} "
-        f"get pvc -n {ns} -o json"
-    )
+    cmd = [
+        "kubectl", "--context", str(ctx or ""),
+        "get", "pvc", "-n", str(ns), "-o", "json"
+    ]
     r = subprocess.run(
-        cmd, shell=True,
+        cmd,
         capture_output=True, text=True
     )
     if r.returncode != 0:

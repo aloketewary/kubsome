@@ -20,8 +20,9 @@ def get_overview():
         nodes = f_nodes.result()
         deployments = f_deps.result()
 
+    healthy_statuses = {"Running", "Succeeded", "Completed"}
     pod_health = {
-        "healthy": sum(1 for p in pods if p["status"] == "Running"),
+        "healthy": sum(1 for p in pods if p["status"] in healthy_statuses),
         "warning": sum(1 for p in pods if p["restarts"] > 5),
         "critical": sum(1 for p in pods if p["status"] in ("CrashLoopBackOff", "Error", "Failed")),
     }
@@ -53,23 +54,40 @@ def get_overview():
 def get_overview_for(ctx: str, ns: str, app: str = None):
     """Get overview for a specific context/namespace, optionally filtered by app."""
     from core.k8s import get_raw_resources
-    import subprocess
-    import json
 
-    # Pods - use cached raw resources
-    selector = f"app={app}" if app else None
-    data = get_raw_resources("pods", ctx, ns, selector=selector)
-    pods = data.get("items", [])
+    # Parallelize resource fetching to reduce latency and leverage unified cache
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        f_pods = executor.submit(
+            get_raw_resources, "pods", ctx, ns,
+            selector=f"app={app}" if app else None
+        )
+        f_events = executor.submit(
+            get_raw_resources, "events", ctx, ns,
+            field_selector="involvedObject.kind=Pod" if app else None,
+            sort_by=".lastTimestamp"
+        )
+
+        if app:
+            f_app = executor.submit(get_raw_resources, f"deployment/{app}", ctx, ns)
+            f_nodes = None
+            f_deps = None
+        else:
+            f_app = None
+            f_nodes = executor.submit(get_raw_resources, "nodes", ctx)
+            f_deps = executor.submit(get_raw_resources, "deployments", ctx, ns)
+
+        pods = f_pods.result().get("items", [])
+        events_items = f_events.result().get("items", [])
 
     total_restarts = 0
     for p in pods:
-        for cs in p.get("status", {}).get("containerStatuses", []):
+        for cs in p["status"].get("containerStatuses", []):
             total_restarts += cs.get("restartCount", 0)
 
     pod_health = {
-        "healthy": sum(1 for p in pods if p.get("status", {}).get("phase") == "Running"),
-        "warning": sum(1 for p in pods if sum(cs.get("restartCount", 0) for cs in p.get("status", {}).get("containerStatuses", [])) > 5),
-        "critical": sum(1 for p in pods if p.get("status", {}).get("phase") in ("CrashLoopBackOff", "Error", "Failed")),
+        "healthy": sum(1 for p in pods if p["status"].get("phase") == "Running"),
+        "warning": sum(1 for p in pods if sum(cs.get("restartCount", 0) for cs in p["status"].get("containerStatuses", [])) > 5),
+        "critical": sum(1 for p in pods if p["status"].get("phase") in ("CrashLoopBackOff", "Error", "Failed")),
         "unavailable": 0,
         "total": len(pods),
         "restarts": total_restarts,
@@ -77,13 +95,9 @@ def get_overview_for(ctx: str, ns: str, app: str = None):
 
     # App-specific: get deployment replicas
     if app:
-        # We don't have a single-resource fetcher in core.k8s yet that is cached properly for this case
-        # but we can use get_raw_resources for deployments and filter
-        dep_data = get_raw_resources("deployments", ctx, ns)
-        dep = next((d for d in dep_data.get("items", []) if d["metadata"]["name"] == app), None)
-
+        dep = f_app.result()
         app_info = {}
-        if dep:
+        if dep and "metadata" in dep:
             desired = dep.get("spec", {}).get("replicas", 0)
             available = dep.get("status", {}).get("availableReplicas", 0)
             app_info = {
@@ -93,14 +107,9 @@ def get_overview_for(ctx: str, ns: str, app: str = None):
                 "image": (dep.get("spec", {}).get("template", {}).get("spec", {}).get("containers", [{}])[0].get("image", "")),
             }
 
-        # Events filtered to app pods - use cached events
-        event_data = get_raw_resources("events", ctx, ns)
+        # Events filtered to app pods
         events = []
-        # Sort by lastTimestamp descending
-        raw_events = event_data.get("items", [])
-        raw_events.sort(key=lambda x: x.get("lastTimestamp") or "", reverse=True)
-
-        for item in raw_events[:100]: # Look at more events to filter
+        for item in events_items[-50:]:
             obj_name = item.get("involvedObject", {}).get("name", "")
             if app.lower() in obj_name.lower():
                 events.append({
@@ -109,8 +118,6 @@ def get_overview_for(ctx: str, ns: str, app: str = None):
                     "object": obj_name,
                     "message": item.get("message", ""),
                 })
-                if len(events) >= 50:
-                    break
 
         return {
             "context": ctx, "namespace": ns, "app": app,
@@ -120,44 +127,29 @@ def get_overview_for(ctx: str, ns: str, app: str = None):
             "events": events,
         }
 
-    # Cluster/namespace level — parallel fetch using cached resources
-    from concurrent.futures import ThreadPoolExecutor
-
-    def _get_nodes():
-        return get_raw_resources("nodes", ctx).get("items", [])
-
-    def _get_deps():
-        return get_raw_resources("deployments", ctx, ns).get("items", [])
-
-    def _get_events():
-        event_data = get_raw_resources("events", ctx, ns)
-        items = event_data.get("items", [])
-        items.sort(key=lambda x: x.get("lastTimestamp") or "", reverse=True)
-        return [
-            {"type": i.get("type", "Normal"), "reason": i.get("reason", ""), "object": i.get("involvedObject", {}).get("name", ""), "message": i.get("message", "")}
-            for i in items[:50]
-        ]
-
-    with ThreadPoolExecutor(max_workers=3) as ex:
-        f_nodes = ex.submit(_get_nodes)
-        f_deps = ex.submit(_get_deps)
-        f_events = ex.submit(_get_events)
-
-        nodes = f_nodes.result()
-        deps = f_deps.result()
-        events = f_events.result()
-
+    # Cluster/namespace level
+    nodes = f_nodes.result().get("items", [])
     node_health = {
         "healthy": sum(1 for n in nodes if any(c["type"] == "Ready" and c["status"] == "True" for c in n["status"].get("conditions", []))),
         "warning": sum(1 for n in nodes if not any(c["type"] == "Ready" and c["status"] == "True" for c in n["status"].get("conditions", []))),
         "critical": 0, "unavailable": 0,
     }
 
+    deps = f_deps.result().get("items", [])
     dep_health = {
         "healthy": sum(1 for d in deps if d["status"].get("availableReplicas", 0) >= d["spec"].get("replicas", 1)),
         "unavailable": sum(1 for d in deps if d["status"].get("availableReplicas", 0) < d["spec"].get("replicas", 1)),
         "warning": 0, "critical": 0,
     }
+
+    events = []
+    for item in events_items[-50:]:
+        events.append({
+            "type": item.get("type", "Normal"),
+            "reason": item.get("reason", ""),
+            "object": item.get("involvedObject", {}).get("name", ""),
+            "message": item.get("message", ""),
+        })
 
     return {
         "context": ctx, "namespace": ns,
@@ -170,9 +162,15 @@ def get_overview_for(ctx: str, ns: str, app: str = None):
 @router.get("/list-apps/{ctx}/{ns}")
 def get_apps_for(ctx: str, ns: str):
     """List deployments for a specific context/namespace."""
-    from core.k8s import get_raw_resources
-    data = get_raw_resources("deployments", ctx, ns)
-    items = data.get("items", [])
+    import subprocess
+    import json
+    r = subprocess.run(
+        ["kubectl", "--context", ctx, "get", "deployments", "-n", ns, "-o", "json"],
+        capture_output=True, text=True
+    )
+    if r.returncode != 0:
+        return {"deployments": []}
+    items = json.loads(r.stdout).get("items", [])
     return {
         "deployments": [
             {"name": d["metadata"]["name"]}
@@ -184,11 +182,17 @@ def get_apps_for(ctx: str, ns: str):
 @router.get("/monitor/apps")
 def get_monitor_apps(ctx: str = "", ns: str = ""):
     """List deployments using query params (handles special chars in context)."""
-    from core.k8s import get_raw_resources
+    import subprocess
+    import json
     if not ctx or not ns:
         return {"deployments": []}
-    data = get_raw_resources("deployments", ctx, ns)
-    items = data.get("items", [])
+    r = subprocess.run(
+        ["kubectl", "--context", ctx, "get", "deployments", "-n", ns, "-o", "json"],
+        capture_output=True, text=True
+    )
+    if r.returncode != 0:
+        return {"deployments": []}
+    items = json.loads(r.stdout).get("items", [])
     return {
         "deployments": [
             {"name": d["metadata"]["name"]}

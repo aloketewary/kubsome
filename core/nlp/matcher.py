@@ -89,6 +89,9 @@ _REGEX_INTENTS_RAW = {
     "trace": [
         r"trace\s+(?:the\s+)?(\S+)",
     ],
+    "recommend": [
+        r"(?:show|give|get)?\s*(?:me\s+)?(?:recommend|suggest|tips|next steps)",
+    ],
 }
 
 # Compiled regex for performance
@@ -110,6 +113,10 @@ PRIORITY_CHECK = [
     ("why is", "why_failing"),
     ("why ", "why_failing"),
     ("is ", "health_check"),
+    ("recommend", "recommend"),
+    ("suggest", "recommend"),
+    ("what should i do", "recommend"),
+    ("how to improve", "recommend"),
 ]
 
 _CONTEXTUAL_PRONOUNS_LIST = [
@@ -194,7 +201,7 @@ def detect_intent(query):
         lower,
         FLATTENED_PHRASES,
         scorer=fuzz.token_sort_ratio,
-        limit=3
+        limit=5
     )
 
     if not results:
@@ -204,9 +211,12 @@ def detect_intent(query):
     best_score = 0
 
     for phrase, score, index in results:
-        # Check for substring boost (heuristic from original logic)
+        # Substring boost: if the intent phrase appears in the query
         if phrase in lower:
-            score = max(score, 90)
+            score = max(score, 92)
+        # Partial word overlap boost
+        elif any(w in lower.split() for w in phrase.split() if len(w) > 3):
+            score = min(score + 10, 100)
 
         if score > best_score:
             best_score = score
@@ -278,15 +288,19 @@ def extract_entities(query, intent):
                     return entities
 
         # Target: first non-skip word that looks like a resource name
+        # Prefer hyphenated names (payment-api > payment)
+        candidates = []
         for token in tokens:
             if token not in SKIP_WORDS and len(token) > 1:
-                # Basic check for kubernetes resource name format
                 if RESOURCE_NAME_RE.match(token):
-                    # Final check: don't pick 'high' or 'restart'
                     if token in {"high", "restart"}:
                         continue
-                    entities["target"] = token
-                    break
+                    candidates.append(token)
+
+        if candidates:
+            # Prefer longer hyphenated names (more specific)
+            candidates.sort(key=lambda t: (-t.count("-"), -len(t)))
+            entities["target"] = candidates[0]
 
     elif intent == "count_pods":
         m = COUNT_PODS_RE.search(lower)

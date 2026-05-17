@@ -3,12 +3,12 @@ Security Scanner — detects common Kubernetes
 security misconfigurations.
 """
 
-import subprocess
-import json
-
 from core.context import context
+from core.cache import cached
+from core.k8s import get_raw_resources
 
 
+@cached(ttl=15)
 def security_scan():
     """
     Scan pods in namespace for security issues.
@@ -17,20 +17,7 @@ def security_scan():
     ns = context.namespace
     ctx = context.current_context
 
-    cmd = (
-        f"kubectl --context {ctx} "
-        f"get pods -n {ns} -o json"
-    )
-
-    result = subprocess.run(
-        cmd, shell=True,
-        capture_output=True, text=True
-    )
-
-    if result.returncode != 0:
-        return []
-
-    data = json.loads(result.stdout)
+    data = get_raw_resources("pods", ctx, ns)
     findings = []
 
     for item in data.get("items", []):

@@ -33,6 +33,31 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
         <div class="total-note">{{ data.deployments.length }} deployments · {{ data.pricing.note }}</div>
       </div>
 
+      <!-- Cost Trend -->
+      @if (trend) {
+        <div class="trend-card">
+          <div class="trend-row">
+            <div class="trend-item">
+              <span class="trend-label">Current</span>
+              <span class="trend-val">\${{ trend.current_monthly.toFixed(0) }}/mo</span>
+            </div>
+            <div class="trend-arrow">
+              <i class="pi" [class.pi-arrow-up]="trend.trend === 'growing'" [class.pi-arrow-right]="trend.trend === 'stable'" [class.pi-arrow-down]="trend.trend === 'shrinking'"
+                [class.trend-up]="trend.trend === 'growing'" [class.trend-stable]="trend.trend === 'stable'" [class.trend-down]="trend.trend === 'shrinking'"></i>
+            </div>
+            <div class="trend-item">
+              <span class="trend-label">Projected</span>
+              <span class="trend-val">\${{ trend.projected_monthly.toFixed(0) }}/mo</span>
+            </div>
+            <div class="trend-item trend-savings">
+              <span class="trend-label">Savings Possible</span>
+              <span class="trend-val savings-green">\${{ trend.savings_opportunity.toFixed(0) }}/mo</span>
+            </div>
+          </div>
+          <div class="trend-note">{{ trend.note }}</div>
+        </div>
+      }
+
       <!-- Cost Bar Chart -->
       @if (data.deployments.length > 0) {
         <div class="cost-chart-card">
@@ -95,6 +120,23 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     .total-label { font-size: 14px; color: var(--text-secondary); margin-top: 4px; }
     .total-note { font-size: 11px; color: var(--text-muted); margin-top: 8px; }
 
+    /* Cost Trend */
+    .trend-card {
+      padding: 16px 20px; margin-bottom: 20px;
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+    }
+    .trend-row { display: flex; align-items: center; gap: 20px; }
+    .trend-item { text-align: center; }
+    .trend-label { display: block; font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px; }
+    .trend-val { font-size: 16px; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+    .trend-arrow { font-size: 18px; }
+    .trend-up { color: var(--danger); }
+    .trend-stable { color: var(--success); }
+    .trend-down { color: var(--accent); }
+    .trend-savings { margin-left: auto; }
+    .savings-green { color: var(--success); }
+    .trend-note { font-size: 11px; color: var(--text-muted); margin-top: 10px; }
+
     /* Cost Bar Chart */
     .cost-chart-card {
       padding: 18px; margin-bottom: 20px;
@@ -138,6 +180,7 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
 export class CostEstimateComponent implements OnInit {
   private http = inject(HttpClient);
   data: any = null;
+  trend: any = null;
   Math = Math;
   loading = false;
   lastUpdated = '';
@@ -149,6 +192,10 @@ export class CostEstimateComponent implements OnInit {
     this.http.get<any>('/api/cost-estimate').subscribe({
       next: (res) => { this.data = res; this.loading = false; this.lastUpdated = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }); },
       error: () => { this.data = { deployments: [], total: 0, pricing: { note: 'Error' } }; this.loading = false; },
+    });
+    this.http.get<any>('/api/cost-trend').subscribe({
+      next: (res) => { this.trend = res; },
+      error: () => {},
     });
   }
 
