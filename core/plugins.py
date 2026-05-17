@@ -56,7 +56,7 @@ def ensure_plugins_dir():
 # Safe metadata extraction (AST — no code execution)
 # ---------------------------------------------------------------------------
 
-def _read_plugin_metadata(path: Path) -> dict | None:
+def _read_plugin_metadata(path: Path):
     """
     Extract NAME and DESCRIPTION from a plugin file using AST
     without executing the module. Returns None on parse error.
@@ -242,7 +242,7 @@ def uninstall_plugin(name: str) -> tuple[bool, str]:
 # Internal helpers
 # ---------------------------------------------------------------------------
 
-def _read_plugin_metadata_from_source(source: str, stem: str) -> dict | None:
+def _read_plugin_metadata_from_source(source: str, stem: str):
     """AST metadata extraction from a source string (used during install)."""
     try:
         tree = ast.parse(source)
