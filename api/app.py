@@ -86,6 +86,14 @@ def health():
     return {"status": "ok"}
 
 
+@app.get("/api/token")
+def get_api_token():
+    """Return the session token for the Web UI.
+    Only accessible from localhost (CORS enforced)."""
+    from api.auth import get_token
+    return {"token": get_token()}
+
+
 @app.get("/api/version")
 def version():
     return {"version": "1.12.0"}

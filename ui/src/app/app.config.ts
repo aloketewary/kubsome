@@ -8,6 +8,7 @@ import Aura from '@primeng/themes/aura';
 
 import { loadingInterceptor } from './core/interceptors/loading.interceptor';
 import { errorInterceptor } from './core/interceptors/error.interceptor';
+import { authInterceptor } from './core/interceptors/auth.interceptor';
 
 const KubsomePreset = definePreset(Aura, {
   semantic: {
@@ -52,7 +53,7 @@ export const appConfig: ApplicationConfig = {
     provideBrowserGlobalErrorListeners(),
     provideZoneChangeDetection({ eventCoalescing: true }),
     provideRouter(routes),
-    provideHttpClient(withInterceptors([loadingInterceptor, errorInterceptor])),
+    provideHttpClient(withInterceptors([authInterceptor, loadingInterceptor, errorInterceptor])),
     provideAnimationsAsync(),
     providePrimeNG({
       theme: {

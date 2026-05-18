@@ -13,7 +13,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 _TOKEN_FILE = Path.home() / ".kubsome" / ".api_token"
 _SESSION_TOKEN = None
 
-PUBLIC_PATHS = {"/health", "/api/health", "/api/version", "/docs", "/openapi.json"}
+PUBLIC_PATHS = {"/health", "/api/health", "/api/version", "/api/token", "/docs", "/openapi.json"}
 
 
 def generate_token():
