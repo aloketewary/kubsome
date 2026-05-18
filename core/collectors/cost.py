@@ -3,11 +3,11 @@ Resource Optimization — identifies over/under-provisioned
 workloads by comparing requests/limits vs actual usage.
 """
 
-import subprocess
-import json
+from concurrent.futures import ThreadPoolExecutor
 
 from core.context import context
 from core.collectors.metrics import top_pods
+from core.k8s import get_raw_resources
 
 
 def resource_recommendations():
@@ -184,10 +184,17 @@ def find_unused_resources():
 
     unused = []
 
-    # Find configmaps not mounted by any pod
-    cms = _get_configmaps(ns, ctx)
-    mounted_cms = _get_mounted_configmaps(ns, ctx)
+    # Parallelize resource fetching to reduce latency
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        f_cms = executor.submit(_get_configmaps, ns, ctx)
+        f_mounted = executor.submit(_get_mounted_configmaps, ns, ctx)
+        f_pvcs = executor.submit(_get_unbound_pvcs, ns, ctx)
 
+        cms = f_cms.result()
+        mounted_cms = f_mounted.result()
+        pvcs = f_pvcs.result()
+
+    # Find configmaps not mounted by any pod
     system_prefixes = ("kube-", "istio", "default-token")
     for cm in cms:
         if cm.startswith(system_prefixes):
@@ -199,7 +206,6 @@ def find_unused_resources():
             })
 
     # Find unbound PVCs
-    pvcs = _get_unbound_pvcs(ns, ctx)
     for pvc in pvcs:
         unused.append({
             "kind": "PVC",
@@ -210,18 +216,7 @@ def find_unused_resources():
 
 
 def _get_pod_specs(ns, ctx):
-    cmd = (
-        f"kubectl --context {ctx} "
-        f"get pods -n {ns} -o json"
-    )
-    r = subprocess.run(
-        cmd, shell=True,
-        capture_output=True, text=True
-    )
-    if r.returncode != 0:
-        return {}
-
-    data = json.loads(r.stdout)
+    data = get_raw_resources("pods", ctx, ns)
     specs = {}
 
     for item in data.get("items", []):
@@ -254,31 +249,15 @@ def _get_pod_specs(ns, ctx):
 
 
 def _get_configmaps(ns, ctx):
-    cmd = (
-        f"kubectl --context {ctx} "
-        f"get configmaps -n {ns} "
-        f"-o jsonpath='{{.items[*].metadata.name}}'"
-    )
-    r = subprocess.run(
-        cmd, shell=True,
-        capture_output=True, text=True
-    )
-    return r.stdout.strip("'").split()
+    data = get_raw_resources("configmaps", ctx, ns)
+    return [
+        item["metadata"]["name"]
+        for item in data.get("items", [])
+    ]
 
 
 def _get_mounted_configmaps(ns, ctx):
-    cmd = (
-        f"kubectl --context {ctx} "
-        f"get pods -n {ns} -o json"
-    )
-    r = subprocess.run(
-        cmd, shell=True,
-        capture_output=True, text=True
-    )
-    if r.returncode != 0:
-        return set()
-
-    data = json.loads(r.stdout)
+    data = get_raw_resources("pods", ctx, ns)
     mounted = set()
 
     for item in data.get("items", []):
@@ -299,18 +278,7 @@ def _get_mounted_configmaps(ns, ctx):
 
 
 def _get_unbound_pvcs(ns, ctx):
-    cmd = (
-        f"kubectl --context {ctx} "
-        f"get pvc -n {ns} -o json"
-    )
-    r = subprocess.run(
-        cmd, shell=True,
-        capture_output=True, text=True
-    )
-    if r.returncode != 0:
-        return []
-
-    data = json.loads(r.stdout)
+    data = get_raw_resources("pvc", ctx, ns)
     unbound = []
 
     for item in data.get("items", []):

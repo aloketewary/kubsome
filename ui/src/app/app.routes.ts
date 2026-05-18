@@ -38,4 +38,5 @@ export const routes: Routes = [
   { path: 'policy', title: 'Policy — Kubsome', loadComponent: () => import('./features/policy/policy.component').then(m => m.PolicyComponent) },
   { path: 'doctor', title: 'Health — Kubsome', loadComponent: () => import('./features/doctor/doctor.component').then(m => m.DoctorComponent) },
   { path: 'schedule', title: 'Schedules — Kubsome', loadComponent: () => import('./features/schedule/schedule.component').then(m => m.ScheduleComponent) },
+  { path: 'stats', title: 'Usage Analytics — Kubsome', loadComponent: () => import('./features/stats/stats.component').then(m => m.StatsComponent) },
 ];

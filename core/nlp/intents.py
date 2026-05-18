@@ -193,4 +193,10 @@ INTENTS = {
         "alert if crashes", "alert when",
         "notify if", "watch for crash",
     ],
+    "recommend": [
+        "recommend", "suggest", "tips",
+        "what should i do", "how to improve",
+        "next steps", "operational recommendations",
+        "best practices", "any suggestions",
+    ],
 }

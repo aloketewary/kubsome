@@ -39,16 +39,18 @@ import { ConfirmDialogComponent } from './shared/components/confirm-dialog.compo
           <span class="brand-text">Kubsome</span>
         </a>
         <div class="topbar-divider"></div>
-        <div class="workspace-label" (click)="dashMenuOpen = !dashMenuOpen">
+        <div class="workspace-label" (click)="dashMenuOpen = !dashMenuOpen"
+             (keydown.enter)="dashMenuOpen = !dashMenuOpen" (keydown.space)="$event.preventDefault(); dashMenuOpen = !dashMenuOpen"
+             role="button" tabindex="0" aria-haspopup="menu" [attr.aria-expanded]="dashMenuOpen">
           <i class="pi pi-th-large"></i>
           <span>{{ activeDashName || 'Workspace' }}</span>
           <i class="pi pi-chevron-down ws-chevron"></i>
         </div>
         @if (dashMenuOpen) {
-          <div class="dash-menu" (mouseleave)="dashMenuOpen = false">
+          <div class="dash-menu" (mouseleave)="dashMenuOpen = false" role="menu">
             @if (savedDashList.length > 0) {
               @for (d of savedDashList; track d.name) {
-                <a class="dash-menu-item" [routerLink]="'/my-dashboard'" [queryParams]="{name: d.name}" (click)="selectDash(d); dashMenuOpen = false">
+                <a class="dash-menu-item" [routerLink]="'/my-dashboard'" [queryParams]="{name: d.name}" (click)="selectDash(d); dashMenuOpen = false" role="menuitem">
                   <i class="pi pi-th-large"></i>
                   <span>{{ d.name }}</span>
                   <span class="dm-count">{{ d.widgets.length }}</span>
@@ -56,7 +58,7 @@ import { ConfirmDialogComponent } from './shared/components/confirm-dialog.compo
               }
               <div class="dash-menu-divider"></div>
             }
-            <a class="dash-menu-item dash-menu-new" [routerLink]="'/my-dashboard'" (click)="dashMenuOpen = false">
+            <a class="dash-menu-item dash-menu-new" [routerLink]="'/my-dashboard'" (click)="dashMenuOpen = false" role="menuitem">
               <i class="pi pi-plus"></i>
               <span>{{ savedDashList.length > 0 ? 'New Dashboard' : 'Create Custom Dashboard' }}</span>
             </a>

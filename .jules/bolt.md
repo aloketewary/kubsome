@@ -16,6 +16,16 @@
 
 **Action:** Use a shared, cached raw resource fetcher for primary Kubernetes objects and parallelize top-level data aggregation (like overviews) to minimize latency.
 
+## 2025-05-16 - [Sequential ThreadPoolExecutor Anti-pattern]
+**Learning:** A common anti-pattern in the codebase was calling `.result()` immediately after `executor.submit()`, which effectively serializes the execution. True parallelism requires submitting all tasks first and collecting their futures, then resolving them.
+
+**Action:** Always submit all background tasks to a `ThreadPoolExecutor` and store their future objects before calling `.result()` on any of them to ensure concurrent execution.
+
+## 2025-05-16 - [Cost Collector Optimization]
+**Learning:** Cost-related collectors often fetch multiple resource types (Pods, ConfigMaps, PVCs, Deployments) sequentially, leading to cumulative I/O latency. Moving to a centralized, cached fetcher and parallelizing independent resource fetches significantly improves responsiveness.
+
+**Action:** Consolidate resource fetching into the cached 'get_raw_resources' and use 'ThreadPoolExecutor' for multi-resource lookups in collectors.
+
 ## 2026-05-18 - [Parallel Resource Fetching in Overview]
 **Learning:** Sequential kubectl calls in API routes create a significant latency floor, especially for multi-resource overviews. Using a ThreadPoolExecutor to parallelize these calls reduces response time from O(N) to O(1) relative to the number of resource types. Additionally, leveraging a unified cached fetcher prevents redundant I/O when multiple parts of the application request the same data.
 **Action:** Always parallelize independent resource fetches in aggregate routes and use the shared `get_raw_resources` cache.

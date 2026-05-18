@@ -405,6 +405,7 @@ export class SettingsComponent implements OnInit {
   webhooks: { type: string; url: string }[] = [];
   webhookSaving = false;
   webhookMsg = '';
+  private webhookPlaceholders: Record<string, string> = {};
 
   themes = [
     { id: 'dark', label: 'Dark' },
@@ -463,6 +464,9 @@ export class SettingsComponent implements OnInit {
     this.http.get<any>('/api/webhooks').subscribe({
       next: (res) => { this.webhooks = res.webhooks || []; },
     });
+    this.http.get<Record<string, string>>('/api/webhook/placeholders').subscribe({
+      next: (res) => { this.webhookPlaceholders = res; },
+    });
   }
 
   setTheme(theme: string) {
@@ -509,12 +513,7 @@ export class SettingsComponent implements OnInit {
   }
 
   webhookPlaceholder(type: string): string {
-    switch (type) {
-      case 'slack': return 'https://hooks.slack.com/services/T.../B.../xxx';
-      case 'teams': return 'https://outlook.office.com/webhook/...';
-      case 'webex': return 'https://webexapis.com/v1/webhooks/incoming/...';
-      default: return 'https://your-server.com/alert';
-    }
+    return this.webhookPlaceholders[type] ?? this.webhookPlaceholders['generic'] ?? '';
   }
 
   clearMonitorCards() {
