@@ -7,6 +7,8 @@ import time
 from rich.console import Console
 from rich.panel import Panel
 from prompt_toolkit import prompt
+from prompt_toolkit.key_binding import KeyBindings
+from prompt_toolkit.filters import has_completions
 
 from core.commands import resolve_command
 from core.executor import execute
@@ -276,6 +278,13 @@ def _start_cli():
     from core.scheduler import get_scheduler
     get_scheduler().start()
 
+    # Key binding: Enter accepts completion when popup is open
+    kb = KeyBindings()
+
+    @kb.add("enter", filter=has_completions)
+    def _accept_completion(event):
+        event.current_buffer.complete_state = None
+
     last_command = ""
 
     while True:
@@ -286,7 +295,9 @@ def _start_cli():
             user_input = prompt(
                 f"{prompt_text} > ",
                 completer=command_completer,
-                history=history
+                history=history,
+                complete_while_typing=True,
+                key_bindings=kb,
             )
         except (EOFError, KeyboardInterrupt):
             break
