@@ -11,6 +11,7 @@ router = APIRouter(tags=["overview"])
 
 @router.get("/overview")
 def get_overview():
+    # Bolt: O(N) -> O(1) latency relative to resource types by submitting all tasks before retrieving results
     with ThreadPoolExecutor(max_workers=3) as executor:
         f_pods = executor.submit(collect_pods)
         f_nodes = executor.submit(collect_nodes)
@@ -53,68 +54,66 @@ def get_overview():
 @router.get("/overview/{ctx}/{ns}")
 def get_overview_for(ctx: str, ns: str, app: str = None):
     """Get overview for a specific context/namespace, optionally filtered by app."""
-    import subprocess
-    import json
+    from core.k8s import get_raw_resources
+    from concurrent.futures import ThreadPoolExecutor
 
-    # Pods
-    cmd = ["kubectl", "--context", ctx, "get", "pods", "-n", ns, "-o", "json"]
-    if app:
-        cmd += ["-l", f"app={app}"]
-    r = subprocess.run(cmd, capture_output=True, text=True)
-    pods = []
-    if r.returncode == 0:
-        pods = json.loads(r.stdout).get("items", [])
+    selector = f"app={app}" if app else None
+
+    # Bolt: Parallelize all initial resource fetches to achieve O(1) latency
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        f_pods = executor.submit(get_raw_resources, "pods", ctx, ns, selector)
+        f_nodes = executor.submit(get_raw_resources, "nodes", ctx)
+        f_deps = executor.submit(get_raw_resources, "deployments", ctx, ns)
+        f_events = executor.submit(get_raw_resources, "events", ctx, ns)
+
+        pod_data = f_pods.result().get("items", [])
+        node_data = f_nodes.result().get("items", [])
+        dep_data = f_deps.result().get("items", [])
+        event_data = f_events.result().get("items", [])
 
     total_restarts = 0
-    for p in pods:
+    for p in pod_data:
         for cs in p["status"].get("containerStatuses", []):
             total_restarts += cs.get("restartCount", 0)
 
     pod_health = {
-        "healthy": sum(1 for p in pods if p["status"].get("phase") == "Running"),
-        "warning": sum(1 for p in pods if sum(cs.get("restartCount", 0) for cs in p["status"].get("containerStatuses", [])) > 5),
-        "critical": sum(1 for p in pods if p["status"].get("phase") in ("CrashLoopBackOff", "Error", "Failed")),
+        "healthy": sum(1 for p in pod_data if p["status"].get("phase") == "Running"),
+        "warning": sum(1 for p in pod_data if sum(cs.get("restartCount", 0) for cs in p["status"].get("containerStatuses", [])) > 5),
+        "critical": sum(1 for p in pod_data if p["status"].get("phase") in ("CrashLoopBackOff", "Error", "Failed")),
         "unavailable": 0,
-        "total": len(pods),
+        "total": len(pod_data),
         "restarts": total_restarts,
     }
 
-    # App-specific: get deployment replicas
     if app:
-        r = subprocess.run(
-            ["kubectl", "--context", ctx, "get", "deployment", app, "-n", ns, "-o", "json"],
-            capture_output=True, text=True
-        )
-        app_info = {}
-        if r.returncode == 0:
-            dep = json.loads(r.stdout)
-            desired = dep.get("spec", {}).get("replicas", 0)
-            available = dep.get("status", {}).get("availableReplicas", 0)
+        app_info = {
+            "desired": 0, "available": 0, "ready": 0, "image": ""
+        }
+        # Bolt: Find specific deployment from pre-fetched list
+        matching_deps = [d for d in dep_data if d.get("metadata", {}).get("name") == app]
+        if matching_deps:
+            dep = matching_deps[0]
+            spec = dep.get("spec", {})
+            status = dep.get("status", {})
+            containers = spec.get("template", {}).get("spec", {}).get("containers", [])
             app_info = {
-                "desired": desired,
-                "available": available,
-                "ready": dep.get("status", {}).get("readyReplicas", 0),
-                "image": (dep.get("spec", {}).get("template", {}).get("spec", {}).get("containers", [{}])[0].get("image", "")),
+                "desired": spec.get("replicas", 0),
+                "available": status.get("availableReplicas", 0),
+                "ready": status.get("readyReplicas", 0),
+                "image": containers[0].get("image", "") if containers else "",
             }
 
-        # Events filtered to app pods
-        r = subprocess.run(
-            ["kubectl", "--context", ctx, "get", "events", "-n", ns,
-             "--field-selector", f"involvedObject.kind=Pod",
-             "--sort-by=.lastTimestamp", "-o", "json"],
-            capture_output=True, text=True
-        )
+        # Filter events for the app
         events = []
-        if r.returncode == 0:
-            for item in json.loads(r.stdout).get("items", [])[-50:]:
-                obj_name = item.get("involvedObject", {}).get("name", "")
-                if app.lower() in obj_name.lower():
-                    events.append({
-                        "type": item.get("type", "Normal"),
-                        "reason": item.get("reason", ""),
-                        "object": obj_name,
-                        "message": item.get("message", ""),
-                    })
+        for item in event_data[-50:]:
+            obj_name = item.get("involvedObject", {}).get("name", "")
+            if app.lower() in obj_name.lower():
+                events.append({
+                    "type": item.get("type", "Normal"),
+                    "reason": item.get("reason", ""),
+                    "object": obj_name,
+                    "message": item.get("message", ""),
+                })
 
         return {
             "context": ctx, "namespace": ns, "app": app,
@@ -124,42 +123,23 @@ def get_overview_for(ctx: str, ns: str, app: str = None):
             "events": events,
         }
 
-    # Cluster/namespace level — parallel fetch
-    from concurrent.futures import ThreadPoolExecutor
-
-    def _get_nodes():
-        r = subprocess.run(["kubectl", "--context", ctx, "get", "nodes", "-o", "json"], capture_output=True, text=True)
-        return json.loads(r.stdout).get("items", []) if r.returncode == 0 else []
-
-    def _get_deps():
-        r = subprocess.run(["kubectl", "--context", ctx, "get", "deployments", "-n", ns, "-o", "json"], capture_output=True, text=True)
-        return json.loads(r.stdout).get("items", []) if r.returncode == 0 else []
-
-    def _get_events():
-        r = subprocess.run(["kubectl", "--context", ctx, "get", "events", "-n", ns, "--sort-by=.lastTimestamp", "-o", "json"], capture_output=True, text=True)
-        if r.returncode != 0:
-            return []
-        return [
-            {"type": i.get("type", "Normal"), "reason": i.get("reason", ""), "object": i.get("involvedObject", {}).get("name", ""), "message": i.get("message", "")}
-            for i in json.loads(r.stdout).get("items", [])[-50:]
-        ]
-
-    with ThreadPoolExecutor(max_workers=3) as ex:
-        nodes = ex.submit(_get_nodes).result()
-        deps = ex.submit(_get_deps).result()
-        events = ex.submit(_get_events).result()
-
+    # Cluster/namespace level
     node_health = {
-        "healthy": sum(1 for n in nodes if any(c["type"] == "Ready" and c["status"] == "True" for c in n["status"].get("conditions", []))),
-        "warning": sum(1 for n in nodes if not any(c["type"] == "Ready" and c["status"] == "True" for c in n["status"].get("conditions", []))),
+        "healthy": sum(1 for n in node_data if any(c["type"] == "Ready" and c["status"] == "True" for c in n["status"].get("conditions", []))),
+        "warning": sum(1 for n in node_data if not any(c["type"] == "Ready" and c["status"] == "True" for c in n["status"].get("conditions", []))),
         "critical": 0, "unavailable": 0,
     }
 
     dep_health = {
-        "healthy": sum(1 for d in deps if d["status"].get("availableReplicas", 0) >= d["spec"].get("replicas", 1)),
-        "unavailable": sum(1 for d in deps if d["status"].get("availableReplicas", 0) < d["spec"].get("replicas", 1)),
+        "healthy": sum(1 for d in dep_data if d["status"].get("availableReplicas", 0) >= d["spec"].get("replicas", 1)),
+        "unavailable": sum(1 for d in dep_data if d["status"].get("availableReplicas", 0) < d["spec"].get("replicas", 1)),
         "warning": 0, "critical": 0,
     }
+
+    events = [
+        {"type": i.get("type", "Normal"), "reason": i.get("reason", ""), "object": i.get("involvedObject", {}).get("name", ""), "message": i.get("message", "")}
+        for i in event_data[-50:]
+    ]
 
     return {
         "context": ctx, "namespace": ns,

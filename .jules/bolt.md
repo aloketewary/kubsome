@@ -15,3 +15,7 @@
 **Learning:** Multiple collectors independently fetching the same Kubernetes resources (pods, nodes, etc.) create redundant I/O and shell overhead. Centralizing resource fetching into a unified, cached raw fetcher (`get_raw_resources`) allows different components to share the same data within the cache window, significantly reducing the total number of `kubectl` executions.
 
 **Action:** Use a shared, cached raw resource fetcher for primary Kubernetes objects and parallelize top-level data aggregation (like overviews) to minimize latency.
+
+## 2026-05-18 - [Parallel Resource Fetching in Overview]
+**Learning:** Sequential kubectl calls in API routes create a significant latency floor, especially for multi-resource overviews. Using a ThreadPoolExecutor to parallelize these calls reduces response time from O(N) to O(1) relative to the number of resource types. Additionally, leveraging a unified cached fetcher prevents redundant I/O when multiple parts of the application request the same data.
+**Action:** Always parallelize independent resource fetches in aggregate routes and use the shared `get_raw_resources` cache.
