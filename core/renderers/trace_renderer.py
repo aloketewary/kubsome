@@ -1,3 +1,8 @@
+"""
+Trace Renderer — resource relationship map with health
+indicators, connection types, and dependency visualization.
+"""
+
 from rich.console import Console
 from rich.panel import Panel
 from rich.tree import Tree
@@ -17,89 +22,127 @@ def render_trace(data):
         f"[bold cyan]🔗 {data['name']}[/bold cyan]"
     )
 
+    # Ingress → Service → Deployment → Pods
+    # Show the full request path
+
     # Ingress
     if data["ingress"]:
         ing = data["ingress"]
         ing_node = tree.add(
-            f"[magenta]🌐 Ingress:[/magenta] "
-            f"{ing['name']}"
+            f"[magenta]🌐 Ingress[/magenta] "
+            f"[bold]{ing['name']}[/bold]"
         )
         ing_node.add(
-            f"[dim]Host:[/dim] {ing['host']}"
-        )
-        ing_node.add(
-            f"[dim]Path:[/dim] {ing['path']}"
+            f"[dim]host:[/dim] {ing['host']}  "
+            f"[dim]path:[/dim] {ing['path']}"
         )
 
     # Service
     if data["service"]:
         svc = data["service"]
         svc_node = tree.add(
-            f"[blue]🔌 Service:[/blue] "
-            f"{svc['name']} ({svc['type']})"
+            f"[blue]🔌 Service[/blue] "
+            f"[bold]{svc['name']}[/bold] "
+            f"[dim]({svc['type']})[/dim]"
         )
         svc_node.add(
-            f"[dim]ClusterIP:[/dim] {svc['cluster_ip']}"
-        )
-        svc_node.add(
-            f"[dim]Ports:[/dim] "
-            f"{', '.join(svc['ports'])}"
+            f"[dim]cluster-ip:[/dim] {svc['cluster_ip']}  "
+            f"[dim]ports:[/dim] {', '.join(svc['ports'])}"
         )
 
     # Deployment
     if data["deployment"]:
         dep = data["deployment"]
         dep_node = tree.add(
-            f"[green]🚀 Deployment:[/green] "
-            f"{dep['name']} "
-            f"(replicas: {dep['replicas']})"
+            f"[green]🚀 Deployment[/green] "
+            f"[bold]{dep['name']}[/bold] "
+            f"[dim]({dep['replicas']} replicas)[/dim]"
         )
         dep_node.add(
-            f"[dim]Image:[/dim] {dep['image']}"
+            f"[dim]image:[/dim] {dep['image']}"
         )
 
         # ReplicaSets
-        for rs in data["replicasets"]:
-            rs_node = dep_node.add(
-                f"[yellow]📋 ReplicaSet:[/yellow] "
-                f"{rs['name']} "
-                f"({rs['ready']}/{rs['replicas']})"
+        for rs in data.get("replicasets", []):
+            ready = rs.get("ready", 0)
+            desired = rs.get("replicas", 0)
+            health = (
+                "[green]✓[/green]" if ready >= desired
+                else f"[yellow]⚠ {ready}/{desired}[/yellow]"
+            )
+            dep_node.add(
+                f"[yellow]📋 RS[/yellow] {rs['name']} "
+                f"{health}"
             )
 
         # Pods
-        if data["pods"]:
+        if data.get("pods"):
             pods_node = dep_node.add(
-                f"[cyan]📦 Pods ({len(data['pods'])})[/cyan]"
+                f"[cyan]📦 Pods[/cyan] "
+                f"[dim]({len(data['pods'])})[/dim]"
             )
             for pod in data["pods"]:
-                status_style = (
-                    "green" if pod["status"] == "Running"
-                    else "red"
-                )
+                status = pod.get("status", "Unknown")
+                if status == "Running":
+                    icon = "[green]●[/green]"
+                elif status == "Pending":
+                    icon = "[yellow]●[/yellow]"
+                else:
+                    icon = "[red]●[/red]"
+
+                ip = pod.get("ip", "")
                 pods_node.add(
-                    f"[{status_style}]● {pod['name']}[/{status_style}]"
-                    f"  [dim]{pod['ip']}[/dim]"
+                    f"{icon} {pod['name']}  "
+                    f"[dim]{ip}[/dim]"
                 )
 
-    # ConfigMaps & Secrets
-    if data["configmaps"]:
+    # ConfigMaps
+    if data.get("configmaps"):
         cm_node = tree.add(
-            f"[dim]📄 ConfigMaps[/dim]"
+            f"[dim]⚙ ConfigMaps[/dim] "
+            f"[dim]({len(data['configmaps'])})[/dim]"
         )
         for cm in data["configmaps"]:
             cm_node.add(f"[dim]{cm}[/dim]")
 
-    if data["secrets"]:
+    # Secrets
+    if data.get("secrets"):
         sec_node = tree.add(
-            f"[dim]🔒 Secrets[/dim]"
+            f"[dim]🔑 Secrets[/dim] "
+            f"[dim]({len(data['secrets'])})[/dim]"
         )
         for s in data["secrets"]:
             sec_node.add(f"[dim]{s}[/dim]")
+
+    # HPA
+    if data.get("hpa"):
+        hpa = data["hpa"]
+        tree.add(
+            f"[cyan]📈 HPA[/cyan] "
+            f"{hpa.get('name', '')} "
+            f"[dim]({hpa.get('min', '?')}-{hpa.get('max', '?')} replicas)[/dim]"
+        )
 
     console.print(
         Panel(
             tree,
             title="[bold]🗺️  Resource Map[/bold]",
-            border_style="cyan"
+            border_style="cyan",
         )
     )
+
+    # Summary line
+    parts = []
+    if data.get("ingress"):
+        parts.append("ingress")
+    if data.get("service"):
+        parts.append("service")
+    if data.get("deployment"):
+        parts.append("deployment")
+    if data.get("pods"):
+        parts.append(f"{len(data['pods'])} pods")
+
+    if parts:
+        console.print(
+            f"[dim]  Path: {' → '.join(parts)}[/dim]"
+        )
