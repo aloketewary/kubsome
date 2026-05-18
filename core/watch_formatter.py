@@ -65,10 +65,8 @@ def _colored_restarts(count):
 
 
 def _truncate_name(name, max_len=48):
-    if len(name) <= max_len:
-        return name
-    half = (max_len - 1) // 2
-    return name[:half] + "…" + name[-(max_len - half - 1):]
+    """No truncation — show full pod name for easy copying."""
+    return name
 
 
 def build_watch_view(pods, namespace, target=None):
@@ -131,7 +129,7 @@ def build_watch_view(pods, namespace, target=None):
     )
 
     table.add_column("", width=2)
-    table.add_column("Pod", no_wrap=True, max_width=48, ratio=4)
+    table.add_column("Pod", no_wrap=True, ratio=4)
     table.add_column("Status", justify="center", ratio=1)
     table.add_column("Restarts", justify="right", ratio=1)
     table.add_column("Age", justify="right", ratio=1)

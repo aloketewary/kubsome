@@ -69,11 +69,8 @@ def _colored_restarts(count):
 
 
 def _truncate_name(name, max_len=48):
-    """Truncate long pod names with ellipsis in the middle."""
-    if len(name) <= max_len:
-        return name
-    half = (max_len - 1) // 2
-    return name[:half] + "…" + name[-(max_len - half - 1):]
+    """No truncation — show full pod name for easy copying."""
+    return name
 
 
 def render_summary(pods):
@@ -146,7 +143,7 @@ def render_pods_table(pods):
     )
 
     table.add_column("", width=2)
-    table.add_column("Pod", no_wrap=True, max_width=48)
+    table.add_column("Pod", no_wrap=True)
     table.add_column("Status", justify="center")
     table.add_column("Restarts", justify="right")
     table.add_column("Age", justify="right")

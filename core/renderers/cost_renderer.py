@@ -56,7 +56,7 @@ def render_cost_recommendations(recommendations):
     )
 
     table.add_column("", width=2)
-    table.add_column("Pod", no_wrap=True, max_width=35, ratio=2)
+    table.add_column("Pod", no_wrap=True, ratio=2)
     table.add_column("Issue", ratio=2)
     table.add_column("Detail", ratio=3)
     table.add_column("Suggestion", style="dim italic", ratio=3)
@@ -74,7 +74,7 @@ def render_cost_recommendations(recommendations):
 
         table.add_row(
             f"[{color}]{icon}[/{color}]",
-            r.get("pod", "")[:35],
+            r.get("pod", ""),
             f"[{color}]{r.get('title', '')}[/{color}]",
             r.get("detail", ""),
             r.get("suggestion", ""),
@@ -135,7 +135,7 @@ def render_security_scan(findings):
 
     table.add_column("", width=2)
     table.add_column("Severity", width=9)
-    table.add_column("Pod", no_wrap=True, max_width=30, ratio=2)
+    table.add_column("Pod", no_wrap=True, ratio=2)
     table.add_column("Issue", ratio=2)
     table.add_column("Fix", style="dim italic", ratio=3)
 
@@ -153,7 +153,7 @@ def render_security_scan(findings):
         table.add_row(
             f"[{color}]{icon}[/{color}]",
             f"[{color}]{sev.upper()}[/{color}]",
-            f.get("pod", "")[:30],
+            f.get("pod", ""),
             f.get("issue", ""),
             f.get("fix", ""),
         )

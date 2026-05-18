@@ -76,7 +76,7 @@ def render_top_pods(pods):
     )
 
     table.add_column("#", width=3, justify="right")
-    table.add_column("Pod", no_wrap=True, max_width=40, ratio=3)
+    table.add_column("Pod", no_wrap=True, ratio=3)
     table.add_column("CPU", justify="right", width=8)
     table.add_column("CPU Usage", width=22)
     table.add_column("Memory", justify="right", width=10)
@@ -92,7 +92,7 @@ def render_top_pods(pods):
         else:
             rank = f"[dim]{i}[/dim]"
 
-        name = _truncate(pod["name"])
+        name = pod["name"]
         is_hot = cpu_pct >= 80 or mem_pct >= 80
         name_display = (
             f"[bold]{name}[/bold]" if is_hot else name
@@ -173,7 +173,7 @@ def render_top_nodes(nodes):
         else:
             icon = "[green]●[/green]"
 
-        name = _truncate(node["name"], 35)
+        name = node["name"]
 
         table.add_row(
             icon,

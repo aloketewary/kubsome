@@ -103,7 +103,7 @@ def render_events(events):
     table.add_column("", width=2)
     table.add_column("Age", width=9, justify="right")
     table.add_column("Kind", width=10)
-    table.add_column("Object", max_width=35, no_wrap=True)
+    table.add_column("Object", no_wrap=True)
     table.add_column("Reason", width=20)
     table.add_column("Message", ratio=1)
     table.add_column("×", justify="right", width=5)
@@ -118,8 +118,8 @@ def render_events(events):
             f"[{rs}]{reason}[/{rs}]" if rs else reason
         )
 
-        obj_name = _truncate(ev.get("object", ""), 35)
-        message = _truncate(ev.get("message", ""), 60)
+        obj_name = ev.get("object", "")
+        message = _truncate(ev.get("message", ""), 120)
         age = _relative_time(ev.get("last_seen", ""))
         count = _count_display(ev.get("count", 1))
 
@@ -173,7 +173,7 @@ def build_events_watch_view(events, namespace):
     table.add_column("", width=2)
     table.add_column("Age", width=9, justify="right")
     table.add_column("Kind", width=10)
-    table.add_column("Object", max_width=35, no_wrap=True)
+    table.add_column("Object", no_wrap=True)
     table.add_column("Reason", width=20)
     table.add_column("Message", ratio=1)
     table.add_column("×", justify="right", width=5)
@@ -188,8 +188,8 @@ def build_events_watch_view(events, namespace):
             f"[{rs}]{reason}[/{rs}]" if rs else reason
         )
 
-        obj_name = _truncate(ev.get("object", ""), 35)
-        message = _truncate(ev.get("message", ""), 60)
+        obj_name = ev.get("object", "")
+        message = _truncate(ev.get("message", ""), 120)
         age = _relative_time(ev.get("last_seen", ""))
         count = _count_display(ev.get("count", 1))
 

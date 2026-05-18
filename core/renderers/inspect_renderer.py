@@ -53,7 +53,7 @@ def render_inspect(details, events, logs, recommendation):
     )
     ct.add_column("", width=2)
     ct.add_column("Container")
-    ct.add_column("Image", no_wrap=True, max_width=50)
+    ct.add_column("Image", no_wrap=True)
     ct.add_column("State", justify="center")
     ct.add_column("Ready", justify="center", width=5)
     ct.add_column("Restarts", justify="right")
@@ -231,7 +231,7 @@ def render_inspect(details, events, logs, recommendation):
             ev_table.add_row(
                 icon,
                 reason_display,
-                ev.get("message", "")[:80],
+                ev.get("message", ""),
                 count_display,
             )
 
