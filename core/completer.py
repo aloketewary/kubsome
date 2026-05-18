@@ -213,6 +213,7 @@ def get_namespace_names():
 
 
 def _get_pod_names():
+    """Return pod names from cache. Background refresh handled by @cached decorator."""
     try:
         from core.k8s import get_pod_names as _names
         return _names()

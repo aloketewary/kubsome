@@ -77,7 +77,7 @@ def get_pods():
     return pods
 
 
-@cached(ttl=10)
+@cached(ttl=60)
 def get_pod_names():
     """Fast pod name list using jsonpath (no full JSON parse)."""
     command = [

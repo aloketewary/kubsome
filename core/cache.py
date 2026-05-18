@@ -20,11 +20,11 @@ _refreshing = set()
 _refresh_lock = threading.Lock()
 
 # Adaptive TTL bounds
-MIN_TTL = 3
-MAX_TTL = 30
+MIN_TTL = 5
+MAX_TTL = 60
 
 # Stale grace period — serve stale data while refreshing
-STALE_GRACE = 10
+STALE_GRACE = 30
 
 
 def cached(ttl=5, adaptive=True):
