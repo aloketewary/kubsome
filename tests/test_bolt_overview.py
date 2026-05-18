@@ -10,7 +10,7 @@ client = TestClient(app)
 def test_get_overview_for_cluster_mode():
     invalidate()
     with patch("core.k8s.get_raw_resources") as mock_get:
-        def side_effect(kind, ctx, ns=None, **kwargs):
+        def side_effect(kind, ctx, ns=None, selector=None, **kwargs):
             if kind == "pods":
                 return {"items": [
                     {"metadata": {"name": "pod-1"}, "status": {"phase": "Running", "containerStatuses": [{"restartCount": 0}]}}
@@ -49,17 +49,21 @@ def test_get_overview_for_cluster_mode():
 def test_get_overview_for_app_mode():
     invalidate()
     with patch("core.k8s.get_raw_resources") as mock_get:
-        def side_effect(kind, ctx, ns=None, **kwargs):
+        def side_effect(kind, ctx, ns=None, selector=None, **kwargs):
             if kind == "pods":
                 return {"items": [
                     {"metadata": {"name": "app-pod-1"}, "status": {"phase": "Running", "containerStatuses": [{"restartCount": 0}]}}
                 ]}
-            if "deployment/" in kind:
-                return {
+            if kind == "nodes":
+                return {"items": [
+                    {"metadata": {"name": "node-1"}, "status": {"conditions": [{"type": "Ready", "status": "True"}]}}
+                ]}
+            if kind == "deployments":
+                return {"items": [{
                     "metadata": {"name": "app"},
                     "spec": {"replicas": 2, "template": {"spec": {"containers": [{"image": "nginx"}]}}},
                     "status": {"availableReplicas": 1, "readyReplicas": 1}
-                }
+                }]}
             if kind == "events":
                 return {"items": [
                     {"type": "Normal", "reason": "Started", "involvedObject": {"kind": "Pod", "name": "app-pod-1"}, "message": "Started"}

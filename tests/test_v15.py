@@ -81,27 +81,23 @@ class TestCostEstimate:
         assert _parse_memory("512Ki") == 0  # rounds down
         assert _parse_memory("0") == 0
 
-    @patch("core.collectors.cost_estimate.subprocess.run")
+    @patch("core.collectors.cost_estimate.get_raw_resources")
     @patch("core.collectors.cost_estimate.context")
-    def test_estimate_costs(self, mock_ctx, mock_run):
+    def test_estimate_costs(self, mock_ctx, mock_resources):
         from core.collectors.cost_estimate import estimate_costs
-        import json
 
         mock_ctx.current_context = "test"
         mock_ctx.namespace = "default"
-        mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout=json.dumps({"items": [{
-                "metadata": {"name": "payment-api"},
-                "spec": {
-                    "replicas": 2,
-                    "template": {"spec": {"containers": [{
-                        "name": "app",
-                        "resources": {"requests": {"cpu": "500m", "memory": "256Mi"}}
-                    }]}}
-                }
-            }]})
-        )
+        mock_resources.return_value = {"items": [{
+            "metadata": {"name": "payment-api"},
+            "spec": {
+                "replicas": 2,
+                "template": {"spec": {"containers": [{
+                    "name": "app",
+                    "resources": {"requests": {"cpu": "500m", "memory": "256Mi"}}
+                }]}}
+            }
+        }]}
 
         result = estimate_costs()
         assert len(result["deployments"]) == 1

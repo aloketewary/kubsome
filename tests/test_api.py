@@ -84,25 +84,22 @@ class TestScorecardEndpoint:
 
 class TestCostEstimateEndpoint:
 
-    @patch("core.collectors.cost_estimate.subprocess.run")
+    @patch("core.collectors.cost_estimate.get_raw_resources")
     @patch("core.collectors.cost_estimate.context")
-    def test_cost_estimate(self, mock_ctx, mock_run):
+    def test_cost_estimate(self, mock_ctx, mock_resources):
         import json
         mock_ctx.current_context = "test"
         mock_ctx.namespace = "default"
-        mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout=json.dumps({"items": [{
-                "metadata": {"name": "app"},
-                "spec": {
-                    "replicas": 1,
-                    "template": {"spec": {"containers": [{
-                        "name": "app",
-                        "resources": {"requests": {"cpu": "100m", "memory": "128Mi"}}
-                    }]}}
-                }
-            }]})
-        )
+        mock_resources.return_value = {"items": [{
+            "metadata": {"name": "app"},
+            "spec": {
+                "replicas": 1,
+                "template": {"spec": {"containers": [{
+                    "name": "app",
+                    "resources": {"requests": {"cpu": "100m", "memory": "128Mi"}}
+                }]}}
+            }
+        }]}
 
         response = client.get("/api/cost-estimate")
         assert response.status_code == 200
