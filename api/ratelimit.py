@@ -10,7 +10,7 @@ Protects sensitive endpoints from abuse:
 
 import time
 from collections import defaultdict
-from fastapi import Request, HTTPException
+from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 
 
@@ -46,6 +46,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         client = request.client.host if request.client else "unknown"
         if client == "testclient":
             return await call_next(request)
+
         limit, window = self._get_limit(path)
 
         # Sliding window check
@@ -61,13 +62,18 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         timestamps = self._requests[client][key]
 
         if len(timestamps) >= limit:
-            raise HTTPException(
+            from starlette.responses import JSONResponse
+            return JSONResponse(
                 status_code=429,
-                detail=f"Rate limit exceeded ({limit} req/{window}s). Try again later.",
+                content={"detail": f"Rate limit exceeded ({limit} req/{window}s). Try again later."},
             )
 
         timestamps.append(now)
-        return await call_next(request)
+
+        try:
+            return await call_next(request)
+        except Exception:
+            return await call_next(request)
 
     def _get_limit(self, path):
         """Find the most specific rate limit for a path."""
