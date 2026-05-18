@@ -107,7 +107,8 @@ def render_pods_table(pods):
     table.add_column("Status", justify="center")
     table.add_column("Restarts", justify="right")
     table.add_column("Age", justify="right")
-    table.add_column("Sentry Version", style="dim")
+    table.add_column("Version", style="dim")
+    table.add_column("Labels", style="dim")
 
     for pod in pods:
         severity = get_severity(pod)
@@ -115,15 +116,26 @@ def render_pods_table(pods):
         icon = status_icon(severity)
         name = pod["name"]
 
-        # Show Sentry version label if present
         labels = pod.get("labels", [])
-        sentry_ver = ""
+
+        # Extract version from known version labels
+        version = ""
         for lbl in labels:
             if "=" in lbl:
                 k, v = lbl.split("=", 1)
-                if k in ("version", "sentry-version", "sentry.io/version", "app.kubernetes.io/version"):
-                    sentry_ver = v
+                if k in (
+                    "version", "app.kubernetes.io/version",
+                    "sentry-version", "sentry.io/version",
+                ):
+                    version = v
                     break
+
+        # Show key labels (app, component) as compact string
+        label_str = ", ".join(
+            lbl.split("=", 1)[1]
+            for lbl in labels
+            if any(k in lbl for k in ["app=", "component="])
+        )[:30]
 
         table.add_row(
             icon,
@@ -131,7 +143,8 @@ def render_pods_table(pods):
             pod["status"],
             str(pod["restarts"]),
             pod.get("age", ""),
-            sentry_ver
+            version,
+            label_str
         )
 
     console.print(table)
