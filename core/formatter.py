@@ -42,10 +42,6 @@ def status_icon(severity):
     return "[green]●[/green]"
 
 
-def truncate_name(name, max_len=45):
-    if len(name) <= max_len:
-        return name
-    return name[:20] + "…" + name[-20:]
 
 
 def render_summary(pods):
@@ -111,21 +107,23 @@ def render_pods_table(pods):
     table.add_column("Status", justify="center")
     table.add_column("Restarts", justify="right")
     table.add_column("Age", justify="right")
-    table.add_column("Labels", style="dim")
+    table.add_column("Sentry Version", style="dim")
 
     for pod in pods:
         severity = get_severity(pod)
         style = severity_style(severity)
         icon = status_icon(severity)
-        name = truncate_name(pod["name"])
+        name = pod["name"]
 
-        # Show key labels (app, version) as compact string
+        # Show Sentry version label if present
         labels = pod.get("labels", [])
-        label_str = ", ".join(
-            lbl.split("=", 1)[1]
-            for lbl in labels
-            if any(k in lbl for k in ["app=", "version="])
-        )[:30]
+        sentry_ver = ""
+        for lbl in labels:
+            if "=" in lbl:
+                k, v = lbl.split("=", 1)
+                if k in ("version", "sentry-version", "sentry.io/version", "app.kubernetes.io/version"):
+                    sentry_ver = v
+                    break
 
         table.add_row(
             icon,
@@ -133,7 +131,7 @@ def render_pods_table(pods):
             pod["status"],
             str(pod["restarts"]),
             pod.get("age", ""),
-            label_str
+            sentry_ver
         )
 
     console.print(table)

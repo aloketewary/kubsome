@@ -358,8 +358,21 @@ def _execute_single(user_input, env):
         if suggestion:
             console.print(
                 f"[yellow]Did you mean:[/yellow] "
-                f"[cyan]{suggestion}[/cyan]"
+                f"[cyan]{suggestion}[/cyan] [dim](Press Enter to run)[/dim]"
             )
+            try:
+                confirm = prompt(
+                    f"{env} > ",
+                )
+                if confirm.strip() == "":
+                    user_input = suggestion
+                    command = resolve_command(user_input)
+                else:
+                    user_input = confirm
+                    command = resolve_command(user_input)
+                    # Re-resolve if it's a new command
+            except (EOFError, KeyboardInterrupt):
+                return
         else:
             console.print(
                 "[red]Unknown command.[/red] "

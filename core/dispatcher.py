@@ -204,8 +204,9 @@ def _handle_pods_table(cmd, env):
 
 def _handle_pods_watch(cmd, env):
     from core.cache import invalidate
+    target = cmd.get("target")
     with Live(
-        build_watch_view(get_pods(), context.namespace),
+        build_watch_view(get_pods(), context.namespace, target=target),
         refresh_per_second=1,
         console=console
     ) as live:
@@ -214,7 +215,7 @@ def _handle_pods_watch(cmd, env):
             invalidate("get_pods")
             live.update(
                 build_watch_view(
-                    get_pods(), context.namespace
+                    get_pods(), context.namespace, target=target
                 )
             )
 

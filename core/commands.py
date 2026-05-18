@@ -19,7 +19,13 @@ def resolve_command(user_input: str):
     # Pods
     if cmd == "pods":
         if len(tokens) > 1 and tokens[1] == "watch":
-            return {"type": "pods_watch"}
+            target = None
+            if len(tokens) > 2:
+                if tokens[2] == "--pod" and len(tokens) > 3:
+                    target = tokens[3]
+                else:
+                    target = tokens[2]
+            return {"type": "pods_watch", "target": target}
         return {"type": "pods_table"}
 
     # Overview

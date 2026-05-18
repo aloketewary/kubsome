@@ -184,10 +184,18 @@ def prewarm():
     def _warm():
         try:
             from core.collectors.pods import collect_pods
+            from core.collectors.nodes import collect_nodes
+            from core.collectors.deployments import collect_deployments
             from core.k8s import get_pods, get_pod_names
-            collect_pods()
-            get_pods()
-            get_pod_names()
+
+            # Use a ThreadPoolExecutor for faster pre-warming
+            from concurrent.futures import ThreadPoolExecutor
+            with ThreadPoolExecutor(max_workers=5) as executor:
+                executor.submit(collect_pods)
+                executor.submit(collect_nodes)
+                executor.submit(collect_deployments)
+                executor.submit(get_pods)
+                executor.submit(get_pod_names)
         except Exception:
             pass
 
