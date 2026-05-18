@@ -20,3 +20,8 @@
 **Learning:** A common anti-pattern in the codebase was calling `.result()` immediately after `executor.submit()`, which effectively serializes the execution. True parallelism requires submitting all tasks first and collecting their futures, then resolving them.
 
 **Action:** Always submit all background tasks to a `ThreadPoolExecutor` and store their future objects before calling `.result()` on any of them to ensure concurrent execution.
+
+## 2025-05-16 - [Cost Collector Optimization]
+**Learning:** Cost-related collectors often fetch multiple resource types (Pods, ConfigMaps, PVCs, Deployments) sequentially, leading to cumulative I/O latency. Moving to a centralized, cached fetcher and parallelizing independent resource fetches significantly improves responsiveness.
+
+**Action:** Consolidate resource fetching into the cached 'get_raw_resources' and use 'ThreadPoolExecutor' for multi-resource lookups in collectors.
