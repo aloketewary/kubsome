@@ -1427,27 +1427,125 @@ def _handle_rollback_preview(cmd, env):
 def _handle_watch_alert(cmd, env):
     from core.watch_alert import (
         get_watcher, pod_crash_condition,
-        pod_restart_condition, pod_count_condition
+        pod_restart_condition, pod_count_condition,
+        pod_oom_condition, pod_pending_condition,
+        pod_ready_condition,
     )
 
     target = cmd["target"]
     condition = cmd.get("condition", "crash")
+    threshold = cmd.get("threshold")
+    interval = cmd.get("interval", 30)
     watcher = get_watcher()
 
+    # Sub-commands: rm, mute, unmute, history
+    if target == "rm" and condition:
+        watcher.remove(condition)
+        console.print(f"[green]✓ Removed watch:[/green] {condition}")
+        return
+    if target == "mute" and condition:
+        if watcher.mute(condition):
+            console.print(f"[yellow]🔇 Muted:[/yellow] {condition}")
+        else:
+            console.print(f"[red]Watch not found:[/red] {condition}")
+        return
+    if target == "unmute" and condition:
+        if watcher.unmute(condition):
+            console.print(f"[green]🔔 Unmuted:[/green] {condition}")
+        else:
+            console.print(f"[red]Watch not found:[/red] {condition}")
+        return
+    if target == "history":
+        _render_watch_history(watcher)
+        return
+    if target == "clear":
+        watcher.clear_all()
+        console.print("[green]✓ All watches cleared[/green]")
+        return
+
+    # Build condition
     conditions = {
-        "crash": pod_crash_condition(target),
-        "restart": pod_restart_condition(target, 5),
-        "count": pod_count_condition(target, 1),
+        "crash": lambda: pod_crash_condition(target),
+        "restart": lambda: pod_restart_condition(
+            target, int(threshold) if threshold else 5
+        ),
+        "count": lambda: pod_count_condition(
+            target, int(threshold) if threshold else 1
+        ),
+        "oom": lambda: pod_oom_condition(target),
+        "pending": lambda: pod_pending_condition(
+            target, int(threshold) if threshold else 120
+        ),
+        "ready": lambda: pod_ready_condition(
+            target, int(threshold) if threshold else 1
+        ),
     }
 
-    check_fn = conditions.get(condition, conditions["crash"])
+    if condition not in conditions:
+        console.print(
+            f"[red]Unknown condition:[/red] {condition}\n"
+            f"[dim]Available: {', '.join(conditions.keys())}[/dim]"
+        )
+        return
+
+    check_fn = conditions[condition]()
     name = f"{target}-{condition}"
-    watcher.add(name, check_fn, interval=30)
+    watcher.add(name, check_fn, interval=interval)
     watcher.start()
 
-    console.print(f"[green]✓ Watching:[/green] {target} (condition: {condition})")
-    console.print(f"[dim]  Checking every 30s. Desktop notification on trigger.[/dim]")
-    console.print(f"[dim]  Run: watch-status to see all watches[/dim]")
+    console.print(
+        Panel(
+            f"[green]✓ Watch created[/green]\n"
+            f"\n"
+            f"  Name:       [bold]{name}[/bold]\n"
+            f"  Target:     {target}\n"
+            f"  Condition:  {condition}"
+            f"{'  (threshold: ' + str(threshold) + ')' if threshold else ''}\n"
+            f"  Interval:   {interval}s\n"
+            f"\n"
+            f"[dim]  Desktop notification on trigger + recovery.\n"
+            f"  Run: watch-status to see all watches\n"
+            f"  Run: watch-alert rm {name} to remove[/dim]",
+            title="[bold]👁 Watch Alert[/bold]",
+            border_style="cyan",
+        )
+    )
+
+
+def _render_watch_history(watcher):
+    history = watcher.history(20)
+    if not history:
+        console.print("[dim]No alert history yet[/dim]")
+        return
+
+    from rich.table import Table
+    table = Table(
+        show_header=True,
+        header_style="bold cyan",
+        border_style="dim",
+        expand=True,
+        show_lines=False,
+    )
+    table.add_column("", width=2)
+    table.add_column("Time", width=8)
+    table.add_column("Watch", width=25)
+    table.add_column("Message", ratio=1)
+
+    for entry in reversed(history):
+        is_recovery = entry["type"] == "recovered"
+        icon = "[green]✓[/green]" if is_recovery else "[red]●[/red]"
+        time_str = entry["time"][11:19]
+
+        table.add_row(
+            icon,
+            f"[dim]{time_str}[/dim]",
+            entry["watch"],
+            entry["message"],
+        )
+
+    console.print(
+        Panel(table, title="[bold]📜 Alert History[/bold]", border_style="cyan")
+    )
 
 
 def _handle_watch_status(cmd, env):
@@ -1455,16 +1553,80 @@ def _handle_watch_status(cmd, env):
 
     status = get_watcher().status()
     if not status["watches"]:
-        console.print("[dim]No active watches. Use: watch-alert <pod> [crash|restart|count][/dim]")
+        console.print(
+            Panel(
+                "[dim]No active watches.\n\n"
+                "Usage:\n"
+                "  [cyan]watch-alert <pod> crash[/cyan]      — alert on CrashLoopBackOff\n"
+                "  [cyan]watch-alert <pod> restart 10[/cyan] — alert on 10+ restarts\n"
+                "  [cyan]watch-alert <pod> oom[/cyan]        — alert on OOMKilled\n"
+                "  [cyan]watch-alert <pod> pending[/cyan]    — alert if stuck Pending\n"
+                "  [cyan]watch-alert <pod> count 3[/cyan]    — alert if < 3 running\n"
+                "  [cyan]watch-alert <pod> ready 2[/cyan]    — alert if < 2 ready[/dim]",
+                title="[bold]👁 Watch Status[/bold]",
+                border_style="dim",
+            )
+        )
         return
 
-    lines = [f"[bold]Active Watches ({len(status['watches'])}):[/bold]\n"]
-    for w in status["watches"]:
-        icon = "[red]🔔[/red]" if w["triggered"] else "[green]●[/green]"
-        lines.append(f"  {icon} {w['name']} — alerts: {w['alert_count']}")
+    from rich.table import Table
+    table = Table(
+        show_header=True,
+        header_style="bold cyan",
+        border_style="dim",
+        expand=True,
+        show_lines=False,
+    )
 
-    lines.append(f"\n[dim]Background: {'running' if status['running'] else 'stopped'}[/dim]")
-    console.print(Panel("\n".join(lines), title="[bold]👁 Watch Status[/bold]", border_style="cyan"))
+    table.add_column("", width=2)
+    table.add_column("Watch", ratio=2)
+    table.add_column("State", width=12, justify="center")
+    table.add_column("Alerts", width=6, justify="right")
+    table.add_column("Checks", width=7, justify="right")
+    table.add_column("Interval", width=8, justify="right")
+    table.add_column("Last", width=20, style="dim")
+
+    for w in status["watches"]:
+        if w["triggered"]:
+            icon = "[red]🔔[/red]"
+            state = "[red]FIRING[/red]"
+        elif w["muted"]:
+            icon = "[yellow]🔇[/yellow]"
+            state = "[yellow]muted[/yellow]"
+        else:
+            icon = "[green]●[/green]"
+            state = "[green]OK[/green]"
+
+        alert_count = str(w["alert_count"])
+        if w["alert_count"] > 0:
+            alert_count = f"[red]{w['alert_count']}[/red]"
+
+        last_msg = w["last_message"][:20] if w["last_message"] else "—"
+
+        table.add_row(
+            icon,
+            w["name"],
+            state,
+            alert_count,
+            str(w["check_count"]),
+            f"{w['interval']}s",
+            last_msg,
+        )
+
+    running = status["running"]
+    footer = (
+        f"[green]● Running[/green]" if running
+        else "[red]● Stopped[/red]"
+    )
+
+    console.print(
+        Panel(table, title="[bold]👁 Watch Status[/bold]", border_style="cyan")
+    )
+    console.print(f"  {footer}  │  [dim]{len(status['watches'])} watches[/dim]")
+    console.print(
+        f"[dim]  Commands: watch-alert rm <name> │ "
+        f"watch-alert mute <name> │ watch-alert history[/dim]\n"
+    )
 
 
 def _handle_scorecard(cmd, env):

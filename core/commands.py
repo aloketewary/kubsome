@@ -734,10 +734,27 @@ def resolve_command(user_input: str):
 
     # Watch alert
     if cmd == "watch-alert" and len(tokens) > 1:
+        target = tokens[1]
+        condition = tokens[2] if len(tokens) > 2 else "crash"
+        threshold = None
+        interval = 30
+
+        # Parse optional flags
+        for i, t in enumerate(tokens[3:], 3):
+            if t.isdigit():
+                threshold = t
+            elif t == "--interval" and i + 1 < len(tokens):
+                try:
+                    interval = int(tokens[i + 1])
+                except (ValueError, IndexError):
+                    pass
+
         return {
             "type": "watch_alert",
-            "target": tokens[1],
-            "condition": tokens[2] if len(tokens) > 2 else "crash",
+            "target": target,
+            "condition": condition,
+            "threshold": threshold,
+            "interval": interval,
         }
 
     # Watch status

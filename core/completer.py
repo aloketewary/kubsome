@@ -137,6 +137,19 @@ for alias, target in _aliases.items():
 # Subcommands for multi-word commands
 SUBCOMMANDS = {
     "pods": {"watch": "live pod monitoring"},
+    "watch-alert": {
+        "crash": "alert on CrashLoopBackOff",
+        "restart": "alert on high restarts",
+        "oom": "alert on OOMKilled",
+        "pending": "alert if stuck Pending",
+        "count": "alert if pod count drops",
+        "ready": "alert if not enough ready",
+        "rm": "remove a watch",
+        "mute": "silence notifications",
+        "unmute": "re-enable notifications",
+        "history": "view alert history",
+        "clear": "remove all watches",
+    },
     "events": {"watch": "live event stream"},
     "top": {"pods": "pod CPU/memory", "nodes": "node CPU/memory"},
     "incident": {
@@ -192,7 +205,7 @@ POD_COMMANDS = {
     "logs", "inspect", "diagnose", "netcheck",
     "shell", "forward", "history", "trace",
     "dep-health", "rollout", "rollback", "restart",
-    "correlate", "describe", "watch-alert",
+    "correlate", "describe",
 }
 
 
