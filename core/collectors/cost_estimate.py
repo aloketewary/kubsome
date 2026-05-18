@@ -7,10 +7,8 @@ Uses AWS on-demand pricing as baseline:
 - 1 GB RAM = ~$4/month
 """
 
-import subprocess
-import json
-
 from core.context import context
+from core.k8s import get_raw_resources
 
 # Approximate monthly cost (AWS on-demand, us-east-1)
 CPU_COST_PER_CORE = 30.0  # $/month per vCPU
@@ -25,19 +23,7 @@ def estimate_costs():
     ctx = context.current_context
     ns = context.namespace
 
-    cmd = [
-        "kubectl", "--context", str(ctx or ""),
-        "get", "deployments", "-n", str(ns), "-o", "json"
-    ]
-    result = subprocess.run(
-        cmd,
-        capture_output=True, text=True,
-        timeout=15,
-    )
-    if result.returncode != 0:
-        return {"deployments": [], "total": 0}
-
-    data = json.loads(result.stdout)
+    data = get_raw_resources("deployments", ctx, ns)
     estimates = []
     total = 0.0
 
