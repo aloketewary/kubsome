@@ -32,10 +32,23 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
           <div class="stat-value">{{ stats.unresolved_count }}</div>
           <div class="stat-footer">NLP patterns not matched</div>
         </div>
+
+        <div class="stat-main-card glass stagger-3">
+          <div class="stat-header">
+            <i class="pi pi-sparkles"></i>
+            <span>Intelligence Coverage</span>
+          </div>
+          <div class="stat-value">{{ coveragePct }}%</div>
+          <div class="stat-footer">
+            <div class="mini-bar-wrap">
+              <div class="mini-bar" [style.width.%]="coveragePct"></div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div class="details-row">
-        <div class="detail-card glass stagger-3">
+        <div class="detail-card glass stagger-4">
           <div class="detail-header">
             <h3>Top Commands</h3>
           </div>
@@ -55,7 +68,7 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
           </div>
         </div>
 
-        <div class="detail-card glass stagger-4">
+        <div class="detail-card glass stagger-5">
           <div class="detail-header">
             <h3>Common Unresolved Queries</h3>
           </div>
@@ -84,12 +97,14 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
   `,
   styles: [`
     :host { display: block; padding-bottom: 40px; }
-    .stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 24px; }
+    .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 24px; }
     .stat-main-card { padding: 24px; border-radius: 16px; border: 1px solid var(--border); }
     .stat-header { display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 13px; font-weight: 600; margin-bottom: 12px; }
     .stat-header i { color: var(--accent); }
     .stat-value { font-size: 42px; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 4px; }
     .stat-footer { font-size: 11px; color: var(--text-muted); }
+    .mini-bar-wrap { width: 100%; height: 4px; background: var(--bg-elevated); border-radius: 2px; margin-top: 8px; overflow: hidden; }
+    .mini-bar { height: 100%; background: var(--accent); border-radius: 2px; transition: width 1s ease-out; }
 
     .details-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
     .detail-card { border-radius: 16px; border: 1px solid var(--border); overflow: hidden; }
@@ -117,16 +132,23 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     .stagger-2 { animation: fadeSlideUp 0.5s ease-out 0.12s both; }
     .stagger-3 { animation: fadeSlideUp 0.5s ease-out 0.19s both; }
     .stagger-4 { animation: fadeSlideUp 0.5s ease-out 0.26s both; }
+    .stagger-5 { animation: fadeSlideUp 0.5s ease-out 0.33s both; }
 
     @keyframes fadeSlideUp {
       from { opacity: 0; transform: translateY(10px); }
       to { opacity: 1; transform: translateY(0); }
     }
-  `]
+  `],
 })
 export class StatsComponent implements OnInit {
   private api = inject(ApiService);
   stats: UsageStats | null = null;
+
+  get coveragePct() {
+    if (!this.stats || this.stats.total_commands === 0) return 0;
+    const resolved = this.stats.total_commands - this.stats.unresolved_count;
+    return Math.round((resolved / this.stats.total_commands) * 100);
+  }
 
   maxCmdCount = 1;
   maxUnresolvedCount = 1;
