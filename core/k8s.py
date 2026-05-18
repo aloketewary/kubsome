@@ -7,7 +7,7 @@ from core.context import context
 from core.cache import cached
 
 
-@cached(ttl=5)
+@cached(ttl=10)
 def get_raw_resources(kind, context_name, namespace=None, selector=None, field_selector=None, sort_by=None):
     """Unified raw resource fetcher with caching."""
     command = [
@@ -77,15 +77,15 @@ def get_pods():
     return pods
 
 
-@cached(ttl=10)
+@cached(ttl=30)
 def get_pod_names():
-    """Fast pod name list using jsonpath (no full JSON parse)."""
+    """Fast pod name list using -o name (no full JSON parse)."""
     command = [
         "kubectl",
         "--context", str(context.current_context or ""),
         "get", "pods",
         "-n", str(context.namespace),
-        "-o", "jsonpath={.items[*].metadata.name}"
+        "-o", "name"
     ]
 
     result = subprocess.run(
@@ -95,7 +95,12 @@ def get_pod_names():
     if result.returncode != 0:
         return []
 
-    return result.stdout.strip().split()
+    # 'pod/name' -> 'name'
+    return [
+        line.split("/")[-1]
+        for line in result.stdout.strip().split("\n")
+        if "/" in line
+    ]
 
 def human_age(timestamp: str):
     created = datetime.fromisoformat(

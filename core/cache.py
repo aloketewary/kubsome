@@ -24,7 +24,7 @@ MIN_TTL = 3
 MAX_TTL = 30
 
 # Stale grace period — serve stale data while refreshing
-STALE_GRACE = 10
+STALE_GRACE = 60
 
 
 def cached(ttl=5, adaptive=True):
@@ -64,9 +64,32 @@ def cached(ttl=5, adaptive=True):
                         return entry["value"]
 
             # Cache miss or beyond grace — fetch fresh
-            result = func(*args, **kwargs)
-            _store(key, result, ttl, adaptive)
-            return result
+            # Single-flight: ensure only one thread fetches for this key
+            acquired = False
+            while not acquired:
+                with _refresh_lock:
+                    if key not in _refreshing:
+                        _refreshing.add(key)
+                        acquired = True
+                    else:
+                        # Someone else is already fetching.
+                        # If we have stale data, use it even if beyond grace
+                        # to avoid blocking the main thread.
+                        with _lock:
+                            if key in _cache:
+                                return _cache[key]["value"]
+
+                if not acquired:
+                    # No cached data at all? We must wait for the fetch to complete.
+                    time.sleep(0.1)
+
+            try:
+                result = func(*args, **kwargs)
+                _store(key, result, ttl, adaptive)
+                return result
+            finally:
+                with _refresh_lock:
+                    _refreshing.discard(key)
         return wrapper
     return decorator
 
@@ -182,22 +205,27 @@ def cache_stats():
 def prewarm():
     """Pre-warm critical caches in background thread."""
     def _warm():
-        try:
-            from core.collectors.pods import collect_pods
-            from core.collectors.nodes import collect_nodes
-            from core.collectors.deployments import collect_deployments
-            from core.k8s import get_pods, get_pod_names
+        # Keep warming as long as the process is alive
+        while True:
+            try:
+                from core.collectors.pods import collect_pods
+                from core.collectors.nodes import collect_nodes
+                from core.collectors.deployments import collect_deployments
+                from core.k8s import get_pods, get_pod_names
 
-            # Use a ThreadPoolExecutor for faster pre-warming
-            from concurrent.futures import ThreadPoolExecutor
-            with ThreadPoolExecutor(max_workers=5) as executor:
-                executor.submit(collect_pods)
-                executor.submit(collect_nodes)
-                executor.submit(collect_deployments)
-                executor.submit(get_pods)
-                executor.submit(get_pod_names)
-        except Exception:
-            pass
+                # Use a ThreadPoolExecutor for faster pre-warming
+                from concurrent.futures import ThreadPoolExecutor
+                with ThreadPoolExecutor(max_workers=5) as executor:
+                    executor.submit(collect_pods)
+                    executor.submit(collect_nodes)
+                    executor.submit(collect_deployments)
+                    executor.submit(get_pods)
+                    executor.submit(get_pod_names)
+            except Exception:
+                pass
+            # Re-warm every 20 seconds to keep data reasonably fresh
+            # and ready for the user.
+            time.sleep(20)
 
     t = threading.Thread(target=_warm, daemon=True)
     t.start()
