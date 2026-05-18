@@ -107,7 +107,7 @@ def render_pods_table(pods):
     table.add_column("Status", justify="center")
     table.add_column("Restarts", justify="right")
     table.add_column("Age", justify="right")
-    table.add_column("Version", style="dim")
+    table.add_column("Sentry", style="dim")
     table.add_column("Labels", style="dim")
 
     for pod in pods:
