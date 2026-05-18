@@ -8,6 +8,8 @@ from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 
 from api.routes import pods, overview, contexts, events, metrics, logs, deployments, diagnostics, intelligence, terminal, operations, ws, describe, gateway
+from api.auth import AuthMiddleware, generate_token
+from api.ratelimit import RateLimitMiddleware
 
 app = FastAPI(
     title="Kubsome API",
@@ -17,11 +19,20 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:4200",   # Angular dev
+        "http://localhost:8000",   # Self (API serves UI)
+        "http://127.0.0.1:4200",
+        "http://127.0.0.1:8000",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.add_middleware(AuthMiddleware)
+app.add_middleware(RateLimitMiddleware)
+
 
 app.include_router(pods.router, prefix="/api")
 app.include_router(overview.router, prefix="/api")
@@ -46,6 +57,10 @@ def health_root():
 
 @app.on_event("startup")
 def _on_startup():
+    token = generate_token()
+    print(f"  🔑 API Token: {token}")
+    print(f"  Saved to: ~/.kubsome/.api_token")
+
     from core.cache import prewarm
     prewarm()
 

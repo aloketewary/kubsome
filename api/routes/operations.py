@@ -1,11 +1,25 @@
 import re
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, HTTPException
 from pydantic import BaseModel
 from typing import Optional
 
 from core.context import context
 
 router = APIRouter(tags=["operations"])
+
+# ─── Input Validation ─────────────────────────────────────────────────────────
+
+_K8S_NAME_RE = re.compile(r'^[a-z0-9]([a-z0-9\-\.]{0,251}[a-z0-9])?$')
+
+
+def _validate_k8s_name(name: str) -> str:
+    """Validate Kubernetes resource name. Raises 400 if invalid."""
+    if not name or not _K8S_NAME_RE.match(name):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid resource name: '{name}'"
+        )
+    return name
 
 
 # ─── Image Pull Secrets ───────────────────────────────────────────────────────
@@ -80,6 +94,8 @@ def incident_action(req: ActionRequest):
 
 @router.get("/incident/report")
 def incident_report(path: str = ""):
+    if not path:
+        return {"error": "Path parameter required"}
     """Read an exported incident report JSON file."""
     import json
     from pathlib import Path
@@ -154,6 +170,7 @@ def rbac_service_accounts():
 @router.get("/revision-diff/{name}")
 def get_revision_diff(name: str):
     """Get deployment revision history as diffs."""
+    _validate_k8s_name(name)
     import subprocess
     from core.context import context as ctx
     ns = ctx.namespace
@@ -227,6 +244,7 @@ def get_jobs():
 
 @router.post("/trigger/{name}")
 def trigger_cronjob(name: str):
+    _validate_k8s_name(name)
     from core.collectors.jobs import trigger_cronjob as do_trigger
     success, output = do_trigger(name)
     return {"success": success, "output": output}
@@ -259,6 +277,7 @@ def post_compare(req: CompareRequest):
 
 @router.get("/netcheck/{pod}")
 def get_netcheck(pod: str):
+    _validate_k8s_name(pod)
     from core.collectors.network import netcheck
     return netcheck(pod)
 
@@ -267,19 +286,30 @@ def get_netcheck(pod: str):
 
 @router.get("/configmap/{name}")
 def get_configmap(name: str):
+    _validate_k8s_name(name)
     from core.collectors.configs import get_configmap as fetch_cm
     return fetch_cm(name)
 
 @router.get("/secret/{name}")
 def get_secret(name: str):
+    _validate_k8s_name(name)
     from core.collectors.configs import get_secret as fetch_secret
-    return fetch_secret(name)
+    data = fetch_secret(name)
+    if data and "data" in data:
+        # Mask values — show only key names and value lengths
+        masked = {}
+        for k, v in data["data"].items():
+            masked[k] = f"<{len(v)} chars>" if v else "<empty>"
+        data["data"] = masked
+        data["_masked"] = True
+    return data
 
 
 # ─── Deployment Diff ──────────────────────────────────────────────────────────
 
 @router.get("/diff/{name}")
 def get_diff(name: str):
+    _validate_k8s_name(name)
     from core.collectors.diff import deployment_diff
     return deployment_diff(name)
 
@@ -308,6 +338,7 @@ def get_quota():
 
 @router.get("/drain-check/{node}")
 def get_drain_check(node: str):
+    _validate_k8s_name(node)
     from core.collectors.scaling import drain_check
     return drain_check(node)
 
@@ -351,11 +382,13 @@ def get_network_policies():
 
 @router.get("/deps/{name}")
 def get_deps(name: str):
+    _validate_k8s_name(name)
     from core.collectors.services import service_dependencies
     return service_dependencies(name)
 
 @router.get("/dns/{service}")
 def get_dns(service: str):
+    _validate_k8s_name(service)
     from core.collectors.services import dns_debug
     return dns_debug(service)
 
@@ -417,10 +450,18 @@ def test_webhook():
 
 @router.get("/webhooks")
 def get_webhooks():
-    """Get configured webhooks."""
     from core.config import load_config
     config = load_config()
-    return {"webhooks": config.get("webhooks", [])}
+    webhooks = config.get("webhooks", [])
+    # Mask URLs — only show type and hint
+    return {"webhooks": [
+        {
+            "type": w.get("type", "generic"),
+            "url_hint": w.get("url", "")[-4:] if w.get("url") else "",
+            "configured": bool(w.get("url")),
+        }
+        for w in webhooks
+    ]}
 
 @router.post("/webhooks")
 def save_webhooks(req: dict):

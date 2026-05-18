@@ -1,10 +1,12 @@
 from fastapi.testclient import TestClient
 from api.app import app
+from api.auth import get_token
 from unittest.mock import patch, MagicMock
 import json
 from core.cache import invalidate
 
-client = TestClient(app)
+_test_token = get_token()
+client = TestClient(app, headers={"Authorization": f"Bearer {_test_token}"})
 
 
 def test_get_overview_for_cluster_mode():
