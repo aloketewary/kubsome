@@ -12,14 +12,14 @@ function fetchToken(): Promise<string> {
     .then(r => r.json())
     .then(data => {
       _token = data.token || '';
-      return _token;
+      return _token!;
     })
     .catch(() => {
       _token = '';
       return '';
     });
 
-  return _tokenPromise;
+  return _tokenPromise!;
 }
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
