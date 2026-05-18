@@ -7,6 +7,7 @@ _config = load_config()
 _aliases = _config.get("aliases", {})
 
 COMMANDS = [
+    # Observe
     "pods",
     "pods watch",
     "services",
@@ -17,64 +18,102 @@ COMMANDS = [
     "inspect",
     "events",
     "events watch",
-    "rollout",
-    "rollback",
-    "restart",
-    "scale",
     "top pods",
     "top nodes",
+    "uptime",
+    "scorecard",
+    "alerts",
+    "anomalies",
+    # Operate
+    "rollout",
+    "rollback",
+    "rollback-preview",
+    "restart",
+    "scale",
+    "apply",
+    # Diagnose
     "diagnose",
     "trace",
+    "dep-health",
+    "correlate",
+    "correlate-logs",
     "find",
-    "ns",
-    "tui",
-    "dashboard",
+    "doctor",
+    # AI
     "why",
     "summarize",
     "what changed",
     "which pods are unhealthy",
-    "compare",
-    "plugin",
-    "plugins",
+    "explain",
+    # kubectl
+    "describe",
+    "get",
+    "delete",
+    # Cost & Security
+    "cost",
+    "cost-estimate",
+    "cost-trend",
+    "security",
+    "optimize",
+    "unused",
+    # Monitoring
+    "watch",
+    "watch-alert",
+    "watch-status",
+    "diff-timeline",
+    "pin",
+    "pins",
+    # Incident
     "incident start",
     "incident stop",
     "incident status",
+    "incident share",
+    "incident history",
     "note",
     "snapshot",
-    "help",
-    "alerts",
-    "anomalies",
-    "playbook",
-    "correlate",
-    "optimize",
-    "cost",
-    "security",
-    "scan",
-    "unused",
-    "cleanup",
-    "check",
-    "export",
-    "export json",
-    "audit",
-    "netcheck",
+    # Growth
+    "doctor",
+    "policy",
+    "stats",
+    "schedule add",
+    "schedule list",
+    "schedule rm",
+    # Resources
     "cronjobs",
     "jobs",
     "trigger",
     "config",
     "secret",
-    "diff",
+    "hpa",
+    "pdb",
+    "ingress",
+    "rbac",
+    "labels",
+    "ns",
+    # Network
+    "netcheck",
+    "dns",
+    "mesh",
     "forward",
-    "explain",
+    # Cluster
+    "capacity",
+    "quota",
+    "drain-check",
+    "compare",
+    "diff",
+    "yaml-diff",
+    # Generate
     "generate deployment",
     "generate service",
     "generate cronjob",
     "generate configmap",
     "generate ingress",
-    "hpa",
-    "pdb",
-    "capacity",
-    "quota",
-    "drain-check",
+    # Plugins
+    "plugin",
+    "plugin install",
+    "plugin uninstall",
+    "plugins",
+    # Bookmarks & Workflows
     "bookmark",
     "bookmark add",
     "bookmark rm",
@@ -82,24 +121,29 @@ COMMANDS = [
     "run",
     "workflow",
     "workflows",
-    "watch",
-    "rbac",
+    # Export & Audit
+    "export",
+    "export json",
+    "audit",
+    "changelog",
+    # Navigation
+    "tui",
+    "dashboard",
     "shell",
     "timeline",
-    "labels",
-    "apply",
+    "history",
+    "deps",
     "snap",
     "snap-diff",
-    "changelog",
-    "history",
-    "mesh",
-    "ingress",
-    "deps",
-    "dns",
     "use",
     "switch",
     "contexts",
-    "exit"
+    "playbook",
+    "scan",
+    "check",
+    "cleanup",
+    "help",
+    "exit",
 ] + list(_aliases.keys())
 
 
@@ -169,12 +213,24 @@ class KubeasyCompleter(Completer):
                 return
 
             if cmd == "pods":
-                query = words[1] if len(words) > 1 else ""
-                if "watch".startswith(query):
-                    yield Completion(
-                        "watch",
-                        start_position=-len(query)
-                    )
+                if len(words) == 1 or (
+                    len(words) == 2 and not text.endswith(" ")
+                ):
+                    query = words[1] if len(words) > 1 else ""
+                    if "watch".startswith(query):
+                        yield Completion(
+                            "watch",
+                            start_position=-len(query)
+                        )
+                elif len(words) >= 2 and words[1] == "watch":
+                    # Complete pod names after "pods watch"
+                    query = words[2] if len(words) > 2 else ""
+                    for name in get_pod_names():
+                        if query in name:
+                            yield Completion(
+                                name,
+                                start_position=-len(query)
+                            )
                 return
 
             # Pod name completion for relevant commands
