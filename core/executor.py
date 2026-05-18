@@ -4,6 +4,7 @@ from rich.console import Console
 from core.context import context
 from core.resolver import resolve_pod_name
 from core.selector import choose_pod
+import shlex
 
 console = Console()
 
@@ -22,7 +23,7 @@ def execute(command):
     command = _fuzzy_resolve(command)
     try:
         result = subprocess.run(
-            command.split(),
+            shlex.split(command),
             capture_output=True,
             text=True
         )

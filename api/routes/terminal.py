@@ -44,11 +44,39 @@ RESOURCE_COMMANDS = {
     "trigger": "cronjob",
 }
 
+# Add at top of file
+ALLOWED_PREFIXES = (
+    "kubectl", "k ", "pods", "events", "overview", "nodes",
+    "services", "deployments", "top ", "logs ", "inspect ",
+    "diagnose ", "shell ", "rollout ", "rollback ", "restart ",
+    "scale ", "trace ", "diff ", "trigger ", "find ", "cronjobs",
+    "jobs", "hpa", "pdb", "capacity", "quota", "security",
+    "optimize", "unused", "check", "audit", "timeline",
+    "rbac", "ingress", "mesh", "why ", "summarize", "what ",
+    "which ", "explain ", "generate ", "watch-alert ", "watch-status",
+    "help", "scorecard", "cost", "doctor", "policy", "stats",
+    "correlate", "playbook", "export", "changelog", "snap",
+    "incident", "note ", "forward ", "netcheck ", "dns ",
+    "compare", "labels", "ns", "dep-health", "uptime",
+)
+
+def _is_allowed(cmd: str) -> bool:
+    """Only allow kubsome commands and kubectl."""
+    return any(cmd.startswith(p) for p in ALLOWED_PREFIXES)
+
+
 
 @router.post("/exec")
 def exec_command(req: CommandRequest):
     """Execute a command with interactive selection support."""
     cmd = req.command.strip()
+
+    if not _is_allowed(cmd):
+        return {
+            "output": f"Command not allowed: {cmd}\n"
+                      "Only kubsome commands and kubectl are permitted.",
+            "exit_code": 1,
+        }
 
     if not cmd:
         return {"output": "", "exit_code": 0}
