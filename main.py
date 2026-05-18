@@ -8,7 +8,7 @@ from rich.console import Console
 from rich.panel import Panel
 from prompt_toolkit import prompt
 from prompt_toolkit.key_binding import KeyBindings
-from prompt_toolkit.filters import has_completions
+from prompt_toolkit.filters import has_completions, completion_is_selected
 
 from core.commands import resolve_command
 from core.executor import execute
@@ -278,10 +278,10 @@ def _start_cli():
     from core.scheduler import get_scheduler
     get_scheduler().start()
 
-    # Key binding: Enter accepts completion when popup is open
+    # Key binding: Enter accepts selected completion, not execute partial input
     kb = KeyBindings()
 
-    @kb.add("enter", filter=has_completions)
+    @kb.add("enter", filter=completion_is_selected)
     def _accept_completion(event):
         event.current_buffer.complete_state = None
 
@@ -297,6 +297,7 @@ def _start_cli():
                 completer=command_completer,
                 history=history,
                 complete_while_typing=True,
+                complete_in_thread=True,
                 key_bindings=kb,
             )
         except (EOFError, KeyboardInterrupt):
@@ -369,19 +370,20 @@ def _execute_single(user_input, env):
         if suggestion:
             console.print(
                 f"[yellow]Did you mean:[/yellow] "
-                f"[cyan]{suggestion}[/cyan] [dim](Press Enter to run)[/dim]"
+                f"[cyan]{suggestion}[/cyan] "
+                f"[dim](Enter=yes, or type new command)[/dim]"
             )
             try:
                 confirm = prompt(
                     f"{env} > ",
+                    completer=command_completer,
+                    complete_while_typing=True,
+                    complete_in_thread=True,
+                    key_bindings=kb,
+                    default=suggestion,
                 )
-                if confirm.strip() == "":
-                    user_input = suggestion
-                    command = resolve_command(user_input)
-                else:
-                    user_input = confirm
-                    command = resolve_command(user_input)
-                    # Re-resolve if it's a new command
+                user_input = confirm.strip() or suggestion
+                command = resolve_command(user_input)
             except (EOFError, KeyboardInterrupt):
                 return
         else:
