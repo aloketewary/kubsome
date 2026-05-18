@@ -38,14 +38,11 @@ def status_icon(severity):
     return "[green]●[/green]"
 
 
-def truncate_name(name, max_len=45):
-    if len(name) <= max_len:
-        return name
-    return name[:20] + "…" + name[-20:]
-
-
-def build_watch_view(pods, namespace):
+def build_watch_view(pods, namespace, target=None):
     """Returns a renderable that Live can display and update in-place."""
+
+    if target:
+        pods = [p for p in pods if target in p["name"]]
 
     pods = sorted(
         pods,
@@ -99,7 +96,7 @@ def build_watch_view(pods, namespace):
         severity = get_severity(pod)
         style = severity_style(severity)
         icon = status_icon(severity)
-        name = truncate_name(pod["name"])
+        name = pod["name"]
 
         suggestion = pod_suggestion(pod)
         insight = suggestion if suggestion != "Healthy" else ""
