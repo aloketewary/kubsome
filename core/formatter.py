@@ -5,6 +5,7 @@ from rich.align import Align
 
 from config.settings import SETTINGS
 from core.insights import pod_suggestion
+from core.context import context
 
 console = Console()
 
@@ -42,6 +43,37 @@ def status_icon(severity):
     return "[green]●[/green]"
 
 
+def _colored_status(status):
+    """Color the status text based on its value."""
+    s = status.lower()
+    if s in ("running", "succeeded", "completed"):
+        return f"[green]{status}[/green]"
+    if s in ("crashloopbackoff", "error", "failed",
+             "oomkilled", "imagepullbackoff"):
+        return f"[red]{status}[/red]"
+    if s in ("pending", "terminating", "containercreating",
+             "init:0/1", "podinitializing"):
+        return f"[yellow]{status}[/yellow]"
+    return f"[dim]{status}[/dim]"
+
+
+def _colored_restarts(count):
+    """Color restart count by severity."""
+    if count == 0:
+        return "[dim]0[/dim]"
+    if count >= 20:
+        return f"[bold red]{count}[/bold red]"
+    if count >= 5:
+        return f"[yellow]{count}[/yellow]"
+    return str(count)
+
+
+def _truncate_name(name, max_len=48):
+    """Truncate long pod names with ellipsis in the middle."""
+    if len(name) <= max_len:
+        return name
+    half = (max_len - 1) // 2
+    return name[:half] + "…" + name[-(max_len - half - 1):]
 
 
 def render_summary(pods):
@@ -64,7 +96,12 @@ def render_summary(pods):
         + "[red]" + "█" * c + "[/red]"
     )
 
+    ns = context.namespace
+    ctx = context.current_context or ""
+    ctx_short = ctx.split("/")[-1] if "/" in ctx else ctx
+
     summary = (
+        f"[dim]{ctx_short}[/dim]/[bold]{ns}[/bold]  │  "
         f"[bold]{total}[/bold] pods  │  "
         f"[green]● {healthy}[/green]  "
         f"[yellow]● {warning}[/yellow]  "
@@ -94,41 +131,37 @@ def render_pods_table(pods):
 
     render_summary(pods)
 
+    # Check if any pod has sentry version data
+    has_sentry = any(
+        _extract_sentry(pod.get("labels", []))
+        for pod in pods
+    )
+
     table = Table(
         show_header=True,
         header_style="bold cyan",
         border_style="dim",
         pad_edge=True,
-        show_lines=False
+        show_lines=False,
     )
 
     table.add_column("", width=2)
-    table.add_column("Pod", no_wrap=True)
+    table.add_column("Pod", no_wrap=True, max_width=48)
     table.add_column("Status", justify="center")
     table.add_column("Restarts", justify="right")
     table.add_column("Age", justify="right")
-    table.add_column("Sentry", style="dim")
+    if has_sentry:
+        table.add_column("Sentry", style="dim")
     table.add_column("Labels", style="dim")
 
     for pod in pods:
         severity = get_severity(pod)
         style = severity_style(severity)
         icon = status_icon(severity)
-        name = pod["name"]
+        name = _truncate_name(pod["name"])
 
         labels = pod.get("labels", [])
-
-        # Extract version from known version labels
-        version = ""
-        for lbl in labels:
-            if "=" in lbl:
-                k, v = lbl.split("=", 1)
-                if k in (
-                    "version", "app.kubernetes.io/version",
-                    "sentry-version", "sentry.io/version",
-                ):
-                    version = v
-                    break
+        sentry_ver = _extract_sentry(labels)
 
         # Show key labels (app, component) as compact string
         label_str = ", ".join(
@@ -137,14 +170,35 @@ def render_pods_table(pods):
             if any(k in lbl for k in ["app=", "component="])
         )[:30]
 
-        table.add_row(
+        row = [
             icon,
             f"[{style}]{name}[/{style}]",
-            pod["status"],
-            str(pod["restarts"]),
-            pod.get("age", ""),
-            version,
-            label_str
-        )
+            _colored_status(pod["status"]),
+            _colored_restarts(pod["restarts"]),
+            pod.get("age", "") or "[dim]< 1m[/dim]",
+        ]
+        if has_sentry:
+            row.append(sentry_ver)
+        row.append(label_str)
+
+        table.add_row(*row)
 
     console.print(table)
+
+    # Footer with count
+    console.print(
+        f"[dim]{'─' * 3} {len(pods)} pods {'─' * 3}[/dim]"
+    )
+
+
+def _extract_sentry(labels):
+    """Extract sentry/version label value."""
+    for lbl in labels:
+        if "=" in lbl:
+            k, v = lbl.split("=", 1)
+            if k in (
+                "version", "app.kubernetes.io/version",
+                "sentry-version", "sentry.io/version",
+            ):
+                return v
+    return ""
