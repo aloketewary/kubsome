@@ -1,6 +1,12 @@
+"""
+Logs Renderer — colorized pod log output with line numbers,
+level detection, and error/warning summaries.
+"""
+
 from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
+from rich.table import Table
 
 console = Console()
 
@@ -35,10 +41,6 @@ def render_logs(lines, pod_name, errors_only=False):
     if errors_only:
         title += " [red](errors only)[/red]"
 
-    summary = (
-        f"[bold]{len(lines)}[/bold] lines"
-    )
-
     error_count = sum(
         1 for l in lines
         if any(
@@ -48,48 +50,67 @@ def render_logs(lines, pod_name, errors_only=False):
     )
 
     warn_count = sum(
-        1 for l in lines
-        if "warn" in l.lower()
+        1 for l in lines if "warn" in l.lower()
     )
 
+    # Summary bar
+    parts = [f"[bold]{len(lines)}[/bold] lines"]
     if error_count:
-        summary += f"  │  [red]● {error_count} errors[/red]"
+        parts.append(f"[red]● {error_count} errors[/red]")
     if warn_count:
-        summary += f"  │  [yellow]● {warn_count} warnings[/yellow]"
+        parts.append(f"[yellow]● {warn_count} warnings[/yellow]")
+    if not error_count and not warn_count:
+        parts.append("[green]● clean[/green]")
 
-    console.print(
-        Panel.fit(summary, border_style="cyan")
-    )
+    summary = "  │  ".join(parts)
+    console.print(Panel.fit(summary, border_style="cyan"))
 
-    colored_lines = []
-    for line in lines:
-        style = detect_level(line)
+    # Render log lines with line numbers and coloring
+    max_num_width = len(str(len(lines)))
+
+    for i, line in enumerate(lines, 1):
+        num = f"[dim]{i:>{max_num_width}}[/dim]"
+        ts, content = _split_timestamp(line)
+
+        style = detect_level(content)
+        if ts:
+            ts_display = f"[dim]{ts}[/dim] "
+        else:
+            ts_display = ""
+
         if style:
-            colored_lines.append(
-                f"[{style}]{line}[/{style}]"
+            console.print(
+                f" {num} {ts_display}[{style}]{content}[/{style}]"
             )
         else:
-            colored_lines.append(line)
+            console.print(f" {num} {ts_display}{content}")
 
-    output = "\n".join(colored_lines)
-
+    # Footer
     console.print(
-        Panel(
-            output,
-            title=title,
-            border_style="dim",
-            padding=(0, 1)
-        )
+        f"[dim]{'─' * 3} {len(lines)} lines from {pod_name} {'─' * 3}[/dim]"
     )
 
 
 def render_streaming_line(line):
     """Print a single log line with color for live streaming."""
-    style = detect_level(line)
+    ts, content = _split_timestamp(line)
+    style = detect_level(content)
+
+    ts_display = f"[dim]{ts}[/dim] " if ts else ""
+
     if style:
-        console.print(f"[{style}]{line}[/{style}]")
+        console.print(f" {ts_display}[{style}]{content}[/{style}]")
     else:
-        console.print(line)
+        console.print(f" {ts_display}{content}")
+
+
+def _split_timestamp(line):
+    """Split ISO timestamp from log content if present."""
+    if len(line) > 24 and line[0].isdigit() and "T" in line[:24]:
+        parts = line.split(" ", 1)
+        if len(parts) == 2 and "T" in parts[0]:
+            return parts[0][:19], parts[1]
+    return None, line
 
 
 # Pod colors for logcat mode
@@ -109,7 +130,6 @@ def render_combined_logs(log_entries, pods):
     # Assign colors to pods
     pod_color_map = {}
     for i, pod in enumerate(pods):
-        # Use short name (last segment before hash)
         short = _short_pod_name(pod)
         pod_color_map[pod] = {
             "color": POD_COLORS[i % len(POD_COLORS)],
@@ -117,11 +137,20 @@ def render_combined_logs(log_entries, pods):
         }
 
     # Summary
-    summary = (
-        f"[bold]{len(log_entries)}[/bold] lines from "
-        f"[bold]{len(pods)}[/bold] pods"
+    error_count = sum(
+        1 for e in log_entries
+        if detect_level(e["line"])
+        and "red" in (detect_level(e["line"]) or "")
     )
-    console.print(Panel.fit(summary, border_style="cyan"))
+
+    parts = [
+        f"[bold]{len(log_entries)}[/bold] lines",
+        f"[bold]{len(pods)}[/bold] pods",
+    ]
+    if error_count:
+        parts.append(f"[red]● {error_count} errors[/red]")
+
+    console.print(Panel.fit("  │  ".join(parts), border_style="cyan"))
 
     # Legend
     legend_parts = []
@@ -133,53 +162,65 @@ def render_combined_logs(log_entries, pods):
     console.print()
 
     # Render lines
+    tag_width = max(
+        len(info["short"]) for info in pod_color_map.values()
+    ) if pod_color_map else 20
+
     for entry in log_entries:
         pod = entry["pod"]
         line = entry["line"]
-        info = pod_color_map.get(pod, {"color": "white", "short": pod[:15]})
+        info = pod_color_map.get(
+            pod, {"color": "white", "short": pod[:15]}
+        )
 
-        # Strip timestamp for cleaner display (keep content)
-        display_line = line
-        if len(line) > 30 and line[0].isdigit():
-            # Timestamp is usually first ~30 chars
-            parts = line.split(" ", 1)
-            if len(parts) == 2 and "T" in parts[0]:
-                display_line = parts[1]
+        ts, content = _split_timestamp(line)
+        level_style = detect_level(content)
+        tag = (
+            f"[{info['color']}]"
+            f"{info['short']:>{tag_width}}"
+            f"[/{info['color']}]"
+        )
 
-        level_style = detect_level(display_line)
-        tag = f"[{info['color']}]{info['short']:>26}[/{info['color']}]"
+        ts_display = f"[dim]{ts[11:19]}[/dim] " if ts else ""
 
         if level_style:
             console.print(
-                f"{tag} │ [{level_style}]{display_line}[/{level_style}]"
+                f"{tag} │ {ts_display}"
+                f"[{level_style}]{content}[/{level_style}]"
             )
         else:
-            console.print(f"{tag} │ {display_line}")
+            console.print(f"{tag} │ {ts_display}{content}")
 
 
 def render_streaming_combined_line(pod, line, pod_color_map):
     """Print a single combined log line with pod tag."""
-    info = pod_color_map.get(pod, {"color": "white", "short": pod[:20]})
+    info = pod_color_map.get(
+        pod, {"color": "white", "short": pod[:20]}
+    )
     tag = f"[{info['color']}]{info['short']:>26}[/{info['color']}]"
 
-    level_style = detect_level(line)
+    ts, content = _split_timestamp(line)
+    level_style = detect_level(content)
+    ts_display = f"[dim]{ts[11:19]}[/dim] " if ts else ""
+
     if level_style:
         console.print(
-            f"{tag} │ [{level_style}]{line}[/{level_style}]"
+            f"{tag} │ {ts_display}"
+            f"[{level_style}]{content}[/{level_style}]"
         )
     else:
-        console.print(f"{tag} │ {line}")
+        console.print(f"{tag} │ {ts_display}{content}")
 
 
 def _short_pod_name(pod_name):
     """Extract readable name — deployment name + replica hash."""
     parts = pod_name.rsplit("-", 2)
     if len(parts) >= 3:
-        # e.g. customer-account-management-565745c654-67nbx
-        # → customer-account-mgmt/67nbx
         dep_name = parts[0]
-        replica_hash = parts[-1] if len(parts[-1]) <= 5 else parts[-1][:5]
-        # Truncate dep name if too long
+        replica_hash = (
+            parts[-1] if len(parts[-1]) <= 5
+            else parts[-1][:5]
+        )
         if len(dep_name) > 20:
             dep_name = dep_name[:20]
         return f"{dep_name}/{replica_hash}"
