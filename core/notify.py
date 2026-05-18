@@ -26,12 +26,15 @@ def notify(title, message):
 
     try:
         if system == "Darwin":
+            # Use arguments for osascript to prevent command injection
             subprocess.run(
                 [
                     "osascript", "-e",
-                    f'display notification "{message}" '
-                    f'with title "Kubsome" '
-                    f'subtitle "{title}"'
+                    "on run {msg, sub}\n"
+                    '  display notification msg with title "Kubsome" subtitle sub\n'
+                    "end run",
+                    message,
+                    title
                 ],
                 capture_output=True,
                 timeout=5

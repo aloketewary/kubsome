@@ -32,3 +32,8 @@
 **Vulnerability:** The `incident_report` endpoint in `api/routes/operations.py` performed a prefix check on a user-provided path without first resolving it. This allowed attackers to bypass the check using `..` (parent directory) segments.
 **Learning:** `startswith()` checks on un-canonicalized path strings are insufficient. Paths must be resolved to their absolute form before any validation or use.
 **Prevention:** Always use `Path(path).resolve()` on both the base directory and the user-provided path. Use `target_path.is_relative_to(base_dir)` (Python 3.9+) or similar path-aware logic for validation.
+
+## 2026-06-05 - [CRITICAL] Command Injection in macOS Notifications
+**Vulnerability:** User-controlled strings (titles, messages) were interpolated directly into an AppleScript string executed via `osascript`. This allowed attackers to break the AppleScript context using double quotes and execute arbitrary shell commands via `do shell script`.
+**Learning:** Even when using list-based arguments for `subprocess.run`, if the command itself (like `osascript -e '...'`) interprets a string that contains unvalidated user input, injection is still possible.
+**Prevention:** Use positional arguments with AppleScript's `on run {args}` handler to pass user data safely as separate parameters, ensuring they are treated as data and not part of the script's logic.
