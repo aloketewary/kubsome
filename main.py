@@ -10,6 +10,14 @@ from prompt_toolkit import prompt
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.filters import has_completions, completion_is_selected
 
+# Key binding: Enter accepts selected completion, not execute partial input
+kb = KeyBindings()
+
+
+@kb.add("enter", filter=completion_is_selected)
+def _accept_completion(event):
+    event.current_buffer.complete_state = None
+
 from core.commands import resolve_command
 from core.executor import execute
 from core.context import context
@@ -277,13 +285,6 @@ def _start_cli():
     # Start background scheduler
     from core.scheduler import get_scheduler
     get_scheduler().start()
-
-    # Key binding: Enter accepts selected completion, not execute partial input
-    kb = KeyBindings()
-
-    @kb.add("enter", filter=completion_is_selected)
-    def _accept_completion(event):
-        event.current_buffer.complete_state = None
 
     last_command = ""
 
