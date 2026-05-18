@@ -137,4 +137,8 @@ export class ApiService {
   getStats(): Observable<any> {
     return this.http.get<any>(`${this.base}/stats`);
   }
+
+  getCostTrend(): Observable<any> {
+    return this.http.get<any>(`${this.base}/cost-trend`);
+  }
 }

@@ -54,7 +54,7 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
           <div class="empty-icon"><i class="pi pi-compass"></i></div>
           <div class="empty-content">
             <h3>Welcome to Kubsome!</h3>
-            <p>We didn't find any resources in the current namespace. Try exploring other namespaces or use the AI Assistant to get started.</p>
+            <p>We didn't find any resources in the current namespace. Try exploring other namespaces or ask AI "What is failing here?" to get started.</p>
             <div class="empty-actions">
               <button class="btn-primary" (click)="router.navigate(['/namespace'])">Switch Namespace</button>
               <button class="btn-secondary" (click)="router.navigate(['/ai'])">Ask AI Assistant</button>
@@ -73,6 +73,12 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
           <i class="pi pi-chart-line"></i>
           <span>Optimize Resource Costs</span>
         </div>
+        @if (costTrend?.trend === 'growing') {
+          <div class="insight-pill suggested" (click)="router.navigate(['/cost'])" tabindex="0" role="button" (keydown)="onKey($event, router.navigate.bind(router, ['/cost']))">
+            <i class="pi pi-exclamation-triangle" style="color: var(--warning)"></i>
+            <span>Projected costs increasing</span>
+          </div>
+        }
         @if (data && pins.length === 0) {
           <div class="insight-pill suggested" (click)="router.navigate(['/ai'])" tabindex="0" role="button" (keydown)="onKey($event, router.navigate.bind(router, ['/ai']))">
             <i class="pi pi-bookmark"></i>
@@ -171,7 +177,13 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
               <span class="uptime-title">{{ uptime?.cluster_down ? 'Cluster Down' : 'Cluster Operational' }}</span>
               <span class="uptime-ctx" [pTooltip]="contextCopied ? 'Copied!' : (uptime?.context || 'Copy Context')" tooltipPosition="bottom"
                 (click)="copyContext()" (keydown)="onKey($event, copyContext.bind(this))"
-                tabindex="0" role="button" [attr.aria-label]="contextCopied ? 'Copied!' : 'Copy Context'">{{ uptime?.context }}</span>
+                tabindex="0" role="button" [attr.aria-label]="contextCopied ? 'Copied!' : 'Copy Context'">
+                @if (contextCopied) {
+                  <span style="color: var(--success); font-weight: 700;">Copied!</span>
+                } @else {
+                  {{ uptime?.context }}
+                }
+              </span>
             </div>
             <div class="uptime-stats">
               @if (uptime?.nodes?.length && !uptime?.cluster_down) {
@@ -745,6 +757,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
   pins: any[] = [];
   contextCopied = false;
   stats: any = null;
+  costTrend: any = null;
+  contextCopied = false;
 
   get podTotal() {
     return (this.data?.pods.healthy || 0) + (this.data?.pods.warning || 0) + (this.data?.pods.critical || 0);
@@ -832,6 +846,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.refreshing = true;
     this.loadPins();
     this.loadStats();
+    this.api.getCostTrend().subscribe(res => this.costTrend = res);
     this.api.getOverview().subscribe({
       next: (res) => { this.data = res; },
       error: () => {
