@@ -260,9 +260,9 @@ def _start_cli():
     render_banner()
     create_default_workflows()
 
-    # Pre-warm pod cache in background
+    # Pre-warm caches with visible progress
     from core.cache import prewarm
-    prewarm()
+    prewarm(silent=False)
 
     # Check for updates (non-blocking)
     update = check_update()

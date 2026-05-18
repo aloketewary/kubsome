@@ -179,28 +179,85 @@ def cache_stats():
     }
 
 
-def prewarm():
-    """Pre-warm critical caches in background thread."""
-    def _warm():
-        try:
-            from core.collectors.pods import collect_pods
-            from core.collectors.nodes import collect_nodes
-            from core.collectors.deployments import collect_deployments
-            from core.k8s import get_pods, get_pod_names
+def prewarm(silent=False):
+    """
+    Pre-warm critical caches.
+    If silent=False, shows progress with checkmarks.
+    Returns after all resources are cached.
+    """
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    import time as _time
 
-            # Use a ThreadPoolExecutor for faster pre-warming
-            from concurrent.futures import ThreadPoolExecutor
-            with ThreadPoolExecutor(max_workers=5) as executor:
-                executor.submit(collect_pods)
-                executor.submit(collect_nodes)
-                executor.submit(collect_deployments)
-                executor.submit(get_pods)
-                executor.submit(get_pod_names)
-        except Exception:
-            pass
+    from core.collectors.pods import collect_pods
+    from core.collectors.nodes import collect_nodes
+    from core.collectors.deployments import collect_deployments
+    from core.k8s import get_pods, get_pod_names
 
-    t = threading.Thread(target=_warm, daemon=True)
-    t.start()
+    tasks = [
+        ("pods", collect_pods),
+        ("nodes", collect_nodes),
+        ("deployments", collect_deployments),
+        ("pod details", get_pods),
+        ("pod names", get_pod_names),
+    ]
+
+    if silent:
+        # Background, no output
+        def _warm():
+            try:
+                with ThreadPoolExecutor(max_workers=5) as ex:
+                    for _, fn in tasks:
+                        ex.submit(fn)
+            except Exception:
+                pass
+        t = threading.Thread(target=_warm, daemon=True)
+        t.start()
+        return
+
+    # Interactive mode — show progress
+    from rich.console import Console
+    console = Console()
+    start = _time.time()
+
+    status_map = {name: "⟳" for name, _ in tasks}
+
+    def _render_line():
+        parts = []
+        for name, _ in tasks:
+            icon = status_map[name]
+            parts.append(f"{icon} {name}")
+        return "  ".join(parts)
+
+    with console.status("", spinner="dots") as _:
+        console.print(
+            f"[dim]⟳ Caching:[/dim] {_render_line()}",
+            end="\r"
+        )
+
+        futures = {}
+        with ThreadPoolExecutor(max_workers=5) as ex:
+            for name, fn in tasks:
+                futures[ex.submit(fn)] = name
+
+            for future in as_completed(futures):
+                name = futures[future]
+                try:
+                    future.result()
+                    status_map[name] = "[green]✓[/green]"
+                except Exception:
+                    status_map[name] = "[red]✗[/red]"
+                # Reprint progress
+                console.print(
+                    f"\r[dim]⟳ Caching:[/dim] {_render_line()}",
+                    end="\r"
+                )
+
+    elapsed = _time.time() - start
+    final = _render_line()
+    console.print(
+        f"\r[dim]✓ Cached:[/dim]  {final}"
+        f"  [dim]({elapsed:.1f}s)[/dim]   "
+    )
 
 
 def get_cached(func_name):
