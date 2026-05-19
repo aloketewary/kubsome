@@ -2,7 +2,7 @@
 Kubsome API — FastAPI backend exposing the Kubernetes engine.
 """
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
@@ -87,9 +87,15 @@ def health():
 
 
 @app.get("/api/token")
-def get_api_token():
+def get_api_token(request: Request):
     """Return the session token for the Web UI.
-    Only accessible from localhost (CORS enforced)."""
+    Only accessible from localhost."""
+    # Strict check: only allow local access to the token
+    if not request.client or request.client.host not in ("127.0.0.1", "::1"):
+        raise HTTPException(
+            status_code=403, detail="Access denied: Token only available on localhost"
+        )
+
     from api.auth import get_token
     return {"token": get_token()}
 

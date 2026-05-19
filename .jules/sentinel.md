@@ -37,3 +37,8 @@
 **Vulnerability:** User-controlled strings (titles, messages) were interpolated directly into an AppleScript string executed via `osascript`. This allowed attackers to break the AppleScript context using double quotes and execute arbitrary shell commands via `do shell script`.
 **Learning:** Even when using list-based arguments for `subprocess.run`, if the command itself (like `osascript -e '...'`) interprets a string that contains unvalidated user input, injection is still possible.
 **Prevention:** Use positional arguments with AppleScript's `on run {args}` handler to pass user data safely as separate parameters, ensuring they are treated as data and not part of the script's logic.
+
+## 2026-05-19 - [HIGH] Token Leak via Public Endpoint
+**Vulnerability:** The `/api/token` endpoint was publicly accessible and returned the session token without any authentication or source verification. This could allow remote attackers to obtain the token and bypass API authentication.
+**Learning:** Security-sensitive endpoints that provide credentials or tokens must be strictly restricted. Relying solely on CORS is insufficient as it is a browser-side check and doesn't prevent programmatic access.
+**Prevention:** Implement strict source verification (e.g., checking `request.client.host`) for endpoints that expose credentials, ensuring they are only accessible from trusted locations like localhost.
