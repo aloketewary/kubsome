@@ -29,3 +29,8 @@
 ## 2026-05-18 - [Parallel Resource Fetching in Overview]
 **Learning:** Sequential kubectl calls in API routes create a significant latency floor, especially for multi-resource overviews. Using a ThreadPoolExecutor to parallelize these calls reduces response time from O(N) to O(1) relative to the number of resource types. Additionally, leveraging a unified cached fetcher prevents redundant I/O when multiple parts of the application request the same data.
 **Action:** Always parallelize independent resource fetches in aggregate routes and use the shared `get_raw_resources` cache.
+
+## 2026-05-20 - [Parallelizing Uptime Collector]
+**Learning:** The Uptime collector performed sequential `kubectl` calls (API check, node fetch, pod fetch), leading to a high latency floor. Refactoring it to use `ThreadPoolExecutor` for parallelizing these independent I/O tasks and leveraging the centralized `get_raw_resources` cache significantly improves responsiveness.
+
+**Action:** Use `ThreadPoolExecutor` and the centralized `get_raw_resources` fetcher to parallelize independent Kubernetes resource fetches within collectors.
