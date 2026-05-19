@@ -1,5 +1,6 @@
 import { Component, inject, OnInit, OnDestroy } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { Router } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
 import { PageInfoComponent } from '../../shared/components/page-info.component';
@@ -76,7 +77,7 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
         <div class="recs-section">
           <h3>Recommendations</h3>
           @for (rec of data.recommendations; track $index) {
-            <div class="rec-card">
+            <div class="rec-card clickable" (click)="askAI(rec.action)" role="button" tabindex="0" (keydown.enter)="askAI(rec.action)" (keydown.space)="askAI(rec.action)" aria-label="Ask AI to help with: {{ rec.issue }}">
               <p-tag [value]="rec.category" severity="warn" [rounded]="true" />
               <span class="rec-issue">{{ rec.issue }}</span>
               <span class="rec-action">→ {{ rec.action }}</span>
@@ -146,6 +147,8 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     .recs-section { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
     .recs-section h3 { font-size: 14px; font-weight: 600; margin: 0 0 12px; }
     .rec-card { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
+    .rec-card.clickable { cursor: pointer; transition: background 0.2s; }
+    .rec-card.clickable:hover { background: var(--bg-hover); }
     .rec-card:last-child { border-bottom: none; }
     .rec-issue { flex: 1; }
     .rec-action { font-size: 11px; color: var(--accent); font-family: 'JetBrains Mono', monospace; }
@@ -158,6 +161,7 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
 })
 export class ScorecardComponent implements OnInit, OnDestroy {
   private http = inject(HttpClient);
+  private router = inject(Router);
   data: any = null;
   categories: { key: string; data: any }[] = [];
   loading = false;
@@ -201,5 +205,11 @@ export class ScorecardComponent implements OnInit, OnDestroy {
   gradeLabel(grade: string): string {
     const labels: Record<string, string> = { A: 'Excellent', B: 'Good', C: 'Fair', D: 'Poor', F: 'Critical' };
     return labels[grade] || 'Unknown';
+  }
+
+  askAI(action: string) {
+    // Clean up "Run: " prefix if present
+    const q = action.replace(/^Run:\s+/, '');
+    this.router.navigate(['/ai'], { queryParams: { q } });
   }
 }

@@ -71,8 +71,14 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
         </div>
         <div class="insight-pill" (click)="router.navigate(['/cost'])" tabindex="0" role="button" (keydown)="onKey($event, router.navigate.bind(router, ['/cost']))">
           <i class="pi pi-chart-line"></i>
-          <span>Optimize Resource Costs</span>
+          <span>Optimize Resource Costs @if(savingsPotential > 0) { (Save $\{{ savingsPotential }}/mo) }</span>
         </div>
+        @if (anomalies && anomalies.length > 0) {
+          <div class="insight-pill suggested" (click)="router.navigate(['/ai'])" tabindex="0" role="button" (keydown)="onKey($event, router.navigate.bind(router, ['/ai']))">
+            <i class="pi pi-bolt" style="color: var(--danger)"></i>
+            <span>{{ anomalies[0].title }}</span>
+          </div>
+        }
         @if (costTrend?.trend === 'growing') {
           <div class="insight-pill suggested" (click)="router.navigate(['/cost'])" tabindex="0" role="button" (keydown)="onKey($event, router.navigate.bind(router, ['/cost']))">
             <i class="pi pi-exclamation-triangle" style="color: var(--warning)"></i>
@@ -758,6 +764,25 @@ export class DashboardComponent implements OnInit, OnDestroy {
   contextCopied = false;
   stats: any = null;
   costTrend: any = null;
+  anomalies: any[] = [];
+  recommendations: any[] = [];
+
+  get savingsPotential(): number {
+    if (!this.recommendations) return 0;
+    // AWS Baseline: $30/core, $4/GB
+    return this.recommendations.reduce((acc, r) => {
+      if (r.type === 'cpu_over') {
+        const current = parseInt(r.current) || 0;
+        const suggested = parseInt(r.suggested) || 0;
+        acc += ((current - suggested) / 1000) * 30;
+      } else if (r.type === 'mem_over') {
+        const current = parseInt(r.current) || 0;
+        const suggested = parseInt(r.suggested) || 0;
+        acc += ((current - suggested) / 1024) * 4;
+      }
+      return acc;
+    }, 0).valueOf() | 0; // Truncate to int
+  }
 
   get podTotal() {
     return (this.data?.pods.healthy || 0) + (this.data?.pods.warning || 0) + (this.data?.pods.critical || 0);
@@ -846,6 +871,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.loadPins();
     this.loadStats();
     this.api.getCostTrend().subscribe(res => this.costTrend = res);
+    this.api.anomalies().subscribe(res => this.anomalies = res.alerts || []);
+    this.api.optimize().subscribe(res => this.recommendations = res.recommendations || []);
     this.api.getOverview().subscribe({
       next: (res) => { this.data = res; },
       error: () => {

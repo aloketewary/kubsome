@@ -1,5 +1,6 @@
-import { Component, inject, ViewChild, ElementRef, AfterViewChecked, Pipe, PipeTransform } from '@angular/core';
+import { Component, inject, ViewChild, ElementRef, AfterViewChecked, Pipe, PipeTransform, OnInit } from '@angular/core';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
+import { ActivatedRoute } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { TooltipModule } from 'primeng/tooltip';
 import { FormsModule } from '@angular/forms';
@@ -460,8 +461,9 @@ interface Message {
     }
   `],
 })
-export class AiComponent implements AfterViewChecked {
+export class AiComponent implements OnInit, AfterViewChecked {
   private api = inject(ApiService);
+  private route = inject(ActivatedRoute);
   @ViewChild('messagesEl') messagesEl!: ElementRef;
 
   query = '';
@@ -574,6 +576,16 @@ export class AiComponent implements AfterViewChecked {
   private scrollToBottom() {
     const el = this.messagesEl?.nativeElement;
     if (el) el.scrollTop = el.scrollHeight;
+  }
+
+  ngOnInit() {
+    this.route.queryParams.subscribe(params => {
+      const q = params['q'];
+      if (q) {
+        this.query = q;
+        this.ask();
+      }
+    });
   }
 
   private now(): string {
