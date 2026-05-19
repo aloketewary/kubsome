@@ -436,7 +436,7 @@ const WIDGET_CATALOG = [
     /* Top Widget */
     .top-widget { width: 100%; display: flex; flex-direction: column; gap: 4px; }
     .top-row { display: flex; align-items: center; justify-content: space-between; font-size: 11px; padding: 2px 0; }
-    .top-name { font-family: 'JetBrains Mono', monospace; font-size: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 180px; }
+    .top-name { font-family: 'JetBrains Mono', monospace; font-size: 10px; word-break: break-all; }
     .top-val { font-weight: 600; color: var(--accent); }
 
     /* Catalog */
@@ -587,7 +587,7 @@ export class CustomDashboardComponent implements OnInit, OnDestroy {
   }
 
   shortName(name: string): string {
-    return name.length > 28 ? '...' + name.slice(-25) : name;
+    return name;
   }
 
   private fetchWidgetData(widget: Widget) {

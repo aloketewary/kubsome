@@ -294,7 +294,7 @@ export class SecretsComponent implements OnInit, OnDestroy {
   getFirstRegistry(item: any): string { return item.registries_needed?.[0] || '<registry>'; }
 
   shortName(name: string): string {
-    return name.length > 35 ? '...' + name.slice(-32) : name;
+    return name;
   }
 
   shortImage(image: string): string {

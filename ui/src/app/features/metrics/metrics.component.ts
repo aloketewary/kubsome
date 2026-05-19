@@ -192,7 +192,7 @@ import { SkeletonComponent } from '../../shared/components/skeleton.component';
     .node-hot { border-color: var(--danger); border-left: 3px solid var(--danger); }
     .node-header { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
     .node-header i { font-size: 14px; color: var(--text-muted); }
-    .node-name { font-size: 12px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+    .node-name { font-size: 12px; font-weight: 500; flex: 1; word-break: break-all; }
     .node-hot-badge {
       font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 4px;
       background: var(--danger-subtle); color: var(--danger); letter-spacing: 0.03em;
@@ -355,6 +355,6 @@ export class MetricsComponent implements OnInit, OnDestroy {
   cpuColor(pct: number): string { return (!pct || isNaN(pct)) ? 'color-ok' : pct > 80 ? 'color-crit' : pct > 50 ? 'color-warn' : 'color-ok'; }
   memColor(pct: number): string { return (!pct || isNaN(pct)) ? 'color-ok' : pct > 80 ? 'color-crit' : pct > 50 ? 'color-warn' : 'color-ok'; }
 
-  shortName(name: string): string { return name.length > 45 ? '...' + name.slice(-42) : name; }
-  shortNodeName(name: string): string { return name.length > 22 ? name.slice(0, 10) + '…' + name.slice(-10) : name; }
+  shortName(name: string): string { return name; }
+  shortNodeName(name: string): string { return name; }
 }

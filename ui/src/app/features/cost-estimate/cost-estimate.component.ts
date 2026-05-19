@@ -147,7 +147,7 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     .cost-chart-badge { font-size: 10px; font-weight: 600; padding: 3px 10px; border-radius: 20px; background: var(--accent-subtle); color: var(--accent); }
     .cost-bars { display: flex; flex-direction: column; gap: 8px; }
     .cost-bar-row { display: flex; align-items: center; gap: 10px; }
-    .cb-name { font-size: 11px; font-family: 'JetBrains Mono', monospace; color: var(--text-secondary); width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex-shrink: 0; }
+    .cb-name { font-size: 11px; font-family: 'JetBrains Mono', monospace; color: var(--text-secondary); flex-shrink: 0; }
     .cb-track { flex: 1; height: 20px; border-radius: 4px; background: var(--bg-elevated); overflow: hidden; }
     .cb-fill { height: 100%; border-radius: 4px; background: var(--accent); opacity: 0.7; transition: width 0.5s cubic-bezier(0.4,0,0.2,1); }
     .cb-fill.cb-high { background: var(--danger); opacity: 0.8; }
@@ -205,6 +205,6 @@ export class CostEstimateComponent implements OnInit {
   }
 
   shortName(name: string): string {
-    return name.length > 16 ? name.slice(0, 15) + '…' : name;
+    return name;
   }
 }
