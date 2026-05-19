@@ -9,3 +9,7 @@
 ## 2026-05-14 - [Granular Feedback for Copy Actions]
 **Learning:** For components with multiple copyable elements (like step-based runbooks), a global "copied" state causes confusing UI updates across all items. Tracking the state per-item (e.g., in the item interface) provides precise visual feedback and improves the user's confidence that the correct content was copied.
 **Action:** Use per-item boolean flags (e.g., `copied`, `outputCopied`) to toggle icons and tooltips for individual clipboard actions.
+
+## 2026-05-19 - [Enhancing Command Palette Discoverability]
+**Learning:** Users often search for Command Palette actions using the keyboard shortcuts they've already memorized. Making search logic whitespace-insensitive (e.g., "gp" matches "G P") and explicitly searching the hint/shortcut field allows users to navigate with minimal keystrokes.
+**Action:** Always include navigation hints (shortcuts) in search indexes and normalize both query and index (remove whitespace/casing) for shortcut matching.
