@@ -208,7 +208,7 @@ import { Subscription } from 'rxjs';
     @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
     .header-text { flex: 1; }
     .header-text h3 { margin: 0; font-size: 16px; font-weight: 700; }
-    .header-text p { margin: 0; font-size: 11px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .header-text p { margin: 0; font-size: 11px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; word-break: break-all; }
     .expand-btn {
       width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--border);
       background: var(--bg-elevated); color: var(--text-muted); cursor: pointer;
@@ -295,7 +295,7 @@ import { Subscription } from 'rxjs';
     .info-row { display: flex; align-items: center; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
     .info-key { color: var(--text-muted); }
     .info-val { font-family: 'JetBrains Mono', monospace; font-size: 11px; }
-    .info-val.img { max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .info-val.img { word-break: break-all; }
     .danger-text { color: var(--danger); font-weight: 600; }
     .container-card { background: var(--bg-elevated); border-radius: 8px; padding: 12px; margin-bottom: 8px; }
     .container-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }

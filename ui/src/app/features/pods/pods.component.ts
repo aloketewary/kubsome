@@ -416,7 +416,7 @@ interface PodGroup {
     .dot-error { background: var(--danger); }
     .pod-name {
       flex: 1; font-size: 12px; cursor: pointer;
-      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      word-break: break-all;
       transition: color 0.12s;
     }
     .pod-name:hover { color: var(--accent); }
@@ -549,9 +549,7 @@ export class PodsComponent implements OnInit, OnDestroy {
   isSelected(pod: Pod): boolean { return this.selected.some(p => p.name === pod.name); }
 
   shortName(name: string): string {
-    // Show last meaningful segment for readability
-    if (name.length <= 40) return name;
-    return '...' + name.slice(-37);
+    return name;
   }
 
   togglePod(pod: Pod, group: PodGroup) {
