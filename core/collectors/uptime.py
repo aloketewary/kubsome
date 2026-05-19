@@ -6,17 +6,28 @@ node uptime, and detects scheduled downtime.
 import subprocess
 import json
 from datetime import datetime, timezone
+from concurrent.futures import ThreadPoolExecutor
 
 from core.context import context
+from core.k8s import get_raw_resources
+from core.cache import cached
 
 
+@cached(ttl=5)
 def collect_uptime():
     """Get cluster and node uptime info."""
     ctx = context.current_context
     ns = context.namespace
 
-    # Check API server reachability
-    api_ok = _check_api(ctx)
+    # Bolt: Parallelize all initial checks/fetches to minimize O(N) sequential latency
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        f_api = executor.submit(_check_api, ctx)
+        f_nodes = executor.submit(get_raw_resources, "nodes", ctx)
+        f_pods = executor.submit(get_raw_resources, "pods", ctx, ns)
+
+        api_ok = f_api.result()
+        node_data = f_nodes.result()
+        pod_data = f_pods.result()
 
     if not api_ok:
         now = datetime.now(timezone.utc)
@@ -34,10 +45,10 @@ def collect_uptime():
         }
 
     # Get nodes with creation time
-    nodes = _get_nodes(ctx)
+    nodes = _get_nodes(node_data)
 
     # Get pod summary
-    pods = _get_pod_summary(ctx, ns)
+    pods = _get_pod_summary(pod_data)
 
     # Cluster is only down if ALL nodes are NotReady
     cluster_down = (
@@ -87,25 +98,8 @@ def _check_api(ctx):
         return False
 
 
-def _get_nodes(ctx):
+def _get_nodes(data):
     """Get node status and uptime."""
-    cmd = [
-        "kubectl", "--context", str(ctx or ""),
-        "get", "nodes", "-o", "json"
-    ]
-    try:
-        result = subprocess.run(
-            cmd,
-            capture_output=True, text=True,
-            timeout=10,
-        )
-    except subprocess.TimeoutExpired:
-        return []
-
-    if result.returncode != 0:
-        return []
-
-    data = json.loads(result.stdout)
     nodes = []
     now = datetime.now(timezone.utc)
 
@@ -137,25 +131,8 @@ def _get_nodes(ctx):
     return nodes
 
 
-def _get_pod_summary(ctx, ns):
+def _get_pod_summary(data):
     """Quick pod count summary."""
-    cmd = [
-        "kubectl", "--context", str(ctx or ""),
-        "get", "pods", "-n", str(ns), "-o", "json"
-    ]
-    try:
-        result = subprocess.run(
-            cmd,
-            capture_output=True, text=True,
-            timeout=10,
-        )
-    except subprocess.TimeoutExpired:
-        return {"total": 0, "running": 0, "down": 0}
-
-    if result.returncode != 0:
-        return {"total": 0, "running": 0, "down": 0}
-
-    data = json.loads(result.stdout)
     items = data.get("items", [])
     running = sum(
         1 for p in items
