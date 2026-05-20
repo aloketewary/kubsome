@@ -42,3 +42,8 @@
 **Vulnerability:** The `/api/token` endpoint was publicly accessible and returned the session token without any authentication or source verification. This could allow remote attackers to obtain the token and bypass API authentication.
 **Learning:** Security-sensitive endpoints that provide credentials or tokens must be strictly restricted. Relying solely on CORS is insufficient as it is a browser-side check and doesn't prevent programmatic access.
 **Prevention:** Implement strict source verification (e.g., checking `request.client.host`) for endpoints that expose credentials, ensuring they are only accessible from trusted locations like localhost.
+
+## 2025-05-24 - [HIGH] SSRF in Webhook Notifications
+**Vulnerability:** The webhook notification system used `urllib.request.urlopen` on user-provided URLs without any validation. This allowed attackers to make the server perform arbitrary GET/POST requests to internal network services, loopback interfaces, or cloud metadata endpoints (e.g., 169.254.169.254).
+**Learning:** Outbound network requests to user-controlled URLs are a classic SSRF vector. Relying on "generic" webhook types doesn't mitigate the risk if the URL itself is not restricted. Scheme and IP-level validation are essential.
+**Prevention:** Implement a strict URL validation helper that: 1) Enforces safe schemes (http/https). 2) Resolves the hostname to all its IP addresses. 3) Blocks any IP that falls within loopback, private, reserved, or link-local ranges.
