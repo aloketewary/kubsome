@@ -36,6 +36,8 @@ def start(
     no_browser: bool = False,
 ):
     import os
+    import signal
+
     # Only print banner in the main process (not the reloader child)
     if os.environ.get("WATCHFILES_FORCE_POLLING") is None and "UVICORN_STARTED" not in os.environ:
         os.environ["UVICORN_STARTED"] = "1"
@@ -50,8 +52,12 @@ def start(
 
         threading.Timer(1.5, open_browser).start()
 
+    # Ensure Ctrl+C works reliably
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
+
     uvicorn.run(
-        "api.app:app", host=host, port=port, reload=True
+        "api.app:app", host=host, port=port, reload=True,
+        reload_excludes=["*.pyc", "kubsome-*", "dist/*", "build/*", "*.egg-info"],
     )
 
 

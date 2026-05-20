@@ -30,7 +30,9 @@ CATEGORIES = [
             {"label": "View pod logs", "cmd": "logs"},
             {"label": "Trace dependencies", "cmd": "trace"},
             {"label": "Anomaly scan", "cmd": "alerts"},
-            {"label": "Dependency health", "cmd": "dep-health"},
+            {"label": "What caused this failure?", "cmd": "why-broken"},
+            {"label": "Blast radius analysis", "cmd": "blast-radius"},
+            {"label": "Predictive alerts", "cmd": "predict"},
         ],
     },
     {
@@ -41,8 +43,10 @@ CATEGORIES = [
             {"label": "Scale deployment", "cmd": "scale"},
             {"label": "Rollout status", "cmd": "rollout"},
             {"label": "Rollback preview", "cmd": "rollback-preview"},
-            {"label": "Port forward", "cmd": "forward"},
+            {"label": "Port forward", "cmd": "pf"},
             {"label": "Shell into pod", "cmd": "shell"},
+            {"label": "Helm releases", "cmd": "helm-list"},
+            {"label": "Helm rollback", "cmd": "helm-rollback"},
         ],
     },
     {
@@ -51,9 +55,11 @@ CATEGORIES = [
         "items": [
             {"label": "Cost estimate", "cmd": "cost-estimate"},
             {"label": "Cost trend", "cmd": "cost-trend"},
+            {"label": "Right-sizing", "cmd": "rightsizing"},
+            {"label": "Cost query (DuckDB)", "cmd": "cost-query"},
+            {"label": "Capacity forecast", "cmd": "capacity-plan"},
             {"label": "Security scan", "cmd": "security"},
             {"label": "Optimize resources", "cmd": "optimize"},
-            {"label": "Find unused", "cmd": "unused"},
         ],
     },
     {
@@ -64,6 +70,7 @@ CATEGORIES = [
             {"label": "Switch context", "cmd": "contexts"},
             {"label": "Switch namespace", "cmd": "ns"},
             {"label": "View profiles", "cmd": "profiles"},
+            {"label": "Analytics engine", "cmd": "analytics"},
             {"label": "Run doctor", "cmd": "doctor"},
         ],
     },

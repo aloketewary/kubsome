@@ -45,4 +45,10 @@ export const routes: Routes = [
   { path: 'integrations', title: 'Integrations — Kubsome', loadComponent: () => import('./features/integrations/integrations.component').then(m => m.IntegrationsComponent) },
   { path: 'profiles', title: 'Profiles — Kubsome', loadComponent: () => import('./features/profiles/profiles.component').then(m => m.ProfilesComponent) },
   { path: 'analytics', title: 'Analytics — Kubsome', loadComponent: () => import('./features/analytics/analytics.component').then(m => m.AnalyticsComponent) },
+  { path: 'helm', title: 'Helm — Kubsome', loadComponent: () => import('./features/helm/helm.component').then(m => m.HelmComponent) },
+  { path: 'port-forwards', title: 'Port Forwards — Kubsome', loadComponent: () => import('./features/port-forwards/port-forwards.component').then(m => m.PortForwardsComponent) },
+  { path: 'blast-radius', title: 'Blast Radius — Kubsome', loadComponent: () => import('./features/blast-radius/blast-radius.component').then(m => m.BlastRadiusComponent) },
+  { path: 'health-signals', title: 'Health Signals — Kubsome', loadComponent: () => import('./features/health-signals/health-signals.component').then(m => m.HealthSignalsComponent) },
+  { path: 'chargeback', title: 'Chargeback — Kubsome', loadComponent: () => import('./features/chargeback/chargeback.component').then(m => m.ChargebackComponent) },
+  { path: 'idle-resources', title: 'Idle Resources — Kubsome', loadComponent: () => import('./features/idle-resources/idle-resources.component').then(m => m.IdleResourcesComponent) },
 ];

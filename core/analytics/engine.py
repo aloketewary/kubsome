@@ -78,6 +78,7 @@ def get_conn():
     """
     Get or create the main DuckDB connection.
     Returns a ThreadSafeConnection wrapper.
+    Auto-recovers from corrupted database files.
     """
     global _conn
     if duckdb is None:
@@ -87,19 +88,49 @@ def get_conn():
     with _conn_lock:
         if _conn is None:
             _ensure_dirs()
-            raw = duckdb.connect(
-                str(MAIN_DB), config={"access_mode": "READ_WRITE"}
-            )
-            _configure_conn(raw)
-            _init_schema(raw)
+            try:
+                raw = duckdb.connect(
+                    str(MAIN_DB),
+                    config={"access_mode": "READ_WRITE"}
+                )
+                _configure_conn(raw)
+                _init_schema(raw)
+            except duckdb.FatalException:
+                # Database corrupted — delete and recreate
+                raw = _recover_db()
+            except duckdb.InvalidInputException:
+                raw = _recover_db()
             _conn = _ThreadSafeConn(raw)
     return _conn
+
+
+def _recover_db():
+    """Delete corrupted DB and create fresh."""
+    import logging
+    logging.warning(
+        "DuckDB corrupted — recreating: %s", MAIN_DB
+    )
+    for f in MAIN_DB.parent.glob("kubsome.duckdb*"):
+        f.unlink(missing_ok=True)
+    raw = duckdb.connect(
+        str(MAIN_DB), config={"access_mode": "READ_WRITE"}
+    )
+    _configure_conn(raw)
+    _init_schema(raw)
+    # Reset any module-level table-created flags
+    try:
+        import core.telemetry
+        core.telemetry._table_created = False
+    except Exception:
+        pass
+    return raw
 
 
 class _ThreadSafeConn:
     """
     Wraps DuckDB connection with a lock for thread safety.
     Results are eagerly materialized inside the lock.
+    Auto-recovers from fatal database errors.
     """
 
     def __init__(self, conn):
@@ -107,17 +138,39 @@ class _ThreadSafeConn:
 
     def execute(self, sql, params=None):
         with _conn_lock:
-            if params:
-                result = self._conn.execute(sql, params)
-            else:
-                result = self._conn.execute(sql)
-            # Eagerly materialize to avoid holding result
-            # across threads
-            return _MaterializedResult(result)
+            try:
+                if params:
+                    result = self._conn.execute(sql, params)
+                else:
+                    result = self._conn.execute(sql)
+                desc = result.description
+                rows = result.fetchall()
+            except (duckdb.FatalException,
+                    duckdb.InvalidInputException) as e:
+                if "invalidated" in str(e) or "Fatal" in str(e):
+                    self._conn = _recover_db()
+                    if params:
+                        result = self._conn.execute(sql, params)
+                    else:
+                        result = self._conn.execute(sql)
+                    desc = result.description
+                    rows = result.fetchall()
+                else:
+                    raise
+        return _MaterializedResult(rows, desc)
 
     def executemany(self, sql, params_list):
         with _conn_lock:
-            return self._conn.executemany(sql, params_list)
+            try:
+                return self._conn.executemany(sql, params_list)
+            except (duckdb.FatalException,
+                    duckdb.InvalidInputException) as e:
+                if "invalidated" in str(e) or "Fatal" in str(e):
+                    self._conn = _recover_db()
+                    return self._conn.executemany(
+                        sql, params_list
+                    )
+                raise
 
     def close(self):
         with _conn_lock:
@@ -125,23 +178,22 @@ class _ThreadSafeConn:
 
 
 class _MaterializedResult:
-    """
-    Eagerly caches DuckDB result metadata so fetch
-    can happen outside the lock safely.
-    """
+    """Pre-fetched result set safe for cross-thread access."""
 
-    def __init__(self, result):
-        self._result = result
-        self._description = result.description
+    def __init__(self, rows, description):
+        self._rows = rows
+        self._description = description
+        self._idx = 0
 
     def fetchall(self):
-        return self._result.fetchall()
+        return self._rows
 
     def fetchone(self):
-        return self._result.fetchone()
-
-    def fetchdf(self):
-        return self._result.fetchdf()
+        if self._idx < len(self._rows):
+            row = self._rows[self._idx]
+            self._idx += 1
+            return row
+        return None
 
     @property
     def description(self):

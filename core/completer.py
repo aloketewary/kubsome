@@ -139,6 +139,23 @@ COMMANDS = {
     "cost-query": "cost by deployment",
     "analytics-export": "export analytics data",
     "sql": "run SQL on analytics",
+    "predict": "predictive alerts (OOM/CPU forecast)",
+    "predictions": "resource exhaustion forecast",
+    "forecast": "predictive alerts",
+    "capacity-plan": "capacity forecast (days to full)",
+    "capacity-forecast": "when will cluster be full",
+    "blast-radius": "impact analysis before action",
+    "why-broken": "correlate failure with recent changes",
+    "what-caused": "find root cause of failure",
+    "correlate-change": "link crash to recent change",
+    "pf": "port-forward management",
+    "helm-list": "Helm releases",
+    "helm-releases": "list Helm releases",
+    "helm-status": "Helm release status",
+    "helm-history": "Helm revision history",
+    "helm-values": "Helm release values",
+    "helm-rollback": "Helm rollback",
+    "helm-diff": "Helm values diff",
     # Navigation
     "tui": "terminal UI",
     "dashboard": "web dashboard",
@@ -261,6 +278,12 @@ def _get_pod_names():
         return _names()
     except Exception:
         return []
+
+
+# Public alias for API usage
+def get_pod_names():
+    """Public wrapper for pod name retrieval."""
+    return _get_pod_names()
 
 
 class KubeasyCompleter(Completer):

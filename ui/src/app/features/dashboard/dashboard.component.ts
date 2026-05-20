@@ -4,6 +4,7 @@ import { HttpClient } from '@angular/common/http';
 import { TagModule } from 'primeng/tag';
 import { ButtonModule } from 'primeng/button';
 import { TooltipModule } from 'primeng/tooltip';
+import { ChartModule } from 'primeng/chart';
 import { ApiService } from '../../core/services/api.service';
 import { OverviewResponse, KubeEvent } from '../../core/models';
 import { SpotlightComponent } from '../../shared/components/spotlight.component';
@@ -11,7 +12,7 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [TagModule, ButtonModule, TooltipModule, SpotlightComponent],
+  imports: [TagModule, ButtonModule, TooltipModule, ChartModule, SpotlightComponent],
   template: `
     @if (data) {
       <app-spotlight id="dashboard" title="Cluster Dashboard" icon="pi pi-th-large"
@@ -205,16 +206,20 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
       <div class="charts-row">
         <div class="chart-card stagger-5">
           <div class="chart-header">
-            <h3>Event Activity</h3>
-            <span class="chart-badge">{{ recentEvents.length }} events</span>
+            <h3>CPU & Memory Trend</h3>
+            <span class="chart-badge">24h</span>
           </div>
-          <div class="bar-chart">
-            @for (bar of activityBars; track $index) {
-              <div class="chart-bar-wrap">
-                <div class="chart-bar" [style.height.%]="bar" [class.bar-high]="bar > 70" [class.bar-med]="bar > 40 && bar <= 70"></div>
-              </div>
-            }
-          </div>
+          @if (cpuMemChart) {
+            <p-chart type="line" [data]="cpuMemChart" [options]="trendOptions" height="140px" />
+          } @else {
+            <div class="bar-chart">
+              @for (bar of activityBars; track $index) {
+                <div class="chart-bar-wrap">
+                  <div class="chart-bar" [style.height.%]="bar" [class.bar-high]="bar > 70" [class.bar-med]="bar > 40 && bar <= 70"></div>
+                </div>
+              }
+            </div>
+          }
         </div>
 
         <div class="chart-card stagger-6">
@@ -758,6 +763,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
   contextCopied = false;
   stats: any = null;
   costTrend: any = null;
+  cpuMemChart: any = null;
+  trendOptions = {
+    plugins: { legend: { labels: { color: '#aaa', font: { size: 10 } } } },
+    scales: { x: { display: false }, y: { display: false } },
+    elements: { point: { radius: 0 } },
+    maintainAspectRatio: false,
+  };
 
   get podTotal() {
     return (this.data?.pods.healthy || 0) + (this.data?.pods.warning || 0) + (this.data?.pods.critical || 0);
@@ -901,9 +913,27 @@ export class DashboardComponent implements OnInit, OnDestroy {
   ngOnInit() {
     this.refresh();
     this.refreshInterval = setInterval(() => this.refresh(), 30000);
+    this.loadTrendChart();
   }
 
   ngOnDestroy() {
     clearInterval(this.refreshInterval);
+  }
+
+  private loadTrendChart() {
+    this.http.get<any>('/api/analytics/series/cpu-memory?hours=24').subscribe({
+      next: (res) => {
+        const series = res.series || [];
+        if (series.length > 2) {
+          this.cpuMemChart = {
+            labels: series.map((s: any) => s.ts?.substring(11, 16) || ''),
+            datasets: [
+              { label: 'CPU', data: series.map((s: any) => s.cpu), borderColor: '#22d3ee', backgroundColor: 'rgba(34,211,238,0.08)', fill: true, tension: 0.4, borderWidth: 1.5 },
+              { label: 'Mem', data: series.map((s: any) => s.mem), borderColor: '#a78bfa', backgroundColor: 'rgba(167,139,250,0.08)', fill: true, tension: 0.4, borderWidth: 1.5 },
+            ],
+          };
+        }
+      },
+    });
   }
 }

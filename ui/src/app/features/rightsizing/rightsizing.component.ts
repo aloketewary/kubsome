@@ -23,7 +23,9 @@ import { RelatedPagesComponent } from '../../shared/components/related-pages.com
         <p class="subtitle">Based on {{ data?.methodology?.min_samples || 12 }}h+ of hourly metrics · Cache: {{ data?.methodology?.cache_ttl_hours || 6 }}h</p>
       </div>
       <div class="header-actions">
-        <button pButton icon="pi pi-download" label="Export YAML" class="p-button-outlined p-button-sm" (click)="exportYaml()" [disabled]="!data?.recommendations?.length"></button>
+        <button pButton icon="pi pi-check-circle" label="Dry Run" class="p-button-outlined p-button-sm" (click)="dryRun()" [loading]="dryRunning" [disabled]="!data?.recommendations?.length"></button>
+        <button pButton icon="pi pi-code" label="GitOps" class="p-button-outlined p-button-sm" (click)="exportGitops()" [disabled]="!data?.recommendations?.length"></button>
+        <button pButton icon="pi pi-download" label="YAML" class="p-button-outlined p-button-sm" (click)="exportYaml()" [disabled]="!data?.recommendations?.length"></button>
         <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="refresh()" [loading]="loading"></button>
         <app-page-info title="Right-Sizing" description="Analyzes hourly P95/P99 usage vs current requests/limits. Generates safe recommendations with confidence scoring and phased rollout."
           [tips]="['Green = safe to apply', 'Yellow = apply with monitoring', 'Red = manual review', 'Export YAML for kubectl apply']"
@@ -206,7 +208,8 @@ import { RelatedPagesComponent } from '../../shared/components/related-pages.com
     .summary-value { display: block; font-size: 28px; font-weight: 800; }
     .summary-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; }
 
-    .rec-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; }
+    .rec-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; transition: all 0.15s; }
+    .rec-card:hover { border-color: var(--accent); box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
     .rec-card.risk-low { border-left: 3px solid var(--success); }
     .rec-card.risk-medium { border-left: 3px solid var(--warning); }
     .rec-card.risk-high { border-left: 3px solid var(--danger); }
@@ -266,6 +269,7 @@ export class RightsizingComponent implements OnInit {
   private http = inject(HttpClient);
   data: any = null;
   loading = false;
+  dryRunning = false;
   activeTab = '0';
   phases: { key: string; data: any }[] = [];
 
@@ -297,6 +301,31 @@ export class RightsizingComponent implements OnInit {
     this.http.post<any>('/api/analytics/rightsizing/export', {}).subscribe({
       next: (res) => { alert(`Exported to: ${res.path}`); },
       error: () => { alert('Export failed'); },
+    });
+  }
+
+  dryRun() {
+    this.dryRunning = true;
+    this.http.post<any>('/api/rightsizing/dry-run', {}).subscribe({
+      next: (res) => {
+        this.dryRunning = false;
+        const msg = `Dry Run: ${res.passed} passed, ${res.failed} failed out of ${res.total}`;
+        alert(msg);
+      },
+      error: () => { this.dryRunning = false; alert('Dry run failed'); },
+    });
+  }
+
+  exportGitops() {
+    this.http.post<any>('/api/rightsizing/gitops', { format: 'kustomize' }).subscribe({
+      next: (res) => {
+        if (res.path) {
+          alert(`GitOps output: ${res.path}\n\nReady for PR. Includes kustomization.yaml + README.`);
+        } else {
+          alert(res.message || 'No recommendations to export');
+        }
+      },
+      error: () => { alert('GitOps export failed'); },
     });
   }
 

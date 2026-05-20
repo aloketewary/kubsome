@@ -120,6 +120,22 @@ def prune_raw():
     conn.execute(
         "DELETE FROM raw_node_metrics WHERE ts < ?", [cutoff]
     )
+    # Prune enriched tables
+    try:
+        conn.execute(
+            "DELETE FROM hpa_metrics WHERE ts < ?", [cutoff]
+        )
+        conn.execute(
+            "DELETE FROM oomkill_events WHERE ts < ?", [cutoff]
+        )
+        conn.execute(
+            "DELETE FROM quota_metrics WHERE ts < ?", [cutoff]
+        )
+        conn.execute(
+            "DELETE FROM rollout_metrics WHERE ts < ?", [cutoff]
+        )
+    except Exception:
+        pass  # Tables may not exist yet
 
 
 def prune_aggregated():
@@ -135,11 +151,26 @@ def prune_aggregated():
 
 
 def run_maintenance():
-    """Run full maintenance cycle: aggregate + prune + archive + refresh."""
+    """
+    Run full maintenance cycle: aggregate + prune + archive + refresh.
+    Safe to call frequently — idempotent operations.
+    """
     aggregate_hourly()
     aggregate_daily()
     prune_raw()
     prune_aggregated()
+    # Prune telemetry
+    try:
+        conn = get_conn()
+        cutoff = datetime.utcnow() - timedelta(days=AGG_RETENTION_DAYS)
+        conn.execute(
+            "DELETE FROM command_usage WHERE ts < ?", [cutoff]
+        )
+        conn.execute(
+            "DELETE FROM event_log WHERE ts < ?", [cutoff]
+        )
+    except Exception:
+        pass
     # Refresh materialized views
     from core.analytics.engine import (
         refresh_materialized_views, archive_to_parquet

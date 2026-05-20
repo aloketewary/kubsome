@@ -162,3 +162,30 @@ def render_overview(
             )
         )
     )
+
+    # Trend context from analytics
+    from core.analytics.enrichment import enrich_overview
+    trends = enrich_overview()
+    if trends:
+        trend_parts = []
+        rt = trends.get("restart_trend", "stable")
+        ct = trends.get("cpu_trend", "stable")
+        if rt == "worsening":
+            trend_parts.append("[red]↑ Restarts worsening[/red]")
+        elif rt == "improving":
+            trend_parts.append("[green]↓ Restarts improving[/green]")
+        if ct == "growing":
+            trend_parts.append("[yellow]↑ CPU growing[/yellow]")
+        elif ct == "shrinking":
+            trend_parts.append("[green]↓ CPU shrinking[/green]")
+
+        if trend_parts:
+            console.print(
+                Align.center(
+                    Panel.fit(
+                        "  │  ".join(trend_parts),
+                        title="[dim]24h Trend[/dim]",
+                        border_style=t()["border"]
+                    )
+                )
+            )

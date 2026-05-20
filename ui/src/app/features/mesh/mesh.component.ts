@@ -212,8 +212,9 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     .subtitle { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
     .header-actions { display: flex; align-items: center; gap: 8px; }
 
-    .mesh-overview { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
-    .ov-card { display: flex; align-items: center; gap: 12px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+    .mesh-overview { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; animation: fadeIn 0.3s ease; }
+    .ov-card { display: flex; align-items: center; gap: 12px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; transition: all 0.15s; }
+    .ov-card:hover { border-color: var(--accent); }
     .ov-card.ov-ok { border-left: 3px solid var(--success); }
     .ov-card.ov-warn { border-left: 3px solid var(--warning); }
     .ov-icon { font-size: 20px; color: var(--text-muted); }

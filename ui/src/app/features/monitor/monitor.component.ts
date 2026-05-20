@@ -1,5 +1,6 @@
 import { Component, inject, OnInit, OnDestroy } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { SlicePipe } from '@angular/common';
 import { forkJoin } from 'rxjs';
@@ -77,6 +78,40 @@ interface MonitorCard {
         <div class="gs-bar">
           <div class="gsb-fill gsb-ok" [style.width.%]="globalHealthPct"></div>
         </div>
+      </div>
+    }
+
+    <!-- Health Signals Strip -->
+    @if (signals && (signals.oomkills_24h || signals.hpa_at_max || signals.quota_pressure || signals.stalled_rollouts)) {
+      <div class="signals-strip">
+        @if (signals.oomkills_24h) {
+          <div class="signal-chip signal-danger" (click)="navigateTo('/pods')">
+            <i class="pi pi-exclamation-circle"></i>
+            <span class="signal-val">{{ signals.oomkills_24h }}</span>
+            <span class="signal-label">OOMKills (24h)</span>
+          </div>
+        }
+        @if (signals.hpa_at_max) {
+          <div class="signal-chip signal-warn">
+            <i class="pi pi-arrows-v"></i>
+            <span class="signal-val">{{ signals.hpa_at_max }}</span>
+            <span class="signal-label">HPA at max</span>
+          </div>
+        }
+        @if (signals.quota_pressure) {
+          <div class="signal-chip signal-warn">
+            <i class="pi pi-gauge"></i>
+            <span class="signal-val">{{ signals.quota_pressure }}</span>
+            <span class="signal-label">Quota &gt;80%</span>
+          </div>
+        }
+        @if (signals.stalled_rollouts) {
+          <div class="signal-chip signal-danger" (click)="navigateTo('/deployments')">
+            <i class="pi pi-pause-circle"></i>
+            <span class="signal-val">{{ signals.stalled_rollouts }}</span>
+            <span class="signal-label">Stalled rollouts</span>
+          </div>
+        }
       </div>
     }
 
@@ -351,6 +386,25 @@ interface MonitorCard {
     .gsb-fill { height: 100%; border-radius: 2px; transition: width 0.4s; }
     .gsb-ok { background: var(--success); }
 
+    /* Health Signals */
+    .signals-strip {
+      display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;
+    }
+    .signal-chip {
+      display: flex; align-items: center; gap: 6px;
+      padding: 8px 14px; border-radius: var(--radius);
+      font-size: 12px; cursor: pointer; transition: all 0.15s;
+      border: 1px solid var(--border);
+    }
+    .signal-chip:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+    .signal-chip i { font-size: 14px; }
+    .signal-val { font-weight: 800; font-size: 16px; }
+    .signal-label { font-size: 11px; color: var(--text-muted); }
+    .signal-danger { background: var(--danger-subtle); border-color: var(--danger); }
+    .signal-danger i, .signal-danger .signal-val { color: var(--danger); }
+    .signal-warn { background: var(--warning-subtle); border-color: var(--warning); }
+    .signal-warn i, .signal-warn .signal-val { color: var(--warning); }
+
     /* Grid */
     .monitor-grid {
       display: grid;
@@ -571,8 +625,10 @@ interface MonitorCard {
 })
 export class MonitorComponent implements OnInit, OnDestroy {
   private http = inject(HttpClient);
+  private router = inject(Router);
   contexts: string[] = [];
   cards: MonitorCard[] = [];
+  signals: any = null;
   Math = Math;
   fsVisible = false;
   fsCard: MonitorCard | null = null;
@@ -594,11 +650,23 @@ export class MonitorComponent implements OnInit, OnDestroy {
       this.contexts = (res.contexts || []).map((c: any) => c.name);
     });
     this.loadSavedCards();
+    this.fetchSignals();
     // Start per-card auto-refresh
     this.startCardTimers();
   }
 
   ngOnDestroy() { this.stopCardTimers(); }
+
+  fetchSignals() {
+    this.http.get<any>('/api/monitor/health-signals').subscribe({
+      next: (res) => { this.signals = res; },
+      error: () => { this.signals = null; },
+    });
+  }
+
+  navigateTo(path: string) {
+    this.router.navigate([path]);
+  }
 
   addCard() {
     const card: MonitorCard = {

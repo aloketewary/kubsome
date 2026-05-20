@@ -3,17 +3,26 @@ import { CommonModule } from '@angular/common';
 import { ApiService } from '../../core/services/api.service';
 import { UsageStats } from '../../core/models';
 import { SpotlightComponent } from '../../shared/components/spotlight.component';
+import { TrendChartComponent } from '../../shared/components/trend-chart.component';
 
 @Component({
   selector: 'app-stats',
   standalone: true,
-  imports: [CommonModule, SpotlightComponent],
+  imports: [CommonModule, SpotlightComponent, TrendChartComponent],
   template: `
     <app-spotlight id="stats" title="Usage Analytics" icon="pi pi-chart-bar"
       description="Track command frequency and identify gaps in AI intent coverage."
       [capabilities]="['Command frequency tracking', 'NLP miss analysis', 'Total commands executed', 'Days tracked']" />
 
     @if (stats) {
+      <!-- Restart trend from DuckDB (auto-hides if no data) -->
+      <app-trend-chart
+        endpoint="/api/analytics/series/restarts?hours=48"
+        title="Restart Activity (48h)"
+        chartType="line"
+        height="130px"
+        [labelSlice]="[11, 16]"
+        [datasets]="[{label: 'Restarts', field: 'restarts', color: '#ef4444', fill: true}]" />
       <div class="stats-grid">
         <div class="stat-main-card glass stagger-1">
           <div class="stat-header">

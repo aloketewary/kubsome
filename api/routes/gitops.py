@@ -116,7 +116,10 @@ def post_deactivate_profile():
 @router.get("/analytics")
 def get_analytics():
     from core.analytics.engine import get_stats
-    return get_stats()
+    try:
+        return get_stats()
+    except Exception:
+        return {"total_rows": 0, "db_size_mb": 0, "collections_today": 0, "last_collection": None}
 
 
 @router.post("/analytics/collect")
@@ -165,7 +168,109 @@ def get_cost_analytics(days: int = 7):
 @router.get("/analytics/alerts")
 def get_analytics_alerts():
     from core.analytics.alerts import check_alerts
-    return {"alerts": check_alerts()}
+    try:
+        return {"alerts": check_alerts()}
+    except Exception:
+        return {"alerts": []}
+
+
+@router.get("/analytics/predictions")
+def get_predictions(hours: int = 12):
+    from core.analytics.predictive import check_predictive_alerts
+    return {"predictions": check_predictive_alerts(hours)}
+
+
+@router.get("/analytics/capacity")
+def get_capacity_forecast(days: int = 14):
+    from core.analytics.capacity import capacity_forecast
+    return capacity_forecast(days) or {}
+
+
+@router.get("/analytics/capacity/namespace-growth")
+def get_namespace_growth(days: int = 14):
+    from core.analytics.capacity import namespace_growth
+    return {"namespaces": namespace_growth(days)}
+
+
+@router.get("/analytics/blast-radius/{name}")
+def get_blast_radius(name: str, action: str = "restart"):
+    from core.analytics.blast_radius import analyze_blast_radius
+    return analyze_blast_radius(name, action)
+
+
+@router.get("/analytics/correlate-change/{name}")
+def get_correlate_change(name: str, minutes: int = 10):
+    from core.analytics.correlation import correlate_change
+    return correlate_change(name, minutes)
+
+
+@router.get("/port-forwards")
+def get_port_forwards():
+    from core.port_forward import list_forwards
+    return {"forwards": list_forwards()}
+
+
+@router.post("/port-forwards/start")
+def post_start_forward(req: dict):
+    from core.port_forward import start_forward
+    target = req.get("target", "")
+    local_port = req.get("local_port", 8080)
+    remote_port = req.get("remote_port", local_port)
+    if not target:
+        from fastapi import HTTPException
+        raise HTTPException(400, "target required")
+    return start_forward(target, local_port, remote_port)
+
+
+@router.post("/port-forwards/stop")
+def post_stop_forward(req: dict):
+    from core.port_forward import stop_forward
+    return stop_forward(target=req.get("target"), local_port=req.get("port"))
+
+
+@router.post("/port-forwards/stop-all")
+def post_stop_all_forwards():
+    from core.port_forward import stop_all
+    return stop_all()
+
+
+# --- Helm ---
+
+@router.get("/helm/list")
+def get_helm_list():
+    from core.collectors.helm import helm_list
+    return helm_list()
+
+
+@router.get("/helm/status/{release}")
+def get_helm_status(release: str):
+    from core.collectors.helm import helm_status
+    return helm_status(release)
+
+
+@router.get("/helm/history/{release}")
+def get_helm_history(release: str):
+    from core.collectors.helm import helm_history
+    return helm_history(release)
+
+
+@router.get("/helm/values/{release}")
+def get_helm_values(release: str):
+    from core.collectors.helm import helm_values
+    return helm_values(release)
+
+
+@router.get("/helm/diff/{release}")
+def get_helm_diff(release: str):
+    from core.collectors.helm import helm_diff
+    return helm_diff(release)
+
+
+@router.post("/helm/rollback/{release}")
+def post_helm_rollback(release: str, req: dict = {}):
+    from core.collectors.helm import helm_rollback
+    revision = req.get("revision")
+    return helm_rollback(release, revision)
 
 
 @router.post("/analytics/query")
@@ -208,3 +313,494 @@ def post_cost_model(req: dict):
         instance_type=req.get("instance_type", ""),
         region=req.get("region", ""),
     )
+
+
+# --- Time-Series endpoints ---
+
+@router.get("/analytics/series/cpu-memory")
+def get_cpu_memory_series(deployment: str = None, hours: int = 24):
+    from core.analytics.timeseries import cpu_memory_series
+    try:
+        return {"series": cpu_memory_series(deployment, hours)}
+    except Exception:
+        return {"series": []}
+
+
+@router.get("/analytics/series/nodes")
+def get_node_series(node: str = None, hours: int = 24):
+    from core.analytics.timeseries import node_series
+    try:
+        return {"series": node_series(node, hours)}
+    except Exception:
+        return {"series": []}
+
+
+@router.get("/analytics/series/restarts")
+def get_restart_series(deployment: str = None, hours: int = 48):
+    from core.analytics.timeseries import restart_series
+    try:
+        return {"series": restart_series(deployment, hours)}
+    except Exception:
+        return {"series": []}
+
+
+@router.get("/analytics/series/cost")
+def get_cost_series(days: int = 30):
+    from core.analytics.timeseries import cost_series
+    try:
+        return {"series": cost_series(days)}
+    except Exception:
+        return {"series": []}
+
+
+@router.get("/analytics/series/events")
+def get_event_series(hours: int = 24, event_type: str = None):
+    from core.analytics.timeseries import event_timeline
+    try:
+        return {"series": event_timeline(hours, event_type)}
+    except Exception:
+        return {"series": []}
+
+
+@router.get("/analytics/series/top-consumers")
+def get_top_consumers(hours: int = 6, limit: int = 10):
+    from core.analytics.timeseries import top_consumers
+    try:
+        return {"consumers": top_consumers(hours, limit)}
+    except Exception:
+        return {"consumers": []}
+
+
+@router.post("/analytics/series/compare")
+def post_compare_deployments(req: dict):
+    from core.analytics.timeseries import deployment_comparison
+    deployments = req.get("deployments", [])
+    hours = req.get("hours", 24)
+    return {"comparison": deployment_comparison(deployments, hours)}
+
+
+# --- State Cache endpoints ---
+
+@router.get("/analytics/state/pods")
+def get_state_pods(search: str = None, status: str = None, limit: int = 500):
+    from core.analytics.state_cache import get_pods
+    from core.analytics.engine import get_conn
+    from core.context import context
+    conn = get_conn()
+    return {
+        "pods": get_pods(
+            conn, context.current_context, context.namespace,
+            search, status, limit
+        )
+    }
+
+
+@router.get("/analytics/state/deployments")
+def get_state_deployments():
+    from core.analytics.state_cache import get_deployments
+    from core.analytics.engine import get_conn
+    from core.context import context
+    conn = get_conn()
+    return {
+        "deployments": get_deployments(
+            conn, context.current_context, context.namespace
+        )
+    }
+
+
+@router.get("/analytics/state/stats")
+def get_state_stats():
+    from core.analytics.state_cache import state_stats
+    from core.analytics.engine import get_conn
+    from core.context import context
+    conn = get_conn()
+    return state_stats(
+        conn, context.current_context, context.namespace
+    )
+
+
+@router.get("/analytics/events/search")
+def get_events_search(
+    query: str = None, event_type: str = None,
+    reason: str = None, hours: int = 24, limit: int = 100
+):
+    from core.analytics.state_cache import search_events
+    from core.analytics.engine import get_conn
+    from core.context import context
+    conn = get_conn()
+    return {
+        "events": search_events(
+            conn, context.current_context, context.namespace,
+            query, event_type, reason, hours, limit
+        )
+    }
+
+
+@router.get("/analytics/events/heatmap")
+def get_events_heatmap(hours: int = 24):
+    from core.analytics.state_cache import event_heatmap
+    from core.analytics.engine import get_conn
+    from core.context import context
+    conn = get_conn()
+    return {
+        "heatmap": event_heatmap(
+            conn, context.current_context, context.namespace, hours
+        )
+    }
+
+
+@router.get("/analytics/incidents/search")
+def get_incident_search(query: str = None, days: int = 90):
+    from core.analytics.incidents import search_incidents
+    results = search_incidents(query, days)
+    return {"incidents": results or []}
+
+
+@router.get("/analytics/incidents/metrics")
+def get_incident_metrics(days: int = 90):
+    from core.analytics.incidents import incident_metrics
+    return incident_metrics(days) or {}
+
+
+@router.get("/monitor/hpa")
+def get_hpa_metrics(hours: int = 24):
+    """HPA scaling pressure over time."""
+    try:
+        from core.analytics.engine import execute
+        from core.context import context
+        ctx = context.current_context
+        rows = execute(f"""
+            SELECT ts, hpa_name, target_deployment,
+                   current_replicas, desired_replicas,
+                   min_replicas, max_replicas,
+                   cpu_target_pct, cpu_current_pct,
+                   at_max, scaling_up
+            FROM hpa_metrics
+            WHERE context = '{ctx}'
+              AND ts >= NOW() - INTERVAL '{hours} hours'
+            ORDER BY ts DESC
+        """)
+        return {"hpa": [
+            {
+                "ts": str(r[0]), "name": r[1], "target": r[2],
+                "current": r[3], "desired": r[4],
+                "min": r[5], "max": r[6],
+                "cpu_target": r[7], "cpu_current": r[8],
+                "at_max": r[9], "scaling_up": r[10],
+            }
+            for r in rows
+        ]}
+    except Exception:
+        return {"hpa": []}
+
+
+@router.get("/monitor/oomkills")
+def get_oomkills(hours: int = 48):
+    """Recent OOMKill events."""
+    try:
+        from core.analytics.engine import execute
+        from core.context import context
+        ctx = context.current_context
+        rows = execute(f"""
+            SELECT ts, pod, container, mem_limit_mb, killed_at
+            FROM oomkill_events
+            WHERE context = '{ctx}'
+              AND ts >= NOW() - INTERVAL '{hours} hours'
+            ORDER BY ts DESC
+        """)
+        return {"oomkills": [
+            {
+                "ts": str(r[0]), "pod": r[1], "container": r[2],
+                "mem_limit_mb": r[3], "killed_at": r[4],
+            }
+            for r in rows
+        ]}
+    except Exception:
+        return {"oomkills": []}
+
+
+@router.get("/monitor/quotas")
+def get_quota_pressure():
+    """Current resource quota usage."""
+    try:
+        from core.analytics.engine import execute
+        from core.context import context
+        ctx = context.current_context
+        ns = context.namespace
+        rows = execute(f"""
+            SELECT quota_name, resource, hard_value, used_value, used_pct
+            FROM quota_metrics
+            WHERE context = '{ctx}' AND namespace = '{ns}'
+              AND ts = (SELECT MAX(ts) FROM quota_metrics
+                        WHERE context = '{ctx}' AND namespace = '{ns}')
+            ORDER BY used_pct DESC
+        """)
+        return {"quotas": [
+            {
+                "quota": r[0], "resource": r[1],
+                "hard": r[2], "used": r[3], "pct": r[4],
+            }
+            for r in rows
+        ]}
+    except Exception:
+        return {"quotas": []}
+
+
+@router.get("/monitor/rollouts")
+def get_rollout_state():
+    """Current deployment rollout states."""
+    try:
+        from core.analytics.engine import execute
+        from core.context import context
+        ctx = context.current_context
+        ns = context.namespace
+        rows = execute(f"""
+            SELECT deployment, desired, updated, available,
+                   unavailable, state
+            FROM rollout_metrics
+            WHERE context = '{ctx}' AND namespace = '{ns}'
+              AND ts = (SELECT MAX(ts) FROM rollout_metrics
+                        WHERE context = '{ctx}' AND namespace = '{ns}')
+            ORDER BY
+                CASE state
+                    WHEN 'stalled' THEN 0
+                    WHEN 'degraded' THEN 1
+                    WHEN 'progressing' THEN 2
+                    ELSE 3
+                END
+        """)
+        return {"rollouts": [
+            {
+                "deployment": r[0], "desired": r[1],
+                "updated": r[2], "available": r[3],
+                "unavailable": r[4], "state": r[5],
+            }
+            for r in rows
+        ]}
+    except Exception:
+        return {"rollouts": []}
+
+
+@router.get("/monitor/health-signals")
+def get_health_signals():
+    """Combined health signals — single call for dashboard widgets."""
+    try:
+        from core.analytics.engine import execute, execute_one
+        from core.context import context
+        ctx = context.current_context
+        ns = context.namespace
+
+        # OOMKills last 24h
+        oom_count = execute_one(f"""
+            SELECT COUNT(*) FROM oomkill_events
+            WHERE context = '{ctx}' AND ts >= NOW() - INTERVAL '24 hours'
+        """)
+
+        # HPAs at max
+        hpa_at_max = execute_one(f"""
+            SELECT COUNT(DISTINCT hpa_name) FROM hpa_metrics
+            WHERE context = '{ctx}' AND at_max = true
+              AND ts = (SELECT MAX(ts) FROM hpa_metrics WHERE context = '{ctx}')
+        """)
+
+        # Quotas > 80%
+        quota_pressure = execute_one(f"""
+            SELECT COUNT(*) FROM quota_metrics
+            WHERE context = '{ctx}' AND namespace = '{ns}'
+              AND used_pct > 80
+              AND ts = (SELECT MAX(ts) FROM quota_metrics
+                        WHERE context = '{ctx}' AND namespace = '{ns}')
+        """)
+
+        # Stalled/degraded rollouts
+        bad_rollouts = execute_one(f"""
+            SELECT COUNT(*) FROM rollout_metrics
+            WHERE context = '{ctx}' AND namespace = '{ns}'
+              AND state IN ('stalled', 'degraded')
+              AND ts = (SELECT MAX(ts) FROM rollout_metrics
+                        WHERE context = '{ctx}' AND namespace = '{ns}')
+        """)
+
+        return {
+            "oomkills_24h": oom_count[0] if oom_count else 0,
+            "hpa_at_max": hpa_at_max[0] if hpa_at_max else 0,
+            "quota_pressure": quota_pressure[0] if quota_pressure else 0,
+            "stalled_rollouts": bad_rollouts[0] if bad_rollouts else 0,
+        }
+    except Exception:
+        return {
+            "oomkills_24h": 0, "hpa_at_max": 0,
+            "quota_pressure": 0, "stalled_rollouts": 0,
+        }
+
+
+@router.post("/rightsizing/dry-run")
+def post_dry_run(req: dict = {}):
+    """Validate rightsizing patches against API server."""
+    from core.analytics.safe_apply import dry_run
+    try:
+        days = req.get("days", 7)
+        namespace = req.get("namespace")
+        return dry_run(days=days, namespace=namespace)
+    except Exception as e:
+        return {"results": [], "passed": 0, "failed": 0, "error": str(e)}
+
+
+@router.get("/rightsizing/diff")
+def get_rightsizing_diff(days: int = 7, namespace: str = None):
+    """Current vs recommended resource diff."""
+    from core.analytics.safe_apply import diff
+    try:
+        return {"diffs": diff(days=days, namespace=namespace)}
+    except Exception as e:
+        return {"diffs": [], "error": str(e)}
+
+
+@router.post("/rightsizing/apply")
+def post_safe_apply(req: dict = {}):
+    """Apply phase-1 recommendations with health monitoring."""
+    from core.analytics.safe_apply import apply_safe
+    from core.context import context
+    ctx = context.current_context
+    if ctx and ("prod" in ctx or "prd" in ctx):
+        from fastapi import HTTPException
+        raise HTTPException(
+            403, "Safe-apply blocked in production. Use GitOps output instead."
+        )
+    try:
+        days = req.get("days", 7)
+        namespace = req.get("namespace")
+        watch = req.get("watch_seconds", 300)
+        return apply_safe(
+            days=days, namespace=namespace, watch_seconds=watch
+        )
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@router.post("/rightsizing/gitops")
+def post_gitops_output(req: dict = {}):
+    """Generate GitOps-ready manifests (kustomize/helm/plain)."""
+    from core.analytics.safe_apply import gitops_output
+    try:
+        days = req.get("days", 7)
+        namespace = req.get("namespace")
+        fmt = req.get("format", "kustomize")
+        path = gitops_output(
+            days=days, namespace=namespace, format=fmt
+        )
+        if not path:
+            return {"path": None, "message": "No recommendations"}
+        return {"path": path, "format": fmt}
+    except Exception as e:
+        return {"path": None, "error": str(e)}
+
+
+@router.get("/chargeback/by-team")
+def get_cost_by_team(days: int = 7):
+    try:
+        from core.analytics.chargeback import cost_by_team
+        return {"items": cost_by_team(days)}
+    except Exception as e:
+        return {"items": [], "error": str(e)}
+
+
+@router.get("/chargeback/by-app")
+def get_cost_by_app(days: int = 7):
+    try:
+        from core.analytics.chargeback import cost_by_app
+        return {"items": cost_by_app(days)}
+    except Exception as e:
+        return {"items": [], "error": str(e)}
+
+
+@router.get("/chargeback/by-namespace")
+def get_cost_by_namespace(days: int = 7):
+    try:
+        from core.analytics.chargeback import cost_by_namespace
+        return {"items": cost_by_namespace(days)}
+    except Exception as e:
+        return {"items": [], "error": str(e)}
+
+
+@router.get("/chargeback/by-environment")
+def get_cost_by_env(days: int = 7):
+    try:
+        from core.analytics.chargeback import cost_by_environment
+        return {"items": cost_by_environment(days)}
+    except Exception as e:
+        return {"items": [], "error": str(e)}
+
+
+@router.post("/chargeback/report")
+def post_chargeback_report(req: dict = {}):
+    """Generate chargeback report (json/csv/markdown)."""
+    try:
+        from core.analytics.chargeback import chargeback_report
+        days = req.get("days", 30)
+        group_by = req.get("group_by", "team")
+        fmt = req.get("format", "json")
+        return chargeback_report(days, group_by, fmt)
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@router.post("/chargeback/import-opencost")
+def post_import_opencost(req: dict = {}):
+    """Import cost data from OpenCost API."""
+    try:
+        from core.analytics.chargeback import import_opencost
+        url = req.get("url")
+        return import_opencost(url)
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@router.post("/chargeback/import-csv")
+def post_import_csv(req: dict = {}):
+    """Import cloud billing CSV."""
+    try:
+        from core.analytics.chargeback import import_billing_csv
+        path = req.get("path", "")
+        if not path:
+            from fastapi import HTTPException
+            raise HTTPException(400, "path required")
+        return import_billing_csv(path)
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@router.get("/idle-resources")
+def get_idle_resources():
+    """Detect idle and orphaned resources."""
+    try:
+        from core.collectors.idle_resources import detect_all
+        return detect_all()
+    except Exception as e:
+        return {"items": [], "summary": {}, "error": str(e)}
+
+
+@router.post("/idle-resources/dry-run")
+def post_cleanup_dry_run(req: dict = {}):
+    """Generate cleanup commands without executing."""
+    try:
+        from core.collectors.idle_resources import cleanup_dry_run
+        items = req.get("items")
+        return cleanup_dry_run(items)
+    except Exception as e:
+        return {"commands": [], "error": str(e)}
+
+
+@router.post("/idle-resources/cleanup")
+def post_cleanup(req: dict = {}):
+    """Execute cleanup (dry_run=true by default)."""
+    try:
+        from core.collectors.idle_resources import cleanup_execute
+        items = req.get("items", [])
+        dry_run = req.get("dry_run", True)
+        if not items:
+            from fastapi import HTTPException
+            raise HTTPException(400, "items required")
+        return cleanup_execute(items, dry_run=dry_run)
+    except Exception as e:
+        return {"error": str(e)}

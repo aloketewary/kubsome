@@ -679,6 +679,111 @@ def _handle_unused(cmd, env):
     render_unused_resources(unused)
 
 
+def _handle_idle_resources(cmd, env):
+    from core.collectors.idle_resources import detect_all
+
+    with loading("Scanning for idle & orphaned resources..."):
+        result = detect_all()
+
+    items = result["items"]
+    summary = result["summary"]
+
+    if not items:
+        console.print(
+            "[green]\u2713 No idle or orphaned resources found[/green]"
+        )
+        return
+
+    console.print(
+        f"\n[bold]Found {summary['total']} idle/orphaned "
+        f"resources[/bold]  "
+        f"[green]${summary['total_savings_monthly']:.2f}/mo "
+        f"potential savings[/green]\n"
+    )
+
+    # Group by category
+    for cat, stats in summary.get("categories", {}).items():
+        console.print(
+            f"  [dim]{cat}:[/dim] {stats['count']} items"
+            + (f" (${stats['savings']:.2f}/mo)" if stats['savings'] > 0 else "")
+        )
+    console.print()
+
+    table = Table(
+        show_header=True,
+        header_style="bold cyan",
+        border_style="dim",
+        expand=True,
+    )
+    table.add_column("Kind")
+    table.add_column("Name")
+    table.add_column("Category")
+    table.add_column("Reason")
+    table.add_column("Age")
+    table.add_column("$/mo", justify="right")
+
+    for item in items[:20]:
+        sev_color = {
+            "high": "red", "medium": "yellow", "low": "dim"
+        }.get(item.get("severity", "low"), "dim")
+        savings = (
+            f"[green]${item['savings_monthly']:.2f}[/green]"
+            if item.get("savings_monthly", 0) > 0 else "[dim]—[/dim]"
+        )
+        table.add_row(
+            item["kind"],
+            item["name"][:40],
+            f"[{sev_color}]{item['category']}[/{sev_color}]",
+            item.get("reason", "")[:50],
+            f"{item.get('age_days', 0)}d",
+            savings,
+        )
+
+    console.print(table)
+
+    if len(items) > 20:
+        console.print(
+            f"\n[dim]... and {len(items) - 20} more. "
+            f"Run 'cleanup-apply' to review cleanup commands.[/dim]"
+        )
+
+
+def _handle_cleanup_apply(cmd, env):
+    from core.collectors.idle_resources import detect_all, cleanup_dry_run
+    from core.context import context as k8s_ctx
+
+    ctx = k8s_ctx.current_context
+    if ctx and ("prod" in ctx or "prd" in ctx):
+        console.print(
+            "[red]\u2717 Cleanup blocked in production.[/red]"
+        )
+        return
+
+    with loading("Generating cleanup commands..."):
+        result = cleanup_dry_run()
+
+    commands = result["commands"]
+    if not commands:
+        console.print("[green]\u2713 Nothing to clean up[/green]")
+        return
+
+    console.print(
+        f"\n[bold]Cleanup commands ({len(commands)}):[/bold]\n"
+        f"[dim]Review and run manually:[/dim]\n"
+    )
+
+    for c in commands[:15]:
+        console.print(
+            f"  [cyan]{c['command']}[/cyan]\n"
+            f"    [dim]{c['reason']}[/dim]"
+        )
+
+    if len(commands) > 15:
+        console.print(
+            f"\n[dim]... and {len(commands) - 15} more[/dim]"
+        )
+
+
 def _handle_check(cmd, env):
     with loading("Running health checks..."):
         result = run_health_check()
@@ -2256,6 +2361,148 @@ def _handle_rightsizing(cmd, env):
     )
 
 
+def _handle_rightsizing_dryrun(cmd, env):
+    from core.analytics.safe_apply import dry_run
+
+    with loading("Validating patches (dry-run=server)..."):
+        result = dry_run()
+
+    if not result["results"]:
+        console.print("[dim]No recommendations to validate[/dim]")
+        return
+
+    console.print(
+        f"\n[bold]Dry Run Results:[/bold] "
+        f"[green]{result['passed']} passed[/green] · "
+        f"[red]{result['failed']} failed[/red] / "
+        f"{result['total']} total\n"
+    )
+
+    for r in result["results"]:
+        icon = "[green]\u2713[/green]" if r["passed"] else "[red]\u2717[/red]"
+        console.print(
+            f"  {icon} [bold]{r['deployment']}[/bold] "
+            f"[dim]({r['namespace']})[/dim]  "
+            f"{r['message'][:80]}"
+        )
+
+
+def _handle_rightsizing_diff(cmd, env):
+    from core.analytics.safe_apply import diff
+
+    with loading("Computing diff..."):
+        diffs = diff()
+
+    if not diffs:
+        console.print("[dim]No recommendations[/dim]")
+        return
+
+    table = Table(
+        title="Current vs Recommended",
+        show_header=True,
+        header_style="bold cyan",
+        border_style="dim",
+    )
+    table.add_column("Deployment")
+    table.add_column("CPU req")
+    table.add_column("Mem req")
+    table.add_column("CPU lim")
+    table.add_column("Mem lim")
+    table.add_column("Risk")
+    table.add_column("$/mo")
+
+    for d in diffs:
+        risk_color = {
+            "low": "green", "medium": "yellow", "high": "red"
+        }.get(d["risk"], "white")
+        table.add_row(
+            d["deployment"],
+            f"{d['current']['cpu_request']} \u2192 {d['recommended']['cpu_request']}",
+            f"{d['current']['mem_request']} \u2192 {d['recommended']['mem_request']}",
+            f"{d['current']['cpu_limit']} \u2192 {d['recommended']['cpu_limit']}",
+            f"{d['current']['mem_limit']} \u2192 {d['recommended']['mem_limit']}",
+            f"[{risk_color}]{d['risk']}[/{risk_color}]",
+            f"[green]${d['savings_monthly']:.2f}[/green]",
+        )
+
+    console.print(table)
+
+
+def _handle_rightsizing_apply(cmd, env):
+    from core.analytics.safe_apply import apply_safe
+    from core.context import context as k8s_ctx
+
+    ctx = k8s_ctx.current_context
+    if ctx and ("prod" in ctx or "prd" in ctx):
+        console.print(
+            "[red]\u2717 Blocked in production.[/red] "
+            "Use [cyan]rightsizing-gitops[/cyan] instead."
+        )
+        return
+
+    console.print(
+        "[yellow]\u26a0 This will apply phase-1 (low-risk) "
+        "changes with 5-min health watch.[/yellow]\n"
+        "[dim]Auto-rollback on failure. "
+        "Ctrl+C to abort.[/dim]\n"
+    )
+
+    with loading("Applying safe recommendations..."):
+        result = apply_safe(watch_seconds=300)
+
+    s = result["summary"]
+    console.print(
+        f"\n[bold]Results:[/bold] "
+        f"[green]{s['applied']} applied[/green] · "
+        f"[red]{s['rolled_back']} rolled back[/red] · "
+        f"[dim]{s['skipped']} skipped[/dim]\n"
+    )
+
+    for a in result["applied"]:
+        console.print(
+            f"  [green]\u2713[/green] {a['deployment']} "
+            f"[dim](${a.get('savings', 0):.2f}/mo saved)[/dim]"
+        )
+    for r in result["rolled_back"]:
+        console.print(
+            f"  [red]\u21ba[/red] {r['deployment']} "
+            f"[dim]({r['reason']})[/dim]"
+        )
+    for sk in result["skipped"]:
+        console.print(
+            f"  [dim]\u2013 {sk['deployment']}: {sk['reason']}[/dim]"
+        )
+
+
+def _handle_rightsizing_gitops(cmd, env):
+    from core.analytics.safe_apply import gitops_output
+
+    fmt = cmd.get("format", "kustomize")
+
+    with loading(f"Generating GitOps output ({fmt})..."):
+        path = gitops_output(format=fmt)
+
+    if not path:
+        console.print("[dim]No recommendations to export[/dim]")
+        return
+
+    console.print(
+        f"[green]\u2713 GitOps output ready:[/green] {path}\n"
+    )
+    console.print(f"  Format: [cyan]{fmt}[/cyan]")
+    if fmt == "kustomize":
+        console.print(
+            f"  Apply:  [dim]kubectl apply -k {path}[/dim]"
+        )
+        console.print(
+            f"  Verify: [dim]kubectl apply -k {path} "
+            f"--dry-run=server[/dim]"
+        )
+    console.print(
+        f"\n  [dim]Includes README.md for PR description[/dim]"
+    )
+
+
 def _handle_cost_query(cmd, env):
     from core.analytics.cost_model import (
         cost_by_deployment, monthly_cost_summary
@@ -2306,6 +2553,67 @@ def _handle_cost_query(cmd, env):
     )
 
 
+def _handle_chargeback(cmd, env):
+    from core.analytics.chargeback import chargeback_report
+
+    group_by = cmd.get("group_by", "team")
+
+    with loading(f"Generating chargeback by {group_by}..."):
+        report = chargeback_report(days=30, group_by=group_by)
+
+    if isinstance(report, str):
+        console.print(f"[green]\u2713 Exported:[/green] {report}")
+        return
+
+    if not report.get("items"):
+        console.print(
+            "[dim]No cost data. Need 24h+ of collection "
+            "and labeled deployments.[/dim]"
+        )
+        return
+
+    console.print(
+        f"\n[bold]Chargeback by {group_by} "
+        f"(30d):[/bold]  "
+        f"Total: [green]${report['total_estimated_usd']:.2f}[/green]"
+    )
+    if report.get("cloud_actual_usd"):
+        console.print(
+            f"  Cloud actual: ${report['cloud_actual_usd']:.2f} "
+            f"[dim](scale: {report['scale_factor']}x)[/dim]"
+        )
+    console.print()
+
+    table = Table(
+        show_header=True,
+        header_style="bold cyan",
+        border_style="dim",
+        expand=True,
+    )
+    table.add_column(group_by.capitalize())
+    table.add_column("Cost", justify="right")
+    table.add_column("%", justify="right")
+    table.add_column("Deployments", justify="right")
+    table.add_column("CPU avg", justify="right")
+    table.add_column("Mem avg", justify="right")
+
+    for item in report["items"][:15]:
+        name = item.get(
+            group_by,
+            item.get("team", item.get("app", "?"))
+        )
+        table.add_row(
+            name,
+            f"[green]${item['adjusted_cost_usd']:.2f}[/green]",
+            f"{item['pct_of_total']}%",
+            str(item.get("deployments", "—")),
+            f"{item.get('cpu_avg_m', 0)}m",
+            f"{item.get('mem_avg_mb', 0)}Mi",
+        )
+
+    console.print(table)
+
+
 def _handle_analytics_collect(cmd, env):
     from core.analytics.collector import collect_now
 
@@ -2341,6 +2649,269 @@ def _handle_analytics_export(cmd, env):
         )
 
 
+def _handle_predictive_alerts(cmd, env):
+    from core.analytics.predictive import check_predictive_alerts
+
+    with loading("Running predictive analysis..."):
+        predictions = check_predictive_alerts()
+
+    if not predictions:
+        console.print(
+            "[green]\u2713 No resource exhaustion predicted "
+            "in the next 24h[/green]\n"
+            "[dim]Based on linear regression of "
+            "12h usage trends[/dim]"
+        )
+        return
+
+    lines = [
+        f"[bold]{len(predictions)} prediction(s):[/bold]\n"
+    ]
+
+    for p in predictions:
+        sev = p["severity"]
+        icon = {
+            "critical": "[red]\u25cf[/red]",
+            "high": "[red]\u25cf[/red]",
+            "medium": "[yellow]\u25cf[/yellow]",
+        }.get(sev, "[dim]\u25cf[/dim]")
+
+        lines.append(f"  {icon} [{sev}]{p['message']}[/{sev}]")
+        if p.get("hours_remaining"):
+            lines.append(
+                f"    [dim]ETA: {p.get('time_to_event', '')} "
+                f"(confidence: {p.get('confidence', 0)}%)[/dim]"
+            )
+        if p.get("recommendation"):
+            lines.append(
+                f"    [cyan]\u2192 {p['recommendation']}[/cyan]"
+            )
+        lines.append("")
+
+    console.print(
+        Panel(
+            "\n".join(lines),
+            title="[bold]\U0001f52e Predictive Alerts[/bold]",
+            border_style="yellow",
+        )
+    )
+
+
+def _handle_capacity_plan(cmd, env):
+    from core.analytics.capacity import capacity_forecast, namespace_growth
+
+    with loading("Forecasting capacity..."):
+        forecast = capacity_forecast()
+        ns_growth = namespace_growth()
+
+    if not forecast or "error" in forecast:
+        console.print(
+            f"[dim]{forecast.get('error', 'No data') if forecast else 'DuckDB unavailable'}[/dim]"
+        )
+        return
+
+    cluster = forecast["cluster"]
+    usage = forecast["current_usage"]
+    growth = forecast["growth_rate"]
+    fc = forecast["forecast"]
+
+    # Utilization bars
+    cpu_bar = _cap_bar(usage["cpu_util_pct"])
+    mem_bar = _cap_bar(usage["mem_util_pct"])
+
+    lines = [
+        f"[bold]Cluster ({cluster['nodes']} nodes):[/bold]\n",
+        f"  CPU:  {cpu_bar}  {usage['cpu_used_m']}m / {cluster['total_cpu_m']}m",
+        f"  Mem:  {mem_bar}  {usage['mem_used_mb']}Mi / {cluster['total_mem_mb']}Mi",
+        "",
+        f"[bold]Growth Rate ({forecast['data_points']}d data):[/bold]",
+        f"  CPU: {'+' if growth['cpu_per_day_m'] > 0 else ''}{growth['cpu_per_day_m']}m/day ({growth['cpu_direction']})",
+        f"  Mem: {'+' if growth['mem_per_day_mb'] > 0 else ''}{growth['mem_per_day_mb']}Mi/day ({growth['mem_direction']})",
+        "",
+        "[bold]Forecast (to 80% capacity):[/bold]",
+    ]
+
+    if fc["cpu_days_to_80pct"]:
+        urgency = "[red]" if fc["cpu_days_to_80pct"] < 7 else "[yellow]" if fc["cpu_days_to_80pct"] < 14 else "[green]"
+        lines.append(f"  CPU: {urgency}{fc['cpu_days_to_80pct']} days[/{urgency[1:]}")
+    else:
+        lines.append("  CPU: [green]No exhaustion predicted[/green]")
+
+    if fc["mem_days_to_80pct"]:
+        urgency = "[red]" if fc["mem_days_to_80pct"] < 7 else "[yellow]" if fc["mem_days_to_80pct"] < 14 else "[green]"
+        lines.append(f"  Mem: {urgency}{fc['mem_days_to_80pct']} days[/{urgency[1:]}")
+    else:
+        lines.append("  Mem: [green]No exhaustion predicted[/green]")
+
+    if fc["action_needed"]:
+        lines.append(
+            f"\n[bold red]\u26a0 Action needed:[/bold red] "
+            f"Bottleneck is {fc['bottleneck']} — "
+            f"add nodes or right-size workloads"
+        )
+
+    # Namespace growth
+    if ns_growth:
+        lines.append("\n[bold]Fastest Growing Namespaces:[/bold]")
+        for ns in ns_growth[:5]:
+            cpu_g = ns["cpu_growth_pct"] or 0
+            icon = "[red]\u2191[/red]" if cpu_g > 30 else "[yellow]\u2191[/yellow]" if cpu_g > 10 else "[dim]\u2192[/dim]"
+            lines.append(
+                f"  {icon} {ns['namespace']}: "
+                f"CPU {'+' if cpu_g > 0 else ''}{cpu_g}%  "
+                f"Mem {'+' if (ns['mem_growth_pct'] or 0) > 0 else ''}{ns['mem_growth_pct'] or 0}%"
+            )
+
+    console.print(
+        Panel(
+            "\n".join(lines),
+            title="[bold]\U0001f4c8 Capacity Forecast[/bold]",
+            border_style="cyan",
+        )
+    )
+
+
+def _handle_blast_radius(cmd, env):
+    from core.analytics.blast_radius import analyze_blast_radius
+
+    target = cmd["target"]
+    action = cmd.get("action", "restart")
+
+    with loading(f"Analyzing blast radius for {target}..."):
+        result = analyze_blast_radius(target, action)
+
+    if "error" in result:
+        console.print(f"[red]{result['error']}[/red]")
+        return
+
+    risk = result["risk_score"]
+    level = result["risk_level"]
+    risk_color = {
+        "critical": "red", "high": "red",
+        "medium": "yellow", "low": "green",
+    }.get(level, "dim")
+
+    lines = [
+        f"[bold]Target:[/bold] {target} ({result['pod_count']} pods)",
+        f"[bold]Action:[/bold] {action}",
+        f"[bold]Risk:[/bold]   [{risk_color}]{risk}/10 ({level})[/{risk_color}]",
+        "",
+    ]
+
+    # Warnings
+    for w in result.get("warnings", []):
+        lines.append(f"  [yellow]{w}[/yellow]")
+    if result["warnings"]:
+        lines.append("")
+
+    # Affected resources
+    lines.append(
+        f"[bold]Affected Resources ({result['affected_count']}):[/bold]"
+    )
+    for a in result["affected"]:
+        sev_icon = {
+            "critical": "[red]\u25cf[/red]",
+            "high": "[red]\u25cf[/red]",
+            "medium": "[yellow]\u25cf[/yellow]",
+            "low": "[green]\u25cf[/green]",
+            "info": "[dim]\u25cf[/dim]",
+        }.get(a["severity"], "\u25cf")
+        lines.append(
+            f"  {sev_icon} [{a['severity']}]{a['type']}[/{a['severity']}] "
+            f"{a['name']}  [dim]{a['impact']}[/dim]"
+        )
+
+    # Recommendation
+    lines.append(
+        f"\n[bold]Recommendation:[/bold] {result['recommendation']}"
+    )
+
+    border = risk_color
+    console.print(
+        Panel(
+            "\n".join(lines),
+            title=f"[bold]\U0001f4a5 Blast Radius: {target}[/bold]",
+            border_style=border,
+        )
+    )
+
+
+def _cap_bar(pct, width=20):
+    pct = min(100, max(0, pct))
+    filled = int(pct * width / 100)
+    color = "red" if pct > 80 else "yellow" if pct > 60 else "green"
+    return (
+        f"[{color}]" + "\u2588" * filled + f"[/{color}]"
+        + "[dim]" + "\u2591" * (width - filled) + "[/dim]"
+        + f" [{color}]{pct}%[/{color}]"
+    )
+
+
+def _handle_change_correlation(cmd, env):
+    from core.analytics.correlation import correlate_change
+
+    target = cmd["target"]
+    with loading(f"Correlating changes for {target}..."):
+        result = correlate_change(target)
+
+    if "error" in result:
+        console.print(f"[red]{result['error']}[/red]")
+        return
+
+    changes = result["all_changes"]
+    cause = result["probable_cause"]
+
+    lines = [
+        f"[bold]Target:[/bold] {target}",
+        f"[bold]Failure:[/bold] {result['failure_time'][:19]}",
+        f"[bold]Window:[/bold] {result['window_minutes']} min lookback",
+        f"[bold]Changes:[/bold] {result['changes_found']} found",
+        "",
+    ]
+
+    if cause:
+        lines.append(
+            f"[bold green]\u2192 Probable Cause:[/bold green] "
+            f"{cause['type'].replace('_', ' ')} on "
+            f"[cyan]{cause['resource']}[/cyan] "
+            f"(score: {cause['score']}%)"
+        )
+        lines.append(f"  [dim]{cause['detail']}[/dim]")
+        lines.append("")
+
+    if changes:
+        lines.append("[bold]Timeline:[/bold]")
+        for c in changes:
+            score_color = (
+                "red" if c['score'] > 70
+                else "yellow" if c['score'] > 40
+                else "dim"
+            )
+            time_str = c['time'][:19] if c.get('time') else '?'
+            lines.append(
+                f"  [{score_color}]{c['score']:>3}%[/{score_color}] "
+                f"[dim]{time_str}[/dim]  "
+                f"{c['type'].replace('_', ' ')}  "
+                f"[cyan]{c['resource']}[/cyan]"
+            )
+            lines.append(f"       [dim]{c['detail'][:70]}[/dim]")
+    else:
+        lines.append(
+            "[dim]No changes found in the time window. "
+            "Try: why-broken {target} with a longer window.[/dim]"
+        )
+
+    lines.append(f"\n[dim]{result['summary']}[/dim]")
+
+    console.print(
+        Panel(
+            "\n".join(lines),
+            title=f"[bold]\U0001f50d Change Correlation: {target}[/bold]",
+            border_style="cyan",
+        )
+    )
+
+
 def _handle_analytics_sql(cmd, env):
     from core.analytics.export import run_custom_query
 
@@ -2370,6 +2941,211 @@ def _handle_analytics_sql(cmd, env):
 
     console.print(table)
     console.print(f"[dim]{result['count']} rows[/dim]")
+
+
+def _handle_pf_list(cmd, env):
+    from core.port_forward import list_forwards
+    forwards = list_forwards()
+    if not forwards:
+        console.print(
+            "[dim]No active port-forwards.\n"
+            "  Start: pf <pod/svc> <port>\n"
+            "  Example: pf payment-api 8080[/dim]"
+        )
+        return
+
+    lines = [f"[bold]{len(forwards)} active forward(s):[/bold]\n"]
+    for f in forwards:
+        icon = "[green]\u25cf[/green]" if f["alive"] else "[red]\u25cf[/red]"
+        lines.append(
+            f"  {icon} localhost:{f['local_port']} \u2192 "
+            f"{f['target']}:{f['remote_port']}  "
+            f"[dim]pid:{f['pid']} since {f['started'][:16]}[/dim]"
+        )
+
+    console.print(
+        Panel(
+            "\n".join(lines),
+            title="[bold]\U0001f517 Port Forwards[/bold]",
+            border_style="cyan",
+        )
+    )
+    console.print("[dim]  Stop: pf stop <target> | pf stop-all[/dim]")
+
+
+def _handle_pf_start(cmd, env):
+    from core.port_forward import start_forward
+
+    target = cmd["target"]
+    port = cmd["port"]
+
+    # Parse port spec (local:remote or just port)
+    if ":" in port:
+        local, remote = port.split(":", 1)
+    else:
+        local = remote = port
+
+    result = start_forward(target, int(local), int(remote))
+    if result["success"]:
+        console.print(
+            f"[green]\u2713 {result['message']}[/green]\n"
+            f"  [dim]URL: http://localhost:{result['local_port']}  "
+            f"pid:{result['pid']}[/dim]"
+        )
+    else:
+        console.print(f"[red]\u2717 {result['message']}[/red]")
+
+
+def _handle_pf_stop(cmd, env):
+    from core.port_forward import stop_forward
+    result = stop_forward(target=cmd["target"])
+    if result["success"]:
+        console.print(f"[green]\u2713 {result['message']}[/green]")
+    else:
+        console.print(f"[red]{result['message']}[/red]")
+
+
+def _handle_pf_stop_all(cmd, env):
+    from core.port_forward import stop_all
+    result = stop_all()
+    console.print(
+        f"[green]\u2713 Stopped {result['stopped']} forward(s)[/green]"
+    )
+
+
+def _handle_helm_list(cmd, env):
+    from core.collectors.helm import helm_list
+    with loading("Fetching Helm releases..."):
+        data = helm_list()
+    if "error" in data:
+        console.print(f"[red]{data['error']}[/red]")
+        return
+    releases = data["releases"]
+    if not releases:
+        console.print("[dim]No Helm releases found[/dim]")
+        return
+    table = Table(show_header=True, header_style="bold cyan", border_style="dim", expand=True)
+    table.add_column("Release", style="bold")
+    table.add_column("Chart")
+    table.add_column("Version")
+    table.add_column("Status")
+    table.add_column("Rev", width=4)
+    table.add_column("Updated", style="dim")
+    for rel in releases:
+        status = rel["status"]
+        s_color = "green" if status == "deployed" else "yellow" if status == "pending" else "red"
+        table.add_row(
+            rel["name"], rel["chart"], rel["app_version"],
+            f"[{s_color}]{status}[/{s_color}]",
+            rel["revision"], rel["updated"][:16],
+        )
+    console.print(Panel(table, title=f"[bold]\u2388 Helm Releases ({len(releases)})[/bold]", border_style="cyan"))
+
+
+def _handle_helm_status(cmd, env):
+    from core.collectors.helm import helm_status
+    release = cmd["release"]
+    with loading(f"Fetching {release}..."):
+        data = helm_status(release)
+    if "error" in data:
+        console.print(f"[red]{data['error']}[/red]")
+        return
+    lines = [
+        f"[bold cyan]Release:[/bold cyan]  {data['name']}",
+        f"[bold cyan]Status:[/bold cyan]   {data['status']}",
+        f"[bold cyan]Revision:[/bold cyan] {data['version']}",
+        f"[bold cyan]Deployed:[/bold cyan] {data['last_deployed'][:19]}",
+    ]
+    if data.get("description"):
+        lines.append(f"[bold cyan]Desc:[/bold cyan]     {data['description']}")
+    console.print(Panel("\n".join(lines), title=f"[bold]\u2388 {release}[/bold]", border_style="cyan"))
+
+
+def _handle_helm_history(cmd, env):
+    from core.collectors.helm import helm_history
+    release = cmd["release"]
+    with loading(f"Fetching history for {release}..."):
+        data = helm_history(release)
+    if "error" in data:
+        console.print(f"[red]{data['error']}[/red]")
+        return
+    revisions = data["revisions"]
+    if not revisions:
+        console.print("[dim]No history[/dim]")
+        return
+    table = Table(show_header=True, header_style="bold cyan", border_style="dim", expand=True)
+    table.add_column("Rev", width=4)
+    table.add_column("Status")
+    table.add_column("Chart")
+    table.add_column("Description")
+    table.add_column("Updated", style="dim")
+    for rev in reversed(revisions):
+        table.add_row(
+            str(rev["revision"]), rev["status"],
+            rev["chart"], rev["description"][:40],
+            rev["updated"][:16],
+        )
+    console.print(Panel(table, title=f"[bold]\u2388 History: {release}[/bold]", border_style="cyan"))
+
+
+def _handle_helm_values(cmd, env):
+    from core.collectors.helm import helm_values
+    import yaml
+    release = cmd["release"]
+    with loading(f"Fetching values for {release}..."):
+        data = helm_values(release)
+    if "error" in data:
+        console.print(f"[red]{data['error']}[/red]")
+        return
+    values = data.get("values", {})
+    if not values:
+        console.print("[dim]No custom values (using chart defaults)[/dim]")
+        return
+    yaml_str = yaml.dump(values, default_flow_style=False)
+    console.print(Panel(yaml_str, title=f"[bold]\u2388 Values: {release}[/bold]", border_style="cyan"))
+
+
+def _handle_helm_rollback(cmd, env):
+    from core.collectors.helm import helm_rollback
+    from core.safety import confirm_production
+    release = cmd["release"]
+    revision = cmd.get("revision")
+    if not confirm_production({"environment": env}):
+        console.print("[yellow]Cancelled[/yellow]")
+        return
+    with loading(f"Rolling back {release}..."):
+        result = helm_rollback(release, revision)
+    if result["success"]:
+        log_action("helm_rollback", release)
+        console.print(f"[green]\u2713 {result['message']}[/green]")
+    else:
+        console.print(f"[red]{result['message']}[/red]")
+
+
+def _handle_helm_diff(cmd, env):
+    from core.collectors.helm import helm_diff
+    release = cmd["release"]
+    with loading(f"Diffing {release}..."):
+        data = helm_diff(release)
+    if "error" in data:
+        console.print(f"[red]{data['error']}[/red]")
+        return
+    changes = data.get("changes", [])
+    if not changes:
+        console.print(f"[dim]{data.get('message', 'No changes')}[/dim]")
+        return
+    lines = [
+        f"[bold]Rev {data['previous_revision']} \u2192 {data['current_revision']}[/bold]  "
+        f"({len(changes)} changes)\n"
+    ]
+    for c in changes:
+        if c["type"] == "added":
+            lines.append(f"  [green]+ {c['path']}[/green] = {c['new']}")
+        elif c["type"] == "removed":
+            lines.append(f"  [red]- {c['path']}[/red] = {c['old']}")
+        else:
+            lines.append(f"  [yellow]~ {c['path']}[/yellow]: {c['old']} \u2192 {c['new']}")
+    console.print(Panel("\n".join(lines), title=f"[bold]\u2388 Helm Diff: {release}[/bold]", border_style="cyan"))
 
 
 # Handler registry
@@ -2412,6 +3188,8 @@ HANDLERS = {
     "optimize": _handle_optimize,
     "security": _handle_security,
     "unused": _handle_unused,
+    "idle_resources": _handle_idle_resources,
+    "cleanup_apply": _handle_cleanup_apply,
     "check": _handle_check,
     "export": _handle_export,
     "audit": _handle_audit,
@@ -2490,8 +3268,27 @@ HANDLERS = {
     "env_info": _handle_env_info,
     "analytics_stats": _handle_analytics_stats,
     "rightsizing": _handle_rightsizing,
+    "rightsizing_dryrun": _handle_rightsizing_dryrun,
+    "rightsizing_diff": _handle_rightsizing_diff,
+    "rightsizing_apply": _handle_rightsizing_apply,
+    "rightsizing_gitops": _handle_rightsizing_gitops,
     "cost_query": _handle_cost_query,
+    "chargeback": _handle_chargeback,
     "analytics_collect": _handle_analytics_collect,
     "analytics_export": _handle_analytics_export,
     "analytics_sql": _handle_analytics_sql,
+    "predictive_alerts": _handle_predictive_alerts,
+    "capacity_plan": _handle_capacity_plan,
+    "blast_radius": _handle_blast_radius,
+    "change_correlation": _handle_change_correlation,
+    "pf_list": _handle_pf_list,
+    "pf_start": _handle_pf_start,
+    "pf_stop": _handle_pf_stop,
+    "pf_stop_all": _handle_pf_stop_all,
+    "helm_list": _handle_helm_list,
+    "helm_status": _handle_helm_status,
+    "helm_history": _handle_helm_history,
+    "helm_values": _handle_helm_values,
+    "helm_rollback": _handle_helm_rollback,
+    "helm_diff": _handle_helm_diff,
 }

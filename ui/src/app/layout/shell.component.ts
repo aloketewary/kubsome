@@ -389,6 +389,7 @@ export class ShellComponent implements OnInit {
   monitorItems: any[] = [
     { path: '/dashboard', icon: 'pi pi-objects-column', label: 'Dashboard' },
     { path: '/monitor', icon: 'pi pi-desktop', label: 'Monitor' },
+    { path: '/health-signals', icon: 'pi pi-wave-pulse', label: 'Signals', badge: 'NEW' },
     { path: '/pods', icon: 'pi pi-box', label: 'Pods' },
     { path: '/events', icon: 'pi pi-bolt', label: 'Events' },
     { path: '/metrics', icon: 'pi pi-chart-line', label: 'Metrics' },
@@ -427,6 +428,11 @@ export class ShellComponent implements OnInit {
     { path: '/cost', icon: 'pi pi-dollar', label: 'Optimization' },
     { path: '/cost-estimate', icon: 'pi pi-calculator', label: 'Cost Estimate' },
     { path: '/rightsizing', icon: 'pi pi-sliders-h', label: 'Right-Sizing', badge: 'NEW' },
+    { path: '/helm', icon: 'pi pi-box', label: 'Helm', badge: 'NEW' },
+    { path: '/port-forwards', icon: 'pi pi-link', label: 'Port Forwards', badge: 'NEW' },
+    { path: '/blast-radius', icon: 'pi pi-exclamation-circle', label: 'Blast Radius', badge: 'NEW' },
+    { path: '/chargeback', icon: 'pi pi-wallet', label: 'Chargeback', badge: 'NEW' },
+    { path: '/idle-resources', icon: 'pi pi-trash', label: 'Idle Resources', badge: 'NEW' },
   ];
 
   aiItems: any[] = [

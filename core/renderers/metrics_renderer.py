@@ -47,6 +47,14 @@ def render_top_pods(pods):
         )
         return
 
+    # Enrich with historical data
+    from core.analytics.enrichment import enrich_pod_metrics
+    history_map = {}
+    for p in pods[:10]:  # Top 10 only to avoid slow queries
+        h = enrich_pod_metrics(p["name"])
+        if h:
+            history_map[p["name"]] = h
+
     max_cpu = max(p["cpu_millicores"] for p in pods) or 1
     max_mem = max(p["memory_mb"] for p in pods) or 1
 
@@ -83,6 +91,8 @@ def render_top_pods(pods):
     table.add_column("CPU Usage", width=22)
     table.add_column("Memory", justify="right", width=10)
     table.add_column("Mem Usage", width=22)
+    if history_map:
+        table.add_column("Trend", width=12)
 
     for i, pod in enumerate(pods, 1):
         cpu_pct = int((pod["cpu_millicores"] / max_cpu) * 100)
@@ -100,14 +110,30 @@ def render_top_pods(pods):
             f"[bold]{name}[/bold]" if is_hot else name
         )
 
-        table.add_row(
+        # Trend from analytics
+        trend_col = ""
+        h = history_map.get(name)
+        if h:
+            cpu_t = h.get("cpu_trend", "")
+            if cpu_t == "up":
+                trend_col = "[red]↑ growing[/red]"
+            elif cpu_t == "down":
+                trend_col = "[green]↓ falling[/green]"
+            else:
+                trend_col = "[dim]→ stable[/dim]"
+
+        row = [
             rank,
             name_display,
             pod["cpu"],
             _usage_bar(cpu_pct),
             pod["memory"],
             _usage_bar(mem_pct),
-        )
+        ]
+        if history_map:
+            row.append(trend_col)
+
+        table.add_row(*row)
 
     console.print(table)
     console.print(

@@ -4,11 +4,12 @@ import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
 import { PageInfoComponent } from '../../shared/components/page-info.component';
 import { SpotlightComponent } from '../../shared/components/spotlight.component';
+import { TrendChartComponent } from '../../shared/components/trend-chart.component';
 
 @Component({
   selector: 'app-scorecard',
   standalone: true,
-  imports: [ButtonModule, TagModule, PageInfoComponent, SpotlightComponent],
+  imports: [ButtonModule, TagModule, PageInfoComponent, SpotlightComponent, TrendChartComponent],
   template: `
     <app-spotlight id="scorecard" title="Cluster Scorecard" icon="pi pi-star"
       description="A-F health grade across reliability, performance, security."
@@ -84,6 +85,16 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
           }
         </div>
       }
+
+      <!-- Cost trend chart (auto-hides if no data) -->
+      <app-trend-chart
+        endpoint="/api/analytics/series/cost?days=14"
+        title="Cost Trend (14d)"
+        chartType="bar"
+        height="140px"
+        labelField="day"
+        [labelSlice]="[5, 10]"
+        [datasets]="[{label: 'Daily Cost', field: 'cost', color: '#22c55e', fill: false}]" />
     } @else {
       <div class="loading"><div class="spin"></div> Generating scorecard...</div>
     }

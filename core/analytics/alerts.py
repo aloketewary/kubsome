@@ -1,9 +1,19 @@
 """
 Analytics Alerts — threshold-based alerts derived from
 DuckDB time-series data. Detects trends and anomalies.
+Filters by current context automatically.
 """
 
 from core.analytics.engine import execute, execute_one
+from core.context import context as k8s_context
+
+
+def _ctx_filter():
+    """Return SQL AND clause for current context."""
+    ctx = k8s_context.current_context
+    if not ctx:
+        return ""
+    return f"AND context = '{ctx}'"
 
 
 def check_alerts():
@@ -21,7 +31,8 @@ def check_alerts():
 
 def _check_memory_trend():
     """Alert if memory usage trending toward limit."""
-    rows = execute("""
+    ctx = _ctx_filter()
+    rows = execute(f"""
         SELECT
             deployment, namespace,
             MAX(mem_p95) AS mem_p95,
@@ -32,6 +43,7 @@ def _check_memory_trend():
         WHERE hour >= NOW() - INTERVAL '6 hours'
           AND deployment != ''
           AND mem_request > 0
+          {ctx}
         GROUP BY deployment, namespace
         HAVING util_pct > 85
     """)
@@ -56,7 +68,8 @@ def _check_memory_trend():
 
 def _check_cpu_saturation():
     """Alert if CPU consistently near limit."""
-    rows = execute("""
+    ctx = _ctx_filter()
+    rows = execute(f"""
         SELECT
             deployment, namespace,
             MAX(cpu_p95) AS cpu_p95,
@@ -67,6 +80,7 @@ def _check_cpu_saturation():
         WHERE hour >= NOW() - INTERVAL '6 hours'
           AND deployment != ''
           AND cpu_request > 0
+          {ctx}
         GROUP BY deployment, namespace
         HAVING util_pct > 90
     """)
@@ -91,13 +105,15 @@ def _check_cpu_saturation():
 
 def _check_restart_spike():
     """Alert if restart count spikes vs baseline."""
-    rows = execute("""
+    ctx = _ctx_filter()
+    rows = execute(f"""
         WITH recent AS (
             SELECT deployment, namespace,
                    SUM(restart_count) AS restarts
             FROM hourly_pod_metrics
             WHERE hour >= NOW() - INTERVAL '1 hour'
               AND deployment != ''
+              {ctx}
             GROUP BY deployment, namespace
         ),
         baseline AS (
@@ -107,6 +123,7 @@ def _check_restart_spike():
             WHERE hour >= NOW() - INTERVAL '24 hours'
               AND hour < NOW() - INTERVAL '1 hour'
               AND deployment != ''
+              {ctx}
             GROUP BY deployment, namespace
         )
         SELECT r.deployment, r.namespace,
@@ -136,11 +153,13 @@ def _check_restart_spike():
 
 def _check_cost_spike():
     """Alert if daily cost exceeds 7-day average by 50%."""
-    row = execute_one("""
+    ctx = _ctx_filter()
+    row = execute_one(f"""
         WITH daily AS (
             SELECT day, SUM(cost_estimate_usd) AS cost
             FROM daily_summary
             WHERE day >= CURRENT_DATE - INTERVAL '8 days'
+              {ctx}
             GROUP BY day
         ),
         stats AS (

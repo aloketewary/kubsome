@@ -8,6 +8,7 @@ import { ApiService } from '../../core/services/api.service';
 import { WsService } from '../../core/services/ws.service';
 import { KubeEvent } from '../../core/models';
 import { SpotlightComponent } from '../../shared/components/spotlight.component';
+import { TrendChartComponent } from '../../shared/components/trend-chart.component';
 
 interface HeatmapCell {
   count: number;
@@ -19,7 +20,7 @@ interface HeatmapCell {
 @Component({
   selector: 'app-events',
   standalone: true,
-  imports: [TagModule, ButtonModule, TooltipModule, FormsModule, SpotlightComponent],
+  imports: [TagModule, ButtonModule, TooltipModule, FormsModule, SpotlightComponent, TrendChartComponent],
   template: `
     <app-spotlight id="events" title="Cluster Events" icon="pi pi-bolt"
       description="Real-time Kubernetes events. Filter by type to spot issues."
@@ -48,6 +49,15 @@ interface HeatmapCell {
         </div>
       </div>
     }
+
+    <!-- Event trend from DuckDB (auto-hides if no data) -->
+    <app-trend-chart
+      endpoint="/api/analytics/series/events?hours=48"
+      title="Event Volume (48h)"
+      chartType="bar"
+      height="120px"
+      [labelSlice]="[11, 13]"
+      [datasets]="[{label: 'Events', field: 'count', color: '#f59e0b', fill: false}]" />
 
         <!-- Header -->
     <div class="page-header">

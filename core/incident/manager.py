@@ -88,6 +88,13 @@ def stop_incident(root_cause="", resolution="", lessons_learned=""):
     with open(export_path, "w") as f:
         json.dump(incident, f, indent=2)
 
+    # Store in DuckDB for analytics
+    try:
+        from core.analytics.incidents import log_incident_to_db
+        log_incident_to_db(incident)
+    except Exception:
+        pass
+
     # Remove active
     _current_file().unlink(missing_ok=True)
 

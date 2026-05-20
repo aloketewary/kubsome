@@ -113,8 +113,29 @@ def render_help():
         ("collect", "Collect metrics now"),
         ("rightsizing", "Right-size recommendations"),
         ("cost-query", "Cost attribution per deploy"),
+        ("predict / forecast", "Predictive alerts (OOM in ~Xh)"),
+        ("capacity-plan", "Days until cluster full"),
+        ("why-broken <pod>", "Correlate failure with changes"),
+        ("blast-radius <deploy> [action]", "Impact analysis"),
         ("analytics-export <query> [parquet]", "Export CSV/Parquet"),
         ("sql <SELECT ...>", "Custom SQL query"),
+    ])
+
+    _section("Helm", [
+        ("helm-list", "All releases with status"),
+        ("helm-status <release>", "Release detail"),
+        ("helm-history <release>", "Revision history"),
+        ("helm-values <release>", "Computed values"),
+        ("helm-diff <release>", "What changed vs previous"),
+        ("helm-rollback <release> [rev]", "Rollback (with safety)"),
+    ])
+
+    _section("Port Forwards", [
+        ("pf", "List active forwards"),
+        ("pf <pod/svc> <port>", "Start forward (background)"),
+        ("pf <pod> <local>:<remote>", "Custom port mapping"),
+        ("pf stop <target>", "Stop one forward"),
+        ("pf stop-all", "Stop all forwards"),
     ])
 
     _section("Setup", [

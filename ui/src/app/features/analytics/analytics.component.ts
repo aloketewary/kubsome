@@ -1,9 +1,12 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
+import { DecimalPipe } from '@angular/common';
 import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
 import { TabsModule } from 'primeng/tabs';
+import { ChartModule } from 'primeng/chart';
+import { TooltipModule } from 'primeng/tooltip';
 import { PageInfoComponent } from '../../shared/components/page-info.component';
 import { SpotlightComponent } from '../../shared/components/spotlight.component';
 import { RelatedPagesComponent } from '../../shared/components/related-pages.component';
@@ -11,25 +14,25 @@ import { RelatedPagesComponent } from '../../shared/components/related-pages.com
 @Component({
   selector: 'app-analytics',
   standalone: true,
-  imports: [ButtonModule, TagModule, TabsModule, FormsModule, PageInfoComponent, SpotlightComponent, RelatedPagesComponent],
+  imports: [ButtonModule, TagModule, TabsModule, ChartModule, TooltipModule, FormsModule, DecimalPipe, PageInfoComponent, SpotlightComponent, RelatedPagesComponent],
   template: `
     <app-spotlight id="analytics" title="Analytics" icon="pi pi-chart-bar"
       description="DuckDB-powered cluster analytics — cost attribution, usage trends, alerts, and custom SQL queries."
-      [capabilities]="['Cost per deployment', 'Usage trends', 'Custom SQL', 'CSV/Parquet export', 'Anomaly alerts']" [compact]="true" />
+      [capabilities]="['Time-series charts', 'Cost per deployment', 'Custom SQL', 'CSV/Parquet export', 'Predictive alerts']" [compact]="true" />
 
     <div class="page-header">
       <div>
         <h1>Analytics</h1>
         <p class="subtitle">
-          @if (stats) { {{ stats.total_rows?.toLocaleString() }} rows · {{ stats.db_size_mb }}MB · Last: {{ stats.last_collection || '—' }} }
+          @if (stats) { {{ stats.raw_rows + stats.hourly_rows + stats.daily_rows | number }} rows · {{ stats.db_size_mb }}MB }
         </p>
       </div>
       <div class="header-actions">
         <button pButton icon="pi pi-database" label="Collect Now" class="p-button-outlined p-button-sm" (click)="collectNow()" [loading]="collecting"></button>
         <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="refresh()" [loading]="loading"></button>
-        <app-page-info title="Analytics" description="DuckDB-backed analytics engine collecting pod/node metrics every 5 minutes. Supports cost attribution, right-sizing, and custom SQL."
-          [tips]="['Auto-collects every 5 min', 'SQL tab for ad-hoc queries', 'Export to CSV or Parquet']"
-          [commands]="['analytics', 'collect', 'cost-query', 'sql <query>', 'analytics-export hourly csv']" />
+        <app-page-info title="Analytics" description="DuckDB-backed analytics engine. Auto-collects every 5 min."
+          [tips]="['Charts tab shows time-series from DuckDB', 'SQL tab for ad-hoc queries', 'Export to CSV or Parquet']"
+          [commands]="['analytics', 'collect', 'cost-query', 'predict', 'capacity-plan']" />
       </div>
     </div>
 
@@ -41,110 +44,129 @@ import { RelatedPagesComponent } from '../../shared/components/related-pages.com
       <!-- Summary Cards -->
       <div class="summary-grid">
         <div class="summary-card">
-          <span class="summary-value">{{ stats.total_rows?.toLocaleString() }}</span>
-          <span class="summary-label">Total Rows</span>
+          <span class="summary-value">{{ (stats.raw_rows + stats.hourly_rows) | number }}</span>
+          <span class="summary-label">Data Points</span>
         </div>
         <div class="summary-card">
           <span class="summary-value">{{ stats.db_size_mb }}MB</span>
           <span class="summary-label">DB Size</span>
         </div>
-        <div class="summary-card">
-          <span class="summary-value">{{ stats.collections_today || 0 }}</span>
-          <span class="summary-label">Collections Today</span>
+        <div class="summary-card" [class.warn]="predictions.length > 0">
+          <span class="summary-value">{{ predictions.length }}</span>
+          <span class="summary-label">Predictions</span>
         </div>
         <div class="summary-card" [class.warn]="alerts.length > 0">
           <span class="summary-value">{{ alerts.length }}</span>
-          <span class="summary-label">Active Alerts</span>
+          <span class="summary-label">Alerts</span>
         </div>
       </div>
 
       <!-- Tabs -->
       <p-tabs [value]="activeTab" (valueChange)="activeTab = '' + $event">
         <p-tablist>
-          <p-tab value="0">Cost ({{ costData.length }})</p-tab>
-          <p-tab value="1">Alerts ({{ alerts.length }})</p-tab>
-          <p-tab value="2">SQL Query</p-tab>
-          <p-tab value="3">Export</p-tab>
+          <p-tab value="0">Charts</p-tab>
+          <p-tab value="1">Cost ({{ costData.length }})</p-tab>
+          <p-tab value="2">Predictions ({{ predictions.length }})</p-tab>
+          <p-tab value="3">SQL Query</p-tab>
+          <p-tab value="4">Export</p-tab>
         </p-tablist>
 
         <p-tabpanels>
-          <!-- Cost Tab -->
+          <!-- Charts Tab -->
           <p-tabpanel value="0">
+            <div class="charts-grid">
+              <div class="chart-card">
+                <h4>CPU & Memory (24h)</h4>
+                @if (cpuMemChart) {
+                  <p-chart type="line" [data]="cpuMemChart" [options]="lineOptions" height="250px" />
+                } @else {
+                  <p class="empty-tab">No time-series data yet. Wait for collection.</p>
+                }
+              </div>
+              <div class="chart-card">
+                <h4>Daily Cost (30d)</h4>
+                @if (costChart) {
+                  <p-chart type="bar" [data]="costChart" [options]="barOptions" height="250px" />
+                } @else {
+                  <p class="empty-tab">Need 24h+ of data for cost chart.</p>
+                }
+              </div>
+              <div class="chart-card">
+                <h4>Top Consumers (6h)</h4>
+                @if (consumersChart) {
+                  <p-chart type="bar" [data]="consumersChart" [options]="horizontalBarOptions" height="250px" />
+                } @else {
+                  <p class="empty-tab">No consumer data yet.</p>
+                }
+              </div>
+              <div class="chart-card">
+                <h4>Event Activity (24h)</h4>
+                @if (eventChart) {
+                  <p-chart type="bar" [data]="eventChart" [options]="barOptions" height="250px" />
+                } @else {
+                  <p class="empty-tab">No event data yet.</p>
+                }
+              </div>
+            </div>
+          </p-tabpanel>
+
+          <!-- Cost Tab -->
+          <p-tabpanel value="1">
             @if (costSummary) {
               <div class="cost-summary">
-                <span><strong>{{ "$" + costSummary.monthly_usd?.toFixed(2) }}</strong>/mo estimated</span>
-                <span>{{ "$" + costSummary.daily_avg_usd?.toFixed(2) }}/day avg</span>
+                <span><strong>{{ "$" + costSummary.monthly_usd?.toFixed(2) }}</strong>/mo</span>
+                <span>{{ "$" + costSummary.daily_avg_usd?.toFixed(2) }}/day</span>
                 <span>{{ costSummary.deployments }} deployments</span>
-                <span>{{ costSummary.days_tracked }} days tracked</span>
               </div>
-            }
-            @if (!costData.length) {
-              <p class="empty-tab">No cost data yet. Need 24h+ of collection.</p>
             }
             @for (item of costData; track item.deployment) {
               <div class="cost-row">
-                <div class="cost-name">
-                  <strong>{{ item.deployment }}</strong>
-                  <span class="cost-ns">{{ item.namespace }}</span>
-                </div>
-                <div class="cost-metrics">
-                  <span>{{ item.avg_pods }} pods</span>
-                  <span>CPU: {{ item.cpu_avg_m }}m avg</span>
-                  <span>Mem: {{ item.mem_avg_mb }}Mi avg</span>
-                </div>
-                <div class="cost-values">
-                  <span class="cost-actual">{{ "$" + item.cost_actual_usd?.toFixed(2) }}</span>
-                  <span class="cost-requested">{{ "$" + item.cost_requested_usd?.toFixed(2) }} req</span>
-                  @if (item.waste_pct > 20) {
-                    <p-tag [value]="item.waste_pct + '% waste'" severity="warn" [rounded]="true" size="small" />
-                  }
-                </div>
+                <span class="cost-name"><strong>{{ item.deployment }}</strong> <span class="ns">{{ item.namespace }}</span></span>
+                <span class="cost-metrics">{{ item.avg_pods }} pods · CPU {{ item.cpu_avg_m }}m · Mem {{ item.mem_avg_mb }}Mi</span>
+                <span class="cost-value">{{ "$" + item.cost_requested_usd?.toFixed(2) }}
+                  @if (item.waste_pct > 20) { <span class="waste">({{ item.waste_pct }}% waste)</span> }
+                </span>
               </div>
             }
+            @if (!costData.length) { <p class="empty-tab">No cost data yet.</p> }
           </p-tabpanel>
 
-          <!-- Alerts Tab -->
-          <p-tabpanel value="1">
-            @if (!alerts.length) {
-              <p class="empty-tab">No active alerts ✓</p>
-            }
-            @for (alert of alerts; track alert.message) {
-              <div class="alert-row" [class]="'severity-' + alert.severity">
-                <i [class]="alert.severity === 'critical' ? 'pi pi-exclamation-circle' : 'pi pi-exclamation-triangle'"></i>
-                <div class="alert-content">
-                  <strong>{{ alert.title || alert.type }}</strong>
-                  <span>{{ alert.message }}</span>
+          <!-- Predictions Tab -->
+          <p-tabpanel value="2">
+            @if (!predictions.length) { <p class="empty-tab">No resource exhaustion predicted in next 24h ✓</p> }
+            @for (p of predictions; track p.message) {
+              <div class="prediction-row" [class]="'sev-' + p.severity">
+                <i class="pi pi-exclamation-triangle"></i>
+                <div class="pred-content">
+                  <strong>{{ p.type }}</strong>
+                  <span>{{ p.message }}</span>
+                  @if (p.recommendation) { <span class="pred-rec">→ {{ p.recommendation }}</span> }
                 </div>
-                <p-tag [value]="alert.severity" [severity]="alertSeverity(alert.severity)" [rounded]="true" size="small" />
+                <div class="pred-meta">
+                  @if (p.hours_remaining) { <span>~{{ p.hours_remaining }}h</span> }
+                  <span>{{ p.confidence }}%</span>
+                </div>
               </div>
             }
           </p-tabpanel>
 
           <!-- SQL Tab -->
-          <p-tabpanel value="2">
+          <p-tabpanel value="3">
             <div class="sql-section">
               <div class="sql-input">
                 <textarea [(ngModel)]="sqlQuery" placeholder="SELECT * FROM hourly_pod_metrics LIMIT 10" rows="3"></textarea>
                 <button pButton icon="pi pi-play" label="Run" class="p-button-sm" (click)="runQuery()" [loading]="querying"></button>
               </div>
-              <div class="sql-hints">
-                Tables: raw_pod_metrics, raw_node_metrics, hourly_pod_metrics, daily_summary, cost_model
-              </div>
-              @if (queryError) {
-                <div class="sql-error">{{ queryError }}</div>
-              }
+              <div class="sql-hints">Tables: raw_pod_metrics, hourly_pod_metrics, daily_summary, pod_state, event_log, audit_log, command_usage, incidents, cost_model</div>
+              @if (queryError) { <div class="sql-error">{{ queryError }}</div> }
               @if (queryResult) {
                 <div class="sql-result">
                   <div class="result-header">
-                    @for (col of queryResult.columns; track col) {
-                      <span class="result-col">{{ col }}</span>
-                    }
+                    @for (col of queryResult.columns; track col) { <span>{{ col }}</span> }
                   </div>
                   @for (row of queryResult.rows; track $index) {
                     <div class="result-row">
-                      @for (col of queryResult.columns; track col) {
-                        <span class="result-cell">{{ row[col] }}</span>
-                      }
+                      @for (col of queryResult.columns; track col) { <span>{{ row[col] }}</span> }
                     </div>
                   }
                   <div class="result-footer">{{ queryResult.count }} rows</div>
@@ -154,14 +176,11 @@ import { RelatedPagesComponent } from '../../shared/components/related-pages.com
           </p-tabpanel>
 
           <!-- Export Tab -->
-          <p-tabpanel value="3">
+          <p-tabpanel value="4">
             <div class="export-grid">
               @for (q of exportQueries; track q.name) {
                 <div class="export-card">
-                  <div class="export-info">
-                    <strong>{{ q.label }}</strong>
-                    <span>{{ q.description }}</span>
-                  </div>
+                  <div><strong>{{ q.label }}</strong><br><span class="export-desc">{{ q.description }}</span></div>
                   <div class="export-actions">
                     <button pButton icon="pi pi-file" label="CSV" class="p-button-outlined p-button-sm" (click)="exportData(q.name, 'csv')"></button>
                     <button pButton icon="pi pi-database" label="Parquet" class="p-button-outlined p-button-sm" (click)="exportData(q.name, 'parquet')"></button>
@@ -174,77 +193,62 @@ import { RelatedPagesComponent } from '../../shared/components/related-pages.com
       </p-tabs>
     }
 
-    @if (!stats && !loading) {
-      <div class="empty-state">
-        <i class="pi pi-chart-bar"></i>
-        <h3>Analytics Not Initialized</h3>
-        <p>Start the API server to begin collecting metrics automatically.</p>
-      </div>
-    }
-
     <app-related-pages label="Related" [pages]="relatedPages" />
   `,
   styles: [`
     .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px; }
-    .page-header h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.03em; }
+    .page-header h1 { font-size: 24px; font-weight: 700; }
     .subtitle { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
     .header-actions { display: flex; align-items: center; gap: 8px; }
-
     .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
     .summary-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; text-align: center; }
     .summary-card.warn { border-left: 3px solid var(--warning); }
     .summary-value { display: block; font-size: 28px; font-weight: 800; }
     .summary-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; }
 
-    .cost-summary { display: flex; gap: 20px; font-size: 13px; margin-bottom: 16px; padding: 12px; background: var(--bg-elevated); border-radius: var(--radius); }
-    .cost-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 8px; }
-    .cost-name { display: flex; flex-direction: column; }
-    .cost-name strong { font-size: 13px; }
-    .cost-ns { font-size: 11px; color: var(--text-muted); }
-    .cost-metrics { display: flex; gap: 12px; font-size: 11px; color: var(--text-muted); }
-    .cost-values { display: flex; align-items: center; gap: 10px; font-size: 13px; }
-    .cost-actual { font-weight: 700; }
-    .cost-requested { color: var(--text-muted); font-size: 11px; }
+    .charts-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+    .chart-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+    .chart-card h4 { font-size: 13px; font-weight: 600; margin: 0 0 12px; }
 
-    .alert-row { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 8px; }
-    .alert-row.severity-critical { border-left: 3px solid var(--danger); }
-    .alert-row.severity-warning { border-left: 3px solid var(--warning); }
-    .alert-row i { font-size: 18px; }
-    .severity-critical i { color: var(--danger); }
-    .severity-warning i { color: var(--warning); }
-    .alert-content { flex: 1; display: flex; flex-direction: column; }
-    .alert-content strong { font-size: 13px; }
-    .alert-content span { font-size: 12px; color: var(--text-muted); }
+    .cost-summary { display: flex; gap: 20px; font-size: 13px; margin-bottom: 16px; padding: 12px; background: var(--bg-elevated); border-radius: var(--radius); }
+    .cost-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 6px; font-size: 13px; }
+    .cost-name .ns { font-size: 11px; color: var(--text-muted); }
+    .cost-metrics { font-size: 11px; color: var(--text-muted); }
+    .cost-value { font-weight: 700; }
+    .waste { color: var(--warning); font-size: 11px; font-weight: 400; }
+
+    .prediction-row { display: flex; align-items: flex-start; gap: 12px; padding: 12px 16px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 8px; }
+    .prediction-row.sev-critical, .prediction-row.sev-high { border-left: 3px solid var(--danger); }
+    .prediction-row.sev-medium { border-left: 3px solid var(--warning); }
+    .prediction-row i { margin-top: 2px; color: var(--warning); }
+    .sev-critical i, .sev-high i { color: var(--danger); }
+    .pred-content { flex: 1; display: flex; flex-direction: column; gap: 2px; font-size: 13px; }
+    .pred-content strong { font-size: 12px; text-transform: uppercase; color: var(--text-muted); }
+    .pred-rec { font-size: 12px; color: var(--accent); }
+    .pred-meta { display: flex; flex-direction: column; align-items: flex-end; font-size: 11px; color: var(--text-muted); gap: 2px; }
 
     .sql-section { display: flex; flex-direction: column; gap: 12px; }
     .sql-input { display: flex; gap: 8px; align-items: flex-start; }
     .sql-input textarea { flex: 1; font-family: 'JetBrains Mono', monospace; font-size: 12px; padding: 10px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-card); color: var(--text-primary); resize: vertical; }
     .sql-hints { font-size: 11px; color: var(--text-muted); }
     .sql-error { color: var(--danger); font-size: 12px; padding: 8px; background: var(--bg-card); border: 1px solid var(--danger); border-radius: var(--radius); }
-
     .sql-result { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); overflow-x: auto; font-size: 12px; font-family: 'JetBrains Mono', monospace; }
     .result-header, .result-row { display: flex; padding: 6px 12px; gap: 8px; }
-    .result-header { font-weight: 600; border-bottom: 1px solid var(--border); background: var(--bg-elevated); font-size: 11px; text-transform: uppercase; }
+    .result-header { font-weight: 600; border-bottom: 1px solid var(--border); background: var(--bg-elevated); font-size: 11px; }
     .result-row { border-bottom: 1px solid var(--border); }
-    .result-row:last-of-type { border-bottom: none; }
-    .result-col, .result-cell { min-width: 80px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .result-footer { font-size: 11px; color: var(--text-muted); padding: 6px 12px; border-top: 1px solid var(--border); }
+    .result-header span, .result-row span { min-width: 80px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .result-footer { font-size: 11px; color: var(--text-muted); padding: 6px 12px; }
 
     .export-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
     .export-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; display: flex; justify-content: space-between; align-items: center; }
-    .export-info { display: flex; flex-direction: column; }
-    .export-info strong { font-size: 13px; }
-    .export-info span { font-size: 11px; color: var(--text-muted); }
+    .export-desc { font-size: 11px; color: var(--text-muted); }
     .export-actions { display: flex; gap: 6px; }
 
-    .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
-    .empty-state i { font-size: 48px; margin-bottom: 16px; opacity: 0.3; }
-    .empty-state h3 { font-size: 18px; margin: 0 0 8px; color: var(--text-primary); }
     .empty-tab { color: var(--text-muted); font-size: 13px; padding: 20px 0; }
     .loading { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 60px; color: var(--text-muted); }
     .spin { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
-    @media (max-width: 768px) { .summary-grid { grid-template-columns: repeat(2, 1fr); } .cost-row { flex-direction: column; align-items: flex-start; gap: 8px; } }
+    @media (max-width: 768px) { .summary-grid { grid-template-columns: repeat(2, 1fr); } .charts-grid { grid-template-columns: 1fr; } }
   `],
 })
 export class AnalyticsComponent implements OnInit {
@@ -253,6 +257,7 @@ export class AnalyticsComponent implements OnInit {
   costData: any[] = [];
   costSummary: any = null;
   alerts: any[] = [];
+  predictions: any[] = [];
   loading = false;
   collecting = false;
   querying = false;
@@ -261,19 +266,40 @@ export class AnalyticsComponent implements OnInit {
   queryResult: any = null;
   queryError = '';
 
+  // Charts
+  cpuMemChart: any = null;
+  costChart: any = null;
+  consumersChart: any = null;
+  eventChart: any = null;
+
+  lineOptions = {
+    plugins: { legend: { labels: { color: '#aaa', font: { size: 11 } } } },
+    scales: { x: { ticks: { color: '#666', font: { size: 10 } } }, y: { ticks: { color: '#666' } } },
+    maintainAspectRatio: false,
+  };
+  barOptions = {
+    plugins: { legend: { display: false } },
+    scales: { x: { ticks: { color: '#666', font: { size: 10 } } }, y: { ticks: { color: '#666' } } },
+    maintainAspectRatio: false,
+  };
+  horizontalBarOptions = {
+    indexAxis: 'y' as const,
+    plugins: { legend: { labels: { color: '#aaa', font: { size: 11 } } } },
+    scales: { x: { ticks: { color: '#666' } }, y: { ticks: { color: '#666', font: { size: 10 } } } },
+    maintainAspectRatio: false,
+  };
+
   exportQueries = [
-    { name: 'raw_pods', label: 'Raw Pod Metrics', description: 'All collected pod CPU/memory samples' },
-    { name: 'raw_nodes', label: 'Raw Node Metrics', description: 'All collected node utilization samples' },
+    { name: 'raw_pods', label: 'Raw Pod Metrics', description: 'All pod CPU/memory samples' },
     { name: 'hourly', label: 'Hourly Aggregates', description: 'Hourly P50/P95/P99 per deployment' },
-    { name: 'daily', label: 'Daily Summary', description: 'Daily cost and usage per deployment' },
-    { name: 'cost', label: 'Cost Attribution', description: 'Cost per deployment with waste analysis' },
+    { name: 'daily', label: 'Daily Summary', description: 'Daily cost and usage' },
+    { name: 'cost', label: 'Cost Attribution', description: 'Cost per deployment' },
   ];
 
   relatedPages = [
-    { path: '/rightsizing', icon: 'pi pi-sliders-h', label: 'Right-Sizing', description: 'CPU/memory recommendations from analytics data' },
-    { path: '/cost', icon: 'pi pi-dollar', label: 'Optimization', description: 'Resource optimization suggestions' },
-    { path: '/cost-estimate', icon: 'pi pi-calculator', label: 'Cost Estimate', description: 'Per-deployment cost breakdown' },
-    { path: '/metrics', icon: 'pi pi-chart-line', label: 'Metrics', description: 'Live CPU/memory usage' },
+    { path: '/rightsizing', icon: 'pi pi-sliders-h', label: 'Right-Sizing', description: 'CPU/memory recommendations' },
+    { path: '/cost-estimate', icon: 'pi pi-calculator', label: 'Cost Estimate', description: 'Per-deployment cost' },
+    { path: '/metrics', icon: 'pi pi-chart-line', label: 'Live Metrics', description: 'Real-time usage' },
   ];
 
   ngOnInit() { this.refresh(); }
@@ -286,11 +312,79 @@ export class AnalyticsComponent implements OnInit {
     });
     this.http.get<any>('/api/analytics/cost').subscribe({
       next: (res) => { this.costData = res.deployments || []; this.costSummary = res.summary; },
-      error: () => {},
     });
     this.http.get<any>('/api/analytics/alerts').subscribe({
       next: (res) => { this.alerts = res.alerts || []; },
-      error: () => {},
+    });
+    this.http.get<any>('/api/analytics/predictions').subscribe({
+      next: (res) => { this.predictions = res.predictions || []; },
+    });
+    this.loadCharts();
+  }
+
+  loadCharts() {
+    // CPU/Memory line chart
+    this.http.get<any>('/api/analytics/series/cpu-memory?hours=24').subscribe({
+      next: (res) => {
+        const series = res.series || [];
+        if (series.length) {
+          this.cpuMemChart = {
+            labels: series.map((s: any) => s.ts?.substring(11, 16) || ''),
+            datasets: [
+              { label: 'CPU (m)', data: series.map((s: any) => s.cpu), borderColor: '#22d3ee', backgroundColor: 'rgba(34,211,238,0.1)', fill: true, tension: 0.3 },
+              { label: 'Memory (Mi)', data: series.map((s: any) => s.mem), borderColor: '#a78bfa', backgroundColor: 'rgba(167,139,250,0.1)', fill: true, tension: 0.3 },
+            ],
+          };
+        }
+      },
+    });
+
+    // Cost bar chart
+    this.http.get<any>('/api/analytics/series/cost?days=30').subscribe({
+      next: (res) => {
+        const series = res.series || [];
+        if (series.length) {
+          this.costChart = {
+            labels: series.map((s: any) => s.day?.substring(5, 10) || ''),
+            datasets: [{ data: series.map((s: any) => s.cost), backgroundColor: '#22c55e', borderRadius: 3 }],
+          };
+        }
+      },
+    });
+
+    // Top consumers
+    this.http.get<any>('/api/analytics/series/top-consumers?hours=6').subscribe({
+      next: (res) => {
+        const consumers = res.consumers || [];
+        if (consumers.length) {
+          this.consumersChart = {
+            labels: consumers.map((c: any) => c.deployment),
+            datasets: [
+              { label: 'CPU (m)', data: consumers.map((c: any) => c.cpu_avg), backgroundColor: '#22d3ee' },
+              { label: 'Memory (Mi)', data: consumers.map((c: any) => c.mem_avg), backgroundColor: '#a78bfa' },
+            ],
+          };
+        }
+      },
+    });
+
+    // Event timeline
+    this.http.get<any>('/api/analytics/series/events?hours=24').subscribe({
+      next: (res) => {
+        const series = res.series || [];
+        if (series.length) {
+          const warnings = series.filter((s: any) => s.type === 'Warning');
+          const normals = series.filter((s: any) => s.type === 'Normal');
+          const allHours = [...new Set(series.map((s: any) => s.ts?.substring(11, 13)))].sort();
+          this.eventChart = {
+            labels: allHours,
+            datasets: [
+              { data: allHours.map(h => warnings.find((w: any) => w.ts?.substring(11, 13) === h)?.count || 0), backgroundColor: '#f59e0b', label: 'Warning' },
+              { data: allHours.map(h => normals.find((n: any) => n.ts?.substring(11, 13) === h)?.count || 0), backgroundColor: '#6b7280', label: 'Normal' },
+            ],
+          };
+        }
+      },
     });
   }
 
@@ -308,11 +402,7 @@ export class AnalyticsComponent implements OnInit {
     this.queryError = '';
     this.queryResult = null;
     this.http.post<any>('/api/analytics/query', { sql: this.sqlQuery }).subscribe({
-      next: (res) => {
-        if (res.error) { this.queryError = res.error; }
-        else { this.queryResult = res; }
-        this.querying = false;
-      },
+      next: (res) => { if (res.error) this.queryError = res.error; else this.queryResult = res; this.querying = false; },
       error: (err) => { this.queryError = err.error?.detail || 'Query failed'; this.querying = false; },
     });
   }
@@ -322,11 +412,5 @@ export class AnalyticsComponent implements OnInit {
       next: (res) => { alert(`Exported: ${res.path}`); },
       error: () => { alert('Export failed'); },
     });
-  }
-
-  alertSeverity(severity: string): "success" | "warn" | "danger" | "info" | "secondary" | "contrast" | undefined {
-    if (severity === 'critical') return 'danger';
-    if (severity === 'warning') return 'warn';
-    return 'info';
   }
 }

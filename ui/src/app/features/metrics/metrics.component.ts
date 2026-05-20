@@ -1,8 +1,10 @@
 import { Component, inject, OnInit, OnDestroy } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { TagModule } from 'primeng/tag';
 import { ButtonModule } from 'primeng/button';
 import { TooltipModule } from 'primeng/tooltip';
+import { ChartModule } from 'primeng/chart';
 import { ApiService } from '../../core/services/api.service';
 import { PodMetrics, NodeMetrics } from '../../core/models';
 import { SpotlightComponent } from '../../shared/components/spotlight.component';
@@ -11,7 +13,7 @@ import { SkeletonComponent } from '../../shared/components/skeleton.component';
 @Component({
   selector: 'app-metrics',
   standalone: true,
-  imports: [FormsModule, TagModule, ButtonModule, TooltipModule, SpotlightComponent, SkeletonComponent],
+  imports: [FormsModule, TagModule, ButtonModule, TooltipModule, ChartModule, SpotlightComponent, SkeletonComponent],
   template: `
     <app-spotlight id="metrics" title="Metrics" icon="pi pi-chart-bar"
       description="CPU and memory usage for pods and nodes."
@@ -31,6 +33,13 @@ import { SkeletonComponent } from '../../shared/components/skeleton.component';
         <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="refresh()" pTooltip="Refresh" [loading]="loading"></button>
       </div>
     </div>
+
+    <!-- Trend Chart -->
+    @if (trendChart) {
+      <div class="trend-section">
+        <p-chart type="line" [data]="trendChart" [options]="trendOptions" height="180px" />
+      </div>
+    }
 
     <!-- Cluster Summary Strip -->
     @if (topNodes.length > 0) {
@@ -280,10 +289,12 @@ import { SkeletonComponent } from '../../shared/components/skeleton.component';
     }
     .empty-state i { font-size: 28px; opacity: 0.3; }
     .empty-hint { font-size: 11px; opacity: 0.6; }
+    .trend-section { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 16px; }
   `],
 })
 export class MetricsComponent implements OnInit, OnDestroy {
   private api = inject(ApiService);
+  private http = inject(HttpClient);
   topPods: PodMetrics[] = [];
   topNodes: NodeMetrics[] = [];
   sortedPods: PodMetrics[] = [];
@@ -295,6 +306,13 @@ export class MetricsComponent implements OnInit, OnDestroy {
   private maxCpu = 1;
   private maxMem = 1;
   private refreshTimer: any;
+  trendChart: any = null;
+  trendOptions = {
+    plugins: { legend: { labels: { color: '#aaa', font: { size: 10 } } } },
+    scales: { x: { ticks: { color: '#666', font: { size: 9 }, maxTicksLimit: 12 } }, y: { ticks: { color: '#666' } } },
+    elements: { point: { radius: 0 } },
+    maintainAspectRatio: false,
+  };
 
   get avgCpu(): number {
     if (!this.topNodes.length) return 0;
@@ -308,9 +326,27 @@ export class MetricsComponent implements OnInit, OnDestroy {
   ngOnInit() {
     this.refresh();
     this.startAutoRefresh();
+    this.loadTrend();
   }
 
   ngOnDestroy() { clearInterval(this.refreshTimer); }
+
+  private loadTrend() {
+    this.http.get<any>('/api/analytics/series/cpu-memory?hours=24').subscribe({
+      next: (res) => {
+        const s = res.series || [];
+        if (s.length > 2) {
+          this.trendChart = {
+            labels: s.map((p: any) => p.ts?.substring(11, 16) || ''),
+            datasets: [
+              { label: 'CPU (m)', data: s.map((p: any) => p.cpu), borderColor: '#22d3ee', backgroundColor: 'rgba(34,211,238,0.05)', fill: true, tension: 0.3, borderWidth: 1.5 },
+              { label: 'Memory (Mi)', data: s.map((p: any) => p.mem), borderColor: '#a78bfa', backgroundColor: 'rgba(167,139,250,0.05)', fill: true, tension: 0.3, borderWidth: 1.5 },
+            ],
+          };
+        }
+      },
+    });
+  }
 
   toggleAutoRefresh() {
     this.autoRefresh = !this.autoRefresh;

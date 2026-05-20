@@ -29,10 +29,12 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
         <h1>Logs</h1>
         <p class="subtitle">Pod log viewer</p>
       </div>
-      <app-page-info title="Logs" description="View and stream pod logs. Supports filtering by level and full-text search."
-        [tips]="['Select a pod and click Fetch or Live', 'Live mode streams via WebSocket in real-time', 'Filter by Error/Warn to find issues fast', 'Fullscreen mode for focused debugging']"
-        [commands]="['logs <pod>', 'logs <pod> --follow', 'logs <pod> --errors', 'correlate-logs <pod1> <pod2>']"
-        [shortcuts]="[{key: 'G+L', action: 'Navigate to Logs'}]" />
+      <div class="header-actions">
+        <app-page-info title="Logs" description="View and stream pod logs. Supports filtering by level and full-text search."
+          [tips]="['Select a pod and click Fetch or Live', 'Live mode streams via WebSocket in real-time', 'Filter by Error/Warn to find issues fast', 'Fullscreen mode for focused debugging']"
+          [commands]="['logs <pod>', 'logs <pod> --follow', 'logs <pod> --errors', 'correlate-logs <pod1> <pod2>']"
+          [shortcuts]="[{key: 'G+L', action: 'Navigate to Logs'}]" />
+      </div>
     </div>
 
     <!-- Controls Bar -->

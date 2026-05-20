@@ -42,12 +42,14 @@ interface Message {
         <h1>AI Assistant</h1>
         <p class="subtitle">Natural language cluster intelligence</p>
       </div>
-      @if (messages.length > 0) {
-        <button pButton icon="pi pi-trash" label="Clear" class="p-button-text p-button-sm" (click)="clearHistory()" pTooltip="Clear conversation"></button>
+      <div class="header-actions">
+        @if (messages.length > 0) {
+          <button pButton icon="pi pi-trash" label="Clear" class="p-button-text p-button-sm" (click)="clearHistory()" pTooltip="Clear conversation"></button>
+        }
         <app-page-info title="AI Assistant" description="Ask natural language questions about your cluster. AI analyzes pods, events, metrics, and logs to answer."
           [tips]="['Type naturally: why is payment failing?', 'When multiple pods match, click to select one', 'AI correlates logs + events + metrics for diagnosis', 'Works offline — no external API needed']"
           [commands]="['why is <pod> failing', 'how many <name> pods running', 'summarize cluster health', 'is it safe to restart <dep>']" />
-      }
+      </div>
     </div>
 
     <div class="chat-layout">

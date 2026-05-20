@@ -138,9 +138,10 @@ class TestTelemetry:
     def test_get_stats_empty(self):
         from core.telemetry import get_stats
         with patch("core.telemetry._read", return_value=[]):
-            stats = get_stats()
-            assert stats["total_commands"] == 0
-            assert stats["unresolved_count"] == 0
+            with patch("core.telemetry._stats_from_db", return_value=None):
+                stats = get_stats()
+                assert stats["total_commands"] == 0
+                assert stats["unresolved_count"] == 0
 
 
 # ─── Batch 3: Scheduler ─────────────────────────────

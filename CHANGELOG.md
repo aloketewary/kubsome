@@ -51,10 +51,14 @@ All notable changes to Kubsome are documented here.
 - `POST /api/profiles/deactivate` — Deactivate profile
 
 ### Stats
-- CLI handlers: 99 → 113 (+14)
-- API routes: 126 → 145 (+19)
-- UI pages: 38 → 40 (+2)
+- CLI handlers: 99 → 138 (+39)
+- API routes: 126 → 192 (+66)
+- UI pages: 38 → 47 (+9)
+- Completer commands: 157
+- Suggestions: 32
+- DuckDB tables: 16
 - Tests: 188 passed (0 regressions)
+- New dependency: duckdb, chart.js
 
 ## [1.12.0] — 2025-07-16
 

@@ -306,7 +306,10 @@ def resolve_command(user_input: str):
 
     # Unused resources
     if cmd == "unused" or cmd == "cleanup":
-        return {"type": "unused"}
+        return {"type": "idle_resources"}
+
+    if cmd == "cleanup-apply":
+        return {"type": "cleanup_apply"}
 
     # Health check
     if cmd == "check":
@@ -445,6 +448,24 @@ def resolve_command(user_input: str):
             "target": pod,
             "port": tokens[2]
         }
+
+    # Port-forward management
+    if cmd == "pf":
+        if len(tokens) == 1:
+            return {"type": "pf_list"}
+        sub = tokens[1]
+        if sub == "stop" and len(tokens) > 2:
+            return {"type": "pf_stop", "target": tokens[2]}
+        if sub == "stop-all":
+            return {"type": "pf_stop_all"}
+        # pf <target> <port> — start
+        if len(tokens) >= 3:
+            return {
+                "type": "pf_start",
+                "target": tokens[1],
+                "port": tokens[2],
+            }
+        return {"type": "pf_list"}
 
     # Explain
     if cmd == "explain" and len(tokens) > 1:
@@ -871,13 +892,107 @@ def resolve_command(user_input: str):
     if cmd == "analytics":
         return {"type": "analytics_stats"}
 
+    # Monitor signals
+    if cmd == "oomkills" or cmd == "oom":
+        return {"type": "oomkills"}
+
+    if cmd == "hpa" or cmd == "autoscalers":
+        return {"type": "hpa_status"}
+
+    if cmd == "quotas" or cmd == "quota":
+        return {"type": "quota_status"}
+
+    if cmd == "signals" or cmd == "health-signals":
+        return {"type": "health_signals"}
+
     # Right-sizing
     if cmd in ("rightsizing", "rightsize", "right-size"):
         return {"type": "rightsizing"}
 
+    # Right-sizing safe apply
+    if cmd == "rightsizing-apply" or cmd == "apply-rightsizing":
+        return {"type": "rightsizing_apply"}
+
+    # Right-sizing dry-run
+    if cmd == "rightsizing-dryrun" or cmd == "dryrun":
+        return {"type": "rightsizing_dryrun"}
+
+    # Right-sizing diff
+    if cmd == "rightsizing-diff":
+        return {"type": "rightsizing_diff"}
+
+    # Right-sizing GitOps export
+    if cmd == "rightsizing-gitops":
+        fmt = "kustomize"
+        if len(tokens) > 1 and tokens[1] in ("helm", "plain"):
+            fmt = tokens[1]
+        return {"type": "rightsizing_gitops", "format": fmt}
+
     # Cost query
     if cmd == "cost-query":
         return {"type": "cost_query"}
+
+    # Chargeback
+    if cmd == "chargeback":
+        group = "team"
+        if len(tokens) > 1 and tokens[1] in (
+            "team", "app", "namespace", "environment"
+        ):
+            group = tokens[1]
+        return {"type": "chargeback", "group_by": group}
+
+    if cmd == "showback":
+        return {"type": "chargeback", "group_by": "team"}
+
+    # Predictive alerts
+    if cmd in ("predict", "predictions", "forecast"):
+        return {"type": "predictive_alerts"}
+
+    # Capacity planning
+    if cmd in ("capacity-plan", "capacity-forecast"):
+        return {"type": "capacity_plan"}
+
+    # Blast radius
+    if cmd == "blast-radius" and len(tokens) > 1:
+        action = "restart"
+        if len(tokens) > 2:
+            action = tokens[2]
+        return {
+            "type": "blast_radius",
+            "target": tokens[1],
+            "action": action,
+        }
+
+    # Change correlation
+    if cmd in ("why-broken", "what-caused", "correlate-change") and len(tokens) > 1:
+        return {
+            "type": "change_correlation",
+            "target": tokens[1],
+        }
+
+    # Helm
+    if cmd == "helm-list" or cmd == "helm-releases":
+        return {"type": "helm_list"}
+
+    if cmd == "helm-status" and len(tokens) > 1:
+        return {"type": "helm_status", "release": tokens[1]}
+
+    if cmd == "helm-history" and len(tokens) > 1:
+        return {"type": "helm_history", "release": tokens[1]}
+
+    if cmd == "helm-values" and len(tokens) > 1:
+        return {"type": "helm_values", "release": tokens[1]}
+
+    if cmd == "helm-rollback" and len(tokens) > 1:
+        rev = int(tokens[2]) if len(tokens) > 2 else None
+        return {
+            "type": "helm_rollback",
+            "release": tokens[1],
+            "revision": rev,
+        }
+
+    if cmd == "helm-diff" and len(tokens) > 1:
+        return {"type": "helm_diff", "release": tokens[1]}
 
     # Analytics collect now
     if cmd == "collect":

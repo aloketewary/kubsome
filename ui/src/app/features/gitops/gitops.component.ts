@@ -144,7 +144,7 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     .subtitle { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
     .header-actions { display: flex; align-items: center; gap: 8px; }
 
-    .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+    .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; animation: fadeIn 0.3s ease; }
     .summary-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; text-align: center; }
     .summary-card.success { border-left: 3px solid var(--success); }
     .summary-card.warn { border-left: 3px solid var(--warning); }
@@ -155,8 +155,8 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     .apps-table { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
     .table-header, .table-row { display: grid; grid-template-columns: 32px 2fr 100px 100px 90px 1fr 130px; align-items: center; padding: 10px 16px; gap: 8px; }
     .table-header { font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--text-muted); border-bottom: 1px solid var(--border); }
-    .table-row { font-size: 13px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.1s; }
-    .table-row:hover { background: var(--bg-elevated); }
+    .table-row { font-size: 13px; border-bottom: 1px solid var(--border); cursor: pointer; transition: all 0.12s; }
+    .table-row:hover { background: var(--bg-elevated); transform: translateX(2px); }
     .table-row:last-child { border-bottom: none; }
     .col-name { font-weight: 600; }
     .mono { font-family: 'JetBrains Mono', monospace; font-size: 11px; }

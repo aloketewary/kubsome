@@ -181,6 +181,28 @@ def render_diagnosis(pod_name, findings):
         )
         console.print()
 
+    # Historical context from analytics
+    from core.analytics.enrichment import enrich_diagnosis
+    history = enrich_diagnosis(pod_name)
+    if history and history["findings"]:
+        lines = ["[bold]Historical Analysis:[/bold]\n"]
+        for hf in history["findings"]:
+            sev_color = "red" if hf["severity"] == "high" else "yellow"
+            lines.append(
+                f"  [{sev_color}]\u25cf[/{sev_color}] {hf['message']}"
+            )
+        if history.get("days_tracked"):
+            lines.append(
+                f"\n  [dim]Based on {history['days_tracked']} days of data[/dim]"
+            )
+        console.print(
+            Panel(
+                "\n".join(lines),
+                title="[bold]\U0001f4c8 Trend Analysis[/bold]",
+                border_style=t()["border"],
+            )
+        )
+
 
 def _guess_playbook(findings):
     """Guess the most relevant playbook based on findings."""

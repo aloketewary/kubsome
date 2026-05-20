@@ -580,7 +580,16 @@ def get_doctor():
 @router.get("/stats")
 def get_usage_stats():
     from core.telemetry import get_stats
-    return get_stats()
+    try:
+        return get_stats()
+    except Exception:
+        return {
+            "total_commands": 0,
+            "top_commands": [],
+            "unresolved_count": 0,
+            "top_unresolved": [],
+            "days_tracked": 0,
+        }
 
 
 @router.get("/schedules")

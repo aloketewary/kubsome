@@ -4,6 +4,16 @@ cost attribution per deployment, and savings calculations.
 """
 
 from core.analytics.engine import execute, execute_one, execute_write
+from core.context import context as k8s_context
+
+
+def _ctx_filter(alias=""):
+    """Return SQL AND clause for current context."""
+    ctx = k8s_context.current_context
+    if not ctx:
+        return ""
+    col = f"{alias}.context" if alias else "context"
+    return f"AND {col} = '{ctx}'"
 
 
 PROVIDERS = {
@@ -81,6 +91,7 @@ def cost_by_deployment(days=7, model="default"):
         WHERE c.name = ?
           AND h.hour >= NOW() - INTERVAL '{days} days'
           AND h.deployment != ''
+          {_ctx_filter('h')}
         GROUP BY h.deployment, h.namespace,
                  c.cpu_per_core_hour, c.mem_per_gb_hour
         ORDER BY cost_requested_usd DESC
@@ -110,13 +121,14 @@ def cost_by_deployment(days=7, model="default"):
 
 def monthly_cost_summary(model="default"):
     """Total monthly cost estimate from daily summaries."""
-    row = execute_one("""
+    row = execute_one(f"""
         SELECT
             SUM(cost_estimate_usd) AS total_daily,
             COUNT(DISTINCT day) AS days_tracked,
             COUNT(DISTINCT deployment) AS deployments
         FROM daily_summary
         WHERE day >= CURRENT_DATE - INTERVAL '30 days'
+          {_ctx_filter()}
     """)
 
     if not row or not row[0]:

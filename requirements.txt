@@ -1,11 +1,23 @@
+# Core
 rich>=13.0
 prompt-toolkit>=3.0
 questionary>=2.0
 rapidfuzz>=3.0
 humanize>=4.0
 pyyaml>=6.0
-textual>=0.40
+
+# API
 fastapi>=0.104.0
 uvicorn[standard]>=0.24.0
-pytest>=7.0
+
+# Analytics (optional but recommended)
 duckdb>=0.10.0
+
+# TUI (optional)
+textual>=0.40
+
+# Dev
+pytest>=7.0
+httpx>=0.24.0
+build
+twine

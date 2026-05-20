@@ -1,6 +1,12 @@
 """
 Analytics Collector — periodic metric collection from kubectl
 into DuckDB raw tables. Runs as background thread.
+
+Config (~/.kubsome/config.yaml):
+  analytics:
+    scope: cluster        # cluster (all-ns) or namespace (active only)
+    interval: 300         # seconds between collections
+    max_pods: 5000        # skip full collection if cluster exceeds this
 """
 
 import time
@@ -18,11 +24,35 @@ _running = False
 INTERVAL = 300  # 5 minutes default
 
 
+def _get_analytics_config():
+    """Load analytics config with defaults."""
+    from core.config import load_config
+    cfg = load_config().get("analytics", {})
+    return {
+        "scope": cfg.get("scope", "cluster"),
+        "interval": cfg.get("interval", 300),
+        "max_pods": cfg.get("max_pods", 5000),
+    }
+
+
+def _get_pod_count(ctx):
+    """Quick pod count check (lightweight, no JSON parse)."""
+    cmd = [
+        "kubectl", "--context", str(ctx or ""),
+        "get", "pods", "--all-namespaces",
+        "--no-headers", "--ignore-not-found"
+    ]
+    r = subprocess.run(cmd, capture_output=True, text=True)
+    if r.returncode != 0:
+        return 0
+    return len(r.stdout.strip().split("\n"))
+
+
 def start_collector(interval=None):
     """Start background collection thread."""
     global _collector_thread, _running, INTERVAL
-    if interval:
-        INTERVAL = interval
+    cfg = _get_analytics_config()
+    INTERVAL = interval or cfg["interval"]
     if _running:
         return
     _running = True
@@ -58,21 +88,34 @@ def _collection_loop():
 def _collect_cycle():
     """
     Single collection: pods + nodes → DuckDB.
-    Scales to millions of pods via:
-    - Streaming JSON parse (no full load into memory)
-    - Batch INSERT (1000 rows per executemany)
-    - Parallel node + pod collection
+    Respects config:
+      scope: cluster|namespace
+      max_pods: skip if cluster exceeds limit
     """
     start = time.time()
     ctx = context.current_context
-    ns = context.namespace
 
     if not ctx:
         return {"pods": 0, "nodes": 0}
 
+    cfg = _get_analytics_config()
+    scope = cfg["scope"]
+    max_pods = cfg["max_pods"]
+
+    # Determine namespace scope
+    ns = None  # all-namespaces
+    if scope == "namespace":
+        ns = context.namespace
+
+    # Guard: check pod count before full collection
+    if scope == "cluster" and max_pods > 0:
+        pod_count = _get_pod_count(ctx)
+        if pod_count > max_pods:
+            # Fall back to active namespace only
+            ns = context.namespace
+
     ts = datetime.utcnow()
 
-    # Collect sequentially to avoid concurrent DuckDB writes
     pods_collected = _collect_pods(ts, ctx, ns)
     nodes_collected = _collect_nodes(ts, ctx)
 
@@ -84,6 +127,26 @@ def _collect_cycle():
         [ts, pods_collected, nodes_collected, duration_ms]
     )
 
+    # Enriched collection (HPA, OOMKills, quotas, rollouts)
+    try:
+        from core.analytics.enriched_collector import collect_enriched
+        collect_enriched()
+    except Exception:
+        pass
+
+    # Refresh state cache for instant reads
+    try:
+        from core.analytics.state_cache import refresh_state
+        from core.analytics.engine import get_conn
+        conn = get_conn()
+        pods_raw = _kubectl_json(ctx, "pods", ns)
+        deps_raw = _kubectl_json(ctx, "deployments", ns)
+        nodes_raw = _kubectl_json(ctx, "nodes", None)
+        events_raw = _kubectl_json(ctx, "events", ns)
+        refresh_state(conn, ctx, ns, pods_raw, deps_raw, nodes_raw, events_raw)
+    except Exception:
+        pass
+
     return {
         "pods": pods_collected,
         "nodes": nodes_collected,
@@ -91,17 +154,31 @@ def _collect_cycle():
     }
 
 
-def _collect_pods(ts, ctx, ns):
+def _kubectl_json(ctx, resource, ns=None):
+    """Fetch raw kubectl JSON. Uses --all-namespaces when ns is None."""
+    cmd = [
+        "kubectl", "--context", str(ctx or ""),
+        "get", resource, "-o", "json"
+    ]
+    if ns:
+        cmd.extend(["-n", str(ns)])
+    elif resource != "nodes":
+        cmd.append("--all-namespaces")
+    r = subprocess.run(cmd, capture_output=True, text=True)
+    if r.returncode != 0:
+        return {}
+    return json.loads(r.stdout)
+
+
+def _collect_pods(ts, ctx, ns=None):
     """
     Collect pod metrics and resource requests/limits.
-    Handles large clusters via batch inserts.
+    ns=None means all namespaces (cluster scope).
     """
-    # Get metrics
     metrics = _kubectl_top_pods(ctx, ns)
     if not metrics:
         return 0
 
-    # Get pod details (requests, limits, status)
     details = _kubectl_pod_details(ctx, ns)
 
     # Batch insert (1000 rows at a time for memory efficiency)
@@ -109,8 +186,10 @@ def _collect_pods(ts, ctx, ns):
     batch = []
     total = 0
 
-    for pod_name, m in metrics.items():
-        detail = details.get(pod_name, {})
+    for pod_key, m in metrics.items():
+        detail = details.get(pod_key, {})
+        ns = detail.get("namespace", m.get("namespace", ""))
+        pod_name = m.get("name", pod_key)
         batch.append((
             ts,
             ctx,
@@ -194,15 +273,20 @@ def _collect_nodes(ts, ctx):
     return len(rows)
 
 
-def _kubectl_top_pods(ctx, ns):
+def _kubectl_top_pods(ctx, ns=None):
     """
     Get pod CPU/memory usage.
-    For large clusters: uses --no-headers for streaming parse.
+    ns=None uses --all-namespaces, otherwise -n <ns>.
     """
     cmd = [
         "kubectl", "--context", str(ctx or ""),
-        "top", "pods", "-n", str(ns), "--no-headers"
+        "top", "pods", "--no-headers"
     ]
+    if ns:
+        cmd.extend(["-n", str(ns)])
+    else:
+        cmd.append("--all-namespaces")
+
     r = subprocess.run(cmd, capture_output=True, text=True)
     if r.returncode != 0:
         return {}
@@ -210,33 +294,54 @@ def _kubectl_top_pods(ctx, ns):
     metrics = {}
     for line in r.stdout.split("\n"):
         parts = line.split()
-        if len(parts) >= 3:
-            metrics[parts[0]] = {
-                "cpu": _parse_cpu(parts[1]),
-                "mem": _parse_mem(parts[2]),
-            }
+        if ns:
+            # Format: NAME CPU MEM
+            if len(parts) >= 3:
+                key = f"{ns}/{parts[0]}"
+                metrics[key] = {
+                    "namespace": ns,
+                    "name": parts[0],
+                    "cpu": _parse_cpu(parts[1]),
+                    "mem": _parse_mem(parts[2]),
+                }
+        else:
+            # Format: NAMESPACE NAME CPU MEM
+            if len(parts) >= 4:
+                key = f"{parts[0]}/{parts[1]}"
+                metrics[key] = {
+                    "namespace": parts[0],
+                    "name": parts[1],
+                    "cpu": _parse_cpu(parts[2]),
+                    "mem": _parse_mem(parts[3]),
+                }
     return metrics
 
 
-def _kubectl_pod_details(ctx, ns):
+def _kubectl_pod_details(ctx, ns=None):
     """
     Get pod resource requests, limits, status.
-    For large clusters: streams JSON parsing.
+    ns=None uses --all-namespaces.
     """
     cmd = [
         "kubectl", "--context", str(ctx or ""),
-        "get", "pods", "-n", str(ns), "-o", "json"
+        "get", "pods", "-o", "json"
     ]
+    if ns:
+        cmd.extend(["-n", str(ns)])
+    else:
+        cmd.append("--all-namespaces")
+
     r = subprocess.run(cmd, capture_output=True, text=True)
     if r.returncode != 0:
         return {}
 
-    # Parse incrementally to avoid holding full dict in memory
     data = json.loads(r.stdout)
     details = {}
 
     for item in data.get("items", []):
         name = item["metadata"]["name"]
+        ns = item["metadata"].get("namespace", "")
+        key = f"{ns}/{name}"
         status = item["status"].get("phase", "Unknown")
 
         # Owner (deployment)
@@ -277,7 +382,8 @@ def _kubectl_pod_details(ctx, ns):
         for cs in item["status"].get("containerStatuses", []):
             restarts += cs.get("restartCount", 0)
 
-        details[name] = {
+        details[key] = {
+            "namespace": ns,
             "deployment": deployment,
             "container": container_name,
             "status": status,
@@ -288,9 +394,7 @@ def _kubectl_pod_details(ctx, ns):
             "restarts": restarts,
         }
 
-    # Free memory immediately for large clusters
     del data
-
     return details
 
 

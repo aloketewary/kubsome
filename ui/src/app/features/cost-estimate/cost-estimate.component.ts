@@ -4,11 +4,12 @@ import { ButtonModule } from 'primeng/button';
 import { TooltipModule } from 'primeng/tooltip';
 import { PageInfoComponent } from '../../shared/components/page-info.component';
 import { SpotlightComponent } from '../../shared/components/spotlight.component';
+import { TrendChartComponent } from '../../shared/components/trend-chart.component';
 
 @Component({
   selector: 'app-cost-estimate',
   standalone: true,
-  imports: [ButtonModule, TooltipModule, PageInfoComponent, SpotlightComponent],
+  imports: [ButtonModule, TooltipModule, PageInfoComponent, SpotlightComponent, TrendChartComponent],
   template: `
     <app-spotlight id="cost-estimate" title="Cost Estimation" icon="pi pi-dollar"
       description="Estimated monthly spend per deployment based on resource requests."
@@ -28,6 +29,16 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     </div>
 
     @if (data) {
+      <!-- Cost Trend Chart (auto-hides if no DuckDB data) -->
+      <app-trend-chart
+        endpoint="/api/analytics/series/cost?days=30"
+        title="Monthly Cost Trend"
+        chartType="bar"
+        height="150px"
+        labelField="day"
+        [labelSlice]="[5, 10]"
+        [datasets]="[{label: 'Daily Cost ($)', field: 'cost', color: '#22c55e', fill: false}]" />
+
       <!-- Total Banner -->
       <div class="total-banner">
         <div class="total-amount">\${{ data.total.toFixed(2) }}</div>
