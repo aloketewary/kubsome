@@ -4,6 +4,8 @@ from rich.table import Table
 
 console = Console()
 
+from core.theme import t
+
 RESOURCE_ICONS = {
     "pods": "📦",
     "deployments": "🚀",
@@ -31,7 +33,7 @@ def render_namespace_summary(data):
         Panel(
             header,
             title="[bold]📁 Namespace Overview[/bold]",
-            border_style="cyan"
+            border_style=t()["primary"]
         )
     )
 
@@ -54,7 +56,7 @@ def render_namespace_summary(data):
         Panel(
             table,
             title="[bold]📊 Resources[/bold]",
-            border_style="dim"
+            border_style=t()["border"]
         )
     )
 
@@ -77,6 +79,6 @@ def render_namespace_summary(data):
             Panel(
                 "\n".join(status_lines),
                 title="[bold]📦 Pod Status[/bold]",
-                border_style="dim"
+                border_style=t()["border"]
             )
         )

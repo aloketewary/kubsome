@@ -157,6 +157,32 @@ from core.commands import resolve_command
 from core.notify import notify_if_critical
 from core.suggestions import get_suggestion
 from core.telemetry import track_command, track_unresolved
+from core.collectors.gitops import collect_gitops, gitops_app_detail
+from core.collectors.mesh import (
+    collect_mesh_detail, collect_virtual_services,
+    collect_destination_rules, collect_mtls_status
+)
+from core.renderers.gitops_renderer import (
+    render_gitops, render_gitops_detail
+)
+from core.renderers.mesh_renderer import (
+    render_mesh_detail, render_virtual_services,
+    render_destination_rules, render_mtls_status
+)
+from core.connect import (
+    list_integrations, connect_integration,
+    disconnect_integration, auto_discover,
+    connect_discovered
+)
+from core.renderers.connect_renderer import (
+    render_integrations, render_connect_result,
+    render_disconnect_result, render_discoveries,
+    render_connect_all_results
+)
+from core.profiles import (
+    list_profiles, activate_profile,
+    deactivate_profile, get_active_profile
+)
 
 console = Console()
 
@@ -1873,6 +1899,479 @@ def _handle_plugin_uninstall(cmd, env):
         console.print(f"[red]{message}[/red]")
 
 
+def _handle_gitops(cmd, env):
+    with loading("Checking GitOps status..."):
+        data = collect_gitops()
+    render_gitops(data)
+
+
+def _handle_gitops_detail(cmd, env):
+    app_name = cmd["target"]
+    with loading(f"Fetching {app_name}..."):
+        data = gitops_app_detail(app_name)
+    render_gitops_detail(data)
+
+
+def _handle_mesh_detail(cmd, env):
+    with loading("Scanning service mesh..."):
+        data = collect_mesh_detail()
+    render_mesh_detail(data)
+
+
+def _handle_virtual_services(cmd, env):
+    target = cmd.get("target")
+    with loading("Fetching VirtualServices..."):
+        vs = collect_virtual_services(target)
+    render_virtual_services(vs)
+
+
+def _handle_destination_rules(cmd, env):
+    target = cmd.get("target")
+    with loading("Fetching DestinationRules..."):
+        dr = collect_destination_rules(target)
+    render_destination_rules(dr)
+
+
+def _handle_mtls(cmd, env):
+    with loading("Checking mTLS status..."):
+        data = collect_mtls_status()
+    render_mtls_status(data)
+
+
+def _handle_connect_list(cmd, env):
+    integrations = list_integrations()
+    render_integrations(integrations)
+
+
+def _handle_connect(cmd, env):
+    name = cmd["target"]
+    url = cmd.get("url")
+    with loading(f"Connecting {name}..."):
+        result = connect_integration(name, url)
+    render_connect_result(result)
+
+
+def _handle_disconnect(cmd, env):
+    name = cmd["target"]
+    result = disconnect_integration(name)
+    render_disconnect_result(result)
+
+
+def _handle_connect_discover(cmd, env):
+    with loading("Auto-discovering integrations..."):
+        discoveries = auto_discover()
+    render_discoveries(discoveries)
+    if discoveries:
+        console.print()
+        from questionary import confirm
+        try:
+            if confirm("Connect all discovered?").ask():
+                results = connect_discovered(discoveries)
+                render_connect_all_results(results)
+        except Exception:
+            pass
+
+
+def _handle_profile_list(cmd, env):
+    profiles = list_profiles()
+    active = get_active_profile()
+
+    lines = []
+    if active:
+        lines.append(
+            f"[bold]Active:[/bold] [cyan]{active}[/cyan]\n"
+        )
+
+    for p in profiles:
+        icon = (
+            "[green]●[/green]" if p["active"]
+            else "[dim]○[/dim]"
+        )
+        source = (
+            f" [dim]({p['source']})[/dim]"
+            if p["source"] == "custom" else ""
+        )
+        lines.append(
+            f"  {icon} [bold]{p['name']}[/bold]{source}"
+            f"\n    [dim]{p['description']}[/dim]"
+        )
+
+    console.print(
+        Panel(
+            "\n".join(lines),
+            title="[bold]👤 Profiles[/bold]",
+            border_style="cyan",
+        )
+    )
+    console.print(
+        "[dim]  Activate: profile use <name>\n"
+        "  Reset:    profile reset[/dim]"
+    )
+
+
+def _handle_profile_use(cmd, env):
+    name = cmd["name"]
+    result = activate_profile(name)
+    if result["success"]:
+        console.print(
+            f"[green]✓ {result['message']}[/green]"
+        )
+        overrides = result.get("overrides", {})
+        if overrides:
+            for k, v in overrides.items():
+                console.print(f"  [dim]{k}: {v}[/dim]")
+        # Reload settings
+        from config.settings import SETTINGS
+        from core.config import load_config
+        new_config = load_config()
+        SETTINGS.update(new_config)
+    else:
+        console.print(
+            f"[red]✗ {result['message']}[/red]"
+        )
+        if result.get("available"):
+            console.print(
+                f"  [dim]Available: "
+                f"{', '.join(result['available'])}[/dim]"
+            )
+
+
+def _handle_profile_reset(cmd, env):
+    result = deactivate_profile()
+    console.print(f"[green]✓ {result['message']}[/green]")
+    # Reload settings
+    from config.settings import SETTINGS
+    from core.config import load_config
+    new_config = load_config()
+    SETTINGS.update(new_config)
+
+
+def _handle_guided(cmd, env):
+    from core.guided import run_guided_mode
+    result = run_guided_mode()
+    if result:
+        console.print(f"[dim]→ {result}[/dim]")
+        resolved = resolve_command(result)
+        if resolved and isinstance(resolved, str):
+            from core.executor import execute
+            execute(resolved)
+        elif resolved:
+            dispatch(resolved, env)
+
+
+def _handle_env_info(cmd, env):
+    from core.env_switch import detect_environment, DEFAULT_ENV_RULES
+    from core.profiles import get_active_profile
+
+    current = detect_environment()
+    active_profile = get_active_profile()
+
+    lines = [
+        f"[bold cyan]Context:[/bold cyan]     "
+        f"{current['context']}",
+        f"[bold cyan]Environment:[/bold cyan] "
+        f"[{current['color']}]{current['icon']} "
+        f"{current['name']}[/{current['color']}]",
+        f"[bold cyan]Safety:[/bold cyan]      "
+        f"{'✓ Confirmations required' if current['confirm_destructive'] else '✗ No confirmations'}",
+        f"[bold cyan]Profile:[/bold cyan]     "
+        f"{active_profile or current.get('profile') or 'none'}",
+    ]
+
+    blocked = current.get("blocked_commands", [])
+    if blocked:
+        lines.append(
+            f"[bold cyan]Blocked:[/bold cyan]     "
+            f"[red]{', '.join(blocked)}[/red]"
+        )
+
+    lines.append("\n[bold]Environment Rules:[/bold]")
+    for name, rules in DEFAULT_ENV_RULES.items():
+        patterns = ", ".join(rules["patterns"][:4])
+        color = rules["color"]
+        icon = (
+            "[green]●[/green]" if name == current["key"]
+            else "[dim]○[/dim]"
+        )
+        lines.append(
+            f"  {icon} [{color}]{name.upper():10}[/{color}] "
+            f"[dim]patterns: {patterns}[/dim]"
+        )
+
+    console.print(
+        Panel(
+            "\n".join(lines),
+            title="[bold]🌍 Environment[/bold]",
+            border_style=current["color"],
+        )
+    )
+    console.print(
+        "[dim]  Customize in ~/.kubsome/config.yaml "
+        "under 'environments:'[/dim]"
+    )
+
+
+def _handle_analytics_stats(cmd, env):
+    from core.analytics.engine import get_stats
+
+    with loading("Loading analytics..."):
+        stats = get_stats()
+
+    lines = [
+        f"[bold cyan]Database:[/bold cyan]  {stats['db_path']}",
+        f"[bold cyan]Size:[/bold cyan]      {stats['db_size_mb']} MB",
+        "",
+        "[bold]Storage Levels:[/bold]",
+        f"  Raw:        {stats['raw_rows']:,} rows",
+    ]
+    if stats['raw_from']:
+        lines.append(
+            f"              [dim]{stats['raw_from'][:16]} "
+            f"\u2192 {stats['raw_to'][:16]}[/dim]"
+        )
+    lines.append(f"  Hourly:     {stats['hourly_rows']:,} rows")
+    if stats['hourly_from']:
+        lines.append(
+            f"              [dim]{stats['hourly_from'][:16]} "
+            f"\u2192 {stats['hourly_to'][:16]}[/dim]"
+        )
+    lines.append(f"  Daily:      {stats['daily_rows']:,} rows")
+
+    console.print(
+        Panel(
+            "\n".join(lines),
+            title="[bold]\U0001f4ca Analytics Engine[/bold]",
+            border_style="cyan",
+        )
+    )
+
+
+def _handle_rightsizing(cmd, env):
+    from core.analytics.rightsizing import (
+        optimization_report
+    )
+
+    with loading("Analyzing resource usage..."):
+        report = optimization_report()
+
+    summary = report["summary"]
+    if summary["deployments"] == 0:
+        console.print(
+            "[dim]No analytics data yet. "
+            "Run 'collect' to start, or wait for "
+            "auto-collection.[/dim]"
+        )
+        return
+
+    lines = [
+        f"[bold]Cluster Utilization (7d):[/bold]",
+        f"  CPU: {summary['cpu_util_pct']}%  "
+        f"  Memory: {summary['mem_util_pct']}%  "
+        f"  Deployments: {summary['deployments']}",
+        f"  CPU waste: {summary['cpu_waste_m']}m  "
+        f"  Memory waste: {summary['mem_waste_mb']}Mi",
+        "",
+    ]
+
+    recs = report["recommendations"]
+    at_risk = report["at_risk"]
+
+    # Under-provisioned (urgent)
+    if at_risk:
+        lines.append(
+            f"[bold red]\u26a0 {len(at_risk)} AT RISK "
+            f"(usage > 85% of request):[/bold red]\n"
+        )
+        for r in at_risk[:5]:
+            lines.append(
+                f"  [red]\u25cf[/red] [bold]{r['deployment']}[/bold] "
+                f"[dim]({r['namespace']})[/dim]  "
+                f"CPU:{r['cpu_util_pct']}%  "
+                f"Mem:{r['mem_util_pct']}%  "
+                f"[dim]{r['action']}[/dim]"
+            )
+        lines.append("")
+
+    # Over-provisioned (savings)
+    if not recs:
+        lines.append("[green]\u2713 All deployments well-sized[/green]")
+    else:
+        total = report["total_monthly_savings_usd"]
+        lines.append(
+            f"[bold]{len(recs)} over-provisioned "
+            f"(save [green]${total:.2f}/mo[/green]):[/bold]\n"
+        )
+        for r in recs[:8]:
+            risk_icon = {
+                "low": "[green]\u25cf[/green]",
+                "medium": "[yellow]\u25cf[/yellow]",
+                "high": "[red]\u25cf[/red]",
+            }.get(r["risk"], "\u25cf")
+
+            current = r["current"]
+            recommended = r["recommended"]
+            usage = r["usage"]
+
+            lines.append(
+                f"  {risk_icon} [bold]{r['deployment']}[/bold] "
+                f"[dim]({r['namespace']}, {r['pods']} pods)[/dim]  "
+                f"confidence:{r['confidence']}%  "
+                f"risk:{r['risk']}"
+            )
+            lines.append(
+                f"    CPU: {current['cpu_request']}m \u2192 "
+                f"[cyan]{recommended['cpu_request']}m[/cyan] req, "
+                f"[cyan]{recommended['cpu_limit']}m[/cyan] lim  "
+                f"[dim](P95={usage['cpu_p95']}m, "
+                f"avg={usage['cpu_avg']}m)[/dim]"
+            )
+            lines.append(
+                f"    Mem: {current['mem_request']}Mi \u2192 "
+                f"[cyan]{recommended['mem_request']}Mi[/cyan] req, "
+                f"[cyan]{recommended['mem_limit']}Mi[/cyan] lim  "
+                f"[dim](P95={usage['mem_p95']}Mi, "
+                f"avg={usage['mem_avg']}Mi)[/dim]"
+            )
+            lines.append(
+                f"    [green]Save ${r['total_savings_monthly']:.2f}/mo[/green]  "
+                f"[dim]{r['reason'][:60]}[/dim]"
+            )
+            lines.append("")
+
+    # Methodology
+    m = report["methodology"]
+    lines.append("[dim]Methodology:[/dim]")
+    lines.append(
+        f"[dim]  Request={m['request_formula']}, "
+        f"Limit={m['limit_formula']}, "
+        f"Min samples={m['min_samples']}h[/dim]"
+    )
+
+    console.print(
+        Panel(
+            "\n".join(lines),
+            title="[bold]\U0001f4cf Right-Sizing Recommendations[/bold]",
+            border_style="cyan",
+        )
+    )
+
+
+def _handle_cost_query(cmd, env):
+    from core.analytics.cost_model import (
+        cost_by_deployment, monthly_cost_summary
+    )
+
+    with loading("Querying cost data..."):
+        summary = monthly_cost_summary()
+        deployments = cost_by_deployment()
+
+    if not deployments:
+        console.print(
+            "[dim]No cost data yet. Analytics needs "
+            "at least 1 day of collection.[/dim]"
+        )
+        return
+
+    lines = [
+        f"[bold]Monthly Estimate:[/bold] "
+        f"${summary['monthly_usd']:.2f}/mo "
+        f"[dim]({summary['days_tracked']}d tracked, "
+        f"{summary['deployments']} deployments)[/dim]\n",
+        "[bold]Cost by Deployment (7d):[/bold]\n",
+    ]
+
+    total_savings = 0
+    for d in deployments[:12]:
+        savings = d["savings_usd"]
+        total_savings += savings
+        waste = f" [yellow]({d['waste_pct']}% waste)[/yellow]" if d["waste_pct"] > 20 else ""
+        lines.append(
+            f"  ${d['cost_requested_usd']:>7.2f}  "
+            f"{d['deployment'][:30]}"
+            f"{waste}"
+        )
+
+    if total_savings > 0:
+        lines.append(
+            f"\n[green]  Total savings potential: "
+            f"${total_savings:.2f}/week[/green]"
+        )
+
+    console.print(
+        Panel(
+            "\n".join(lines),
+            title="[bold]\U0001f4b0 Cost Analytics[/bold]",
+            border_style="green",
+        )
+    )
+
+
+def _handle_analytics_collect(cmd, env):
+    from core.analytics.collector import collect_now
+
+    with loading("Collecting metrics..."):
+        result = collect_now()
+
+    console.print(
+        f"[green]\u2713 Collected:[/green] "
+        f"{result['pods']} pods, {result['nodes']} nodes "
+        f"[dim]({result['duration_ms']}ms)[/dim]"
+    )
+
+
+def _handle_analytics_export(cmd, env):
+    from core.analytics.export import export_csv, export_parquet
+
+    query = cmd.get("query", "hourly")
+    fmt = cmd.get("format", "csv")
+
+    with loading(f"Exporting {query} as {fmt}..."):
+        if fmt == "parquet":
+            path = export_parquet(query)
+        else:
+            path = export_csv(query)
+
+    if path:
+        console.print(f"[green]\u2713 Exported:[/green] {path}")
+    else:
+        console.print(
+            f"[red]Unknown query: {query}[/red]\n"
+            "[dim]Available: raw_pods, raw_nodes, hourly, "
+            "daily, rightsizing, cost[/dim]"
+        )
+
+
+def _handle_analytics_sql(cmd, env):
+    from core.analytics.export import run_custom_query
+
+    sql = cmd["query"]
+    with loading("Running query..."):
+        result = run_custom_query(sql)
+
+    if "error" in result:
+        console.print(f"[red]{result['error']}[/red]")
+        return
+
+    if not result["rows"]:
+        console.print("[dim]No results[/dim]")
+        return
+
+    table = Table(
+        show_header=True,
+        header_style="bold cyan",
+        border_style="dim",
+        expand=True,
+    )
+    for col in result["columns"]:
+        table.add_column(col)
+
+    for row in result["rows"][:50]:
+        table.add_row(*[str(v) for v in row.values()])
+
+    console.print(table)
+    console.print(f"[dim]{result['count']} rows[/dim]")
+
+
 # Handler registry
 HANDLERS = {
     "noop": lambda cmd, env: None,
@@ -1974,4 +2473,25 @@ HANDLERS = {
     "policy_check": _handle_policy_check,
     "plugin_install": _handle_plugin_install,
     "plugin_uninstall": _handle_plugin_uninstall,
+    "gitops": _handle_gitops,
+    "gitops_detail": _handle_gitops_detail,
+    "mesh_detail": _handle_mesh_detail,
+    "virtual_services": _handle_virtual_services,
+    "destination_rules": _handle_destination_rules,
+    "mtls": _handle_mtls,
+    "connect_list": _handle_connect_list,
+    "connect": _handle_connect,
+    "disconnect": _handle_disconnect,
+    "connect_discover": _handle_connect_discover,
+    "profile_list": _handle_profile_list,
+    "profile_use": _handle_profile_use,
+    "profile_reset": _handle_profile_reset,
+    "guided": _handle_guided,
+    "env_info": _handle_env_info,
+    "analytics_stats": _handle_analytics_stats,
+    "rightsizing": _handle_rightsizing,
+    "cost_query": _handle_cost_query,
+    "analytics_collect": _handle_analytics_collect,
+    "analytics_export": _handle_analytics_export,
+    "analytics_sql": _handle_analytics_sql,
 }

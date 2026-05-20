@@ -4,6 +4,8 @@ from rich.table import Table
 
 console = Console()
 
+from core.theme import t
+
 
 def render_snapshot_diff(diff_data):
     if not diff_data:
@@ -16,7 +18,7 @@ def render_snapshot_diff(diff_data):
         Panel.fit(
             f"[dim]Comparing against: "
             f"{diff_data['timestamp'][:19]}[/dim]",
-            border_style="cyan"
+            border_style=t()["primary"]
         )
     )
 
@@ -54,7 +56,7 @@ def render_snapshot_diff(diff_data):
                     f"[bold]{resource_type.capitalize()} "
                     f"Changes[/bold]"
                 ),
-                border_style="yellow"
+                border_style=t()["warning"]
             )
         )
 
@@ -89,7 +91,7 @@ def render_changelog(changelog):
         Panel(
             "\n".join(lines),
             title="[bold]📋 Changelog[/bold]",
-            border_style="cyan"
+            border_style=t()["primary"]
         )
     )
 
@@ -103,8 +105,8 @@ def render_resource_history(events, name):
 
     table = Table(
         show_header=True,
-        header_style="bold cyan",
-        border_style="dim",
+        header_style=t()["header"],
+        border_style=t()["border"],
         expand=True
     )
 
@@ -130,6 +132,6 @@ def render_resource_history(events, name):
         Panel(
             table,
             title=f"[bold]📜 History: {name}[/bold]",
-            border_style="cyan"
+            border_style=t()["primary"]
         )
     )

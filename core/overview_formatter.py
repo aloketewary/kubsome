@@ -5,6 +5,8 @@ from rich.align import Align
 
 console = Console()
 
+from core.theme import t
+
 
 def health_bar(healthy, warning, critical, width=20):
     total = healthy + warning + critical
@@ -53,7 +55,7 @@ def render_overview(
             Panel.fit(
                 env_info,
                 title="[bold]🌐 Cluster Overview[/bold]",
-                border_style="cyan"
+                border_style=t()["primary"]
             )
         )
     )

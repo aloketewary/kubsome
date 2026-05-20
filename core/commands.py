@@ -789,6 +789,121 @@ def resolve_command(user_input: str):
     if cmd == "pins":
         return {"type": "list_queries"}
 
+    # GitOps status
+    if cmd in ("gitops", "argocd", "flux"):
+        if len(tokens) > 1:
+            return {
+                "type": "gitops_detail",
+                "target": tokens[1],
+            }
+        return {"type": "gitops"}
+
+    # Mesh detail (enhanced)
+    if cmd == "mesh-detail" or cmd == "mesh-status":
+        return {"type": "mesh_detail"}
+
+    # VirtualServices
+    if cmd in ("vs", "virtualservices", "virtualservice"):
+        target = tokens[1] if len(tokens) > 1 else None
+        return {
+            "type": "virtual_services",
+            "target": target,
+        }
+
+    # DestinationRules
+    if cmd in ("dr", "destinationrules", "destinationrule"):
+        target = tokens[1] if len(tokens) > 1 else None
+        return {
+            "type": "destination_rules",
+            "target": target,
+        }
+
+    # mTLS status
+    if cmd == "mtls":
+        return {"type": "mtls"}
+
+    # Connect integrations
+    if cmd == "connect":
+        if len(tokens) == 1:
+            return {"type": "connect_list"}
+        if tokens[1] == "--discover" or tokens[1] == "discover":
+            return {"type": "connect_discover"}
+        url = tokens[2] if len(tokens) > 2 else None
+        return {
+            "type": "connect",
+            "target": tokens[1],
+            "url": url,
+        }
+
+    # Disconnect
+    if cmd == "disconnect" and len(tokens) > 1:
+        return {
+            "type": "disconnect",
+            "target": tokens[1],
+        }
+
+    # Integrations (alias for connect list)
+    if cmd == "integrations":
+        return {"type": "connect_list"}
+
+    # Profiles
+    if cmd == "profile" or cmd == "profiles":
+        if len(tokens) > 1:
+            sub = tokens[1]
+            if sub == "use" and len(tokens) > 2:
+                return {
+                    "type": "profile_use",
+                    "name": tokens[2],
+                }
+            if sub == "reset":
+                return {"type": "profile_reset"}
+        return {"type": "profile_list"}
+
+    # Guided mode
+    if cmd in ("guide", "guided", "menu"):
+        return {"type": "guided"}
+
+    # Environment info
+    if cmd == "env":
+        return {"type": "env_info"}
+
+    # Analytics
+    if cmd == "analytics":
+        return {"type": "analytics_stats"}
+
+    # Right-sizing
+    if cmd in ("rightsizing", "rightsize", "right-size"):
+        return {"type": "rightsizing"}
+
+    # Cost query
+    if cmd == "cost-query":
+        return {"type": "cost_query"}
+
+    # Analytics collect now
+    if cmd == "collect":
+        return {"type": "analytics_collect"}
+
+    # Analytics export
+    if cmd == "analytics-export":
+        fmt = "csv"
+        query = "hourly"
+        if len(tokens) > 1:
+            query = tokens[1]
+        if len(tokens) > 2 and tokens[2] == "parquet":
+            fmt = "parquet"
+        return {
+            "type": "analytics_export",
+            "query": query,
+            "format": fmt,
+        }
+
+    # Analytics SQL
+    if cmd == "sql" and len(tokens) > 1:
+        return {
+            "type": "analytics_sql",
+            "query": " ".join(tokens[1:]),
+        }
+
     # describe <resource> <name>
     if cmd == "describe":
         if len(tokens) < 3:

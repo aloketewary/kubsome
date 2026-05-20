@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 
-from api.routes import pods, overview, contexts, events, metrics, logs, deployments, diagnostics, intelligence, terminal, operations, ws, describe, gateway
+from api.routes import pods, overview, contexts, events, metrics, logs, deployments, diagnostics, intelligence, terminal, operations, ws, describe, gateway, gitops
 from api.auth import AuthMiddleware, generate_token
 from api.ratelimit import RateLimitMiddleware
 
@@ -47,6 +47,7 @@ app.include_router(terminal.router, prefix="/api")
 app.include_router(operations.router, prefix="/api")
 app.include_router(describe.router, prefix="/api")
 app.include_router(gateway.router, prefix="/api")
+app.include_router(gitops.router, prefix="/api")
 app.include_router(ws.router)
 
 
@@ -79,6 +80,13 @@ def _on_startup():
             time.sleep(300)  # 5 min
 
     threading.Thread(target=_record_loop, daemon=True).start()
+
+    # Start DuckDB analytics collector
+    try:
+        from core.analytics.collector import start_collector
+        start_collector()
+    except ImportError:
+        pass
 
 
 @app.get("/api/health")

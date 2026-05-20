@@ -9,6 +9,8 @@ from rich.table import Table
 
 console = Console()
 
+from core.theme import t
+
 
 def render_rollout(status, history):
     if not status:
@@ -73,8 +75,8 @@ def render_rollout(status, history):
     if status.get("conditions"):
         ct = Table(
             show_header=True,
-            header_style="bold cyan",
-            border_style="dim",
+            header_style=t()["header"],
+            border_style=t()["border"],
             expand=True,
             show_lines=False,
         )
@@ -98,7 +100,7 @@ def render_rollout(status, history):
             )
 
         console.print(
-            Panel(ct, title="[bold]📋 Conditions[/bold]", border_style="dim")
+            Panel(ct, title="[bold]📋 Conditions[/bold]", border_style=t()["border"])
         )
 
     # History
@@ -107,7 +109,7 @@ def render_rollout(status, history):
             Panel(
                 history.strip(),
                 title="[bold]📜 Rollout History[/bold]",
-                border_style="dim",
+                border_style=t()["border"],
             )
         )
 
@@ -131,6 +133,6 @@ def render_rollout(status, history):
                 f"  [cyan]rollback {status['name']}[/cyan]"
                 "   — undo this rollout",
                 title="[bold]⚠ Stuck Rollout[/bold]",
-                border_style="red",
+                border_style=t()["error"],
             )
         )

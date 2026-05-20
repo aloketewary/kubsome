@@ -9,6 +9,8 @@ from rich.tree import Tree
 
 console = Console()
 
+from core.theme import t
+
 
 def render_trace(data):
     if not data["deployment"] and not data["service"]:
@@ -127,7 +129,7 @@ def render_trace(data):
         Panel(
             tree,
             title="[bold]🗺️  Resource Map[/bold]",
-            border_style="cyan",
+            border_style=t()["primary"],
         )
     )
 

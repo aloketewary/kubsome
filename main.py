@@ -125,6 +125,25 @@ def main():
         _init_config()
         return
 
+    # kubsome --profile <name>
+    if "--profile" in args:
+        idx = args.index("--profile")
+        if idx + 1 < len(args):
+            profile_name = args[idx + 1]
+            from core.profiles import activate_profile
+            result = activate_profile(profile_name)
+            if result["success"]:
+                console.print(
+                    f"[dim]Profile: {profile_name}[/dim]"
+                )
+            else:
+                console.print(
+                    f"[red]{result['message']}[/red]"
+                )
+                return
+            # Remove --profile args
+            args = args[:idx] + args[idx + 2:]
+
     # kubsome serve [port]
     if args and args[0] == "serve":
         _start_server(args)
@@ -145,29 +164,9 @@ def main():
 
 
 def _init_config():
-    """Generate default config interactively."""
-    from core.config import (
-        CONFIG_PATH, save_default_config
-    )
-
-    if CONFIG_PATH.exists():
-        console.print(
-            f"[yellow]Config already exists:[/yellow] "
-            f"{CONFIG_PATH}"
-        )
-        overwrite = input("Overwrite? [y/N]: ").strip()
-        if overwrite.lower() != "y":
-            console.print("[dim]Skipped.[/dim]")
-            return
-
-    save_default_config()
-    console.print(
-        f"[green]✓ Config created:[/green] {CONFIG_PATH}"
-    )
-    console.print(
-        "[dim]Edit it to customize theme, aliases, "
-        "and LLM settings.[/dim]"
-    )
+    """Generate config via interactive wizard."""
+    from core.init_wizard import run_init_wizard
+    run_init_wizard(force=False)
 
 
 def _start_server(args):
@@ -286,11 +285,19 @@ def _start_cli():
     from core.scheduler import get_scheduler
     get_scheduler().start()
 
+    # Start analytics collector (every 5 min)
+    try:
+        from core.analytics.collector import start_collector
+        start_collector()
+    except ImportError:
+        pass
+
     last_command = ""
 
     while True:
         env = _detect_env()
-        prompt_text = f"[{env}] {context.namespace}"
+        env_name = env["name"]
+        prompt_text = f"[{env_name}] {context.namespace}"
 
         try:
             user_input = prompt(
@@ -376,7 +383,7 @@ def _execute_single(user_input, env):
             )
             try:
                 confirm = prompt(
-                    f"{env} > ",
+                    f"{env['name']} > ",
                     completer=command_completer,
                     complete_while_typing=True,
                     complete_in_thread=True,
@@ -408,7 +415,7 @@ def _execute_single(user_input, env):
         if "target" in command:
             context.last_target = command["target"]
 
-        dispatch(command, env)
+        dispatch(command, env["name"])
 
     elapsed = time.time() - start
     if elapsed > 3:
@@ -416,15 +423,8 @@ def _execute_single(user_input, env):
 
 
 def _detect_env():
-    if not context.current_context:
-        return "UNKNOWN"
-    if "prd" in context.current_context:
-        return "PROD"
-    if "dev" in context.current_context:
-        return "DEV"
-    if "sit" in context.current_context:
-        return "SIT"
-    return "UNKNOWN"
+    from core.env_switch import detect_environment
+    return detect_environment()
 
 
 def _handle_switch(user_input):
@@ -443,6 +443,17 @@ def _handle_switch(user_input):
     console.print(
         f"[green]Switched to:[/green] {ctx['name']}"
     )
+    # Auto-apply environment rules
+    from core.env_switch import on_context_switch, get_env_banner
+    env = on_context_switch(ctx["name"])
+    banner = get_env_banner(env)
+    if banner:
+        console.print(f"  {banner}")
+    if env.get("profile"):
+        console.print(
+            f"  [dim]Auto-applied profile: "
+            f"{env['profile']}[/dim]"
+        )
 
 
 def _handle_use(user_input):

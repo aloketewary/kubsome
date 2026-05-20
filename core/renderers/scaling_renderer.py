@@ -9,6 +9,8 @@ from rich.table import Table
 
 console = Console()
 
+from core.theme import t
+
 
 def _usage_bar(pct, width=15):
     pct = min(100, max(0, pct))
@@ -32,12 +34,12 @@ def render_hpa(hpas):
     if at_max:
         parts.append(f"[red]● {at_max} at max[/red]")
 
-    console.print(Panel.fit("  │  ".join(parts), border_style="cyan"))
+    console.print(Panel.fit("  │  ".join(parts), border_style=t()["primary"]))
 
     table = Table(
         show_header=True,
-        header_style="bold cyan",
-        border_style="dim",
+        header_style=t()["header"],
+        border_style=t()["border"],
         expand=True,
         show_lines=False,
     )
@@ -96,12 +98,12 @@ def render_pdb(pdbs):
     else:
         parts.append("[green]● all allow disruptions[/green]")
 
-    console.print(Panel.fit("  │  ".join(parts), border_style="cyan"))
+    console.print(Panel.fit("  │  ".join(parts), border_style=t()["primary"]))
 
     table = Table(
         show_header=True,
-        header_style="bold cyan",
-        border_style="dim",
+        header_style=t()["header"],
+        border_style=t()["border"],
         expand=True,
         show_lines=False,
     )
@@ -190,8 +192,8 @@ def render_quota(quotas):
     for quota in quotas:
         table = Table(
             show_header=True,
-            header_style="bold cyan",
-            border_style="dim",
+            header_style=t()["header"],
+            border_style=t()["border"],
             expand=True,
             show_lines=False,
         )
@@ -224,7 +226,7 @@ def render_quota(quotas):
             Panel(
                 table,
                 title=f"[bold]📋 Quota: {quota['name']}[/bold]",
-                border_style="cyan",
+                border_style=t()["primary"],
             )
         )
 
@@ -270,8 +272,8 @@ def render_drain_check(data):
     if unsafe_pods:
         table = Table(
             show_header=True,
-            header_style="bold cyan",
-            border_style="dim",
+            header_style=t()["header"],
+            border_style=t()["border"],
             expand=True,
             show_lines=False,
         )
@@ -294,7 +296,7 @@ def render_drain_check(data):
             Panel(
                 table,
                 title="[bold]⚠ Unsafe to Evict[/bold]",
-                border_style="red",
+                border_style=t()["error"],
             )
         )
 

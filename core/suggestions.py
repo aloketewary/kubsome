@@ -97,6 +97,34 @@ def _after_check(cmd, ctx):
     return "Try: [cyan]export[/cyan] to save report or [cyan]scorecard[/cyan] for detailed grades"
 
 
+def _after_gitops(cmd, ctx):
+    return "Try: [cyan]gitops <app>[/cyan] for detail or [cyan]diff-timeline[/cyan] for recent changes"
+
+
+def _after_mesh_detail(cmd, ctx):
+    return "Try: [cyan]vs[/cyan] for routing or [cyan]mtls[/cyan] for encryption status"
+
+
+def _after_rightsizing(cmd, ctx):
+    return "Try: [cyan]cost-query[/cyan] for cost breakdown or [cyan]analytics-export rightsizing[/cyan]"
+
+
+def _after_cost_query(cmd, ctx):
+    return "Try: [cyan]rightsizing[/cyan] for savings or [cyan]analytics-export cost[/cyan] for CSV"
+
+
+def _after_analytics_collect(cmd, ctx):
+    return "Try: [cyan]analytics[/cyan] for stats or [cyan]rightsizing[/cyan] for recommendations"
+
+
+def _after_connect_list(cmd, ctx):
+    return "Try: [cyan]connect --discover[/cyan] to auto-find integrations"
+
+
+def _after_profile_list(cmd, ctx):
+    return "Try: [cyan]profile use dev[/cyan] or [cyan]profile use oncall[/cyan]"
+
+
 _SUGGESTIONS = {
     "pods_table": _after_pods,
     "overview": _after_overview,
@@ -114,4 +142,11 @@ _SUGGESTIONS = {
     "trace": _after_trace,
     "diff_timeline": _after_diff_timeline,
     "check": _after_check,
+    "gitops": _after_gitops,
+    "mesh_detail": _after_mesh_detail,
+    "rightsizing": _after_rightsizing,
+    "cost_query": _after_cost_query,
+    "analytics_collect": _after_analytics_collect,
+    "connect_list": _after_connect_list,
+    "profile_list": _after_profile_list,
 }

@@ -9,6 +9,8 @@ from rich.table import Table
 
 console = Console()
 
+from core.theme import t
+
 
 def _usage_bar(percent, width=15):
     """Render a colored usage bar with percentage label."""
@@ -64,13 +66,13 @@ def render_top_pods(pods):
         parts.append(f"[red]● {hot} hot[/red]")
 
     console.print(
-        Panel.fit("  │  ".join(parts), border_style="cyan")
+        Panel.fit("  │  ".join(parts), border_style=t()["primary"])
     )
 
     table = Table(
         show_header=True,
-        header_style="bold cyan",
-        border_style="dim",
+        header_style=t()["header"],
+        border_style=t()["border"],
         expand=True,
         show_lines=False,
     )
@@ -143,13 +145,13 @@ def render_top_nodes(nodes):
         )
 
     console.print(
-        Panel.fit("  │  ".join(parts), border_style="cyan")
+        Panel.fit("  │  ".join(parts), border_style=t()["primary"])
     )
 
     table = Table(
         show_header=True,
-        header_style="bold cyan",
-        border_style="dim",
+        header_style=t()["header"],
+        border_style=t()["border"],
         expand=True,
         show_lines=False,
     )

@@ -116,13 +116,13 @@ def build_watch_view(pods, namespace, target=None):
 
     header_panel = Panel.fit(
         header,
-        border_style="cyan"
+        border_style=t()["primary"]
     )
 
     table = Table(
         show_header=True,
-        header_style="bold cyan",
-        border_style="dim",
+        header_style=t()["header"],
+        border_style=t()["border"],
         pad_edge=True,
         show_lines=False,
         expand=True

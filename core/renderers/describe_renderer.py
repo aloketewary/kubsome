@@ -9,6 +9,8 @@ from rich.table import Table
 
 console = Console()
 
+from core.theme import t
+
 
 def render_describe(output, resource_type=""):
     """Parse and render kubectl describe output."""
@@ -76,7 +78,7 @@ def _render_deployment_describe(sections, raw):
     console.print(Panel(
         info,
         title="[bold]📦 Deployment[/bold]",
-        border_style="cyan",
+        border_style=t()["primary"],
     ))
 
     # Labels & Annotations
@@ -100,7 +102,7 @@ def _render_deployment_describe(sections, raw):
         console.print(Panel(
             meta,
             title="[bold]🏷️  Metadata[/bold]",
-            border_style="dim",
+            border_style=t()["border"],
         ))
 
     # Containers (parse from raw)
@@ -115,7 +117,7 @@ def _render_deployment_describe(sections, raw):
         console.print(Panel(
             events_raw,
             title="[bold]⚡ Events[/bold]",
-            border_style="yellow",
+            border_style=t()["warning"],
         ))
 
 
@@ -201,8 +203,8 @@ def _render_containers_from_raw(raw):
 
     table = Table(
         show_header=True,
-        header_style="bold cyan",
-        border_style="dim",
+        header_style=t()["header"],
+        border_style=t()["border"],
         expand=True,
     )
     table.add_column("Container")
@@ -266,8 +268,8 @@ def _render_conditions_from_raw(raw):
 
     table = Table(
         show_header=True,
-        header_style="bold cyan",
-        border_style="dim",
+        header_style=t()["header"],
+        border_style=t()["border"],
         expand=True,
     )
     table.add_column("Type", width=15)
@@ -292,7 +294,7 @@ def _render_conditions_from_raw(raw):
     console.print(Panel(
         table,
         title="[bold]📋 Conditions[/bold]",
-        border_style="dim",
+        border_style=t()["border"],
     ))
 
 
@@ -319,7 +321,7 @@ def _render_service_describe(sections, raw):
     console.print(Panel(
         info,
         title="[bold]🌐 Service[/bold]",
-        border_style="green",
+        border_style=t()["success"],
     ))
     _render_conditions_from_raw(raw)
 
@@ -375,6 +377,6 @@ def _render_generic_describe(sections, raw):
 
     console.print(Panel(
         "\n".join(lines),
-        border_style="cyan",
+        border_style=t()["primary"],
         padding=(0, 1),
     ))

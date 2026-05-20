@@ -4,6 +4,8 @@ from rich.table import Table
 
 console = Console()
 
+from core.theme import t
+
 
 def render_bookmarks(bookmarks):
     if not bookmarks:
@@ -24,7 +26,7 @@ def render_bookmarks(bookmarks):
         Panel(
             table,
             title="[bold]⭐ Bookmarks[/bold]",
-            border_style="cyan"
+            border_style=t()["primary"]
         )
     )
 
@@ -56,7 +58,7 @@ def render_workflows(workflows):
         Panel(
             table,
             title="[bold]🔄 Workflows[/bold]",
-            border_style="cyan"
+            border_style=t()["primary"]
         )
     )
 

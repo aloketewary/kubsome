@@ -222,6 +222,7 @@ See [docs/web-ui.md](docs/web-ui.md) for detailed page descriptions.
 - [API Reference](docs/api.md) — REST + WebSocket endpoints
 - [Web UI Guide](docs/web-ui.md) — Page-by-page walkthrough
 - [Architecture](docs/architecture.md) — System design and patterns
+- [Roadmap](docs/roadmap.md) — Planned features and milestones
 - [Changelog](CHANGELOG.md) — Release history
 
 ## License

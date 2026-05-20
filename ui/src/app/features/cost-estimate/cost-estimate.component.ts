@@ -19,10 +19,12 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
         <h1>Cost Estimation</h1>
         <p class="subtitle">Estimated monthly spend based on resource requests · {{ lastUpdated }}</p>
       </div>
-      <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="refresh()" [loading]="loading"></button>
-      <app-page-info title="Cost Estimation" description="Estimated monthly spend per deployment based on CPU and memory resource requests."
-        [tips]="['Based on AWS on-demand pricing (~$30/vCPU, ~$4/GB)', 'Sorted by highest cost first', 'Reduce cost by right-sizing: optimize command']"
-        [commands]="['cost-estimate', 'optimize', 'top pods']" />
+      <div class="header-actions">
+        <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="refresh()" [loading]="loading"></button>
+        <app-page-info title="Cost Estimation" description="Estimated monthly spend per deployment based on CPU and memory resource requests."
+          [tips]="['Based on AWS on-demand pricing (~$30/vCPU, ~$4/GB)', 'Sorted by highest cost first', 'Reduce cost by right-sizing: optimize command']"
+          [commands]="['cost-estimate', 'optimize', 'top pods']" />
+      </div>
     </div>
 
     @if (data) {

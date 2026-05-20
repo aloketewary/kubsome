@@ -39,4 +39,10 @@ export const routes: Routes = [
   { path: 'doctor', title: 'Health — Kubsome', loadComponent: () => import('./features/doctor/doctor.component').then(m => m.DoctorComponent) },
   { path: 'schedule', title: 'Schedules — Kubsome', loadComponent: () => import('./features/schedule/schedule.component').then(m => m.ScheduleComponent) },
   { path: 'stats', title: 'Usage Analytics — Kubsome', loadComponent: () => import('./features/stats/stats.component').then(m => m.StatsComponent) },
+  { path: 'gitops', title: 'GitOps — Kubsome', loadComponent: () => import('./features/gitops/gitops.component').then(m => m.GitopsComponent) },
+  { path: 'mesh', title: 'Service Mesh — Kubsome', loadComponent: () => import('./features/mesh/mesh.component').then(m => m.MeshComponent) },
+  { path: 'rightsizing', title: 'Right-Sizing — Kubsome', loadComponent: () => import('./features/rightsizing/rightsizing.component').then(m => m.RightsizingComponent) },
+  { path: 'integrations', title: 'Integrations — Kubsome', loadComponent: () => import('./features/integrations/integrations.component').then(m => m.IntegrationsComponent) },
+  { path: 'profiles', title: 'Profiles — Kubsome', loadComponent: () => import('./features/profiles/profiles.component').then(m => m.ProfilesComponent) },
+  { path: 'analytics', title: 'Analytics — Kubsome', loadComponent: () => import('./features/analytics/analytics.component').then(m => m.AnalyticsComponent) },
 ];

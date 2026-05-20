@@ -9,6 +9,8 @@ from rich.table import Table
 
 console = Console()
 
+from core.theme import t
+
 SEVERITY_STYLES = {
     "critical": ("red", "●"),
     "high": ("red", "●"),
@@ -26,7 +28,7 @@ def render_cost_recommendations(recommendations):
                 "[green]  ✓ Resources are well-sized — "
                 "no optimization needed[/green]",
                 title="[bold]💰 Resource Optimization[/bold]",
-                border_style="green",
+                border_style=t()["success"],
             )
         )
         return
@@ -44,13 +46,13 @@ def render_cost_recommendations(recommendations):
         parts.append(f"[yellow]↑ {under} under-provisioned[/yellow]")
 
     console.print(
-        Panel.fit("  │  ".join(parts), border_style="cyan")
+        Panel.fit("  │  ".join(parts), border_style=t()["primary"])
     )
 
     table = Table(
         show_header=True,
-        header_style="bold cyan",
-        border_style="dim",
+        header_style=t()["header"],
+        border_style=t()["border"],
         expand=True,
         show_lines=False,
     )
@@ -94,7 +96,7 @@ def render_security_scan(findings):
                 "[green]  ✓ No security issues found — "
                 "cluster passes all checks[/green]",
                 title="[bold]🔒 Security Scan[/bold]",
-                border_style="green",
+                border_style=t()["success"],
             )
         )
         return
@@ -127,8 +129,8 @@ def render_security_scan(findings):
 
     table = Table(
         show_header=True,
-        header_style="bold cyan",
-        border_style="dim",
+        header_style=t()["header"],
+        border_style=t()["border"],
         expand=True,
         show_lines=False,
     )
@@ -178,7 +180,7 @@ def render_unused_resources(unused):
                 "[green]  ✓ No unused resources — "
                 "cluster is clean[/green]",
                 title="[bold]🗑️  Unused Resources[/bold]",
-                border_style="green",
+                border_style=t()["success"],
             )
         )
         return
@@ -200,13 +202,13 @@ def render_unused_resources(unused):
     )
 
     console.print(
-        Panel.fit(summary, border_style="yellow")
+        Panel.fit(summary, border_style=t()["warning"])
     )
 
     table = Table(
         show_header=True,
-        header_style="bold cyan",
-        border_style="dim",
+        header_style=t()["header"],
+        border_style=t()["border"],
         expand=True,
         show_lines=False,
     )

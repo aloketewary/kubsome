@@ -9,6 +9,8 @@ from rich.table import Table
 
 console = Console()
 
+from core.theme import t
+
 SEVERITY_CONFIG = {
     "critical": {"color": "red", "icon": "●", "label": "CRITICAL", "weight": 30},
     "warning": {"color": "yellow", "icon": "●", "label": "WARNING", "weight": 10},
@@ -100,7 +102,7 @@ def render_diagnosis(pod_name, findings):
             Panel(
                 "[green]  ✓ No issues detected — pod is operating normally.[/green]\n"
                 "[dim]  All health checks passed. No action required.[/dim]",
-                border_style="green",
+                border_style=t()["success"],
             )
         )
         return

@@ -25,7 +25,9 @@ TIPS = [
 def render_banner():
     """Show startup banner with context info and health snapshot."""
     import random
+    from core.theme import t
 
+    theme = t()
     tip = random.choice(TIPS)
 
     # Check for active incident
@@ -33,8 +35,8 @@ def render_banner():
     incident_line = ""
     if incident:
         incident_line = (
-            f"\n[bold red]\U0001f6a8 Active Incident: "
-            f"{incident['title']}[/bold red]"
+            f"\n[bold {theme['error']}]\U0001f6a8 Active Incident: "
+            f"{incident['title']}[/bold {theme['error']}]"
         )
 
     # Environment badge
@@ -44,17 +46,17 @@ def render_banner():
     health_line = _quick_health()
 
     content = (
-        f"[bold green]\u25c6 Kubsome[/bold green] "
-        f"[dim]v1.12.0[/dim]  {env}\n"
-        f"[dim]Context:[/dim] {context.current_context}\n"
-        f"[dim]Namespace:[/dim] {context.namespace}"
+        f"[bold {theme['success']}]\u25c6 Kubsome[/bold {theme['success']}] "
+        f"[{theme['muted']}]v1.13.0[/{theme['muted']}]  {env}\n"
+        f"[{theme['muted']}]Context:[/{theme['muted']}] {context.current_context}\n"
+        f"[{theme['muted']}]Namespace:[/{theme['muted']}] {context.namespace}"
         f"{incident_line}"
         f"{health_line}\n\n"
-        f"[dim]\U0001f4a1 {tip}[/dim]"
+        f"[{theme['muted']}]\U0001f4a1 {tip}[/{theme['muted']}]"
     )
 
     console.print(
-        Panel.fit(content, border_style="green")
+        Panel.fit(content, border_style=theme["border"])
     )
 
 
@@ -102,12 +104,8 @@ def _quick_health():
 
 
 def _env_badge():
-    if not context.current_context:
+    from core.env_switch import detect_environment
+    env = detect_environment()
+    if env["key"] == "unknown":
         return ""
-    if "prd" in context.current_context:
-        return "[bold red]\u26a0 PROD[/bold red]"
-    if "sit" in context.current_context:
-        return "[yellow]SIT[/yellow]"
-    if "dev" in context.current_context:
-        return "[green]DEV[/green]"
-    return ""
+    return f"[{env['color']}]{env['icon']} {env['name']}[/{env['color']}]"

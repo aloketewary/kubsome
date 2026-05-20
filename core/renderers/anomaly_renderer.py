@@ -9,6 +9,8 @@ from rich.table import Table
 
 console = Console()
 
+from core.theme import t
+
 
 def render_anomalies(alerts):
     if not alerts:
@@ -17,7 +19,7 @@ def render_anomalies(alerts):
                 "[green]  ✓ No anomalies detected — "
                 "cluster is operating normally[/green]",
                 title="[bold]🔔 Alerts[/bold]",
-                border_style="green",
+                border_style=t()["success"],
             )
         )
         return
@@ -90,7 +92,7 @@ def render_playbook(playbook):
         Panel(
             content,
             title=f"[bold]📖 {playbook['title']}[/bold]",
-            border_style="cyan",
+            border_style=t()["primary"],
             padding=(1, 2),
         )
     )
@@ -110,7 +112,7 @@ def render_correlations(chains):
     console.print(
         Panel.fit(
             f"[bold]{len(chains)}[/bold] correlation chains",
-            border_style="cyan",
+            border_style=t()["primary"],
         )
     )
 

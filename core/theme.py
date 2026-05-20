@@ -66,3 +66,21 @@ def get_current_theme():
     config = load_config()
     name = config.get("theme", "dark")
     return get_theme(name)
+
+
+# Singleton theme colors — loaded once, used everywhere
+_current = None
+
+
+def t():
+    """Get current theme colors (cached singleton)."""
+    global _current
+    if _current is None:
+        _current = get_current_theme()
+    return _current
+
+
+def reload_theme():
+    """Reload theme (call after config change)."""
+    global _current
+    _current = None

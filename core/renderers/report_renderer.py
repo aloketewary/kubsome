@@ -4,6 +4,8 @@ from rich.table import Table
 
 console = Console()
 
+from core.theme import t
+
 
 def render_health_check(result):
     score = result["score"]
@@ -43,8 +45,8 @@ def render_health_check(result):
     # Checks table
     table = Table(
         show_header=True,
-        header_style="bold cyan",
-        border_style="dim",
+        header_style=t()["header"],
+        border_style=t()["border"],
         expand=True
     )
 
@@ -72,7 +74,7 @@ def render_export_success(path):
             f"[green]✓ Report exported[/green]\n\n"
             f"  [dim]{path}[/dim]",
             title="[bold]📄 Export[/bold]",
-            border_style="green"
+            border_style=t()["success"]
         )
     )
 
@@ -84,8 +86,8 @@ def render_audit_log(entries):
 
     table = Table(
         show_header=True,
-        header_style="bold cyan",
-        border_style="dim",
+        header_style=t()["header"],
+        border_style=t()["border"],
         expand=True
     )
 
@@ -106,6 +108,6 @@ def render_audit_log(entries):
         Panel(
             table,
             title="[bold]📝 Audit Log[/bold]",
-            border_style="dim"
+            border_style=t()["border"]
         )
     )

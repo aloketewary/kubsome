@@ -85,10 +85,54 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
     </nav>
 
     <nav class="nav-section">
+      <span class="nav-label" (click)="infraCollapsed = !infraCollapsed" (keydown)="onKey($event, toggleInfra.bind(this))"
+            tabindex="0" role="button" aria-label="Toggle Infrastructure Section" [attr.aria-expanded]="!infraCollapsed">
+        <i class="pi collapse-icon" [class.pi-chevron-down]="!infraCollapsed" [class.pi-chevron-right]="infraCollapsed"></i>
+        Infrastructure
+      </span>
+      @if (!infraCollapsed) {
+        @for (item of infraItems; track item.path) {
+          <div class="nav-row">
+            <a [routerLink]="item.path" routerLinkActive="active" class="nav-item" tabindex="0">
+              <i [class]="item.icon"></i>
+              <span>{{ item.label }}</span>
+              @if (item.badge) { <span class="nav-badge">{{ item.badge }}</span> }
+            </a>
+            <button class="star-btn" [class.starred]="isFavorite(item.path)" (click)="toggleFavorite(item.path)" title="Toggle favorite">
+              <i class="pi" [class.pi-star-fill]="isFavorite(item.path)" [class.pi-star]="!isFavorite(item.path)"></i>
+            </button>
+          </div>
+        }
+      }
+    </nav>
+
+    <nav class="nav-section">
+      <span class="nav-label" (click)="costCollapsed = !costCollapsed" (keydown)="onKey($event, toggleCost.bind(this))"
+            tabindex="0" role="button" aria-label="Toggle Cost Section" [attr.aria-expanded]="!costCollapsed">
+        <i class="pi collapse-icon" [class.pi-chevron-down]="!costCollapsed" [class.pi-chevron-right]="costCollapsed"></i>
+        Cost & Analytics
+      </span>
+      @if (!costCollapsed) {
+        @for (item of costItems; track item.path) {
+          <div class="nav-row">
+            <a [routerLink]="item.path" routerLinkActive="active" class="nav-item" tabindex="0">
+              <i [class]="item.icon"></i>
+              <span>{{ item.label }}</span>
+              @if (item.badge) { <span class="nav-badge">{{ item.badge }}</span> }
+            </a>
+            <button class="star-btn" [class.starred]="isFavorite(item.path)" (click)="toggleFavorite(item.path)" title="Toggle favorite">
+              <i class="pi" [class.pi-star-fill]="isFavorite(item.path)" [class.pi-star]="!isFavorite(item.path)"></i>
+            </button>
+          </div>
+        }
+      }
+    </nav>
+
+    <nav class="nav-section">
       <span class="nav-label" (click)="aiCollapsed = !aiCollapsed" (keydown)="onKey($event, toggleAi.bind(this))"
-            tabindex="0" role="button" aria-label="Toggle Intelligence Section" [attr.aria-expanded]="!aiCollapsed">
+            tabindex="0" role="button" aria-label="Toggle Tools Section" [attr.aria-expanded]="!aiCollapsed">
         <i class="pi collapse-icon" [class.pi-chevron-down]="!aiCollapsed" [class.pi-chevron-right]="aiCollapsed"></i>
-        Intelligence
+        Intelligence & Tools
       </span>
       @if (!aiCollapsed) {
         @for (item of aiItems; track item.path) {
@@ -335,6 +379,8 @@ export class ShellComponent implements OnInit {
   helpVisible = false;
   monitorCollapsed = false;
   opsCollapsed = false;
+  infraCollapsed = false;
+  costCollapsed = false;
   aiCollapsed = false;
 
   private prefsService = inject(PreferencesService);
@@ -343,44 +389,56 @@ export class ShellComponent implements OnInit {
   monitorItems: any[] = [
     { path: '/dashboard', icon: 'pi pi-objects-column', label: 'Dashboard' },
     { path: '/monitor', icon: 'pi pi-desktop', label: 'Monitor' },
-    { path: '/gateway-monitor', icon: 'pi pi-server', label: 'Gateway' },
     { path: '/pods', icon: 'pi pi-box', label: 'Pods' },
     { path: '/events', icon: 'pi pi-bolt', label: 'Events' },
-    { path: '/metrics', icon: 'pi pi-chart-bar', label: 'Metrics' },
-    { path: '/namespace', icon: 'pi pi-th-large', label: 'Namespace' },
-    { path: '/timeline', icon: 'pi pi-history', label: 'Timeline' },
+    { path: '/metrics', icon: 'pi pi-chart-line', label: 'Metrics' },
     { path: '/scorecard', icon: 'pi pi-trophy', label: 'Scorecard' },
-    { path: '/policy', icon: 'pi pi-verified', label: 'Policy' },
-    { path: '/cost', icon: 'pi pi-dollar', label: 'Optimization' },
-    { path: '/cost-estimate', icon: 'pi pi-calculator', label: 'Cost' },
+    { path: '/timeline', icon: 'pi pi-history', label: 'Timeline' },
+    { path: '/doctor', icon: 'pi pi-heart', label: 'Health' },
   ];
 
   opsItems: any[] = [
     { path: '/deployments', icon: 'pi pi-send', label: 'Deployments' },
     { path: '/logs', icon: 'pi pi-align-left', label: 'Logs' },
     { path: '/jobs', icon: 'pi pi-clock', label: 'Jobs' },
+    { path: '/namespace', icon: 'pi pi-th-large', label: 'Namespace' },
+    { path: '/resources', icon: 'pi pi-database', label: 'Resources' },
     { path: '/rbac', icon: 'pi pi-shield', label: 'RBAC' },
     { path: '/network', icon: 'pi pi-globe', label: 'Network' },
-    { path: '/resources', icon: 'pi pi-database', label: 'Resources' },
     { path: '/secrets', icon: 'pi pi-lock', label: 'Pull Secrets' },
-    { path: '/incident', icon: 'pi pi-exclamation-circle', label: 'Incident', badge: 'NEW' },
-    { path: '/audit', icon: 'pi pi-shield', label: 'Audit' },
-    { path: '/graph', icon: 'pi pi-sitemap', label: 'Service Map', badge: 'NEW' },
+    { path: '/incident', icon: 'pi pi-exclamation-circle', label: 'Incident' },
+    { path: '/audit', icon: 'pi pi-file-check', label: 'Audit' },
     { path: '/yaml', icon: 'pi pi-file-edit', label: 'YAML Editor' },
     { path: '/yaml-diff', icon: 'pi pi-copy', label: 'YAML Diff' },
-    { path: '/runbooks', icon: 'pi pi-book', label: 'Runbooks' },
+  ];
+
+  infraItems: any[] = [
+    { path: '/graph', icon: 'pi pi-sitemap', label: 'Service Map' },
+    { path: '/gateway-monitor', icon: 'pi pi-server', label: 'Gateway' },
+    { path: '/gitops', icon: 'pi pi-sync', label: 'GitOps', badge: 'NEW' },
+    { path: '/mesh', icon: 'pi pi-share-alt', label: 'Service Mesh', badge: 'NEW' },
+    { path: '/integrations', icon: 'pi pi-plug', label: 'Integrations', badge: 'NEW' },
     { path: '/compare', icon: 'pi pi-arrows-h', label: 'Compare' },
+    { path: '/policy', icon: 'pi pi-verified', label: 'Policy' },
+  ];
+
+  costItems: any[] = [
+    { path: '/analytics', icon: 'pi pi-chart-bar', label: 'Analytics', badge: 'NEW' },
+    { path: '/cost', icon: 'pi pi-dollar', label: 'Optimization' },
+    { path: '/cost-estimate', icon: 'pi pi-calculator', label: 'Cost Estimate' },
+    { path: '/rightsizing', icon: 'pi pi-sliders-h', label: 'Right-Sizing', badge: 'NEW' },
   ];
 
   aiItems: any[] = [
     { path: '/ai', icon: 'pi pi-sparkles', label: 'AI Assistant' },
-    { path: '/log-correlation', icon: 'pi pi-link', label: 'Log Correlate' },
+    { path: '/log-correlation', icon: 'pi pi-arrows-alt', label: 'Log Correlate' },
+    { path: '/runbooks', icon: 'pi pi-book', label: 'Runbooks' },
     { path: '/pins', icon: 'pi pi-bookmark', label: 'Pins' },
     { path: '/watches', icon: 'pi pi-eye', label: 'Watches' },
     { path: '/schedule', icon: 'pi pi-calendar', label: 'Schedules' },
     { path: '/terminal', icon: 'pi pi-code', label: 'Terminal' },
-    { path: '/doctor', icon: 'pi pi-heart', label: 'Health' },
-    { path: '/stats', icon: 'pi pi-chart-bar', label: 'Usage Stats' },
+    { path: '/profiles', icon: 'pi pi-user', label: 'Profiles', badge: 'NEW' },
+    { path: '/stats', icon: 'pi pi-percentage', label: 'Usage Stats' },
     { path: '/settings', icon: 'pi pi-cog', label: 'Settings' },
   ];
 
@@ -419,6 +477,8 @@ export class ShellComponent implements OnInit {
 
   toggleMonitor() { this.monitorCollapsed = !this.monitorCollapsed; }
   toggleOps() { this.opsCollapsed = !this.opsCollapsed; }
+  toggleInfra() { this.infraCollapsed = !this.infraCollapsed; }
+  toggleCost() { this.costCollapsed = !this.costCollapsed; }
   toggleAi() { this.aiCollapsed = !this.aiCollapsed; }
 
   onKey(event: KeyboardEvent, action: Function) {
@@ -441,7 +501,7 @@ export class ShellComponent implements OnInit {
     });
   }
   private get allItems() {
-    return [...this.monitorItems, ...this.opsItems, ...this.aiItems];
+    return [...this.monitorItems, ...this.opsItems, ...this.infraItems, ...this.costItems, ...this.aiItems];
   }
 
   loadFavorites() {

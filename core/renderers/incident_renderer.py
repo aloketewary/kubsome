@@ -9,6 +9,8 @@ from rich.table import Table
 
 console = Console()
 
+from core.theme import t
+
 
 def render_incident_started(incident):
     console.print(
@@ -30,7 +32,7 @@ def render_incident_started(incident):
                 "  [cyan]incident stop[/cyan]     — close & export report"
             ),
             title="[bold]🚨 Incident[/bold]",
-            border_style="red",
+            border_style=t()["error"],
         )
     )
 
@@ -66,7 +68,7 @@ def render_incident_stopped(incident, export_path):
                 f"  [cyan]{export_path}[/cyan]"
             ),
             title="[bold]📋 Incident Report[/bold]",
-            border_style="green",
+            border_style=t()["success"],
         )
     )
 
@@ -93,13 +95,13 @@ def render_incident_status(incident):
         f"[dim]({elapsed} elapsed)[/dim]"
     )
 
-    console.print(Panel.fit(header, border_style="red"))
+    console.print(Panel.fit(header, border_style=t()["error"]))
 
     # Timeline
     table = Table(
         show_header=True,
-        header_style="bold cyan",
-        border_style="dim",
+        header_style=t()["header"],
+        border_style=t()["border"],
         expand=True,
         show_lines=False,
     )

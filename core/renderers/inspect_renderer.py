@@ -11,6 +11,8 @@ from rich.text import Text
 
 console = Console()
 
+from core.theme import t
+
 
 def render_inspect(details, events, logs, recommendation):
     # ─── Header: Pod identity + status ───
@@ -46,8 +48,8 @@ def render_inspect(details, events, logs, recommendation):
     # ─── Containers ───
     ct = Table(
         show_header=True,
-        header_style="bold cyan",
-        border_style="dim",
+        header_style=t()["header"],
+        border_style=t()["border"],
         expand=True,
         show_lines=False,
     )
@@ -105,8 +107,8 @@ def render_inspect(details, events, logs, recommendation):
     if has_probes:
         pt = Table(
             show_header=True,
-            header_style="bold cyan",
-            border_style="dim",
+            header_style=t()["header"],
+            border_style=t()["border"],
             expand=True,
             show_lines=False,
         )
@@ -134,8 +136,8 @@ def render_inspect(details, events, logs, recommendation):
     # ─── Resources ───
     res_table = Table(
         show_header=True,
-        header_style="bold cyan",
-        border_style="dim",
+        header_style=t()["header"],
+        border_style=t()["border"],
         expand=True,
         show_lines=False,
     )
@@ -171,7 +173,7 @@ def render_inspect(details, events, logs, recommendation):
             Panel(
                 res_table,
                 title="[bold]📊 Resources[/bold]",
-                border_style="green"
+                border_style=t()["success"]
             )
         )
     else:
@@ -188,7 +190,7 @@ def render_inspect(details, events, logs, recommendation):
             Panel(
                 "\n".join(vol_lines),
                 title="[bold]💾 Volumes[/bold]",
-                border_style="dim",
+                border_style=t()["border"],
             )
         )
 
@@ -196,8 +198,8 @@ def render_inspect(details, events, logs, recommendation):
     if events:
         ev_table = Table(
             show_header=True,
-            header_style="bold cyan",
-            border_style="dim",
+            header_style=t()["header"],
+            border_style=t()["border"],
             expand=True,
             show_lines=False,
         )
@@ -239,7 +241,7 @@ def render_inspect(details, events, logs, recommendation):
             Panel(
                 ev_table,
                 title="[bold]⚡ Events[/bold]",
-                border_style="yellow",
+                border_style=t()["warning"],
             )
         )
 
@@ -251,7 +253,7 @@ def render_inspect(details, events, logs, recommendation):
             Panel(
                 colored,
                 title=f"[bold]📜 Logs[/bold] [dim](last {len(log_lines)})[/dim]",
-                border_style="dim",
+                border_style=t()["border"],
             )
         )
 
@@ -261,7 +263,7 @@ def render_inspect(details, events, logs, recommendation):
             Panel(
                 f"[bold yellow]💡 {recommendation}[/bold yellow]",
                 title="[bold]🧠 Recommendation[/bold]",
-                border_style="yellow",
+                border_style=t()["warning"],
             )
         )
     elif not events or all(e["type"] == "Normal" for e in events):

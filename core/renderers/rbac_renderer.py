@@ -4,6 +4,8 @@ from rich.table import Table
 
 console = Console()
 
+from core.theme import t
+
 
 def render_rbac(bindings):
     if not bindings:
@@ -12,8 +14,8 @@ def render_rbac(bindings):
 
     table = Table(
         show_header=True,
-        header_style="bold cyan",
-        border_style="dim",
+        header_style=t()["header"],
+        border_style=t()["border"],
         expand=True
     )
 
@@ -39,7 +41,7 @@ def render_rbac(bindings):
         Panel(
             table,
             title="[bold]🔐 RBAC[/bold]",
-            border_style="cyan"
+            border_style=t()["primary"]
         )
     )
 
@@ -102,7 +104,7 @@ def render_timeline(events):
         Panel(
             content,
             title="[bold]📅 Timeline[/bold]",
-            border_style="cyan"
+            border_style=t()["primary"]
         )
     )
 
@@ -130,6 +132,6 @@ def render_labels(resources):
             Panel(
                 "\n".join(lines) if lines else "[dim]No labels[/dim]",
                 title=f"[bold]🏷️  {res['name']}[/bold]",
-                border_style="dim"
+                border_style=t()["border"]
             )
         )

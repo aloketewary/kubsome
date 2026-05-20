@@ -8,6 +8,8 @@ from rich.panel import Panel
 
 console = Console()
 
+from core.theme import t
+
 SEVERITY_BORDERS = {
     "critical": "red",
     "warning": "yellow",

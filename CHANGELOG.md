@@ -2,6 +2,60 @@
 
 All notable changes to Kubsome are documented here.
 
+## [1.13.0] — 2025-07-17
+
+### GitOps Integration (ArgoCD / Flux)
+- **`gitops`** — Detect ArgoCD or Flux and show all app sync status, health, drift count
+- **`gitops <app>`** — Detailed app view with resource-level sync status, conditions, revision
+- **`argocd` / `flux`** — Aliases for `gitops`
+- Auto-detects provider by scanning for `argocd-server` or `source-controller` deployments
+- Shows: sync status, health, revision (commit SHA), repo URL, path, last synced time
+- Detail view lists individual resources (Deployment, Service, ConfigMap) with per-resource sync/health
+
+### Service Mesh Visibility (Istio / Linkerd)
+- **`mesh-detail`** — Full mesh overview: mTLS mode, sidecar injection coverage, routing rule counts
+- **`vs` / `vs <name>`** — List VirtualServices with canary weights, timeouts, retries, fault injection
+- **`dr` / `dr <name>`** — List DestinationRules with circuit breakers, outlier detection, subsets, TLS mode
+- **`mtls`** — mTLS enforcement status with PeerAuthentication policy listing
+- Sidecar injection coverage with list of pods missing proxy
+- Linkerd support: proxy detection + ServerAuthorization policies
+
+### Easy Configuration
+- **`kubsome init`** — Interactive 8-step setup wizard (theme, notifications, aliases, LLM, safety, telemetry, integrations)
+- **`kubsome connect <name> [url]`** — One-command integration setup (Slack, Teams, Prometheus, ArgoCD, Flux, Ollama)
+- **`kubsome connect --discover`** — Auto-discover all available integrations in cluster
+- **`disconnect <name>`** — Remove an integration
+- **`profile` / `profile use <name>` / `profile reset`** — Named config presets (dev, oncall, prod, ci)
+- **`kubsome --profile <name>`** — Activate profile on startup
+- **`guide` / `menu`** — Interactive guided mode with 5 categories, 28 actions
+- Custom profiles via `~/.kubsome/profiles/*.yaml`
+
+### Web UI
+- **GitOps page** — Summary cards (synced/drifted/degraded), app table with click-to-detail, resource list
+- **Service Mesh page** — 4-tab layout (mTLS, VirtualServices, DestinationRules, Injection)
+- Navigation: added GitOps and Service Mesh to sidebar
+
+### API
+- `GET /api/gitops` — All apps sync overview
+- `GET /api/gitops/{app_name}` — App detail with resources and conditions
+- `GET /api/mesh/status` — Full mesh status (mTLS + injection + VS + DR)
+- `GET /api/mesh/virtual-services` — VirtualService routing rules
+- `GET /api/mesh/destination-rules` — DestinationRules + circuit breakers
+- `GET /api/mesh/mtls` — mTLS enforcement + PeerAuthentication policies
+- `GET /api/integrations` — List integrations with status
+- `POST /api/integrations/connect` — Connect integration
+- `POST /api/integrations/disconnect` — Remove integration
+- `GET /api/integrations/discover` — Auto-discover
+- `GET /api/profiles` — List profiles
+- `POST /api/profiles/activate` — Activate profile
+- `POST /api/profiles/deactivate` — Deactivate profile
+
+### Stats
+- CLI handlers: 99 → 113 (+14)
+- API routes: 126 → 145 (+19)
+- UI pages: 38 → 40 (+2)
+- Tests: 188 passed (0 regressions)
+
 ## [1.12.0] — 2025-07-16
 
 ### Growth & Activation

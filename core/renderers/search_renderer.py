@@ -4,6 +4,8 @@ from rich.panel import Panel
 
 console = Console()
 
+from core.theme import t
+
 KIND_ICONS = {
     "Pod": "📦",
     "Deployment": "🚀",
@@ -23,8 +25,8 @@ def render_search_results(query, results):
 
     table = Table(
         show_header=True,
-        header_style="bold cyan",
-        border_style="dim",
+        header_style=t()["header"],
+        border_style=t()["border"],
         expand=True
     )
 
@@ -54,6 +56,6 @@ def render_search_results(query, results):
         Panel(
             table,
             title=f"[bold]🔍 Search: {query}[/bold]",
-            border_style="cyan"
+            border_style=t()["primary"]
         )
     )

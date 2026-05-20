@@ -10,6 +10,8 @@ from rich.table import Table
 
 console = Console()
 
+from core.theme import t
+
 
 LOG_LEVELS = {
     "error": "red",
@@ -63,7 +65,7 @@ def render_logs(lines, pod_name, errors_only=False):
         parts.append("[green]● clean[/green]")
 
     summary = "  │  ".join(parts)
-    console.print(Panel.fit(summary, border_style="cyan"))
+    console.print(Panel.fit(summary, border_style=t()["primary"]))
 
     # Render log lines with line numbers and coloring
     max_num_width = len(str(len(lines)))
@@ -150,7 +152,7 @@ def render_combined_logs(log_entries, pods):
     if error_count:
         parts.append(f"[red]● {error_count} errors[/red]")
 
-    console.print(Panel.fit("  │  ".join(parts), border_style="cyan"))
+    console.print(Panel.fit("  │  ".join(parts), border_style=t()["primary"]))
 
     # Legend
     legend_parts = []

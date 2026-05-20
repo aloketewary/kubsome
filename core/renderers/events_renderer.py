@@ -11,6 +11,8 @@ from datetime import datetime, timezone
 
 console = Console()
 
+from core.theme import t
+
 # Reasons that indicate problems
 CRITICAL_REASONS = {
     "BackOff", "Failed", "FailedScheduling",
@@ -89,13 +91,13 @@ def render_events(events):
     if high_repeat:
         parts.append(f"[dim]● {high_repeat} repeating[/dim]")
 
-    console.print(Panel.fit("  │  ".join(parts), border_style="cyan"))
+    console.print(Panel.fit("  │  ".join(parts), border_style=t()["primary"]))
 
     # Table
     table = Table(
         show_header=True,
-        header_style="bold cyan",
-        border_style="dim",
+        header_style=t()["header"],
+        border_style=t()["border"],
         expand=True,
         show_lines=False,
     )
@@ -159,13 +161,13 @@ def build_events_watch_view(events, namespace):
     ]
 
     header_panel = Panel.fit(
-        "  ".join(header_parts), border_style="cyan"
+        "  ".join(header_parts), border_style=t()["primary"]
     )
 
     table = Table(
         show_header=True,
-        header_style="bold cyan",
-        border_style="dim",
+        header_style=t()["header"],
+        border_style=t()["border"],
         expand=True,
         show_lines=False,
     )

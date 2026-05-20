@@ -9,6 +9,8 @@ from rich.table import Table
 
 console = Console()
 
+from core.theme import t
+
 
 def render_comparison(data):
     if data.get("in_sync"):
@@ -21,7 +23,7 @@ def render_comparison(data):
                     f"  B: {data['ctx_b']} [dim]({data.get('ns_b', '')})[/dim]"
                 ),
                 title="[bold]🔄 Compare[/bold]",
-                border_style="green",
+                border_style=t()["success"],
             )
         )
         return
@@ -40,7 +42,7 @@ def render_comparison(data):
     if diffs:
         parts.append(f"[cyan]{diffs} changed[/cyan]")
 
-    console.print(Panel.fit("  │  ".join(parts), border_style="yellow"))
+    console.print(Panel.fit("  │  ".join(parts), border_style=t()["warning"]))
 
     # Header
     console.print(
@@ -59,7 +61,7 @@ def render_comparison(data):
             Panel(
                 "\n".join(lines),
                 title="[bold]Only in A[/bold]",
-                border_style="red",
+                border_style=t()["error"],
             )
         )
 
@@ -70,7 +72,7 @@ def render_comparison(data):
             Panel(
                 "\n".join(lines),
                 title="[bold]Only in B[/bold]",
-                border_style="green",
+                border_style=t()["success"],
             )
         )
 
@@ -78,8 +80,8 @@ def render_comparison(data):
     if data.get("diffs"):
         table = Table(
             show_header=True,
-            header_style="bold cyan",
-            border_style="dim",
+            header_style=t()["header"],
+            border_style=t()["border"],
             expand=True,
             show_lines=False,
         )
@@ -102,7 +104,7 @@ def render_comparison(data):
             Panel(
                 table,
                 title="[bold]⚡ Drift Detected[/bold]",
-                border_style="yellow",
+                border_style=t()["warning"],
             )
         )
 

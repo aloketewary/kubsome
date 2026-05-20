@@ -12,6 +12,8 @@ from core.config import load_config
 
 console = Console()
 
+from core.theme import t
+
 _config = load_config()
 _aliases = _config.get("aliases", {})
 
@@ -25,7 +27,7 @@ def render_help():
         "[cyan]&&[/cyan] chain commands  │  "
         "Natural language works: [dim]show me logs for payment[/dim]"
     )
-    console.print(Panel.fit(tips, border_style="dim"))
+    console.print(Panel.fit(tips, border_style=t()["border"]))
 
     # Command sections
     _section("Observe", [
@@ -73,6 +75,8 @@ def render_help():
         ("security / scan", "Misconfiguration scan"),
         ("unused / cleanup", "Orphaned resources"),
         ("cost-trend", "Cost forecast"),
+        ("cost-query", "Cost by deployment (DuckDB)"),
+        ("rightsizing", "Right-size from analytics"),
         ("rbac", "RBAC audit"),
     ])
 
@@ -93,6 +97,33 @@ def render_help():
         ("schedule add <name> <cron> <cmds>", "Cron schedule"),
         ("generate <kind> <name>", "Generate YAML"),
         ("plugin install <name>", "Install plugin"),
+    ])
+
+    _section("GitOps & Mesh", [
+        ("gitops", "ArgoCD/Flux sync status"),
+        ("gitops <app>", "App detail + resources"),
+        ("mesh-detail", "Mesh overview (mTLS, injection)"),
+        ("vs [name]", "VirtualServices + routing"),
+        ("dr [name]", "DestinationRules + circuit breakers"),
+        ("mtls", "mTLS enforcement status"),
+    ])
+
+    _section("Analytics (DuckDB)", [
+        ("analytics", "Engine stats (rows, size)"),
+        ("collect", "Collect metrics now"),
+        ("rightsizing", "Right-size recommendations"),
+        ("cost-query", "Cost attribution per deploy"),
+        ("analytics-export <query> [parquet]", "Export CSV/Parquet"),
+        ("sql <SELECT ...>", "Custom SQL query"),
+    ])
+
+    _section("Setup", [
+        ("connect [name] [url]", "Integration setup"),
+        ("connect --discover", "Auto-discover integrations"),
+        ("disconnect <name>", "Remove integration"),
+        ("profile / profile use <name>", "Config profiles"),
+        ("env", "Current environment info"),
+        ("guide / menu", "Interactive guided mode"),
     ])
 
     _section("kubectl (fuzzy)", [
@@ -128,7 +159,7 @@ def _section(title, commands):
     """Render a help section as a compact table."""
     table = Table(
         show_header=False,
-        border_style="dim",
+        border_style=t()["border"],
         expand=True,
         show_lines=False,
         pad_edge=True,
@@ -146,7 +177,7 @@ def _section(title, commands):
         Panel(
             table,
             title=f"[bold]{title}[/bold]",
-            border_style="cyan",
+            border_style=t()["primary"],
             padding=(0, 0),
         )
     )

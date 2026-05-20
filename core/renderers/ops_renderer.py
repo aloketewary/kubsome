@@ -4,6 +4,8 @@ from rich.table import Table
 
 console = Console()
 
+from core.theme import t
+
 
 def render_netcheck(data):
     # Pod info
@@ -15,7 +17,7 @@ def render_netcheck(data):
     )
 
     console.print(
-        Panel(header, title="[bold]🌐 Network Check[/bold]", border_style="cyan")
+        Panel(header, title="[bold]🌐 Network Check[/bold]", border_style=t()["primary"])
     )
 
     # DNS checks
@@ -31,15 +33,15 @@ def render_netcheck(data):
         )
 
     console.print(
-        Panel(dns_table, title="[bold]🔍 DNS[/bold]", border_style="dim")
+        Panel(dns_table, title="[bold]🔍 DNS[/bold]", border_style=t()["border"])
     )
 
     # Service endpoints
     if data["services"]:
         svc_table = Table(
             show_header=True,
-            header_style="bold cyan",
-            border_style="dim",
+            header_style=t()["header"],
+            border_style=t()["border"],
             expand=True
         )
         svc_table.add_column("", width=3)
@@ -56,7 +58,7 @@ def render_netcheck(data):
             )
 
         console.print(
-            Panel(svc_table, title="[bold]🔌 Endpoints[/bold]", border_style="dim")
+            Panel(svc_table, title="[bold]🔌 Endpoints[/bold]", border_style=t()["border"])
         )
 
     # Network policies
@@ -78,8 +80,8 @@ def render_cronjobs(cronjobs):
 
     table = Table(
         show_header=True,
-        header_style="bold cyan",
-        border_style="dim",
+        header_style=t()["header"],
+        border_style=t()["border"],
         expand=True
     )
 
@@ -106,7 +108,7 @@ def render_cronjobs(cronjobs):
         )
 
     console.print(
-        Panel(table, title="[bold]🕐 CronJobs[/bold]", border_style="cyan")
+        Panel(table, title="[bold]🕐 CronJobs[/bold]", border_style=t()["primary"])
     )
 
 
@@ -117,8 +119,8 @@ def render_jobs(jobs):
 
     table = Table(
         show_header=True,
-        header_style="bold cyan",
-        border_style="dim",
+        header_style=t()["header"],
+        border_style=t()["border"],
         expand=True
     )
 
@@ -150,7 +152,7 @@ def render_jobs(jobs):
         )
 
     console.print(
-        Panel(table, title="[bold]⚡ Jobs[/bold]", border_style="cyan")
+        Panel(table, title="[bold]⚡ Jobs[/bold]", border_style=t()["primary"])
     )
 
 
@@ -176,7 +178,7 @@ def render_config(data):
                 f"[bold]📄 {data['type']}: "
                 f"{data['name']}[/bold]"
             ),
-            border_style="cyan"
+            border_style=t()["primary"]
         )
     )
 
@@ -192,7 +194,7 @@ def render_diff(data):
             Panel(
                 f"[dim]{msg}[/dim]",
                 title=f"[bold]📝 {data['name']}[/bold]",
-                border_style="dim"
+                border_style=t()["border"]
             )
         )
         return
@@ -205,13 +207,13 @@ def render_diff(data):
     )
 
     console.print(
-        Panel(header, title="[bold]📝 Diff[/bold]", border_style="cyan")
+        Panel(header, title="[bold]📝 Diff[/bold]", border_style=t()["primary"])
     )
 
     table = Table(
         show_header=True,
-        header_style="bold cyan",
-        border_style="dim",
+        header_style=t()["header"],
+        border_style=t()["border"],
         expand=True,
         show_lines=True
     )

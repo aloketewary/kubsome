@@ -6,6 +6,7 @@ from rich.align import Align
 from config.settings import SETTINGS
 from core.insights import pod_suggestion
 from core.context import context
+from core.theme import t
 
 console = Console()
 
@@ -28,33 +29,36 @@ def get_severity(pod):
 
 
 def severity_style(severity):
+    theme = t()
     if severity == "critical":
-        return "red"
+        return theme["error"]
     if severity == "warning":
-        return "yellow"
-    return "green"
+        return theme["warning"]
+    return theme["success"]
 
 
 def status_icon(severity):
+    theme = t()
     if severity == "critical":
-        return "[red]●[/red]"
+        return f"[{theme['error']}]●[/{theme['error']}]"
     if severity == "warning":
-        return "[yellow]●[/yellow]"
-    return "[green]●[/green]"
+        return f"[{theme['warning']}]●[/{theme['warning']}]"
+    return f"[{theme['success']}]●[/{theme['success']}]"
 
 
 def _colored_status(status):
     """Color the status text based on its value."""
+    theme = t()
     s = status.lower()
     if s in ("running", "succeeded", "completed"):
-        return f"[green]{status}[/green]"
+        return f"[{theme['success']}]{status}[/{theme['success']}]"
     if s in ("crashloopbackoff", "error", "failed",
              "oomkilled", "imagepullbackoff"):
-        return f"[red]{status}[/red]"
+        return f"[{theme['error']}]{status}[/{theme['error']}]"
     if s in ("pending", "terminating", "containercreating",
              "init:0/1", "podinitializing"):
-        return f"[yellow]{status}[/yellow]"
-    return f"[dim]{status}[/dim]"
+        return f"[{theme['warning']}]{status}[/{theme['warning']}]"
+    return f"[{theme['muted']}]{status}[/{theme['muted']}]"
 
 
 def _colored_restarts(count):
@@ -74,6 +78,7 @@ def _truncate_name(name, max_len=48):
 
 
 def render_summary(pods):
+    theme = t()
     healthy = sum(1 for p in pods if get_severity(p) == "healthy")
     warning = sum(1 for p in pods if get_severity(p) == "warning")
     critical = sum(1 for p in pods if get_severity(p) == "critical")
@@ -88,9 +93,9 @@ def render_summary(pods):
         h, w, c = 0, 0, 0
 
     bar = (
-        "[green]" + "█" * h + "[/green]"
-        + "[yellow]" + "█" * w + "[/yellow]"
-        + "[red]" + "█" * c + "[/red]"
+        f"[{theme['success']}]" + "█" * h + f"[/{theme['success']}]"
+        + f"[{theme['warning']}]" + "█" * w + f"[/{theme['warning']}]"
+        + f"[{theme['error']}]" + "█" * c + f"[/{theme['error']}]"
     )
 
     ns = context.namespace
@@ -98,11 +103,11 @@ def render_summary(pods):
     ctx_short = ctx.split("/")[-1] if "/" in ctx else ctx
 
     summary = (
-        f"[dim]{ctx_short}[/dim]/[bold]{ns}[/bold]  │  "
+        f"[{theme['muted']}]{ctx_short}[/{theme['muted']}]/[bold]{ns}[/bold]  │  "
         f"[bold]{total}[/bold] pods  │  "
-        f"[green]● {healthy}[/green]  "
-        f"[yellow]● {warning}[/yellow]  "
-        f"[red]● {critical}[/red]  │  "
+        f"[{theme['success']}]● {healthy}[/{theme['success']}]  "
+        f"[{theme['warning']}]● {warning}[/{theme['warning']}]  "
+        f"[{theme['error']}]● {critical}[/{theme['error']}]  │  "
         f"{bar}"
     )
 
@@ -110,13 +115,14 @@ def render_summary(pods):
         Align.center(
             Panel.fit(
                 summary,
-                border_style="cyan"
+                border_style=theme["primary"]
             )
         )
     )
 
 
 def render_pods_table(pods):
+    theme = t()
     pods = sorted(
         pods,
         key=lambda x: (
@@ -136,8 +142,8 @@ def render_pods_table(pods):
 
     table = Table(
         show_header=True,
-        header_style="bold cyan",
-        border_style="dim",
+        header_style=theme["header"],
+        border_style=theme["border"],
         pad_edge=True,
         show_lines=False,
     )

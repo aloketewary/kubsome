@@ -10,6 +10,8 @@ from rich.tree import Tree
 
 console = Console()
 
+from core.theme import t
+
 
 def render_mesh(data):
     if not data["mesh"]:
@@ -18,7 +20,7 @@ def render_mesh(data):
                 "[dim]  No service mesh detected\n"
                 "  (no Istio/Linkerd sidecars found)[/dim]",
                 title="[bold]🕸️  Service Mesh[/bold]",
-                border_style="dim",
+                border_style=t()["border"],
             )
         )
         return
@@ -60,7 +62,7 @@ def render_mesh(data):
         Panel(
             content,
             title="[bold]🕸️  Service Mesh[/bold]",
-            border_style="cyan",
+            border_style=t()["primary"],
         )
     )
 
@@ -73,14 +75,14 @@ def render_ingresses(ingresses):
     console.print(
         Panel.fit(
             f"[bold]{len(ingresses)}[/bold] ingress routes",
-            border_style="cyan",
+            border_style=t()["primary"],
         )
     )
 
     table = Table(
         show_header=True,
-        header_style="bold cyan",
-        border_style="dim",
+        header_style=t()["header"],
+        border_style=t()["border"],
         expand=True,
         show_lines=False,
     )
@@ -160,7 +162,7 @@ def render_dependencies(deps):
         Panel(
             tree,
             title="[bold]🗺️  Dependencies[/bold]",
-            border_style="cyan",
+            border_style=t()["primary"],
         )
     )
 
