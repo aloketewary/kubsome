@@ -34,3 +34,8 @@
 **Learning:** The Uptime collector performed sequential `kubectl` calls (API check, node fetch, pod fetch), leading to a high latency floor. Refactoring it to use `ThreadPoolExecutor` for parallelizing these independent I/O tasks and leveraging the centralized `get_raw_resources` cache significantly improves responsiveness.
 
 **Action:** Use `ThreadPoolExecutor` and the centralized `get_raw_resources` fetcher to parallelize independent Kubernetes resource fetches within collectors.
+
+## 2026-05-20 - [Parallelizing RBAC Permission Checks]
+**Learning:** Sequential `kubectl auth can-i` checks for a permission matrix (N resources × M verbs) create a significant latency bottleneck that grows linearly. By using a `ThreadPoolExecutor`, we can parallelize these independent I/O tasks and reduce total response time to nearly a single call's latency. Additionally, using the unified cached fetcher for RBAC listings ensures consistency and reduces redundant API traffic.
+
+**Action:** Always parallelize bulk authorization checks and leverage the centralized `get_raw_resources` cache for Kubernetes resource listings.
