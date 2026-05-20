@@ -4,9 +4,11 @@ RBAC Viewer — show who has access to what in the namespace.
 
 import subprocess
 import json
+from concurrent.futures import ThreadPoolExecutor
 
 from core.context import context
 from core.cache import cached
+from core.k8s import get_raw_resources
 
 
 @cached(ttl=15)
@@ -18,17 +20,9 @@ def list_role_bindings():
     bindings = []
 
     # Namespace RoleBindings
-    cmd = [
-        "kubectl", "--context", str(ctx or ""),
-        "get", "rolebindings", "-n", str(ns), "-o", "json"
-    ]
-    r = subprocess.run(
-        cmd,
-        capture_output=True, text=True
-    )
-
-    if r.returncode == 0:
-        data = json.loads(r.stdout)
+    # Bolt: Use cached raw fetcher to reduce redundant kubectl calls
+    data = get_raw_resources("rolebindings", ctx, ns)
+    if data:
         for item in data.get("items", []):
             subjects = item.get("subjects", [])
             role = item.get("roleRef", {})
@@ -46,17 +40,9 @@ def list_role_bindings():
             })
 
     # ClusterRoleBindings (that reference this namespace's SAs)
-    cmd2 = [
-        "kubectl", "--context", str(ctx or ""),
-        "get", "clusterrolebindings", "-o", "json"
-    ]
-    r2 = subprocess.run(
-        cmd2,
-        capture_output=True, text=True
-    )
-
-    if r2.returncode == 0:
-        data = json.loads(r2.stdout)
+    # Bolt: Use cached raw fetcher
+    data = get_raw_resources("clusterrolebindings", ctx)
+    if data:
         for item in data.get("items", []):
             subjects = item.get("subjects", [])
             role = item.get("roleRef", {})
@@ -117,25 +103,31 @@ def check_permissions(subject, subject_kind="ServiceAccount"):
     ]
     verbs = ["get", "list", "create", "delete", "update"]
 
-    results = []
-    for resource in resources:
-        perms = {}
-        for verb in verbs:
-            cmd = [
-                "kubectl", "--context", str(ctx or ""),
-                "auth", "can-i", verb, resource,
-                f"--as=system:{subject_kind.lower()}:{ns}:{subject}",
-                "-n", str(ns)
-            ]
-            r = subprocess.run(
-                cmd,
-                capture_output=True, text=True
-            )
-            perms[verb] = "yes" in r.stdout.lower()
-        results.append({
-            "resource": resource,
-            "permissions": perms,
-        })
+    def _check(verb, resource):
+        cmd = [
+            "kubectl", "--context", str(ctx or ""),
+            "auth", "can-i", verb, resource,
+            f"--as=system:{subject_kind.lower()}:{ns}:{subject}",
+            "-n", str(ns)
+        ]
+        r = subprocess.run(cmd, capture_output=True, text=True)
+        return verb, resource, "yes" in r.stdout.lower()
+
+    # Bolt: Parallelize 40+ auth checks to reduce latency from O(N) to O(1)
+    results_map = {r: {} for r in resources}
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        futures = [
+            executor.submit(_check, v, r)
+            for r in resources for v in verbs
+        ]
+        for future in futures:
+            verb, resource, allowed = future.result()
+            results_map[resource][verb] = allowed
+
+    results = [
+        {"resource": r, "permissions": results_map[r]}
+        for r in resources
+    ]
 
     return {
         "subject": subject,
@@ -150,14 +142,12 @@ def list_service_accounts():
     ns = context.namespace
     ctx = context.current_context
 
-    cmd = [
-        "kubectl", "--context", str(ctx or ""),
-        "get", "serviceaccounts", "-n", str(ns),
-        "-o", "jsonpath={.items[*].metadata.name}"
+    # Bolt: Use cached raw fetcher for consistency and performance
+    data = get_raw_resources("serviceaccounts", ctx, ns)
+    if not data:
+        return []
+
+    return [
+        item["metadata"]["name"]
+        for item in data.get("items", [])
     ]
-    r = subprocess.run(
-        cmd,
-        capture_output=True, text=True
-    )
-    names = r.stdout.strip().split()
-    return [n for n in names if n]

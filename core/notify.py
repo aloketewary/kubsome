@@ -85,6 +85,43 @@ def notify_webhook(title, message, severity="warning"):
         t.start()
 
 
+def _is_safe_url(url):
+    """
+    Check if a URL is safe for webhook notifications (prevent SSRF).
+    Blocks non-HTTP(S) schemes and private/internal IP ranges.
+    """
+    from urllib.parse import urlparse
+    import socket
+    import ipaddress
+
+    try:
+        parsed = urlparse(url)
+        if parsed.scheme not in ("http", "https"):
+            return False
+
+        hostname = parsed.hostname
+        if not hostname:
+            return False
+
+        # Resolve hostname to IP
+        # We use getaddrinfo to handle both IPv4 and IPv6
+        addr_info = socket.getaddrinfo(hostname, parsed.port or (80 if parsed.scheme == "http" else 443))
+        for _, _, _, _, sockaddr in addr_info:
+            ip_str = sockaddr[0]
+            ip = ipaddress.ip_address(ip_str)
+
+            if ip.is_loopback or ip.is_private or ip.is_reserved or ip.is_multicast or ip.is_link_local:
+                return False
+
+            # Block cloud metadata services (e.g. 169.254.169.254)
+            if ip_str == "169.254.169.254":
+                return False
+
+        return True
+    except Exception:
+        return False
+
+
 def _send_webhook(hook, title, message, severity, cluster):
     """Send to a single webhook (runs in background thread)."""
     import urllib.request
@@ -93,6 +130,11 @@ def _send_webhook(hook, title, message, severity, cluster):
     hook_type = hook.get("type", "generic")
 
     if not url:
+        return
+
+    if not _is_safe_url(url):
+        import sys
+        print(f"[webhook] Blocked unsafe URL: {url}", file=sys.stderr)
         return
 
     try:
