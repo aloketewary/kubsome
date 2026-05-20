@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "kubsome"
-version = "1.12.20"
+version = "1.13.1"
 description = "AI-native Kubernetes Operational Workspace"
 readme = "README.md"
 license = {text = "MIT"}
@@ -14,7 +14,8 @@ authors = [
 ]
 keywords = [
     "kubernetes", "k8s", "cli", "devops",
-    "operations", "monitoring", "diagnostics"
+    "operations", "monitoring", "diagnostics",
+    "analytics", "duckdb", "helm", "gitops"
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -27,6 +28,8 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
@@ -43,7 +46,8 @@ dependencies = [
 
 [project.optional-dependencies]
 tui = ["textual>=0.40"]
-all = ["textual>=0.40"]
+analytics = ["duckdb>=0.10.0"]
+all = ["textual>=0.40", "duckdb>=0.10.0"]
 dev = ["pytest>=7.0", "httpx>=0.24.0", "build", "twine"]
 
 [project.scripts]
