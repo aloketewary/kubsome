@@ -91,6 +91,12 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
             <span>Review {{ stats.unresolved_count }} unresolved queries</span>
           </div>
         }
+        @if (proTip) {
+          <div class="insight-pill suggested pro-tip" (click)="router.navigate([proTip.route])" tabindex="0" role="button" (keydown)="onKey($event, router.navigate.bind(router, [proTip.route]))">
+            <i class="pi pi-lightbulb" style="color: var(--accent)"></i>
+            <span>Pro Tip: {{ proTip.text }}</span>
+          </div>
+        }
       </div>
 
       <!-- Alert -->
@@ -348,6 +354,7 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     }
     .insight-pill:hover { border-color: var(--accent); background: var(--accent-subtle); color: var(--accent); transform: translateY(-1px); }
     .insight-pill.suggested { border-style: dashed; opacity: 0.8; }
+    .insight-pill.pro-tip { border-color: var(--accent-subtle); opacity: 0.9; }
     .insight-pill i { font-size: 14px; }
 
     /* Hero — Glassmorphism + Mesh Gradient */
@@ -758,6 +765,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   contextCopied = false;
   stats: any = null;
   costTrend: any = null;
+  proTip: { text: string; route: string } | null = null;
 
   get podTotal() {
     return (this.data?.pods.healthy || 0) + (this.data?.pods.warning || 0) + (this.data?.pods.critical || 0);
@@ -884,9 +892,37 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   loadStats() {
     this.api.getStats().subscribe({
-      next: (res) => (this.stats = res),
+      next: (res) => {
+        this.stats = res;
+        this.generateProTip();
+      },
       error: () => (this.stats = null),
     });
+  }
+
+  generateProTip() {
+    const tips = [
+      { text: 'Check your cluster health scorecard', route: '/scorecard', cmd: 'scorecard' },
+      { text: 'Scan for security misconfigurations', route: '/security', cmd: 'security' },
+      { text: 'Optimize resource requests to save costs', route: '/cost', cmd: 'optimize' },
+      { text: 'View a timeline of recent changes', route: '/timeline', cmd: 'timeline' },
+      { text: 'Explore step-by-step runbooks', route: '/runbooks', cmd: 'runbooks' },
+    ];
+
+    if (!this.stats) {
+      this.proTip = tips[Math.floor(Math.random() * tips.length)];
+      return;
+    }
+
+    // Find a command that hasn't been used much
+    const usedCmds = new Set(this.stats.top_commands.map((c: any) => c[0].toLowerCase()));
+    const underutilized = tips.filter(t => !usedCmds.has(t.cmd));
+
+    if (underutilized.length > 0) {
+      this.proTip = underutilized[Math.floor(Math.random() * underutilized.length)];
+    } else {
+      this.proTip = tips[Math.floor(Math.random() * tips.length)];
+    }
   }
 
   copyContext() {

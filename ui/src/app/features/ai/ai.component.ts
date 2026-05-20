@@ -1,4 +1,4 @@
-import { Component, inject, ViewChild, ElementRef, AfterViewChecked, Pipe, PipeTransform } from '@angular/core';
+import { Component, inject, ViewChild, ElementRef, AfterViewChecked, Pipe, PipeTransform, OnInit } from '@angular/core';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { ButtonModule } from 'primeng/button';
 import { TooltipModule } from 'primeng/tooltip';
@@ -22,7 +22,7 @@ interface Message {
   time: string;
   severity?: string;
   title?: string;
-  options?: string[];
+  options?: any[];
   originalQuery?: string;
   copied?: boolean;
   followUps?: string[];
@@ -119,7 +119,17 @@ interface Message {
               @if (msg.options && msg.options.length > 0) {
                 <div class="msg-options">
                   @for (opt of msg.options; track opt) {
-                    <button class="opt-btn" (click)="selectOption(opt, msg)">{{ opt }}</button>
+                    @if (isString(opt)) {
+                      <button class="opt-btn" (click)="selectOption(opt, msg)">{{ opt }}</button>
+                    } @else {
+                      <button class="opt-btn rich-opt" (click)="selectOption(opt.name, msg)">
+                        <span class="opt-status-dot" [class]="'dot-' + opt.status.toLowerCase()"></span>
+                        <span class="opt-name">{{ opt.name }}</span>
+                        @if (opt.restarts > 0) {
+                          <span class="opt-restarts">({{ opt.restarts }} restarts)</span>
+                        }
+                      </button>
+                    }
                   }
                 </div>
               }
@@ -381,6 +391,12 @@ interface Message {
     .opt-btn:hover {
       background: var(--accent); color: #fff;
     }
+    .rich-opt { display: flex; align-items: center; gap: 8px; text-align: left; }
+    .opt-status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-muted); }
+    .dot-running { background: var(--success); box-shadow: 0 0 6px var(--success-subtle); }
+    .dot-crashloopbackoff, .dot-error, .dot-failed { background: var(--danger); box-shadow: 0 0 6px var(--danger-subtle); }
+    .dot-pending, .dot-warning { background: var(--warning); }
+    .opt-restarts { font-size: 9px; opacity: 0.6; }
 
     /* Follow-ups */
     .msg-followups {
@@ -460,7 +476,7 @@ interface Message {
     }
   `],
 })
-export class AiComponent implements AfterViewChecked {
+export class AiComponent implements OnInit, AfterViewChecked {
   private api = inject(ApiService);
   @ViewChild('messagesEl') messagesEl!: ElementRef;
 
@@ -469,24 +485,17 @@ export class AiComponent implements AfterViewChecked {
   loading = false;
   private shouldScroll = false;
 
-  diagnoseSuggestions = [
-    'why is payment-api failing',
-    'diagnose high restart pods',
-    'which pods are unhealthy',
-    'what\'s wrong with billing',
-  ];
-  analyzeSuggestions = [
-    'summarize cluster health',
-    'how many pods running',
-    'top resource consumers',
-    'is billing-api healthy',
-  ];
-  investigateSuggestions = [
-    'what changed recently',
-    'show warning events',
-    'any anomalies detected',
-    'count customer pods',
-  ];
+  diagnoseSuggestions: string[] = [];
+  analyzeSuggestions: string[] = [];
+  investigateSuggestions: string[] = [];
+
+  ngOnInit() {
+    this.api.getAiSuggestions().subscribe(res => {
+      this.diagnoseSuggestions = res.diagnose;
+      this.analyzeSuggestions = res.analyze;
+      this.investigateSuggestions = res.investigate;
+    });
+  }
 
   ngAfterViewChecked() {
     if (this.shouldScroll) {
@@ -538,6 +547,10 @@ export class AiComponent implements AfterViewChecked {
 
   clearHistory() {
     this.messages = [];
+  }
+
+  isString(val: any): boolean {
+    return typeof val === 'string';
   }
 
   selectOption(option: string, msg: Message) {

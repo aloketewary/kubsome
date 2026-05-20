@@ -58,6 +58,42 @@ def get_unused():
     return {"resources": find_unused_resources()}
 
 
+@router.get("/ai/suggestions")
+def get_ai_suggestions():
+    """Generate contextual AI suggestions based on cluster state."""
+    from core.collectors.pods import collect_pods
+    from core.collectors.events import collect_events
+
+    # Defaults
+    diagnose = ["diagnose high restart pods", "which pods are unhealthy"]
+    analyze = ["summarize cluster health", "top resource consumers", "is billing-api healthy"]
+    investigate = ["what changed recently", "any anomalies detected", "count customer pods"]
+
+    try:
+        pods = collect_pods()
+        unhealthy = [p for p in pods if p["status"] not in ("Running", "Succeeded", "Completed") or p["restarts"] > 5]
+
+        # Contextual Diagnose
+        if unhealthy:
+            diagnose = [f"why is {p['name']} failing" for p in unhealthy[:3]]
+            diagnose.append("which pods are unhealthy")
+
+        # Contextual Investigate
+        events = collect_events(limit=50)
+        warnings = [e for e in events if e["type"] == "Warning"]
+        if warnings:
+            investigate.insert(0, "show warning events")
+    except Exception:
+        # Graceful degradation if K8s calls fail
+        pass
+
+    return {
+        "diagnose": diagnose[:4],
+        "analyze": analyze[:4],
+        "investigate": investigate[:4],
+    }
+
+
 @router.post("/ai")
 def post_ai(req: AiRequest):
     import re
@@ -183,7 +219,12 @@ def _check_ambiguity(query: str, parsed=None):
     # Use substring matching to find pods containing target
     pods = collect_pods()
     matching = [
-        p["name"] for p in pods
+        {
+            "name": p["name"],
+            "status": p["status"],
+            "restarts": p["restarts"]
+        }
+        for p in pods
         if target in p["name"].lower()
     ]
 
