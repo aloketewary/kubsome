@@ -428,9 +428,9 @@ export class ShellComponent implements OnInit {
     { path: '/cost', icon: 'pi pi-dollar', label: 'Optimization' },
     { path: '/cost-estimate', icon: 'pi pi-calculator', label: 'Cost Estimate' },
     { path: '/rightsizing', icon: 'pi pi-sliders-h', label: 'Right-Sizing', badge: 'NEW' },
-    { path: '/helm', icon: 'pi pi-box', label: 'Helm', badge: 'NEW' },
+    { path: '/helm', icon: 'pi pi-server', label: 'Helm', badge: 'NEW' },
     { path: '/port-forwards', icon: 'pi pi-link', label: 'Port Forwards', badge: 'NEW' },
-    { path: '/blast-radius', icon: 'pi pi-exclamation-circle', label: 'Blast Radius', badge: 'NEW' },
+    { path: '/blast-radius', icon: 'pi pi-bullseye', label: 'Blast Radius', badge: 'NEW' },
     { path: '/chargeback', icon: 'pi pi-wallet', label: 'Chargeback', badge: 'NEW' },
     { path: '/idle-resources', icon: 'pi pi-trash', label: 'Idle Resources', badge: 'NEW' },
   ];
