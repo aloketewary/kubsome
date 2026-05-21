@@ -1,4 +1,5 @@
 import { Component, inject, OnInit, OnDestroy } from '@angular/core';
+import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
@@ -77,7 +78,7 @@ import { TrendChartComponent } from '../../shared/components/trend-chart.compone
         <div class="recs-section">
           <h3>Recommendations</h3>
           @for (rec of data.recommendations; track $index) {
-            <div class="rec-card">
+            <div class="rec-card" (click)="applyRecommendation(rec)" tabindex="0" role="button" (keydown.enter)="applyRecommendation(rec)" (keydown.space)="$event.preventDefault(); applyRecommendation(rec)">
               <p-tag [value]="rec.category" severity="warn" [rounded]="true" />
               <span class="rec-issue">{{ rec.issue }}</span>
               <span class="rec-action">→ {{ rec.action }}</span>
@@ -156,7 +157,8 @@ import { TrendChartComponent } from '../../shared/components/trend-chart.compone
 
     .recs-section { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
     .recs-section h3 { font-size: 14px; font-weight: 600; margin: 0 0 12px; }
-    .rec-card { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
+    .rec-card { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--border); font-size: 12px; cursor: pointer; transition: all 0.2s; border-radius: 8px; }
+    .rec-card:hover { background: var(--bg-hover); transform: translateX(4px); }
     .rec-card:last-child { border-bottom: none; }
     .rec-issue { flex: 1; }
     .rec-action { font-size: 11px; color: var(--accent); font-family: 'JetBrains Mono', monospace; }
@@ -169,6 +171,7 @@ import { TrendChartComponent } from '../../shared/components/trend-chart.compone
 })
 export class ScorecardComponent implements OnInit, OnDestroy {
   private http = inject(HttpClient);
+  private router = inject(Router);
   data: any = null;
   categories: { key: string; data: any }[] = [];
   loading = false;
@@ -212,5 +215,9 @@ export class ScorecardComponent implements OnInit, OnDestroy {
   gradeLabel(grade: string): string {
     const labels: Record<string, string> = { A: 'Excellent', B: 'Good', C: 'Fair', D: 'Poor', F: 'Critical' };
     return labels[grade] || 'Unknown';
+  }
+
+  applyRecommendation(rec: any) {
+    this.router.navigate(['/ai'], { queryParams: { q: rec.action } });
   }
 }
