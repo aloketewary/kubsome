@@ -53,6 +53,10 @@ class OllamaProvider:
 
     def available(self):
         """Check if Ollama is running."""
+        from core.safety import is_safe_url
+        if not is_safe_url(self.url, allow_loopback=True):
+            return False
+
         try:
             req = urllib.request.Request(
                 f"{self.url}/api/tags",
@@ -73,6 +77,10 @@ class OllamaProvider:
                 f"Context:\n{context_data}\n\n"
                 f"{prompt}"
             )
+
+        from core.safety import is_safe_url
+        if not is_safe_url(self.url, allow_loopback=True):
+            return None
 
         try:
             payload = json.dumps({
