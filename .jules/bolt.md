@@ -39,3 +39,8 @@
 **Learning:** Sequential `kubectl auth can-i` checks for a permission matrix (N resources × M verbs) create a significant latency bottleneck that grows linearly. By using a `ThreadPoolExecutor`, we can parallelize these independent I/O tasks and reduce total response time to nearly a single call's latency. Additionally, using the unified cached fetcher for RBAC listings ensures consistency and reduces redundant API traffic.
 
 **Action:** Always parallelize bulk authorization checks and leverage the centralized `get_raw_resources` cache for Kubernetes resource listings.
+
+## 2026-05-22 - [Service Collector Optimization]
+**Learning:** The services collector performed multiple direct `kubectl` calls across functions like `detect_mesh`, `list_ingresses`, and `service_dependencies`. This created redundant I/O, especially when multiple components requested pod or service data simultaneously. Introduction of the shared `get_raw_resources` fetcher and `@cached` decorators across these functions ensures that a single `kubectl` execution can serve multiple dependent intelligence features.
+
+**Action:** Consolidate direct `subprocess.run` calls into the centralized `get_raw_resources` fetcher and apply `@cached` to high-level collector entry points to minimize redundant Kubernetes API traffic.
