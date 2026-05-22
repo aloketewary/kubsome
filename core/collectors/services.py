@@ -7,28 +7,18 @@ import subprocess
 import json
 
 from core.context import context
+from core.cache import cached
+from core.k8s import get_raw_resources
 
 
+@cached(ttl=15)
 def detect_mesh():
     """Detect service mesh (Istio/Linkerd) and show status."""
     ns = context.namespace
     ctx = context.current_context
 
-    # Check for Istio sidecars
-    cmd = [
-        "kubectl", "--context", str(ctx or ""),
-        "get", "pods", "-n", str(ns), "-o", "json"
-    ]
-
-    r = subprocess.run(
-        cmd,
-        capture_output=True, text=True
-    )
-
-    if r.returncode != 0:
-        return {"mesh": None, "pods": []}
-
-    data = json.loads(r.stdout)
+    # Bolt: Use centralized cached fetcher. This likely reuses cached pod data.
+    data = get_raw_resources("pods", ctx, ns)
 
     mesh_type = None
     mesh_pods = []
@@ -71,25 +61,14 @@ def detect_mesh():
     }
 
 
+@cached(ttl=15)
 def list_ingresses():
     """List all ingress resources with routing info."""
     ns = context.namespace
     ctx = context.current_context
 
-    cmd = [
-        "kubectl", "--context", str(ctx or ""),
-        "get", "ingress", "-n", str(ns), "-o", "json"
-    ]
-
-    r = subprocess.run(
-        cmd,
-        capture_output=True, text=True
-    )
-
-    if r.returncode != 0:
-        return []
-
-    data = json.loads(r.stdout)
+    # Bolt: Use centralized cached fetcher
+    data = get_raw_resources("ingress", ctx, ns)
     ingresses = []
 
     for item in data.get("items", []):
@@ -120,6 +99,7 @@ def list_ingresses():
     return ingresses
 
 
+@cached(ttl=15)
 def service_dependencies(deployment_name):
     """
     Map dependencies for a deployment by analyzing:
@@ -130,21 +110,17 @@ def service_dependencies(deployment_name):
     ns = context.namespace
     ctx = context.current_context
 
-    cmd = [
-        "kubectl", "--context", str(ctx or ""),
-        "get", "deployment", deployment_name,
-        "-n", str(ns), "-o", "json"
-    ]
-
-    r = subprocess.run(
-        cmd,
-        capture_output=True, text=True
+    # Bolt: Use centralized cached fetcher. We fetch all and find the match
+    # to maximize cache hits with other parts of the app.
+    data = get_raw_resources("deployments", ctx, ns)
+    dep = next(
+        (item for item in data.get("items", [])
+         if item["metadata"]["name"] == deployment_name),
+        None
     )
 
-    if r.returncode != 0:
+    if not dep:
         return None
-
-    dep = json.loads(r.stdout)
     containers = dep["spec"].get(
         "template", {}
     ).get("spec", {}).get("containers", [])
@@ -187,18 +163,10 @@ def service_dependencies(deployment_name):
                     })
 
     # Check if any service points to this deployment
-    cmd2 = [
-        "kubectl", "--context", str(ctx or ""),
-        "get", "services", "-n", str(ns), "-o", "json"
-    ]
+    # Bolt: Use centralized cached fetcher
+    svcs = get_raw_resources("services", ctx, ns)
 
-    r2 = subprocess.run(
-        cmd2,
-        capture_output=True, text=True
-    )
-
-    if r2.returncode == 0:
-        svcs = json.loads(r2.stdout)
+    if svcs:
         dep_labels = dep["spec"].get(
             "selector", {}
         ).get("matchLabels", {})
@@ -220,6 +188,7 @@ def service_dependencies(deployment_name):
     return dependencies
 
 
+@cached(ttl=15)
 def dns_debug(service_name):
     """Test DNS resolution for a service."""
     ns = context.namespace
@@ -236,18 +205,17 @@ def dns_debug(service_name):
     ]
 
     # Get service ClusterIP for comparison
-    cmd = [
-        "kubectl", "--context", str(ctx or ""),
-        "get", "service", service_name,
-        "-n", str(ns),
-        "-o", "jsonpath={.spec.clusterIP}"
-    ]
-
-    r = subprocess.run(
-        cmd,
-        capture_output=True, text=True
+    # Bolt: Use centralized cached fetcher
+    data = get_raw_resources("services", ctx, ns)
+    svc = next(
+        (item for item in data.get("items", [])
+         if item["metadata"]["name"] == service_name),
+        None
     )
-    expected_ip = r.stdout.strip() if r.returncode == 0 else ""
+    expected_ip = (
+        svc["spec"].get("clusterIP", "")
+        if svc else ""
+    )
 
     for dns_name in dns_names:
         # Use kubectl run to test DNS from inside cluster
@@ -282,13 +250,9 @@ def _sidecar_ready(pod, sidecar_name):
 
 
 def _get_service_names(ns, ctx):
-    cmd = [
-        "kubectl", "--context", str(ctx or ""),
-        "get", "services", "-n", str(ns),
-        "-o", "jsonpath={.items[*].metadata.name}"
+    # Bolt: Use centralized cached fetcher
+    data = get_raw_resources("services", ctx, ns)
+    return [
+        item["metadata"]["name"]
+        for item in data.get("items", [])
     ]
-    r = subprocess.run(
-        cmd,
-        capture_output=True, text=True
-    )
-    return r.stdout.strip().split()

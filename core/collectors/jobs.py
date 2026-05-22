@@ -7,6 +7,7 @@ import json
 
 from core.context import context
 from core.cache import cached
+from core.k8s import get_raw_resources
 
 
 @cached(ttl=10)
@@ -15,20 +16,8 @@ def list_cronjobs():
     ns = context.namespace
     ctx = context.current_context
 
-    cmd = [
-        "kubectl", "--context", str(ctx or ""),
-        "get", "cronjobs", "-n", str(ns), "-o", "json"
-    ]
-
-    r = subprocess.run(
-        cmd,
-        capture_output=True, text=True
-    )
-
-    if r.returncode != 0:
-        return []
-
-    data = json.loads(r.stdout)
+    # Bolt: Use centralized cached fetcher to avoid redundant kubectl calls
+    data = get_raw_resources("cronjobs", ctx, ns)
     cronjobs = []
 
     for item in data.get("items", []):
@@ -58,20 +47,8 @@ def list_jobs(limit=20):
     ns = context.namespace
     ctx = context.current_context
 
-    cmd = [
-        "kubectl", "--context", str(ctx or ""),
-        "get", "jobs", "-n", str(ns), "-o", "json"
-    ]
-
-    r = subprocess.run(
-        cmd,
-        capture_output=True, text=True
-    )
-
-    if r.returncode != 0:
-        return []
-
-    data = json.loads(r.stdout)
+    # Bolt: Use centralized cached fetcher
+    data = get_raw_resources("jobs", ctx, ns)
     jobs = []
 
     for item in data.get("items", [])[-limit:]:
