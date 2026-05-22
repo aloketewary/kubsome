@@ -141,4 +141,18 @@ export class ApiService {
   getCostTrend(): Observable<any> {
     return this.http.get<any>(`${this.base}/cost-trend`);
   }
+
+  getAiSuggestions(): Observable<any> {
+    return this.http.get<any>(`${this.base}/ai/suggestions`);
+  }
+
+  getIncidentStatus(): Observable<any> {
+    return this.http.get<any>(`${this.base}/incident/status`);
+  }
+
+  getAudit(limit = 50, action?: string): Observable<any> {
+    const params: any = { limit };
+    if (action) params.action = action;
+    return this.http.get<any>(`${this.base}/audit`, { params });
+  }
 }

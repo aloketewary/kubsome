@@ -1,4 +1,4 @@
-import { Component, inject, ViewChild, ElementRef, AfterViewChecked, Pipe, PipeTransform } from '@angular/core';
+import { Component, inject, ViewChild, ElementRef, OnInit, AfterViewChecked, Pipe, PipeTransform } from '@angular/core';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { ButtonModule } from 'primeng/button';
 import { TooltipModule } from 'primeng/tooltip';
@@ -462,7 +462,7 @@ interface Message {
     }
   `],
 })
-export class AiComponent implements AfterViewChecked {
+export class AiComponent implements OnInit, AfterViewChecked {
   private api = inject(ApiService);
   @ViewChild('messagesEl') messagesEl!: ElementRef;
 
@@ -471,24 +471,28 @@ export class AiComponent implements AfterViewChecked {
   loading = false;
   private shouldScroll = false;
 
-  diagnoseSuggestions = [
-    'why is payment-api failing',
-    'diagnose high restart pods',
-    'which pods are unhealthy',
-    'what\'s wrong with billing',
-  ];
-  analyzeSuggestions = [
-    'summarize cluster health',
-    'how many pods running',
-    'top resource consumers',
-    'is billing-api healthy',
-  ];
-  investigateSuggestions = [
-    'what changed recently',
-    'show warning events',
-    'any anomalies detected',
-    'count customer pods',
-  ];
+  diagnoseSuggestions: string[] = [];
+  analyzeSuggestions: string[] = [];
+  investigateSuggestions: string[] = [];
+
+  ngOnInit() {
+    this.loadSuggestions();
+  }
+
+  loadSuggestions() {
+    this.api.getAiSuggestions().subscribe({
+      next: (res) => {
+        this.diagnoseSuggestions = res.diagnose || [];
+        this.analyzeSuggestions = res.analyze || [];
+        this.investigateSuggestions = res.investigate || [];
+      },
+      error: () => {
+        this.diagnoseSuggestions = ['why is payment-api failing', 'which pods are unhealthy'];
+        this.analyzeSuggestions = ['summarize cluster health', 'top resource consumers'];
+        this.investigateSuggestions = ['what changed recently', 'any anomalies detected'];
+      }
+    });
+  }
 
   ngAfterViewChecked() {
     if (this.shouldScroll) {
