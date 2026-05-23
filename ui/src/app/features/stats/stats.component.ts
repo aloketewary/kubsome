@@ -54,6 +54,15 @@ import { TrendChartComponent } from '../../shared/components/trend-chart.compone
             </div>
           </div>
         </div>
+
+        <div class="stat-main-card glass stagger-4" style="border-color: var(--success-subtle); background: linear-gradient(135deg, var(--bg-card), rgba(34,197,94,0.05))">
+          <div class="stat-header">
+            <i class="pi pi-clock" style="color: var(--success)"></i>
+            <span>Estimated Time Saved</span>
+          </div>
+          <div class="stat-value" style="color: var(--success)">{{ timeSaved }}</div>
+          <div class="stat-footer">Minutes of manual work avoided</div>
+        </div>
       </div>
 
       <div class="details-row">
@@ -106,7 +115,7 @@ import { TrendChartComponent } from '../../shared/components/trend-chart.compone
   `,
   styles: [`
     :host { display: block; padding-bottom: 40px; }
-    .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 24px; }
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 24px; }
     .stat-main-card { padding: 24px; border-radius: 16px; border: 1px solid var(--border); }
     .stat-header { display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 13px; font-weight: 600; margin-bottom: 12px; }
     .stat-header i { color: var(--accent); }
@@ -133,6 +142,9 @@ import { TrendChartComponent } from '../../shared/components/trend-chart.compone
     .empty-hint { padding: 40px 0; text-align: center; color: var(--text-muted); font-size: 13px; }
     .loading-state { padding: 100px 0; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 16px; color: var(--text-muted); }
 
+    @media (max-width: 1200px) {
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    }
     @media (max-width: 768px) {
       .stats-grid, .details-row { grid-template-columns: 1fr; }
     }
@@ -142,6 +154,7 @@ import { TrendChartComponent } from '../../shared/components/trend-chart.compone
     .stagger-3 { animation: fadeSlideUp 0.5s ease-out 0.19s both; }
     .stagger-4 { animation: fadeSlideUp 0.5s ease-out 0.26s both; }
     .stagger-5 { animation: fadeSlideUp 0.5s ease-out 0.33s both; }
+    .stagger-6 { animation: fadeSlideUp 0.5s ease-out 0.40s both; }
 
     @keyframes fadeSlideUp {
       from { opacity: 0; transform: translateY(10px); }
@@ -157,6 +170,14 @@ export class StatsComponent implements OnInit {
     if (!this.stats || this.stats.total_commands === 0) return 0;
     const resolved = this.stats.total_commands - this.stats.unresolved_count;
     return Math.round((resolved / this.stats.total_commands) * 100);
+  }
+
+  get timeSaved() {
+    if (!this.stats) return 0;
+    const resolved = this.stats.total_commands - this.stats.unresolved_count;
+    const remediations = this.stats.auto_remediations || 0;
+    // 2 min per resolved query, 15 min per auto-fix
+    return (resolved * 2) + (remediations * 15);
   }
 
   maxCmdCount = 1;

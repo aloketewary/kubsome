@@ -1,4 +1,4 @@
-import { Component, inject, ViewChild, ElementRef, AfterViewChecked, Pipe, PipeTransform } from '@angular/core';
+import { Component, inject, ViewChild, ElementRef, AfterViewChecked, OnInit, Pipe, PipeTransform } from '@angular/core';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { ButtonModule } from 'primeng/button';
 import { TooltipModule } from 'primeng/tooltip';
@@ -462,7 +462,7 @@ interface Message {
     }
   `],
 })
-export class AiComponent implements AfterViewChecked {
+export class AiComponent implements AfterViewChecked, OnInit {
   private api = inject(ApiService);
   @ViewChild('messagesEl') messagesEl!: ElementRef;
 
@@ -580,5 +580,18 @@ export class AiComponent implements AfterViewChecked {
 
   private now(): string {
     return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+
+  ngOnInit() {
+    this.api.getAiSuggestions().subscribe({
+      next: (res) => {
+        if (res.diagnose) this.diagnoseSuggestions = res.diagnose;
+        if (res.analyze) this.analyzeSuggestions = res.analyze;
+        if (res.investigate) this.investigateSuggestions = res.investigate;
+      },
+      error: () => {
+        console.warn('Failed to fetch AI suggestions, using defaults.');
+      }
+    });
   }
 }

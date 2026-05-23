@@ -228,10 +228,12 @@ interface PodGroup {
     <app-ai-insight-drawer
       [visible]="aiDrawerVisible"
       [loading]="aiLoading"
+      [fixing]="aiFixing"
       [resourceName]="activePodName"
       [summary]="aiSummary"
       [findings]="aiFindings"
       [reasoning]="aiReasoning"
+      (applyFix)="applyRemediation()"
       (closed)="aiDrawerVisible = false" />
 
     <!-- Logs Dialog -->
@@ -522,6 +524,7 @@ export class PodsComponent implements OnInit, OnDestroy {
   aiSummary = '';
   aiFindings: any[] = [];
   aiReasoning = '';
+  aiFixing = false;
 
   diagnoseVisible = false;
   diagnoseFindings: any[] = [];
@@ -635,6 +638,28 @@ export class PodsComponent implements OnInit, OnDestroy {
   quickAiDiagnose(pod: Pod, event: Event) {
     event.stopPropagation();
     this.openAiDiagnose(pod.name);
+  }
+
+  applyRemediation() {
+    if (!this.activePodName || this.aiFixing) return;
+    this.aiFixing = true;
+    this.api.remediate(this.activePodName).subscribe({
+      next: (res) => {
+        this.aiFixing = false;
+        if (res.blocked) {
+          this.aiSummary = `Fix Blocked: ${res.reason}. ${res.suggestion || ''}`;
+        } else if (res.result === 'fixed') {
+          this.aiSummary = `Success: ${res.actions[0]?.action || 'Remediation applied'}. Pod should recover shortly.`;
+          this.refresh();
+        } else {
+          this.aiSummary = `Manual action required: ${res.reason || 'AI could not find a safe auto-fix for these issues.'}`;
+        }
+      },
+      error: () => {
+        this.aiFixing = false;
+        this.aiSummary = 'Failed to apply automated fix. Please try manual remediation.';
+      }
+    });
   }
 
   private openAiDiagnose(name: string) {
