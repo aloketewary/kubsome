@@ -38,6 +38,11 @@
 **Learning:** Even when using list-based arguments for `subprocess.run`, if the command itself (like `osascript -e '...'`) interprets a string that contains unvalidated user input, injection is still possible.
 **Prevention:** Use positional arguments with AppleScript's `on run {args}` handler to pass user data safely as separate parameters, ensuring they are treated as data and not part of the script's logic.
 
+## 2026-06-12 - [CRITICAL] Command Injection in Idle Resource Detection
+**Vulnerability:** The `idle_resources` collector was using `shell=True` with f-strings in multiple detection and cleanup functions, allowing attackers to execute arbitrary commands via manipulated resource names or namespaces.
+**Learning:** Security hardening must be thorough; while API routes might be protected, internal collectors that ingest potentially user-influenced data (like resource names from the UI or cluster state) can still be vulnerable if they use insecure subprocess patterns.
+**Prevention:** Systematically replace `shell=True` and string interpolation with list-based arguments. Leverage centralized, safe fetchers like `get_raw_resources` to reduce the surface area for injection.
+
 ## 2026-05-19 - [HIGH] Token Leak via Public Endpoint
 **Vulnerability:** The `/api/token` endpoint was publicly accessible and returned the session token without any authentication or source verification. This could allow remote attackers to obtain the token and bypass API authentication.
 **Learning:** Security-sensitive endpoints that provide credentials or tokens must be strictly restricted. Relying solely on CORS is insufficient as it is a browser-side check and doesn't prevent programmatic access.
