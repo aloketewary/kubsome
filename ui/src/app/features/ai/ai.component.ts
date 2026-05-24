@@ -1,5 +1,6 @@
-import { Component, inject, ViewChild, ElementRef, AfterViewChecked, Pipe, PipeTransform } from '@angular/core';
+import { Component, inject, ViewChild, ElementRef, AfterViewChecked, Pipe, PipeTransform, OnInit } from '@angular/core';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
+import { ActivatedRoute } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { TooltipModule } from 'primeng/tooltip';
 import { FormsModule } from '@angular/forms';
@@ -462,8 +463,9 @@ interface Message {
     }
   `],
 })
-export class AiComponent implements AfterViewChecked {
+export class AiComponent implements AfterViewChecked, OnInit {
   private api = inject(ApiService);
+  private route = inject(ActivatedRoute);
   @ViewChild('messagesEl') messagesEl!: ElementRef;
 
   query = '';
@@ -489,6 +491,15 @@ export class AiComponent implements AfterViewChecked {
     'any anomalies detected',
     'count customer pods',
   ];
+
+  ngOnInit() {
+    this.route.queryParams.subscribe(params => {
+      if (params['q']) {
+        this.query = params['q'];
+        this.ask();
+      }
+    });
+  }
 
   ngAfterViewChecked() {
     if (this.shouldScroll) {
