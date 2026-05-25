@@ -39,3 +39,8 @@
 **Learning:** Sequential `kubectl auth can-i` checks for a permission matrix (N resources × M verbs) create a significant latency bottleneck that grows linearly. By using a `ThreadPoolExecutor`, we can parallelize these independent I/O tasks and reduce total response time to nearly a single call's latency. Additionally, using the unified cached fetcher for RBAC listings ensures consistency and reduces redundant API traffic.
 
 **Action:** Always parallelize bulk authorization checks and leverage the centralized `get_raw_resources` cache for Kubernetes resource listings.
+
+## 2025-05-21 - [Nested Parallelization in Network Diagnostics]
+**Learning:** Network diagnostics often involve multiple independent levels of I/O (e.g., checking different categories of network health AND performing multiple lookups within a category). Applying nested parallelization with `ThreadPoolExecutor` and integrating with the centralized `get_raw_resources` cache allows for maximal concurrency and minimal redundant `kubectl` process overhead.
+
+**Action:** Use nested parallelization for complex diagnostic tasks and always prefer the cached raw fetcher for standard resource listings.

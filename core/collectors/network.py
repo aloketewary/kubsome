@@ -4,9 +4,10 @@ and service endpoint reachability.
 """
 
 import subprocess
-import json
+from concurrent.futures import ThreadPoolExecutor
 
 from core.context import context
+from core.k8s import get_raw_resources
 
 
 def netcheck(pod_name):
@@ -14,13 +15,21 @@ def netcheck(pod_name):
     ns = context.namespace
     ctx = context.current_context
 
-    results = {
-        "pod": pod_name,
-        "dns": _check_dns(pod_name, ns, ctx),
-        "services": _check_service_endpoints(ns, ctx),
-        "pod_ip": _get_pod_ip(pod_name, ns, ctx),
-        "network_policy": _check_network_policies(ns, ctx),
-    }
+    # BOLT OPTIMIZATION: Parallelize network checks to reduce total latency
+    # from O(N) to O(1) of the slowest check.
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        dns_future = executor.submit(_check_dns, pod_name, ns, ctx)
+        svc_future = executor.submit(_check_service_endpoints, ns, ctx)
+        ip_future = executor.submit(_get_pod_ip, pod_name, ns, ctx)
+        np_future = executor.submit(_check_network_policies, ns, ctx)
+
+        results = {
+            "pod": pod_name,
+            "dns": dns_future.result(),
+            "services": svc_future.result(),
+            "pod_ip": ip_future.result(),
+            "network_policy": np_future.result(),
+        }
 
     return results
 
@@ -32,50 +41,28 @@ def _check_dns(pod_name, ns, ctx):
         ("kubernetes.default.svc.cluster.local", "FQDN"),
     ]
 
-    results = []
-    for host, label in tests:
+    def _single_lookup(host, label):
         cmd = [
             "kubectl", "--context", str(ctx or ""),
             "exec", pod_name, "-n", str(ns),
             "--", "nslookup", host
         ]
-
-        r = subprocess.run(
-            cmd,
-            capture_output=True, text=True,
-            timeout=10
-        )
-
-        success = (
-            r.returncode == 0
-            and "can't resolve" not in r.stdout.lower()
-        )
-
-        results.append({
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+        return {
             "host": host,
             "label": label,
-            "success": success,
-        })
+            "success": r.returncode == 0 and "can't resolve" not in r.stdout.lower(),
+        }
 
-    return results
+    # BOLT OPTIMIZATION: Parallelize multiple DNS lookups
+    with ThreadPoolExecutor(max_workers=len(tests)) as executor:
+        return list(executor.map(lambda t: _single_lookup(*t), tests))
 
 
 def _check_service_endpoints(ns, ctx):
     """Check if services have healthy endpoints."""
-    cmd = [
-        "kubectl", "--context", str(ctx or ""),
-        "get", "endpoints", "-n", str(ns), "-o", "json"
-    ]
-
-    r = subprocess.run(
-        cmd,
-        capture_output=True, text=True
-    )
-
-    if r.returncode != 0:
-        return []
-
-    data = json.loads(r.stdout)
+    # BOLT OPTIMIZATION: Use cached get_raw_resources
+    data = get_raw_resources("endpoints", ctx, ns)
     services = []
 
     for item in data.get("items", []):
@@ -125,16 +112,7 @@ def _get_pod_ip(pod_name, ns, ctx):
 
 def _check_network_policies(ns, ctx):
     """Check if network policies exist in namespace."""
-    cmd = [
-        "kubectl", "--context", str(ctx or ""),
-        "get", "networkpolicies", "-n", str(ns),
-        "--no-headers"
-    ]
-
-    r = subprocess.run(
-        cmd,
-        capture_output=True, text=True
-    )
-
-    count = len([l for l in r.stdout.strip().splitlines() if l])
+    # BOLT OPTIMIZATION: Use cached get_raw_resources
+    data = get_raw_resources("networkpolicies", ctx, ns)
+    count = len(data.get("items", []))
     return {"count": count, "exists": count > 0}
