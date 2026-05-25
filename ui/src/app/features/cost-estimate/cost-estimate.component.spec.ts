@@ -27,6 +27,7 @@ describe('CostEstimateComponent', () => {
 
   it('should fetch cost data on init', () => {
     fixture.detectChanges();
+
     const req = httpMock.expectOne('/api/cost-estimate');
     expect(req.request.method).toBe('GET');
     req.flush({
@@ -34,7 +35,13 @@ describe('CostEstimateComponent', () => {
       total: 17.0,
       pricing: { note: 'Estimated' },
     });
+
+    const trendReq = httpMock.expectOne('/api/cost-trend');
+    expect(trendReq.request.method).toBe('GET');
+    trendReq.flush({ trend: 'stable', current_monthly: 100, projected_monthly: 100, savings_opportunity: 0 });
+
     expect(component.data.total).toBe(17.0);
     expect(component.data.deployments.length).toBe(1);
+    expect(component.trend.trend).toBe('stable');
   });
 });

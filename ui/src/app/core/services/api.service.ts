@@ -32,6 +32,10 @@ export class ApiService {
     return this.http.get<OverviewResponse>(`${this.base}/overview`);
   }
 
+  getIncidentStatus(): Observable<any> {
+    return this.http.get<any>(`${this.base}/incident/status`);
+  }
+
   // Contexts
   getContexts(): Observable<ContextsResponse> {
     return this.http.get<ContextsResponse>(`${this.base}/contexts`);

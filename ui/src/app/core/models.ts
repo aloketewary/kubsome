@@ -127,5 +127,6 @@ export interface UsageStats {
   top_commands: [string, number][];
   unresolved_count: number;
   top_unresolved: [string, number][];
+  auto_remediations: number;
   days_tracked: number;
 }
