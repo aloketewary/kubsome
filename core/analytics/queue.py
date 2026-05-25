@@ -25,17 +25,37 @@ def uuid7():
         import uuid
         return str(uuid.uuid7())
     except AttributeError:
-        # Fallback for Python < 3.14: timestamp + random
+        # Fallback for Python < 3.14: timestamp + counter + random
         import uuid as _uuid
-        import struct
         ts_ms = int(time.time() * 1000)
-        rand = _uuid.uuid4().bytes[6:]
-        # UUID7: 48-bit timestamp | 4-bit version(7) | 12-bit rand | 62-bit rand
-        hi = (ts_ms << 16) | 0x7000 | (rand[0] & 0x0F) << 8 | rand[1]
-        lo = (0x80 | (rand[2] & 0x3F)) << 56
-        for i, b in enumerate(rand[3:10]):
-            lo |= b << (48 - i * 8)
-        return str(_uuid.UUID(int=(hi << 64) | lo))
+        seq = _uuid7_seq(ts_ms)
+        rand_bytes = _uuid.uuid4().bytes
+        # UUID7 layout: 48-bit timestamp | 4-bit version(7) | 12-bit seq | 2-bit variant | 62-bit random
+        time_high = (ts_ms >> 16) & 0xFFFFFFFF
+        time_mid = ts_ms & 0xFFFF
+        ver_seq = 0x7000 | (seq & 0x0FFF)
+        variant_rand = (0x80 | (rand_bytes[0] & 0x3F)) << 56
+        for i in range(7):
+            variant_rand |= rand_bytes[i + 1] << (48 - i * 8)
+        hi = (time_high << 32) | (time_mid << 16) | ver_seq
+        return str(_uuid.UUID(int=(hi << 64) | variant_rand))
+
+
+_uuid7_last_ms = 0
+_uuid7_counter = 0
+_uuid7_lock = threading.Lock()
+
+
+def _uuid7_seq(ts_ms):
+    """Monotonic counter within the same millisecond."""
+    global _uuid7_last_ms, _uuid7_counter
+    with _uuid7_lock:
+        if ts_ms == _uuid7_last_ms:
+            _uuid7_counter += 1
+        else:
+            _uuid7_last_ms = ts_ms
+            _uuid7_counter = 0
+        return _uuid7_counter
 
 
 def enqueue(event_type, data):
