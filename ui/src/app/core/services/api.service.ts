@@ -141,4 +141,12 @@ export class ApiService {
   getCostTrend(): Observable<any> {
     return this.http.get<any>(`${this.base}/cost-trend`);
   }
+
+  getAiSuggestions(): Observable<any> {
+    return this.http.get<any>(`${this.base}/ai/suggestions`);
+  }
+
+  remediate(pod: string): Observable<any> {
+    return this.http.post<any>(`${this.base}/remediate/${pod}`, {});
+  }
 }

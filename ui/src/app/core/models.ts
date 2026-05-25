@@ -128,4 +128,5 @@ export interface UsageStats {
   unresolved_count: number;
   top_unresolved: [string, number][];
   days_tracked: number;
+  auto_remediations: number;
 }

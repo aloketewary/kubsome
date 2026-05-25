@@ -103,12 +103,17 @@ def get_stats():
         unresolved_counts.items(), key=lambda x: -x[1]
     )[:10]
 
+    # Fallback auto-remediations count
+    from core.audit import get_audit_log
+    remediations = get_audit_log(limit=1000, action="auto-remediate")
+
     return {
         "total_commands": len(commands),
         "top_commands": top_commands,
         "unresolved_count": len(unresolved),
         "top_unresolved": top_unresolved,
         "days_tracked": _days_tracked(commands),
+        "auto_remediations": len(remediations),
     }
 
 
@@ -242,12 +247,20 @@ def _stats_from_db():
         SELECT COUNT(DISTINCT ts::DATE) FROM command_usage
     """).fetchone()[0]
 
+    # Count auto-remediations from audit log
+    from core.audit import _ensure_table as _ensure_audit_table
+    _ensure_audit_table(conn)
+    auto_remediations = conn.execute(
+        "SELECT COUNT(*) FROM audit_log WHERE action = 'auto-remediate'"
+    ).fetchone()[0]
+
     return {
         "total_commands": total,
         "top_commands": [(r[0], r[1]) for r in top_commands],
         "unresolved_count": unresolved_count,
         "top_unresolved": [(r[0], r[1]) for r in top_unresolved],
         "days_tracked": days,
+        "auto_remediations": auto_remediations,
     }
 
 
