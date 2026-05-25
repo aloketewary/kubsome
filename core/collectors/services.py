@@ -3,32 +3,21 @@ Service Intelligence — dependency mapping, mesh awareness,
 traffic patterns, ingress overview, DNS debugging.
 """
 
-import subprocess
 import json
+from concurrent.futures import ThreadPoolExecutor
 
 from core.context import context
+from core.cache import cached
+from core.k8s import get_raw_resources
 
 
+@cached(ttl=15)
 def detect_mesh():
     """Detect service mesh (Istio/Linkerd) and show status."""
     ns = context.namespace
     ctx = context.current_context
 
-    # Check for Istio sidecars
-    cmd = [
-        "kubectl", "--context", str(ctx or ""),
-        "get", "pods", "-n", str(ns), "-o", "json"
-    ]
-
-    r = subprocess.run(
-        cmd,
-        capture_output=True, text=True
-    )
-
-    if r.returncode != 0:
-        return {"mesh": None, "pods": []}
-
-    data = json.loads(r.stdout)
+    data = get_raw_resources("pods", ctx, ns)
 
     mesh_type = None
     mesh_pods = []
@@ -71,25 +60,13 @@ def detect_mesh():
     }
 
 
+@cached(ttl=15)
 def list_ingresses():
     """List all ingress resources with routing info."""
     ns = context.namespace
     ctx = context.current_context
 
-    cmd = [
-        "kubectl", "--context", str(ctx or ""),
-        "get", "ingress", "-n", str(ns), "-o", "json"
-    ]
-
-    r = subprocess.run(
-        cmd,
-        capture_output=True, text=True
-    )
-
-    if r.returncode != 0:
-        return []
-
-    data = json.loads(r.stdout)
+    data = get_raw_resources("ingress", ctx, ns)
     ingresses = []
 
     for item in data.get("items", []):
@@ -120,6 +97,7 @@ def list_ingresses():
     return ingresses
 
 
+@cached(ttl=15)
 def service_dependencies(deployment_name):
     """
     Map dependencies for a deployment by analyzing:
@@ -130,21 +108,24 @@ def service_dependencies(deployment_name):
     ns = context.namespace
     ctx = context.current_context
 
-    cmd = [
-        "kubectl", "--context", str(ctx or ""),
-        "get", "deployment", deployment_name,
-        "-n", str(ns), "-o", "json"
+    # Bolt: fetch all deployments and all services in parallel to reduce sequential I/O latency
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        f_deps = executor.submit(get_raw_resources, "deployments", ctx, ns)
+        f_svcs = executor.submit(get_raw_resources, "services", ctx, ns)
+
+        dep_data = f_deps.result()
+        svcs_data = f_svcs.result()
+
+    # Find the target deployment in the list
+    matching_deps = [
+        d for d in dep_data.get("items", [])
+        if d.get("metadata", {}).get("name") == deployment_name
     ]
 
-    r = subprocess.run(
-        cmd,
-        capture_output=True, text=True
-    )
-
-    if r.returncode != 0:
+    if not matching_deps:
         return None
 
-    dep = json.loads(r.stdout)
+    dep = matching_deps[0]
     containers = dep["spec"].get(
         "template", {}
     ).get("spec", {}).get("containers", [])
@@ -157,7 +138,11 @@ def service_dependencies(deployment_name):
     }
 
     # Scan env vars for service references
-    all_services = _get_service_names(ns, ctx)
+    all_services = [
+        s.get("metadata", {}).get("name")
+        for s in svcs_data.get("items", [])
+        if s.get("metadata", {}).get("name")
+    ]
 
     for c in containers:
         for env in c.get("env", []):
@@ -180,46 +165,35 @@ def service_dependencies(deployment_name):
                     "addr", "service"
                 ]
             ):
-                if value and "://" in value or "." in value:
+                if value and ("://" in value or "." in value):
                     dependencies["env_refs"].append({
                         "var": name,
                         "value": value[:60],
                     })
 
     # Check if any service points to this deployment
-    cmd2 = [
-        "kubectl", "--context", str(ctx or ""),
-        "get", "services", "-n", str(ns), "-o", "json"
-    ]
+    dep_labels = dep["spec"].get(
+        "selector", {}
+    ).get("matchLabels", {})
 
-    r2 = subprocess.run(
-        cmd2,
-        capture_output=True, text=True
-    )
-
-    if r2.returncode == 0:
-        svcs = json.loads(r2.stdout)
-        dep_labels = dep["spec"].get(
-            "selector", {}
-        ).get("matchLabels", {})
-
-        for svc in svcs.get("items", []):
-            selector = svc["spec"].get("selector", {})
-            if selector and all(
-                dep_labels.get(k) == v
-                for k, v in selector.items()
-            ):
-                dependencies["downstream"].append({
-                    "service": svc["metadata"]["name"],
-                    "ports": [
-                        f"{p['port']}/{p.get('protocol', 'TCP')}"
-                        for p in svc["spec"].get("ports", [])
-                    ],
-                })
+    for svc in svcs_data.get("items", []):
+        selector = svc["spec"].get("selector", {})
+        if selector and all(
+            dep_labels.get(k) == v
+            for k, v in selector.items()
+        ):
+            dependencies["downstream"].append({
+                "service": svc["metadata"]["name"],
+                "ports": [
+                    f"{p['port']}/{p.get('protocol', 'TCP')}"
+                    for p in svc["spec"].get("ports", [])
+                ],
+            })
 
     return dependencies
 
 
+@cached(ttl=15)
 def dns_debug(service_name):
     """Test DNS resolution for a service."""
     ns = context.namespace
@@ -236,28 +210,15 @@ def dns_debug(service_name):
     ]
 
     # Get service ClusterIP for comparison
-    cmd = [
-        "kubectl", "--context", str(ctx or ""),
-        "get", "service", service_name,
-        "-n", str(ns),
-        "-o", "jsonpath={.spec.clusterIP}"
-    ]
-
-    r = subprocess.run(
-        cmd,
-        capture_output=True, text=True
-    )
-    expected_ip = r.stdout.strip() if r.returncode == 0 else ""
+    # Bolt: Use cached get_raw_resources to find the service and its IP
+    svcs_data = get_raw_resources("services", ctx, ns)
+    expected_ip = ""
+    for svc in svcs_data.get("items", []):
+        if svc.get("metadata", {}).get("name") == service_name:
+            expected_ip = svc.get("spec", {}).get("clusterIP", "")
+            break
 
     for dns_name in dns_names:
-        # Use kubectl run to test DNS from inside cluster
-        cmd = (
-            f"kubectl --context {ctx} "
-            f"run dns-test-{hash(dns_name) % 10000} "
-            f"--image=busybox --rm -it --restart=Never "
-            f"-n {ns} -- nslookup {dns_name} 2>/dev/null"
-        )
-
         # Simpler: just check if service exists
         results.append({
             "name": dns_name,
@@ -282,13 +243,9 @@ def _sidecar_ready(pod, sidecar_name):
 
 
 def _get_service_names(ns, ctx):
-    cmd = [
-        "kubectl", "--context", str(ctx or ""),
-        "get", "services", "-n", str(ns),
-        "-o", "jsonpath={.items[*].metadata.name}"
+    data = get_raw_resources("services", ctx, ns)
+    return [
+        item.get("metadata", {}).get("name")
+        for item in data.get("items", [])
+        if item.get("metadata", {}).get("name")
     ]
-    r = subprocess.run(
-        cmd,
-        capture_output=True, text=True
-    )
-    return r.stdout.strip().split()
