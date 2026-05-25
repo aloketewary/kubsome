@@ -10,10 +10,10 @@ from core.cache import cached
 @cached(ttl=5)
 def get_raw_resources(kind, context_name, namespace=None, selector=None, field_selector=None, sort_by=None):
     """Unified raw resource fetcher with caching."""
-    command = [
-        "kubectl", "--context", str(context_name or ""),
-        "get", kind, "-o", "json"
-    ]
+    command = ["kubectl"]
+    if context_name:
+        command.extend(["--context", str(context_name)])
+    command.extend(["get", kind, "-o", "json"])
     if namespace:
         command.extend(["-n", namespace])
     if selector:
@@ -80,13 +80,14 @@ def get_pods():
 @cached(ttl=60)
 def get_pod_names():
     """Fast pod name list using jsonpath (no full JSON parse)."""
-    command = [
-        "kubectl",
-        "--context", str(context.current_context or ""),
+    command = ["kubectl"]
+    if context.current_context:
+        command.extend(["--context", str(context.current_context)])
+    command.extend([
         "get", "pods",
         "-n", str(context.namespace),
         "-o", "jsonpath={.items[*].metadata.name}"
-    ]
+    ])
 
     result = subprocess.run(
         command, capture_output=True, text=True
