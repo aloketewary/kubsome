@@ -21,3 +21,23 @@ As a Product Growth Manager for Kubsome, I have identified and implemented the f
 **Observation:** Clipboard actions lacked visual confirmation, leading to uncertainty.
 **Improvement:** Added "Copied!" feedback to the cluster context copy action.
 **Growth Impact:** Improves the "perceived quality" of the workspace, which is critical for long-term retention in professional tooling.
+
+## 5. Activation: Contextual AI Onboarding
+**Observation:** The AI Assistant previously showed static, hardcoded suggestions regardless of the cluster's health.
+**Improvement:** Refactored the AI Assistant to fetch dynamic, health-aware suggestions from the backend (e.g., "why is [unhealthy-pod] failing").
+**Growth Impact:** Directly connects the AI's value proposition to the user's current problems, increasing the likelihood of activation.
+
+## 6. Retention: Incident Continuity & Persistence
+**Observation:** Users could lose track of active incident debugging sessions if they navigated back to the dashboard.
+**Improvement:** Added a high-visibility "Resume Active Incident" nudge to the main dashboard.
+**Growth Impact:** Ensures Kubsome remains the "single source of truth" during an outage, increasing session length and preventing workflow abandonment.
+
+## 7. Engagement: Dynamic Feature Discovery (Pro Tips)
+**Observation:** Advanced features like the Scorecard and Security Scan were underutilized by new users.
+**Improvement:** Implemented a telemetry-driven "Pro Tip" system that identifies underutilized features and nudges the user to explore them.
+**Growth Impact:** Increases feature adoption and shifts the user's perception of Kubsome from a simple CLI to a comprehensive operational platform.
+
+## 8. Retention: ROI Visualization (Time Saved)
+**Observation:** Users often don't realize how much manual work they are avoiding by using an AI-native workspace.
+**Improvement:** Integrated a "Time Saved" counter in the dashboard hero, estimating hours saved via AI queries and automated remediations.
+**Growth Impact:** Provides a tangible "Value Realization" hook that makes the tool indispensable to the operator and their management.

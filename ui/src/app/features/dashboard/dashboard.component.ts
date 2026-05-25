@@ -66,6 +66,13 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
 
       <!-- Growth: Smart Insights -->
       <div class="insights-row stagger-1">
+        @if (activeIncident) {
+          <div class="insight-pill suggested" style="border-color: var(--warning); border-style: solid; background: var(--warning-subtle); color: var(--warning)"
+               (click)="router.navigate(['/incident'])" tabindex="0" role="button" (keydown)="onKey($event, router.navigate.bind(router, ['/incident']))">
+            <i class="pi pi-exclamation-circle"></i>
+            <span>Resume Active Incident</span>
+          </div>
+        }
         <div class="insight-pill" (click)="router.navigate(['/scorecard'])" tabindex="0" role="button" (keydown)="onKey($event, router.navigate.bind(router, ['/scorecard']))">
           <i class="pi pi-trophy"></i>
           <span>Check Cluster Scorecard</span>
@@ -78,6 +85,24 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
           <div class="insight-pill suggested" (click)="router.navigate(['/cost'])" tabindex="0" role="button" (keydown)="onKey($event, router.navigate.bind(router, ['/cost']))">
             <i class="pi pi-exclamation-triangle" style="color: var(--warning)"></i>
             <span>Projected costs increasing</span>
+          </div>
+        }
+        @if (showScorecardNudge) {
+          <div class="insight-pill suggested" (click)="router.navigate(['/scorecard'])" tabindex="0" role="button" (keydown)="onKey($event, router.navigate.bind(router, ['/scorecard']))">
+            <i class="pi pi-sparkles"></i>
+            <span>Pro Tip: Try Cluster Scorecard</span>
+          </div>
+        }
+        @if (showSecurityNudge) {
+          <div class="insight-pill suggested" (click)="router.navigate(['/security'])" tabindex="0" role="button" (keydown)="onKey($event, router.navigate.bind(router, ['/security']))">
+            <i class="pi pi-lock"></i>
+            <span>Pro Tip: Run Security Scan</span>
+          </div>
+        }
+        @if (showOptimizeNudge) {
+          <div class="insight-pill suggested" (click)="router.navigate(['/cost'])" tabindex="0" role="button" (keydown)="onKey($event, router.navigate.bind(router, ['/cost']))">
+            <i class="pi pi-bolt"></i>
+            <span>Pro Tip: Optimize Resources</span>
           </div>
         }
         @if (data && pins.length === 0) {
@@ -763,6 +788,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
   contextCopied = false;
   stats: any = null;
   costTrend: any = null;
+  activeIncident: any = null;
+  remediationsCount = 0;
   cpuMemChart: any = null;
   trendOptions = {
     plugins: { legend: { labels: { color: '#aaa', font: { size: 10 } } } },
@@ -794,6 +821,25 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   get isClusterEmpty(): boolean {
     return this.data !== null && this.podTotal === 0 && this.nodeTotal === 0 && this.depTotal === 0;
+  }
+
+  get timeSavedHours(): string {
+    if (!this.stats) return '0';
+    const resolvedCount = this.stats.total_commands - this.stats.unresolved_count;
+    const totalMins = (resolvedCount * 2) + (this.remediationsCount * 15);
+    return (totalMins / 60).toFixed(1);
+  }
+
+  get showScorecardNudge(): boolean {
+    return this.stats && !this.stats.top_commands.some((c: any) => c[0] === 'scorecard');
+  }
+
+  get showSecurityNudge(): boolean {
+    return this.stats && !this.stats.top_commands.some((c: any) => c[0] === 'security');
+  }
+
+  get showOptimizeNudge(): boolean {
+    return this.stats && !this.stats.top_commands.some((c: any) => c[0] === 'optimize');
   }
 
   Math = Math;
@@ -858,6 +904,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.loadPins();
     this.loadStats();
     this.api.getCostTrend().subscribe(res => this.costTrend = res);
+    this.api.getIncidentStatus().subscribe(res => this.activeIncident = res.id ? res : null);
+    this.api.getAudit(50, 'auto-remediate').subscribe(res => this.remediationsCount = (res.log || []).length);
     this.api.getOverview().subscribe({
       next: (res) => { this.data = res; },
       error: () => {
