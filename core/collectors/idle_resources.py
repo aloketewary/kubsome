@@ -19,6 +19,7 @@ from datetime import datetime, timezone
 from concurrent.futures import ThreadPoolExecutor
 
 from core.context import context
+from core.k8s import get_raw_resources
 
 
 def detect_all(include_analytics=True):
@@ -114,15 +115,15 @@ def cleanup_execute(items, dry_run=True):
         name = item["name"]
         item_ns = item.get("namespace", ns)
 
-        cmd = (
-            f"kubectl --context {ctx} delete {kind} "
-            f"{name} -n {item_ns}"
-        )
+        cmd = [
+            "kubectl", "--context", str(ctx or ""),
+            "delete", kind, name, "-n", str(item_ns)
+        ]
         if dry_run:
-            cmd += " --dry-run=server"
+            cmd.append("--dry-run=server")
 
         r = subprocess.run(
-            cmd, shell=True, capture_output=True, text=True
+            cmd, capture_output=True, text=True
         )
         results.append({
             "kind": item["kind"],
@@ -240,15 +241,7 @@ def _detect_orphaned_secrets(ctx, ns):
 
 def _detect_unbound_pvcs(ctx, ns):
     """Find PVCs not bound to any pod."""
-    cmd = (
-        f"kubectl --context {ctx} get pvc -n {ns} "
-        f"-o json 2>/dev/null"
-    )
-    r = subprocess.run(cmd, shell=True, capture_output=True, text=True)
-    if r.returncode != 0:
-        return []
-
-    data = json.loads(r.stdout)
+    data = get_raw_resources("pvc", ctx, ns)
     # Get volumes mounted by pods
     mounted_pvcs = _get_mounted_resources(ctx, ns, "persistentVolumeClaim")
 
@@ -279,15 +272,7 @@ def _detect_unbound_pvcs(ctx, ns):
 
 def _detect_stale_jobs(ctx, ns):
     """Find completed/failed Jobs older than 7 days."""
-    cmd = (
-        f"kubectl --context {ctx} get jobs -n {ns} "
-        f"-o json 2>/dev/null"
-    )
-    r = subprocess.run(cmd, shell=True, capture_output=True, text=True)
-    if r.returncode != 0:
-        return []
-
-    data = json.loads(r.stdout)
+    data = get_raw_resources("jobs", ctx, ns)
     results = []
 
     for item in data.get("items", []):
@@ -321,15 +306,7 @@ def _detect_stale_jobs(ctx, ns):
 
 def _detect_orphaned_replicasets(ctx, ns):
     """Find ReplicaSets with 0 replicas and no owner."""
-    cmd = (
-        f"kubectl --context {ctx} get replicasets -n {ns} "
-        f"-o json 2>/dev/null"
-    )
-    r = subprocess.run(cmd, shell=True, capture_output=True, text=True)
-    if r.returncode != 0:
-        return []
-
-    data = json.loads(r.stdout)
+    data = get_raw_resources("replicasets", ctx, ns)
     results = []
 
     for item in data.get("items", []):
@@ -353,15 +330,7 @@ def _detect_orphaned_replicasets(ctx, ns):
 
 def _detect_idle_services(ctx, ns):
     """Find Services with no endpoints."""
-    cmd = (
-        f"kubectl --context {ctx} get endpoints -n {ns} "
-        f"-o json 2>/dev/null"
-    )
-    r = subprocess.run(cmd, shell=True, capture_output=True, text=True)
-    if r.returncode != 0:
-        return []
-
-    data = json.loads(r.stdout)
+    data = get_raw_resources("endpoints", ctx, ns)
     skip = ("kubernetes", "kube-dns", "metrics-server")
     results = []
 
@@ -389,15 +358,7 @@ def _detect_idle_services(ctx, ns):
 
 def _detect_idle_hpas(ctx, ns):
     """Find HPAs targeting non-existent deployments."""
-    cmd = (
-        f"kubectl --context {ctx} get hpa -n {ns} "
-        f"-o json 2>/dev/null"
-    )
-    r = subprocess.run(cmd, shell=True, capture_output=True, text=True)
-    if r.returncode != 0:
-        return []
-
-    data = json.loads(r.stdout)
+    data = get_raw_resources("hpa", ctx, ns)
     deployments = set(_kubectl_names(ctx, ns, "deployments"))
     results = []
 
@@ -426,11 +387,12 @@ def _detect_idle_hpas(ctx, ns):
 
 def _kubectl_names(ctx, ns, resource):
     """Get resource names as list."""
-    cmd = (
-        f"kubectl --context {ctx} get {resource} -n {ns} "
-        f"-o jsonpath='{{.items[*].metadata.name}}' 2>/dev/null"
-    )
-    r = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+    cmd = [
+        "kubectl", "--context", str(ctx or ""),
+        "get", resource, "-n", str(ns),
+        "-o", "jsonpath={.items[*].metadata.name}"
+    ]
+    r = subprocess.run(cmd, capture_output=True, text=True)
     if r.returncode != 0:
         return []
     return r.stdout.strip().split()
@@ -438,15 +400,7 @@ def _kubectl_names(ctx, ns, resource):
 
 def _get_mounted_resources(ctx, ns, volume_type):
     """Get resource names referenced in pod volumes."""
-    cmd = (
-        f"kubectl --context {ctx} get pods -n {ns} "
-        f"-o json 2>/dev/null"
-    )
-    r = subprocess.run(cmd, shell=True, capture_output=True, text=True)
-    if r.returncode != 0:
-        return set()
-
-    data = json.loads(r.stdout)
+    data = get_raw_resources("pods", ctx, ns)
     mounted = set()
 
     for item in data.get("items", []):
@@ -477,15 +431,7 @@ def _get_mounted_resources(ctx, ns, volume_type):
 
 def _get_sa_secrets(ctx, ns):
     """Get secrets referenced by service accounts."""
-    cmd = (
-        f"kubectl --context {ctx} get serviceaccounts -n {ns} "
-        f"-o json 2>/dev/null"
-    )
-    r = subprocess.run(cmd, shell=True, capture_output=True, text=True)
-    if r.returncode != 0:
-        return set()
-
-    data = json.loads(r.stdout)
+    data = get_raw_resources("serviceaccounts", ctx, ns)
     secrets = set()
     for item in data.get("items", []):
         for s in item.get("secrets", []):
