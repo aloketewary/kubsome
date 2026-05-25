@@ -5,8 +5,10 @@ and service endpoint reachability.
 
 import subprocess
 import json
+from concurrent.futures import ThreadPoolExecutor
 
 from core.context import context
+from core.k8s import get_raw_resources
 
 
 def netcheck(pod_name):
@@ -14,13 +16,21 @@ def netcheck(pod_name):
     ns = context.namespace
     ctx = context.current_context
 
-    results = {
-        "pod": pod_name,
-        "dns": _check_dns(pod_name, ns, ctx),
-        "services": _check_service_endpoints(ns, ctx),
-        "pod_ip": _get_pod_ip(pod_name, ns, ctx),
-        "network_policy": _check_network_policies(ns, ctx),
-    }
+    # Bolt: Parallelize all top-level diagnostic categories to minimize O(N) sequential latency
+    # Total latency becomes that of the slowest category (typically DNS/exec).
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        f_dns = executor.submit(_check_dns, pod_name, ns, ctx)
+        f_services = executor.submit(_check_service_endpoints, ns, ctx)
+        f_pod_ip = executor.submit(_get_pod_ip, pod_name, ns, ctx)
+        f_net_pol = executor.submit(_check_network_policies, ns, ctx)
+
+        results = {
+            "pod": pod_name,
+            "dns": f_dns.result(),
+            "services": f_services.result(),
+            "pod_ip": f_pod_ip.result(),
+            "network_policy": f_net_pol.result(),
+        }
 
     return results
 
@@ -32,50 +42,44 @@ def _check_dns(pod_name, ns, ctx):
         ("kubernetes.default.svc.cluster.local", "FQDN"),
     ]
 
-    results = []
-    for host, label in tests:
+    def _lookup(host, label):
         cmd = [
             "kubectl", "--context", str(ctx or ""),
             "exec", pod_name, "-n", str(ns),
             "--", "nslookup", host
         ]
 
-        r = subprocess.run(
-            cmd,
-            capture_output=True, text=True,
-            timeout=10
-        )
+        try:
+            r = subprocess.run(
+                cmd,
+                capture_output=True, text=True,
+                timeout=10
+            )
 
-        success = (
-            r.returncode == 0
-            and "can't resolve" not in r.stdout.lower()
-        )
+            success = (
+                r.returncode == 0
+                and "can't resolve" not in r.stdout.lower()
+            )
+        except (subprocess.SubprocessError, Exception):
+            success = False
 
-        results.append({
+        return {
             "host": host,
             "label": label,
             "success": success,
-        })
+        }
+
+    # Bolt: Parallelize individual lookups within _check_dns to reduce total latency
+    with ThreadPoolExecutor(max_workers=len(tests)) as executor:
+        results = list(executor.map(lambda p: _lookup(*p), tests))
 
     return results
 
 
 def _check_service_endpoints(ns, ctx):
     """Check if services have healthy endpoints."""
-    cmd = [
-        "kubectl", "--context", str(ctx or ""),
-        "get", "endpoints", "-n", str(ns), "-o", "json"
-    ]
-
-    r = subprocess.run(
-        cmd,
-        capture_output=True, text=True
-    )
-
-    if r.returncode != 0:
-        return []
-
-    data = json.loads(r.stdout)
+    # Bolt: Use cached raw fetcher to reduce redundant I/O and shell overhead
+    data = get_raw_resources("endpoints", ctx, ns)
     services = []
 
     for item in data.get("items", []):
@@ -106,6 +110,8 @@ def _check_service_endpoints(ns, ctx):
 
 def _get_pod_ip(pod_name, ns, ctx):
     """Get pod IP and node."""
+    # Bolt: This remains a direct call for specific field extraction,
+    # but is now executed in parallel with other diagnostics.
     cmd = [
         "kubectl", "--context", str(ctx or ""),
         "get", "pod", pod_name, "-n", str(ns),
@@ -125,16 +131,8 @@ def _get_pod_ip(pod_name, ns, ctx):
 
 def _check_network_policies(ns, ctx):
     """Check if network policies exist in namespace."""
-    cmd = [
-        "kubectl", "--context", str(ctx or ""),
-        "get", "networkpolicies", "-n", str(ns),
-        "--no-headers"
-    ]
-
-    r = subprocess.run(
-        cmd,
-        capture_output=True, text=True
-    )
-
-    count = len([l for l in r.stdout.strip().splitlines() if l])
+    # Bolt: Use cached raw fetcher
+    data = get_raw_resources("networkpolicies", ctx, ns)
+    items = data.get("items", [])
+    count = len(items)
     return {"count": count, "exists": count > 0}
