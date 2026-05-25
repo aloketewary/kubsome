@@ -1,3 +1,4 @@
+import os
 import unittest
 from unittest.mock import patch, MagicMock
 from core.notify import notify
@@ -5,6 +6,7 @@ from core.notify import notify
 class TestNotificationSecurity(unittest.TestCase):
     @patch("platform.system")
     @patch("subprocess.run")
+    @patch.dict("os.environ", {"KUBSOME_TESTING": ""}, clear=False)
     def test_macos_notification_secure(self, mock_run, mock_system):
         mock_system.return_value = "Darwin"
 

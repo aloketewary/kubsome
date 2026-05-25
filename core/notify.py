@@ -22,6 +22,10 @@ import threading
 
 def notify(title, message):
     """Send a desktop notification."""
+    import os
+    if os.environ.get("KUBSOME_TESTING") == "1":
+        return
+
     system = platform.system()
 
     try:

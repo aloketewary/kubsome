@@ -53,7 +53,13 @@ class TestBoltCostOptimization(unittest.TestCase):
 
         # Check that it called kubectl for the expected types
         calls = [tuple(call.args[0]) for call in mock_run.call_args_list]
-        kinds = [c[4] if len(c) > 4 else "" for c in calls]
+        # Extract resource kind: the element right after "get"
+        kinds = []
+        for c in calls:
+            if "get" in c:
+                idx = c.index("get")
+                if idx + 1 < len(c):
+                    kinds.append(c[idx + 1])
 
         self.assertIn("configmaps", kinds)
         self.assertIn("pods", kinds)
