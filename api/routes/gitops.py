@@ -114,6 +114,7 @@ def post_deactivate_profile():
 
 
 @router.get("/analytics")
+@router.get("/analytics/stats")
 def get_analytics():
     from core.analytics.engine import get_stats
     try:
@@ -123,6 +124,7 @@ def get_analytics():
 
 
 @router.post("/analytics/collect")
+@router.get("/analytics/collect")
 def post_collect():
     from core.analytics.collector import collect_now
     return collect_now()

@@ -81,8 +81,17 @@ def stop_collector():
 
 
 def collect_now():
-    """Run a single collection cycle. Returns stats."""
-    return _collect_cycle()
+    """Run a single collection cycle and drain queue. Returns stats."""
+    result = _collect_cycle()
+    # Drain immediately so data is visible right away
+    try:
+        from core.analytics.queue import drain
+        from core.analytics.engine import is_writable
+        if is_writable():
+            drain()
+    except Exception:
+        pass
+    return result
 
 
 def _collection_loop():
@@ -123,10 +132,10 @@ def _collect_cycle():
         ns = context.namespace
 
     # Guard: check pod count before full collection
-    if scope == "cluster" and max_pods > 0:
+    # If cluster scope fails (RBAC), fall back to namespace
+    if scope == "cluster" and ns is None:
         pod_count = _get_pod_count(ctx)
-        if pod_count > max_pods:
-            # Fall back to active namespace only
+        if pod_count == 0 or pod_count > max_pods:
             ns = context.namespace
 
     ts = datetime.utcnow()

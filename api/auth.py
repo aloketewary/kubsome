@@ -17,7 +17,14 @@ PUBLIC_PATHS = {"/health", "/api/health", "/api/version", "/api/token", "/docs",
 
 
 def generate_token():
+    """Generate or reuse session token. Persists across reloads."""
     global _SESSION_TOKEN
+    # Reuse existing token if file exists (survives reload)
+    if _TOKEN_FILE.exists():
+        existing = _TOKEN_FILE.read_text().strip()
+        if existing:
+            _SESSION_TOKEN = existing
+            return _SESSION_TOKEN
     _SESSION_TOKEN = secrets.token_urlsafe(32)
     _TOKEN_FILE.parent.mkdir(parents=True, exist_ok=True)
     _TOKEN_FILE.write_text(_SESSION_TOKEN)

@@ -1,5 +1,5 @@
 import { HttpInterceptorFn } from '@angular/common/http';
-import { from, switchMap, of } from 'rxjs';
+import { from, switchMap } from 'rxjs';
 
 let _token: string | null = null;
 let _tokenPromise: Promise<string> | null = null;
@@ -16,10 +16,11 @@ function fetchToken(): Promise<string> {
     })
     .catch(() => {
       _token = '';
+      _tokenPromise = null; // Allow retry on failure
       return '';
     });
 
-  return _tokenPromise!;
+  return _tokenPromise;
 }
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
@@ -28,14 +29,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
     return next(req);
   }
 
-  // If token already cached, attach immediately
-  if (_token) {
-    return next(req.clone({
-      setHeaders: { Authorization: `Bearer ${_token}` },
-    }));
-  }
-
-  // Otherwise fetch token first, then proceed
+  // Always go through fetchToken() — it returns immediately if cached
   return from(fetchToken()).pipe(
     switchMap(token => {
       if (token) {

@@ -69,6 +69,8 @@ def main():
             "Interactive CLI\n"
             "[cyan]kubsome serve[/cyan]        "
             "API + Web UI (opens browser)\n"
+            "[cyan]kubsome collect[/cyan]      "
+            "Background analytics collector\n"
             "[cyan]kubsome tui[/cyan]          "
             "Full-screen terminal dashboard\n"
             "[cyan]kubsome --exec \"pods\"[/cyan] "
@@ -150,6 +152,11 @@ def main():
         _start_server(args)
         return
 
+    # kubsome collect [--interval N]
+    if args and args[0] == "collect":
+        _start_collector(args)
+        return
+
     # kubsome tui
     if args and args[0] == "tui":
         _start_tui()
@@ -217,6 +224,80 @@ def _start_server(args):
             "[red]API dependencies not installed.[/red]\n"
             "Run: pip install 'kubsome[api]'"
         )
+
+
+def _start_collector(args):
+    """Run background analytics collector as a standalone daemon."""
+    import signal
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
+
+    # Parse: kubsome collect [seconds]
+    # e.g. kubsome collect 60
+    interval = 300
+    if len(args) > 1:
+        try:
+            interval = int(args[1])
+        except ValueError:
+            console.print(f"[red]Invalid interval: {args[1]}[/red]")
+            console.print("Usage: kubsome collect [seconds]")
+            return
+
+    # Health check
+    ok, info = check_kubectl()
+    if not ok:
+        console.print(f"[red]✗ {info}[/red]")
+        return
+    if not context.current_context:
+        context.current_context = info
+
+    try:
+        from core.analytics.engine import get_conn, is_writable
+        from core.analytics.collector import collect_now
+        from core.analytics.queue import start_drain_loop
+    except ImportError as e:
+        console.print(f"[red]✗ {e}[/red]")
+        return
+
+    conn = get_conn()
+    if not is_writable():
+        console.print(
+            "[yellow]⚠ Another process owns the DB. "
+            "Data will be queued for it to drain.[/yellow]"
+        )
+
+    start_drain_loop(interval=5)
+
+    console.print(
+        f"[green]◆ Kubsome Collector[/green] "
+        f"[dim]every {interval}s[/dim]\n"
+        f"  [dim]Context:[/dim] {context.current_context}\n"
+        f"  [dim]Namespace:[/dim] {context.namespace}\n"
+        f"  [dim]Ctrl+C to stop[/dim]"
+    )
+
+    # Initial collection
+    result = collect_now()
+    console.print(
+        f"  [green]✓[/green] Collected {result.get('pods', 0)} pods, "
+        f"{result.get('nodes', 0)} nodes "
+        f"[dim]({result.get('duration_ms', 0)}ms)[/dim]"
+    )
+
+    # Loop
+    import time
+    try:
+        while True:
+            time.sleep(interval)
+            result = collect_now()
+            ts = time.strftime("%H:%M:%S")
+            console.print(
+                f"  [dim]{ts}[/dim] "
+                f"{result.get('pods', 0)} pods, "
+                f"{result.get('nodes', 0)} nodes "
+                f"[dim]({result.get('duration_ms', 0)}ms)[/dim]"
+            )
+    except KeyboardInterrupt:
+        console.print("\n[dim]Collector stopped.[/dim]")
 
 
 def _start_tui():

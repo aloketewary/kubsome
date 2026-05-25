@@ -403,6 +403,32 @@ def _init_schema(conn):
         )
     """)
 
+    # --- Incidents ---
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS incidents (
+            id VARCHAR PRIMARY KEY,
+            title VARCHAR,
+            started VARCHAR,
+            ended VARCHAR,
+            duration_min INTEGER,
+            context VARCHAR,
+            namespace VARCHAR,
+            root_cause VARCHAR,
+            resolution VARCHAR,
+            note_count INTEGER,
+            snapshot_count INTEGER
+        )
+    """)
+
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS incident_events (
+            incident_id VARCHAR,
+            ts VARCHAR,
+            event VARCHAR,
+            detail VARCHAR
+        )
+    """)
+
     # --- Indexes for common query patterns ---
     conn.execute("""
         CREATE INDEX IF NOT EXISTS idx_raw_pods_ts
