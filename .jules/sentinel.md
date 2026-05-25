@@ -47,3 +47,8 @@
 **Vulnerability:** The webhook notification system used `urllib.request.urlopen` on user-provided URLs without any validation. This allowed attackers to make the server perform arbitrary GET/POST requests to internal network services, loopback interfaces, or cloud metadata endpoints (e.g., 169.254.169.254).
 **Learning:** Outbound network requests to user-controlled URLs are a classic SSRF vector. Relying on "generic" webhook types doesn't mitigate the risk if the URL itself is not restricted. Scheme and IP-level validation are essential.
 **Prevention:** Implement a strict URL validation helper that: 1) Enforces safe schemes (http/https). 2) Resolves the hostname to all its IP addresses. 3) Blocks any IP that falls within loopback, private, reserved, or link-local ranges.
+
+## 2026-06-15 - [CRITICAL] Command Injection in Idle Resource Detection
+**Vulnerability:** The idle resource detection module (`core/collectors/idle_resources.py`) was using `shell=True` with string-formatted commands containing user-influenced data (context, namespace, kind, name). This allowed for command injection via malicious resource names.
+**Learning:** In `subprocess.run`, `capture_output=True` is mutually exclusive with explicit `stdout` or `stderr` arguments. Attempting to use them together results in a `ValueError`.
+**Prevention:** Eliminate `shell=True` and use list-based arguments for all `subprocess` calls. When suppressing errors while capturing output, use `stdout=subprocess.PIPE, stderr=subprocess.DEVNULL` instead of `capture_output=True`.
