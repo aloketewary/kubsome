@@ -33,7 +33,6 @@ MAIN_DB = ANALYTICS_DIR / "kubsome.duckdb"
 
 _conn = None
 _conn_lock = threading.Lock()
-
 # --- App-level query cache ---
 _query_cache = {}
 _cache_lock = threading.Lock()
@@ -78,7 +77,11 @@ def get_conn():
     """
     Get or create the main DuckDB connection.
     Returns a ThreadSafeConnection wrapper.
-    Auto-recovers from corrupted database files.
+
+    Strategy:
+      - Try read-write on main DB (first process wins)
+      - If locked, open read-only (CLI reads serve's data)
+      - If read-only fails, use in-memory (graceful degradation)
     """
     global _conn
     if duckdb is None:
@@ -88,6 +91,7 @@ def get_conn():
     with _conn_lock:
         if _conn is None:
             _ensure_dirs()
+            _cleanup_stale_dbs()
             try:
                 raw = duckdb.connect(
                     str(MAIN_DB),
@@ -95,13 +99,40 @@ def get_conn():
                 )
                 _configure_conn(raw)
                 _init_schema(raw)
+                _conn = _ThreadSafeConn(raw, writable=True)
+            except duckdb.IOException:
+                # Locked by another process — open read-only
+                try:
+                    raw = duckdb.connect(
+                        str(MAIN_DB),
+                        config={"access_mode": "READ_ONLY"}
+                    )
+                    _conn = _ThreadSafeConn(raw, writable=False)
+                except Exception:
+                    # Can't even read — in-memory fallback
+                    raw = duckdb.connect(":memory:")
+                    _configure_conn(raw)
+                    _init_schema(raw)
+                    _conn = _ThreadSafeConn(raw, writable=True)
             except duckdb.FatalException:
-                # Database corrupted — delete and recreate
                 raw = _recover_db()
+                _conn = _ThreadSafeConn(raw, writable=True)
             except duckdb.InvalidInputException:
                 raw = _recover_db()
-            _conn = _ThreadSafeConn(raw)
+                _conn = _ThreadSafeConn(raw, writable=True)
     return _conn
+
+
+def is_writable():
+    """Check if current connection has write access."""
+    conn = get_conn()
+    return conn._writable
+
+
+def _cleanup_stale_dbs():
+    """Remove leftover PID-based DB files from old approach."""
+    for f in ANALYTICS_DIR.glob("kubsome_*.duckdb*"):
+        f.unlink(missing_ok=True)
 
 
 def _recover_db():
@@ -133,8 +164,9 @@ class _ThreadSafeConn:
     Auto-recovers from fatal database errors.
     """
 
-    def __init__(self, conn):
+    def __init__(self, conn, writable=True):
         self._conn = conn
+        self._writable = writable
 
     def execute(self, sql, params=None):
         with _conn_lock:

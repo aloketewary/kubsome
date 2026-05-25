@@ -16,7 +16,6 @@ import threading
 from datetime import datetime
 
 from core.context import context
-from core.analytics.engine import execute_write, execute_many
 
 
 _collector_thread = None
@@ -49,17 +48,30 @@ def _get_pod_count(ctx):
 
 
 def start_collector(interval=None):
-    """Start background collection thread."""
+    """Start background collection thread.
+    Any process can collect — data goes to the queue.
+    Only the DB-owning process drains the queue.
+    """
     global _collector_thread, _running, INTERVAL
     cfg = _get_analytics_config()
     INTERVAL = interval or cfg["interval"]
     if _running:
         return
+
     _running = True
     _collector_thread = threading.Thread(
         target=_collection_loop, daemon=True
     )
     _collector_thread.start()
+
+    # If we own the DB, also start the drain loop
+    try:
+        from core.analytics.engine import is_writable
+        if is_writable():
+            from core.analytics.queue import start_drain_loop
+            start_drain_loop(interval=5)
+    except Exception:
+        pass
 
 
 def stop_collector():
@@ -80,6 +92,9 @@ def _collection_loop():
     while _running:
         try:
             _collect_cycle()
+        except ImportError:
+            # DuckDB not installed — stop trying
+            break
         except Exception:
             pass
         time.sleep(INTERVAL)
@@ -121,11 +136,13 @@ def _collect_cycle():
 
     duration_ms = int((time.time() - start) * 1000)
 
-    # Log collection
-    execute_write(
-        "INSERT INTO collection_log VALUES (?, 'raw', ?, ?, ?)",
-        [ts, pods_collected, nodes_collected, duration_ms]
-    )
+    # Log collection via queue
+    from core.analytics.queue import enqueue
+    enqueue("collection_log", {
+        "ts": str(ts), "level": "raw",
+        "pods": pods_collected, "nodes": nodes_collected,
+        "duration_ms": duration_ms,
+    })
 
     # Enriched collection (HPA, OOMKills, quotas, rollouts)
     try:
@@ -181,48 +198,36 @@ def _collect_pods(ts, ctx, ns=None):
 
     details = _kubectl_pod_details(ctx, ns)
 
-    # Batch insert (1000 rows at a time for memory efficiency)
+    # Batch into queue
+    from core.analytics.queue import enqueue
     BATCH_SIZE = 1000
     batch = []
     total = 0
 
     for pod_key, m in metrics.items():
         detail = details.get(pod_key, {})
-        ns = detail.get("namespace", m.get("namespace", ""))
+        pod_ns = detail.get("namespace", m.get("namespace", ""))
         pod_name = m.get("name", pod_key)
-        batch.append((
-            ts,
-            ctx,
-            ns,
-            pod_name,
+        batch.append([
+            str(ts), ctx, pod_ns, pod_name,
             detail.get("deployment", ""),
             detail.get("container", ""),
-            m["cpu"],
-            m["mem"],
+            m["cpu"], m["mem"],
             detail.get("cpu_request", 0),
             detail.get("cpu_limit", 0),
             detail.get("mem_request", 0),
             detail.get("mem_limit", 0),
             detail.get("restarts", 0),
             detail.get("status", ""),
-        ))
+        ])
 
         if len(batch) >= BATCH_SIZE:
-            execute_many(
-                "INSERT INTO raw_pod_metrics VALUES "
-                "(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                batch
-            )
+            enqueue("pod_metrics", {"rows": batch})
             total += len(batch)
             batch = []
 
-    # Flush remaining
     if batch:
-        execute_many(
-            "INSERT INTO raw_pod_metrics VALUES "
-            "(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-            batch
-        )
+        enqueue("pod_metrics", {"rows": batch})
         total += len(batch)
 
     return total
@@ -264,11 +269,8 @@ def _collect_nodes(ts, ctx):
         ))
 
     if rows:
-        execute_many(
-            "INSERT INTO raw_node_metrics VALUES "
-            "(?,?,?,?,?,?,?,?)",
-            rows
-        )
+        from core.analytics.queue import enqueue
+        enqueue("node_metrics", {"rows": rows})
 
     return len(rows)
 
