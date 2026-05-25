@@ -92,6 +92,12 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
             <span>Review {{ stats.unresolved_count }} unresolved queries</span>
           </div>
         }
+        @if (proTip) {
+          <div class="insight-pill suggested pro-tip" (click)="router.navigate([proTip.link])" tabindex="0" role="button" (keydown)="onKey($event, router.navigate.bind(router, [proTip.link]))" [pTooltip]="proTip.detail">
+            <p-tag value="Pro Tip" severity="info" class="pro-tag" />
+            <span>{{ proTip.text }}</span>
+          </div>
+        }
       </div>
 
       <!-- Alert -->
@@ -353,7 +359,9 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     }
     .insight-pill:hover { border-color: var(--accent); background: var(--accent-subtle); color: var(--accent); transform: translateY(-1px); }
     .insight-pill.suggested { border-style: dashed; opacity: 0.8; }
+    .insight-pill.pro-tip { border-style: solid; border-color: var(--accent-subtle); opacity: 1; background: var(--accent-subtle-alt, rgba(99, 102, 241, 0.05)); }
     .insight-pill i { font-size: 14px; }
+    .pro-tag { transform: scale(0.8); margin-left: -6px; margin-right: -4px; }
 
     /* Hero — Glassmorphism + Mesh Gradient */
     .hero {
@@ -763,6 +771,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   contextCopied = false;
   stats: any = null;
   costTrend: any = null;
+  proTip: { text: string; link: string; detail: string } | null = null;
   cpuMemChart: any = null;
   trendOptions = {
     plugins: { legend: { labels: { color: '#aaa', font: { size: 10 } } } },
@@ -896,9 +905,33 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   loadStats() {
     this.api.getStats().subscribe({
-      next: (res) => (this.stats = res),
+      next: (res) => {
+        this.stats = res;
+        this.generateProTip();
+      },
       error: () => (this.stats = null),
     });
+  }
+
+  generateProTip() {
+    const tips = [
+      { text: 'Audit cluster health with Scorecard', link: '/scorecard', detail: 'Get an A-F grade across reliability, security, and performance.' },
+      { text: 'Detect misconfigurations in Security', link: '/rbac', detail: 'Scan for over-privileged service accounts and risky roles.' },
+      { text: 'Identify idle resources to save costs', link: '/cost', detail: 'Find ConfigMaps and PVCs that aren\'t being used.' },
+      { text: 'Track production issues in Incident mode', link: '/incident', detail: 'Create timelines and capture snapshots during outages.' },
+      { text: 'Explore resource links in Service Map', link: '/graph', detail: 'See how your services, pods, and nodes are interconnected.' },
+    ];
+
+    // Simple logic: if a feature isn't in top_commands, suggest it
+    const topCmds = (this.stats?.top_commands || []).map((c: any) => c[0].toLowerCase());
+
+    const untried = tips.filter(t => !topCmds.some((cmd: string) => t.link.includes(cmd) || t.text.toLowerCase().includes(cmd)));
+
+    if (untried.length > 0) {
+      this.proTip = untried[Math.floor(Math.random() * untried.length)];
+    } else {
+      this.proTip = tips[Math.floor(Math.random() * tips.length)];
+    }
   }
 
   copyContext() {
