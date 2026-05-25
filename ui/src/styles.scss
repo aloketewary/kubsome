@@ -191,6 +191,13 @@ app-contexts {
 
 /* ─── PrimeNG Deep Overrides ─────────────────────────────────────────── */
 
+/* Force all PrimeNG surfaces to use theme variables */
+.p-component,
+.p-component-overlay {
+  background: var(--bg-card) !important;
+  color: var(--text) !important;
+}
+
 /* Toolbar */
 .p-toolbar {
   background: var(--bg-card) !important;
@@ -714,6 +721,51 @@ app-contexts {
 }
 .p-tablist-active-bar {
   display: none !important;
+}
+
+/* SelectButton */
+.p-selectbutton {
+  background: var(--bg-elevated) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 8px !important;
+  padding: 3px !important;
+  gap: 2px !important;
+}
+.p-selectbutton .p-togglebutton,
+.p-selectbutton .p-button {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 6px !important;
+  color: var(--text-muted) !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  padding: 6px 12px !important;
+  transition: all 0.15s !important;
+}
+.p-selectbutton .p-togglebutton:hover,
+.p-selectbutton .p-button:hover {
+  color: var(--text) !important;
+  background: var(--bg-hover) !important;
+}
+.p-selectbutton .p-togglebutton.p-highlight,
+.p-selectbutton .p-button.p-highlight,
+.p-selectbutton .p-togglebutton[data-p-active="true"],
+.p-selectbutton .p-button[aria-pressed="true"] {
+  background: var(--accent-subtle) !important;
+  color: var(--accent) !important;
+  font-weight: 600 !important;
+}
+
+/* ToggleButton standalone */
+.p-togglebutton {
+  background: var(--bg-elevated) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--text-secondary) !important;
+}
+.p-togglebutton.p-highlight {
+  background: var(--accent-subtle) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
 }
 
 /* Confirm Dialog */
