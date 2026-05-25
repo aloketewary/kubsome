@@ -26,6 +26,7 @@ def render_banner():
     """Show startup banner with context info and health snapshot."""
     import random
     from core.theme import t
+    from core.version import __version__
 
     theme = t()
     tip = random.choice(TIPS)
@@ -47,7 +48,7 @@ def render_banner():
 
     content = (
         f"[bold {theme['success']}]\u25c6 Kubsome[/bold {theme['success']}] "
-        f"[{theme['muted']}]v1.13.0[/{theme['muted']}]  {env}\n"
+        f"[{theme['muted']}]v{__version__}[/{theme['muted']}]  {env}\n"
         f"[{theme['muted']}]Context:[/{theme['muted']}] {context.current_context}\n"
         f"[{theme['muted']}]Namespace:[/{theme['muted']}] {context.namespace}"
         f"{incident_line}"

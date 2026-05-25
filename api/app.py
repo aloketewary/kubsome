@@ -110,7 +110,8 @@ def get_api_token(request: Request):
 
 @app.get("/api/version")
 def version():
-    return {"version": "1.12.0"}
+    from core.version import __version__
+    return {"version": __version__}
 
 
 # Serve Angular build in production

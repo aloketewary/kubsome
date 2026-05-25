@@ -59,7 +59,7 @@ export const appConfig: ApplicationConfig = {
       theme: {
         preset: KubsomePreset,
         options: {
-          darkModeSelector: false,
+          darkModeSelector: ':root:not([data-theme="light"])',
           cssLayer: false,
         },
       },

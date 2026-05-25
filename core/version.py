@@ -1,20 +1,26 @@
 """
 Version check — notify user if a newer version exists on PyPI.
+Also exposes the single source of truth for the app version.
 """
 
 import json
 import ssl
 import urllib.request
-from importlib.metadata import version
+from importlib.metadata import version as _meta_version
 
 PACKAGE = "kubsome"
 PYPI_URL = f"https://pypi.org/pypi/{PACKAGE}/json"
+
+try:
+    __version__ = _meta_version(PACKAGE)
+except Exception:
+    __version__ = "0.0.0"
 
 
 def check_update():
     """Return (latest, current) if update available, else None."""
     try:
-        current = version(PACKAGE)
+        current = __version__
         ctx = ssl.create_default_context()
         req = urllib.request.Request(
             PYPI_URL, headers={"Accept": "application/json"}

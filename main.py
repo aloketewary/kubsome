@@ -38,6 +38,7 @@ from core.safety import confirm_production
 from core.workflows import create_default_workflows
 from core.bookmarks import get_bookmark
 from core.chaining import split_chain
+from core.pipe import split_pipe, apply_pipe
 from core.banner import render_banner
 from core.notify import notify_if_critical
 from core.version import check_update
@@ -271,15 +272,21 @@ def _start_cli():
     from core.cache import prewarm
     prewarm(silent=False)
 
-    # Check for updates (non-blocking)
-    update = check_update()
-    if update:
-        latest, current = update
-        console.print(
-            f"[yellow]⬆ Update available:[/yellow] "
-            f"[dim]{current}[/dim] → [green]{latest}[/green]  "
-            f"[dim]Run:[/dim] pip install --upgrade kubsome\n"
-        )
+    # Check for updates (truly non-blocking)
+    def _check_update_bg():
+        import time as _t
+        _t.sleep(2)  # Don't compete with prewarm
+        update = check_update()
+        if update:
+            latest, current = update
+            console.print(
+                f"\n[yellow]⬆ Update available:[/yellow] "
+                f"[dim]{current}[/dim] → [green]{latest}[/green]  "
+                f"[dim]Run:[/dim] pip install --upgrade kubsome"
+            )
+
+    import threading
+    threading.Thread(target=_check_update_bg, daemon=True).start()
 
     # Start background scheduler
     from core.scheduler import get_scheduler
@@ -336,6 +343,12 @@ def _start_cli():
 
 def _execute_single(user_input, env):
     """Execute a single command (used by chaining)."""
+    # Pipe support: split off pipe commands
+    user_input, pipe_chain = split_pipe(user_input)
+    if pipe_chain:
+        _execute_piped(user_input, pipe_chain, env)
+        return
+
     # Built-in context commands
     if user_input == "contexts":
         render_contexts(enriched_contexts())
@@ -420,6 +433,59 @@ def _execute_single(user_input, env):
     elapsed = time.time() - start
     if elapsed > 3:
         console.print(f"[dim]({elapsed:.1f}s)[/dim]")
+
+
+def _execute_piped(user_input, pipe_chain, env):
+    """Execute a command and pipe output through shell commands."""
+    import sys
+    from io import StringIO
+
+    # Resolve command
+    command = resolve_command(user_input)
+    if not command:
+        parsed = parse_query(user_input)
+        if parsed and parsed["score"] >= 65:
+            action = map_to_command(parsed)
+            if action:
+                command = resolve_command(action) if isinstance(action, str) else action
+
+    if not command:
+        console.print("[red]Unknown command.[/red]")
+        return
+
+    # Capture all stdout output
+    old_stdout = sys.stdout
+    sys.stdout = buffer = StringIO()
+
+    try:
+        if isinstance(command, str):
+            import subprocess, shlex
+            from core.executor import _fuzzy_resolve
+            resolved = _fuzzy_resolve(command)
+            r = subprocess.run(
+                shlex.split(resolved),
+                capture_output=True, text=True
+            )
+            # Write to captured stdout so pipe can process it
+            if r.stdout:
+                print(r.stdout, end="")
+            if r.stderr:
+                print(r.stderr, end="")
+        else:
+            # Dict command — Rich prints to stdout via Console
+            dispatch(command, env["name"])
+    finally:
+        sys.stdout = old_stdout
+
+    output = buffer.getvalue()
+
+    # Strip ANSI escape codes for clean grep
+    import re
+    output = re.sub(r'\x1b\[[0-9;]*m', '', output)
+
+    filtered = apply_pipe(output, pipe_chain)
+    if filtered:
+        console.print(filtered, end="")
 
 
 def _detect_env():

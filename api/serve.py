@@ -12,14 +12,12 @@ from rich.panel import Panel
 
 console = Console()
 
-VERSION = "1.11.1"
-
-
 def _print_banner(host: str, port: int):
+    from core.version import __version__
     url = f"http://localhost:{port}" if host == "0.0.0.0" else f"http://{host}:{port}"
     content = (
         f"[bold cyan]◆[/bold cyan] [bold]Kubsome Server[/bold] "
-        f"[dim]v{VERSION}[/dim]\n"
+        f"[dim]v{__version__}[/dim]\n"
         f"\n"
         f"  [dim]API:[/dim]  [cyan]{url}/api[/cyan]\n"
         f"  [dim]UI:[/dim]   [cyan]{url}/app[/cyan]\n"
@@ -28,6 +26,19 @@ def _print_banner(host: str, port: int):
     console.print()
     console.print(Panel.fit(content, border_style="cyan"))
     console.print()
+
+
+def _release_port(port: int):
+    """Kill any process occupying the given port."""
+    import subprocess
+    result = subprocess.run(
+        ["lsof", "-ti", f":{port}"],
+        capture_output=True, text=True
+    )
+    pids = result.stdout.strip().split()
+    if pids:
+        console.print(f"[yellow]⚠ Port {port} in use — releasing...[/yellow]")
+        subprocess.run(["kill", "-9"] + pids, capture_output=True)
 
 
 def start(
@@ -41,6 +52,7 @@ def start(
     # Only print banner in the main process (not the reloader child)
     if os.environ.get("WATCHFILES_FORCE_POLLING") is None and "UVICORN_STARTED" not in os.environ:
         os.environ["UVICORN_STARTED"] = "1"
+        _release_port(port)
         _print_banner(host, port)
 
     if not no_browser:

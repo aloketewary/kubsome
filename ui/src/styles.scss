@@ -669,6 +669,53 @@ app-contexts {
   box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
 }
 
+/* Tabs */
+.p-tabs {
+  background: transparent !important;
+}
+.p-tablist {
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-sm) !important;
+  padding: 4px !important;
+  gap: 2px !important;
+}
+.p-tab {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 8px !important;
+  color: var(--text-muted) !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  padding: 8px 16px !important;
+  transition: all 0.15s !important;
+}
+.p-tab:hover {
+  color: var(--text) !important;
+  background: var(--bg-hover) !important;
+}
+.p-tab-active, .p-tab[data-p-active="true"] {
+  background: var(--bg-elevated) !important;
+  color: var(--text) !important;
+  font-weight: 600 !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
+}
+.p-tabpanels {
+  background: transparent !important;
+  padding: 16px 0 0 !important;
+}
+.p-tabpanel {
+  background: transparent !important;
+  padding: 0 !important;
+}
+.p-tabs-nav, .p-tablist-tab-list {
+  background: transparent !important;
+  border: none !important;
+}
+.p-tablist-active-bar {
+  display: none !important;
+}
+
 /* Confirm Dialog */
 .p-confirmdialog {
   border-radius: var(--radius) !important;
