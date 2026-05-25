@@ -80,6 +80,24 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
             <span>Projected costs increasing</span>
           </div>
         }
+        @if (hasDoctorFailures) {
+          <div class="insight-pill suggested" (click)="router.navigate(['/doctor'])" tabindex="0" role="button" (keydown)="onKey($event, router.navigate.bind(router, ['/doctor']))">
+            <i class="pi pi-exclamation-circle" style="color: var(--danger)"></i>
+            <span>System diagnostics found issues</span>
+          </div>
+        }
+        @if (troublesomePod) {
+          <div class="insight-pill suggested" (click)="router.navigate(['/ai'], {queryParams: {q: 'why is ' + troublesomePod + ' failing'}})" tabindex="0" role="button" (keydown)="onKey($event, router.navigate.bind(router, ['/ai'], {queryParams: {q: 'why is ' + troublesomePod + ' failing'}}))">
+            <i class="pi pi-sparkles" style="color: var(--accent)"></i>
+            <span>Ask AI why {{ troublesomePod }} is failing</span>
+          </div>
+        }
+        @if (data.pods.critical > 3) {
+          <div class="insight-pill suggested" (click)="router.navigate(['/incident'])" tabindex="0" role="button" (keydown)="onKey($event, router.navigate.bind(router, ['/incident']))">
+            <i class="pi pi-exclamation-circle" style="color: var(--danger)"></i>
+            <span>High instability detected. Start an Incident?</span>
+          </div>
+        }
         @if (data && pins.length === 0) {
           <div class="insight-pill suggested" (click)="router.navigate(['/ai'])" tabindex="0" role="button" (keydown)="onKey($event, router.navigate.bind(router, ['/ai']))">
             <i class="pi pi-bookmark"></i>
@@ -763,6 +781,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
   contextCopied = false;
   stats: any = null;
   costTrend: any = null;
+  doctorChecks: any[] = [];
+  aiSuggestions: any = null;
   cpuMemChart: any = null;
   trendOptions = {
     plugins: { legend: { labels: { color: '#aaa', font: { size: 10 } } } },
@@ -794,6 +814,19 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   get isClusterEmpty(): boolean {
     return this.data !== null && this.podTotal === 0 && this.nodeTotal === 0 && this.depTotal === 0;
+  }
+
+  get hasDoctorFailures(): boolean {
+    return this.doctorChecks.some(c => c.status === 'fail');
+  }
+
+  get troublesomePod(): string | null {
+    if (!this.aiSuggestions?.diagnose) return null;
+    const first = this.aiSuggestions.diagnose[0];
+    if (first.startsWith('why is ') && first.endsWith(' failing')) {
+      return first.replace('why is ', '').replace(' failing', '');
+    }
+    return null;
   }
 
   Math = Math;
@@ -858,6 +891,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.loadPins();
     this.loadStats();
     this.api.getCostTrend().subscribe(res => this.costTrend = res);
+    this.api.getDoctor().subscribe(res => this.doctorChecks = res.checks || []);
+    this.api.getAiSuggestions().subscribe(res => this.aiSuggestions = res);
     this.api.getOverview().subscribe({
       next: (res) => { this.data = res; },
       error: () => {

@@ -141,4 +141,12 @@ export class ApiService {
   getCostTrend(): Observable<any> {
     return this.http.get<any>(`${this.base}/cost-trend`);
   }
+
+  getDoctor(): Observable<any> {
+    return this.http.get<any>(`${this.base}/doctor`);
+  }
+
+  getAiSuggestions(): Observable<any> {
+    return this.http.get<any>(`${this.base}/ai/suggestions`);
+  }
 }
