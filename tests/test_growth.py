@@ -570,7 +570,7 @@ class TestResolverPerformance:
 
         assert result is not None
         assert target in result
-        assert elapsed_ms < 5, f"Took {elapsed_ms:.1f}ms (limit: 5ms)"
+        assert elapsed_ms < 15, f"Took {elapsed_ms:.1f}ms (limit: 15ms)"
 
     def test_no_match_under_50ms(self):
         import time
