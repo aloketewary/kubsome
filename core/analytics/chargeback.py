@@ -239,10 +239,14 @@ def import_opencost(url=None):
     Pull allocation data from OpenCost API and store in DuckDB.
     OpenCost endpoint: /allocation/compute?window=7d&aggregate=namespace
     """
+    from core.safety import is_safe_url
     cfg = _get_chargeback_config()
     endpoint = url or cfg["opencost_url"]
     if not endpoint:
         return {"error": "opencost_url not configured"}
+
+    if not is_safe_url(endpoint):
+        return {"error": f"Blocked unsafe OpenCost URL: {endpoint}"}
 
     try:
         import urllib.request

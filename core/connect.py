@@ -420,6 +420,10 @@ def _test_webhook(name, url, message):
     """Send a test message to a webhook."""
     import urllib.request
     import urllib.error
+    from core.safety import is_safe_url
+
+    if not is_safe_url(url):
+        return False
 
     if name == "slack":
         payload = json.dumps({"text": message})
@@ -448,6 +452,12 @@ def _test_url(name, url):
     """Test if a URL is reachable."""
     import urllib.request
     import urllib.error
+    from core.safety import is_safe_url
+
+    # Allow loopback for Ollama
+    allow_loopback = (name == "ollama")
+    if not is_safe_url(url, allow_loopback=allow_loopback):
+        return False
 
     test_path = ""
     if name == "prometheus":
@@ -521,10 +531,14 @@ def _detect_flux(ctx):
 def _check_ollama():
     """Check if Ollama is running locally."""
     import urllib.request
+    from core.safety import is_safe_url
+
+    url = "http://localhost:11434/api/tags"
+    if not is_safe_url(url, allow_loopback=True):
+        return False
+
     try:
-        req = urllib.request.Request(
-            "http://localhost:11434/api/tags", method="GET"
-        )
+        req = urllib.request.Request(url, method="GET")
         resp = urllib.request.urlopen(req, timeout=2)
         return resp.status == 200
     except Exception:
