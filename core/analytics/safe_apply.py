@@ -41,12 +41,12 @@ def dry_run(recommendations=None, days=7, namespace=None):
         patch_yaml = _build_patch_yaml(rec)
         tmp = _write_temp(patch_yaml)
 
-        cmd = (
-            f"kubectl --context {ctx} apply "
-            f"--dry-run=server -f {tmp} 2>&1"
-        )
+        cmd = ["kubectl"]
+        if ctx:
+            cmd.extend(["--context", str(ctx)])
+        cmd.extend(["apply", "--dry-run=server", "-f", tmp])
         r = subprocess.run(
-            cmd, shell=True, capture_output=True, text=True
+            cmd, capture_output=True, text=True, stderr=subprocess.STDOUT
         )
 
         results.append({
@@ -88,12 +88,12 @@ def diff(recommendations=None, days=7, namespace=None):
         rec_ns = rec["namespace"]
 
         # Get current resources from cluster
-        cmd = (
-            f"kubectl --context {ctx} get deployment {deploy} "
-            f"-n {rec_ns} -o json 2>/dev/null"
-        )
+        cmd = ["kubectl"]
+        if ctx:
+            cmd.extend(["--context", str(ctx)])
+        cmd.extend(["get", "deployment", deploy, "-n", rec_ns, "-o", "json"])
         r = subprocess.run(
-            cmd, shell=True, capture_output=True, text=True
+            cmd, capture_output=True, text=True, stderr=subprocess.DEVNULL
         )
 
         current = {"cpu_request": "?", "mem_request": "?",
@@ -171,10 +171,12 @@ def apply_safe(recommendations=None, days=7, namespace=None,
         # 1. Dry-run first
         patch_yaml = _build_patch_yaml(rec)
         tmp = _write_temp(patch_yaml)
+        cmd = ["kubectl"]
+        if ctx:
+            cmd.extend(["--context", str(ctx)])
+        cmd.extend(["apply", "--dry-run=server", "-f", tmp])
         dr = subprocess.run(
-            f"kubectl --context {ctx} apply "
-            f"--dry-run=server -f {tmp}",
-            shell=True, capture_output=True, text=True
+            cmd, capture_output=True, text=True
         )
         if dr.returncode != 0:
             skipped.append({
@@ -188,9 +190,12 @@ def apply_safe(recommendations=None, days=7, namespace=None,
         snapshot = _snapshot_resources(ctx, deploy, ns)
 
         # 3. Apply
+        cmd = ["kubectl"]
+        if ctx:
+            cmd.extend(["--context", str(ctx)])
+        cmd.extend(["apply", "-f", tmp])
         apply_r = subprocess.run(
-            f"kubectl --context {ctx} apply -f {tmp}",
-            shell=True, capture_output=True, text=True
+            cmd, capture_output=True, text=True
         )
         Path(tmp).unlink(missing_ok=True)
 
@@ -465,12 +470,12 @@ def _write_temp(content):
 
 def _snapshot_resources(ctx, deploy, ns):
     """Capture current resource spec for rollback."""
-    cmd = (
-        f"kubectl --context {ctx} get deployment {deploy} "
-        f"-n {ns} -o json"
-    )
+    cmd = ["kubectl"]
+    if ctx:
+        cmd.extend(["--context", str(ctx)])
+    cmd.extend(["get", "deployment", deploy, "-n", ns, "-o", "json"])
     r = subprocess.run(
-        cmd, shell=True, capture_output=True, text=True
+        cmd, capture_output=True, text=True
     )
     if r.returncode != 0:
         return None
@@ -507,9 +512,12 @@ def _rollback(ctx, deploy, ns, snapshot):
         },
     }
     tmp = _write_temp(yaml.dump(patch, default_flow_style=False))
+    cmd = ["kubectl"]
+    if ctx:
+        cmd.extend(["--context", str(ctx)])
+    cmd.extend(["apply", "-f", tmp])
     subprocess.run(
-        f"kubectl --context {ctx} apply -f {tmp}",
-        shell=True, capture_output=True, text=True
+        cmd, capture_output=True, text=True
     )
     Path(tmp).unlink(missing_ok=True)
 
@@ -525,12 +533,12 @@ def _watch_health(ctx, deploy, ns, seconds):
 
     for i in range(checks):
         time.sleep(interval)
-        cmd = (
-            f"kubectl --context {ctx} get deployment {deploy} "
-            f"-n {ns} -o json 2>/dev/null"
-        )
+        cmd = ["kubectl"]
+        if ctx:
+            cmd.extend(["--context", str(ctx)])
+        cmd.extend(["get", "deployment", deploy, "-n", ns, "-o", "json"])
         r = subprocess.run(
-            cmd, shell=True, capture_output=True, text=True
+            cmd, capture_output=True, text=True, stderr=subprocess.DEVNULL
         )
         if r.returncode != 0:
             return False
