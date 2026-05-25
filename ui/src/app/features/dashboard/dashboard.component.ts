@@ -58,7 +58,7 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
             <p>We didn't find any resources in the current namespace. Try exploring other namespaces or ask AI "What is failing here?" to get started.</p>
             <div class="empty-actions">
               <button class="btn-primary" (click)="router.navigate(['/namespace'])">Switch Namespace</button>
-              <button class="btn-secondary" (click)="router.navigate(['/ai'])">Ask AI Assistant</button>
+              <button class="btn-secondary" (click)="router.navigate(['/ai'], { queryParams: { q: 'What is failing here?' } })">Ask AI Assistant</button>
             </div>
           </div>
         </div>
@@ -92,6 +92,18 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
             <span>Review {{ stats.unresolved_count }} unresolved queries</span>
           </div>
         }
+        @if (activeIncident) {
+          <div class="insight-pill suggested" style="border-color: var(--warning); color: var(--warning);" (click)="router.navigate(['/incident'])" tabindex="0" role="button" (keydown)="onKey($event, router.navigate.bind(router, ['/incident']))">
+            <i class="pi pi-exclamation-circle"></i>
+            <span>Resume active incident: {{ activeIncident.title }}</span>
+          </div>
+        }
+        @if (stats && healthPct > 90 && stats.total_commands > 10) {
+          <div class="insight-pill suggested" (click)="router.navigate(['/ai'])" tabindex="0" role="button" (keydown)="onKey($event, router.navigate.bind(router, ['/ai']))">
+            <i class="pi pi-info-circle"></i>
+            <span>Pro Tip: Try natural language for complex traces</span>
+          </div>
+        }
       </div>
 
       <!-- Alert -->
@@ -103,7 +115,12 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
             @if ((data.pods.critical) > 0) { {{ data.pods.critical }} pod(s) critical. }
             @if (data.nodes.warning > 0) { {{ data.nodes.warning }} node(s) not ready. }
           </span>
-          <button class="alert-action" (click)="goToPods()">Investigate <i class="pi pi-arrow-right"></i></button>
+          <div style="display: flex; gap: 8px;">
+            <button class="alert-action" (click)="goToPods()">Investigate <i class="pi pi-arrow-right"></i></button>
+            @if ((data.pods.critical) > 0) {
+              <button class="alert-action" style="color: var(--accent); border-color: var(--accent);" (click)="router.navigate(['/ai'], { queryParams: { q: 'why are pods failing' } })">Diagnose with AI</button>
+            }
+          </div>
         </div>
       }
 
@@ -275,7 +292,7 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
             <h2>Quick Actions</h2>
           </div>
           <div class="actions-grid">
-            <div class="action-card" (click)="router.navigate(['/ai'])" (keydown)="onKey($event, router.navigate.bind(router, ['/ai']))" tabindex="0" role="button">
+            <div class="action-card" (click)="router.navigate(['/ai'], { queryParams: { q: 'summarize cluster health' } })" (keydown)="onKey($event, router.navigate.bind(router, ['/ai'], { queryParams: { q: 'summarize cluster health' } }))" tabindex="0" role="button">
               <i class="pi pi-sparkles"></i>
               <span>AI Summary</span>
             </div>
@@ -763,6 +780,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   contextCopied = false;
   stats: any = null;
   costTrend: any = null;
+  activeIncident: any = null;
   cpuMemChart: any = null;
   trendOptions = {
     plugins: { legend: { labels: { color: '#aaa', font: { size: 10 } } } },
@@ -858,6 +876,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.loadPins();
     this.loadStats();
     this.api.getCostTrend().subscribe(res => this.costTrend = res);
+    this.api.getIncidentStatus().subscribe(res => {
+      this.activeIncident = res.id ? res : null;
+    });
     this.api.getOverview().subscribe({
       next: (res) => { this.data = res; },
       error: () => {

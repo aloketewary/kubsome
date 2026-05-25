@@ -1,4 +1,5 @@
-import { Component, inject, ViewChild, ElementRef, AfterViewChecked, Pipe, PipeTransform } from '@angular/core';
+import { Component, inject, ViewChild, ElementRef, AfterViewChecked, Pipe, PipeTransform, OnInit } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { ButtonModule } from 'primeng/button';
 import { TooltipModule } from 'primeng/tooltip';
@@ -462,8 +463,9 @@ interface Message {
     }
   `],
 })
-export class AiComponent implements AfterViewChecked {
+export class AiComponent implements OnInit, AfterViewChecked {
   private api = inject(ApiService);
+  private route = inject(ActivatedRoute);
   @ViewChild('messagesEl') messagesEl!: ElementRef;
 
   query = '';
@@ -580,5 +582,15 @@ export class AiComponent implements AfterViewChecked {
 
   private now(): string {
     return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+
+  ngOnInit() {
+    this.route.queryParams.subscribe(params => {
+      const q = params['q'];
+      if (q) {
+        this.query = q;
+        this.ask();
+      }
+    });
   }
 }

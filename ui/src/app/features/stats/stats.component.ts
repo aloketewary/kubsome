@@ -54,10 +54,19 @@ import { TrendChartComponent } from '../../shared/components/trend-chart.compone
             </div>
           </div>
         </div>
+
+        <div class="stat-main-card glass stagger-4">
+          <div class="stat-header">
+            <i class="pi pi-clock"></i>
+            <span>Estimated Time Saved</span>
+          </div>
+          <div class="stat-value">{{ timeSavedHuman }}</div>
+          <div class="stat-footer">{{ stats.auto_remediations }} auto-fixes applied</div>
+        </div>
       </div>
 
       <div class="details-row">
-        <div class="detail-card glass stagger-4">
+        <div class="detail-card glass stagger-5">
           <div class="detail-header">
             <h3>Top Commands</h3>
           </div>
@@ -77,7 +86,7 @@ import { TrendChartComponent } from '../../shared/components/trend-chart.compone
           </div>
         </div>
 
-        <div class="detail-card glass stagger-5">
+        <div class="detail-card glass stagger-6">
           <div class="detail-header">
             <h3>Common Unresolved Queries</h3>
           </div>
@@ -106,7 +115,7 @@ import { TrendChartComponent } from '../../shared/components/trend-chart.compone
   `,
   styles: [`
     :host { display: block; padding-bottom: 40px; }
-    .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 24px; }
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 24px; }
     .stat-main-card { padding: 24px; border-radius: 16px; border: 1px solid var(--border); }
     .stat-header { display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 13px; font-weight: 600; margin-bottom: 12px; }
     .stat-header i { color: var(--accent); }
@@ -142,6 +151,7 @@ import { TrendChartComponent } from '../../shared/components/trend-chart.compone
     .stagger-3 { animation: fadeSlideUp 0.5s ease-out 0.19s both; }
     .stagger-4 { animation: fadeSlideUp 0.5s ease-out 0.26s both; }
     .stagger-5 { animation: fadeSlideUp 0.5s ease-out 0.33s both; }
+    .stagger-6 { animation: fadeSlideUp 0.5s ease-out 0.40s both; }
 
     @keyframes fadeSlideUp {
       from { opacity: 0; transform: translateY(10px); }
@@ -157,6 +167,16 @@ export class StatsComponent implements OnInit {
     if (!this.stats || this.stats.total_commands === 0) return 0;
     const resolved = this.stats.total_commands - this.stats.unresolved_count;
     return Math.round((resolved / this.stats.total_commands) * 100);
+  }
+
+  get timeSavedHuman() {
+    if (!this.stats) return '0m';
+    const resolved = this.stats.total_commands - this.stats.unresolved_count;
+    const mins = (resolved * 2) + (this.stats.auto_remediations * 15);
+    if (mins < 60) return `${mins}m`;
+    const hours = Math.floor(mins / 60);
+    const m = mins % 60;
+    return m > 0 ? `${hours}h ${m}m` : `${hours}h`;
   }
 
   maxCmdCount = 1;
