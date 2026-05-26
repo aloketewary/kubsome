@@ -1,5 +1,6 @@
 import { Component, inject, OnInit, OnDestroy } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { Router } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
 import { PageInfoComponent } from '../../shared/components/page-info.component';
@@ -80,7 +81,13 @@ import { TrendChartComponent } from '../../shared/components/trend-chart.compone
             <div class="rec-card">
               <p-tag [value]="rec.category" severity="warn" [rounded]="true" />
               <span class="rec-issue">{{ rec.issue }}</span>
-              <span class="rec-action">→ {{ rec.action }}</span>
+              <div class="rec-actions">
+                <span class="rec-action-text">→ {{ rec.action }}</span>
+                <button class="rec-ai-btn" (click)="runAction(rec.action)" title="Run with AI">
+                  <i class="pi pi-sparkles"></i>
+                  <span>Run with AI</span>
+                </button>
+              </div>
             </div>
           }
         </div>
@@ -159,7 +166,16 @@ import { TrendChartComponent } from '../../shared/components/trend-chart.compone
     .rec-card { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
     .rec-card:last-child { border-bottom: none; }
     .rec-issue { flex: 1; }
-    .rec-action { font-size: 11px; color: var(--accent); font-family: 'JetBrains Mono', monospace; }
+    .rec-actions { display: flex; align-items: center; gap: 12px; }
+    .rec-action-text { font-size: 11px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+    .rec-ai-btn {
+      display: flex; align-items: center; gap: 6px; padding: 4px 10px;
+      background: var(--accent-subtle); color: var(--accent);
+      border: 1px solid var(--accent); border-radius: 6px;
+      font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.2s;
+    }
+    .rec-ai-btn:hover { background: var(--accent); color: #fff; transform: translateY(-1px); }
+    .rec-ai-btn i { font-size: 10px; }
 
     .loading { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 60px; color: var(--text-muted); }
     .spin { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
@@ -169,6 +185,7 @@ import { TrendChartComponent } from '../../shared/components/trend-chart.compone
 })
 export class ScorecardComponent implements OnInit, OnDestroy {
   private http = inject(HttpClient);
+  private router = inject(Router);
   data: any = null;
   categories: { key: string; data: any }[] = [];
   loading = false;
@@ -212,5 +229,9 @@ export class ScorecardComponent implements OnInit, OnDestroy {
   gradeLabel(grade: string): string {
     const labels: Record<string, string> = { A: 'Excellent', B: 'Good', C: 'Fair', D: 'Poor', F: 'Critical' };
     return labels[grade] || 'Unknown';
+  }
+
+  runAction(action: string) {
+    this.router.navigate(['/ai'], { queryParams: { q: action } });
   }
 }

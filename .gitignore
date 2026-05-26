@@ -16,6 +16,10 @@ ui/node_modules/
 ui/dist/
 ui/.angular/
 
+# API
+api/ui_dist/
+server.log
+
 # IDE
 .idea/
 .vscode/

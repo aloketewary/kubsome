@@ -36,3 +36,18 @@ As a Product Growth Manager for Kubsome, I have identified and implemented the f
 **Observation:** Open debugging sessions (incidents) were easily forgotten if the user navigated away.
 **Improvement:** Added a "Resume Active Incident" nudge to the main dashboard when an incident is in progress.
 **Growth Impact:** Increases retention by pulling users back into their active workflows, ensuring Kubsome remains the "source of truth" for the duration of a cluster issue.
+
+## 8. Actionability: AI-Powered Scorecard Remediation
+**Observation:** Users liked the health scorecard but had to manually copy actions to the AI Assistant.
+**Improvement:** Added a "Run with AI" button to scorecard recommendations that deep-links to the AI Assistant with the pre-filled command.
+**Growth Impact:** Significantly reduces friction between "identifying an issue" and "remediating it", driving higher engagement with the AI features and improving the overall perceived utility of the scorecard.
+
+## 9. Retention: Milestone Celebration & ROI Awareness
+**Observation:** ROI metrics were buried in the Stats page, missing the opportunity to reinforce value in the main dashboard.
+**Improvement:** Added a "Milestone" insight nudge that celebrates when a user has saved over 1 hour of manual effort.
+**Growth Impact:** Reinforces the value proposition of Kubsome through positive reinforcement (gamification), increasing user affinity and long-term retention by making the "time saved" tangible.
+
+## 10. Engagement: 24h Operational "Catch-up" Insight
+**Observation:** Returning users often need a quick summary of what happened while they were away.
+**Improvement:** Added an activity summary insight pill to the dashboard that highlights recent restarts and deployments.
+**Growth Impact:** Provides immediate value upon login, reducing cognitive load for "catching up" and making Kubsome the essential first-look tool for cluster operators.

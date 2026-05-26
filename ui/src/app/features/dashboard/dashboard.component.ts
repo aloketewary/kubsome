@@ -104,6 +104,18 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
             <span>Pro Tip: Try natural language for complex traces</span>
           </div>
         }
+        @if (totalTimeSavedMins > 60) {
+          <div class="insight-pill suggested" style="border-color: var(--success); color: var(--success);" (click)="router.navigate(['/stats'])" tabindex="0" role="button" (keydown)="onKey($event, router.navigate.bind(router, ['/stats']))">
+            <i class="pi pi-gift"></i>
+            <span>🎉 Milestone: You've saved over 1h this week!</span>
+          </div>
+        }
+        @if (activitySummary) {
+          <div class="insight-pill suggested" (click)="router.navigate(['/events'])" tabindex="0" role="button" (keydown)="onKey($event, router.navigate.bind(router, ['/events']))">
+            <i class="pi pi-history"></i>
+            <span>{{ activitySummary }}</span>
+          </div>
+        }
       </div>
 
       <!-- Alert -->
@@ -812,6 +824,26 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   get isClusterEmpty(): boolean {
     return this.data !== null && this.podTotal === 0 && this.nodeTotal === 0 && this.depTotal === 0;
+  }
+
+  get totalTimeSavedMins(): number {
+    if (!this.stats) return 0;
+    const resolved = this.stats.total_commands - this.stats.unresolved_count;
+    return (resolved * 2) + (this.stats.auto_remediations * 15);
+  }
+
+  get activitySummary(): string | null {
+    if (!this.recentEvents.length) return null;
+    const backoffs = this.recentEvents.filter(e => e.reason === 'BackOff').length;
+    const deployments = this.recentEvents.filter(e => e.reason === 'ScalingReplicaSet').length;
+
+    if (backoffs === 0 && deployments === 0) return null;
+
+    const parts = [];
+    if (backoffs > 0) parts.push(`${backoffs} restart${backoffs > 1 ? 's' : ''}`);
+    if (deployments > 0) parts.push(`${deployments} deployment${deployments > 1 ? 's' : ''}`);
+
+    return `Summary: ${parts.join(' & ')} in 24h`;
   }
 
   Math = Math;
