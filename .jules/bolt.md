@@ -39,3 +39,8 @@
 **Learning:** Sequential `kubectl auth can-i` checks for a permission matrix (N resources × M verbs) create a significant latency bottleneck that grows linearly. By using a `ThreadPoolExecutor`, we can parallelize these independent I/O tasks and reduce total response time to nearly a single call's latency. Additionally, using the unified cached fetcher for RBAC listings ensures consistency and reduces redundant API traffic.
 
 **Action:** Always parallelize bulk authorization checks and leverage the centralized `get_raw_resources` cache for Kubernetes resource listings.
+
+## 2025-05-20 - [Parallelizing Resource Search]
+**Learning:** Fuzzy search across multiple Kubernetes resource types (Pods, Deployments, Services, etc.) is a common interactive task that suffers from linear latency growth when resource names are fetched sequentially. By parallelizing these fetches and caching the name lists, we can achieve O(1) latency relative to the number of resource types.
+
+**Action:** Always parallelize bulk name/resource retrieval across different types and use a reasonably long cache TTL (e.g., 60s) for resource names to optimize interactive search.
