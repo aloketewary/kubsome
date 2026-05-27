@@ -39,3 +39,11 @@
 **Learning:** Sequential `kubectl auth can-i` checks for a permission matrix (N resources × M verbs) create a significant latency bottleneck that grows linearly. By using a `ThreadPoolExecutor`, we can parallelize these independent I/O tasks and reduce total response time to nearly a single call's latency. Additionally, using the unified cached fetcher for RBAC listings ensures consistency and reduces redundant API traffic.
 
 **Action:** Always parallelize bulk authorization checks and leverage the centralized `get_raw_resources` cache for Kubernetes resource listings.
+
+## 2026-05-27 - [Context-Aware Caching in Collectors]
+**Learning:** Functions that fetch Kubernetes resources and use global state (e.g., , ) must include these variables as explicit arguments to be correctly handled by the caching decorator. Failing to do so results in stale data when users switch contexts or namespaces.
+**Action:** Always refactor global state dependencies into function arguments when applying caching to collectors.
+
+## 2025-05-22 - [Context-Aware Caching in Collectors]
+**Learning:** Functions that fetch Kubernetes resources and use global state (e.g., `context.current_context`, `context.namespace`) must include these variables as explicit arguments to be correctly handled by the caching decorator. Failing to do so results in stale data when users switch contexts or namespaces.
+**Action:** Always refactor global state dependencies into function arguments when applying caching to collectors.

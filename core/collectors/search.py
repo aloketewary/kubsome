@@ -1,9 +1,11 @@
 import subprocess
 import json
+from concurrent.futures import ThreadPoolExecutor
 
 from rapidfuzz import process
 
 from core.context import context
+from core.cache import cached
 
 
 def search_resources(query):
@@ -13,14 +15,31 @@ def search_resources(query):
     """
     results = []
 
-    resources = [
-        ("Pod", _get_names("pods")),
-        ("Deployment", _get_names("deployments")),
-        ("Service", _get_names("services")),
-        ("ConfigMap", _get_names("configmaps")),
-        ("Secret", _get_names("secrets")),
-        ("Ingress", _get_names("ingress")),
+    kinds = [
+        ("Pod", "pods"),
+        ("Deployment", "deployments"),
+        ("Service", "services"),
+        ("ConfigMap", "configmaps"),
+        ("Secret", "secrets"),
+        ("Ingress", "ingress"),
     ]
+
+    # Bolt: fetch all resource names in parallel to reduce sequential I/O latency
+    # Pass ctx and ns as arguments to ensure they are part of the cache key
+    ctx = context.current_context
+    ns = context.namespace
+
+    with ThreadPoolExecutor(max_workers=len(kinds)) as executor:
+        futures = {
+            executor.submit(_get_names, r_type, ctx, ns): kind
+            for kind, r_type in kinds
+        }
+
+        resources = []
+        for future in futures:
+            kind = futures[future]
+            names = future.result()
+            resources.append((kind, names))
 
     for kind, names in resources:
         if not names:
@@ -46,11 +65,12 @@ def search_resources(query):
     return results[:10]
 
 
-def _get_names(resource_type):
+@cached(ttl=60)
+def _get_names(resource_type, ctx, ns):
     cmd = [
-        "kubectl", "--context", str(context.current_context or ""),
+        "kubectl", "--context", str(ctx or ""),
         "get", resource_type,
-        "-n", str(context.namespace),
+        "-n", str(ns),
         "-o", "jsonpath={.items[*].metadata.name}"
     ]
 
