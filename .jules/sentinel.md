@@ -47,3 +47,8 @@
 **Vulnerability:** The webhook notification system used `urllib.request.urlopen` on user-provided URLs without any validation. This allowed attackers to make the server perform arbitrary GET/POST requests to internal network services, loopback interfaces, or cloud metadata endpoints (e.g., 169.254.169.254).
 **Learning:** Outbound network requests to user-controlled URLs are a classic SSRF vector. Relying on "generic" webhook types doesn't mitigate the risk if the URL itself is not restricted. Scheme and IP-level validation are essential.
 **Prevention:** Implement a strict URL validation helper that: 1) Enforces safe schemes (http/https). 2) Resolves the hostname to all its IP addresses. 3) Blocks any IP that falls within loopback, private, reserved, or link-local ranges.
+
+## 2026-05-27 - [CRITICAL] Command Injection in Shell Pipe Support
+**Vulnerability:** The `apply_pipe` function in `core/pipe.py` used `subprocess.run(..., shell=True)` on user-provided pipe chains (e.g., `pods | grep ...`). This allowed arbitrary command execution by using shell metacharacters like `;`, `&&`, or `||` in the pipe string.
+**Learning:** Providing "shell-like" features for convenience (like piping) is a major security risk if implemented using a real shell. Manual implementation of these features with strict whitelisting is required.
+**Prevention:** Avoid `shell=True` entirely. Implement piping by sequentially executing whitelisted commands (`grep`, `awk`, `sed`, etc.) using `subprocess.run(..., shell=False)` and passing the output of one as the input to the next. Use `shlex.split` for safe argument parsing.
