@@ -104,6 +104,24 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
             <span>Pro Tip: Try natural language for complex traces</span>
           </div>
         }
+        @if (totalTimeSavedMins > 60) {
+          <div class="insight-pill suggested" style="border-color: var(--success); color: var(--success);" (click)="router.navigate(['/stats'])" tabindex="0" role="button" (keydown)="onKey($event, router.navigate.bind(router, ['/stats']))">
+            <i class="pi pi-star-fill"></i>
+            <span>ROI Milestone: {{ Math.floor(totalTimeSavedMins / 60) }}h saved</span>
+          </div>
+        }
+        @if (activitySummary) {
+          <div class="insight-pill" (click)="router.navigate(['/events'])" tabindex="0" role="button" (keydown)="onKey($event, router.navigate.bind(router, ['/events']))">
+            <i class="pi pi-history"></i>
+            <span>24h: {{ activitySummary }}</span>
+          </div>
+        }
+        @if (featureNudge) {
+          <div class="insight-pill suggested" (click)="router.navigate([featureNudge.link])" tabindex="0" role="button" (keydown)="onKey($event, router.navigate.bind(router, [featureNudge.link]))">
+            <i class="pi pi-lightbulb"></i>
+            <span>Pro Tip: {{ featureNudge.text }}</span>
+          </div>
+        }
       </div>
 
       <!-- Alert -->
@@ -812,6 +830,31 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   get isClusterEmpty(): boolean {
     return this.data !== null && this.podTotal === 0 && this.nodeTotal === 0 && this.depTotal === 0;
+  }
+
+  get totalTimeSavedMins(): number {
+    if (!this.stats) return 0;
+    const resolved = this.stats.total_commands - this.stats.unresolved_count;
+    return (resolved * 2) + (this.stats.auto_remediations * 15);
+  }
+
+  get activitySummary(): string {
+    if (!this.recentEvents.length) return '';
+    const restarts = this.recentEvents.filter(e => e.reason === 'BackOff').length;
+    const deploys = this.recentEvents.filter(e => e.reason === 'ScalingReplicaSet').length;
+    if (restarts === 0 && deploys === 0) return '';
+    const parts = [];
+    if (restarts > 0) parts.push(`${restarts} restarts`);
+    if (deploys > 0) parts.push(`${deploys} deployments`);
+    return parts.join(', ');
+  }
+
+  get featureNudge(): { text: string, link: string } | null {
+    if (!this.stats) return null;
+    const used = new Set(this.stats.top_commands.map((c: any) => c[0].toLowerCase()));
+    if (!used.has('scorecard')) return { text: 'Try Scorecard for health grades', link: '/scorecard' };
+    if (!used.has('security')) return { text: 'Run security scan for vulnerabilities', link: '/policy' };
+    return null;
   }
 
   Math = Math;

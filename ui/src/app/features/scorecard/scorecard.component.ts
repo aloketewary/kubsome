@@ -1,4 +1,5 @@
 import { Component, inject, OnInit, OnDestroy } from '@angular/core';
+import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
@@ -81,6 +82,7 @@ import { TrendChartComponent } from '../../shared/components/trend-chart.compone
               <p-tag [value]="rec.category" severity="warn" [rounded]="true" />
               <span class="rec-issue">{{ rec.issue }}</span>
               <span class="rec-action">→ {{ rec.action }}</span>
+              <button pButton icon="pi pi-sparkles" label="Run with AI" class="p-button-text p-button-sm ai-btn" (click)="runWithAi(rec.action)"></button>
             </div>
           }
         </div>
@@ -160,6 +162,7 @@ import { TrendChartComponent } from '../../shared/components/trend-chart.compone
     .rec-card:last-child { border-bottom: none; }
     .rec-issue { flex: 1; }
     .rec-action { font-size: 11px; color: var(--accent); font-family: 'JetBrains Mono', monospace; }
+    .ai-btn { margin-left: 8px; }
 
     .loading { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 60px; color: var(--text-muted); }
     .spin { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
@@ -169,6 +172,7 @@ import { TrendChartComponent } from '../../shared/components/trend-chart.compone
 })
 export class ScorecardComponent implements OnInit, OnDestroy {
   private http = inject(HttpClient);
+  private router = inject(Router);
   data: any = null;
   categories: { key: string; data: any }[] = [];
   loading = false;
@@ -212,5 +216,9 @@ export class ScorecardComponent implements OnInit, OnDestroy {
   gradeLabel(grade: string): string {
     const labels: Record<string, string> = { A: 'Excellent', B: 'Good', C: 'Fair', D: 'Poor', F: 'Critical' };
     return labels[grade] || 'Unknown';
+  }
+
+  runWithAi(action: string) {
+    this.router.navigate(['/ai'], { queryParams: { q: action } });
   }
 }
