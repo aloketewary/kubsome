@@ -80,8 +80,8 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     .pf-input.port { width: 80px; }
     .pf-arrow { color: var(--text-muted); font-weight: 700; }
     .forwards-list { display: flex; flex-direction: column; gap: 6px; }
-    .forward-row { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); transition: all 0.15s; }
-    .forward-row:hover { border-color: var(--accent); }
+    .forward-row { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); transition: all 0.25s cubic-bezier(0.34,1.56,0.64,1); }
+    .forward-row:hover { border-color: var(--accent); transform: translateY(-1px); box-shadow: 0 4px 16px -4px rgba(0,0,0,0.12); }
     .forward-row.dead { opacity: 0.5; border-color: var(--danger); }
     .fwd-status i { font-size: 16px; }
     .status-ok { color: var(--success); }

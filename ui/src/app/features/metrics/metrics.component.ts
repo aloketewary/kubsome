@@ -290,6 +290,11 @@ import { SkeletonComponent } from '../../shared/components/skeleton.component';
     .empty-state i { font-size: 28px; opacity: 0.3; }
     .empty-hint { font-size: 11px; opacity: 0.6; }
     .trend-section { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 16px; }
+    @media (max-width: 768px) {
+      .page-header { flex-direction: column; gap: 12px; }
+      .header-actions { flex-wrap: wrap; }
+      .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+    }
   `],
 })
 export class MetricsComponent implements OnInit, OnDestroy {

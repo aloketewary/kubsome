@@ -156,6 +156,10 @@ import { TooltipModule } from 'primeng/tooltip';
     }
     .empty-state h3 { font-size: 16px; font-weight: 600; color: var(--text); margin: 0; }
     .empty-state p { font-size: 13px; margin: 0; max-width: 400px; text-align: center; }
+    @media (max-width: 768px) {
+      .page-header { flex-direction: column; gap: 12px; }
+      .form-row { flex-direction: column; }
+    }
   `],
 })
 export class ScheduleComponent implements OnInit {

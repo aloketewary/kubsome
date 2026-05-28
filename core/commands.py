@@ -1,7 +1,7 @@
 from core.context import context
 from core.resolver import (
     resolve_pod_name, resolve_deployment_name,
-    resolve_cronjob_name
+    resolve_cronjob_name, resolve_node_name
 )
 from core.selector import (
     choose_pod, choose_deployment, choose_cronjob
@@ -497,6 +497,34 @@ def resolve_command(user_input: str):
     # Quota
     if cmd == "quota":
         return {"type": "quota"}
+
+    # Taints
+    if cmd == "taints":
+        return {"type": "taints_list"}
+
+    if cmd == "taint" and len(tokens) > 2:
+        node_query = tokens[1]
+        taint_spec = tokens[2]
+        matches = resolve_node_name(node_query)
+        if not matches:
+            return {"type": "taint", "node": node_query, "spec": taint_spec}
+        from core.selector import choose_node
+        node = choose_node(matches)
+        if not node:
+            return None
+        return {"type": "taint", "node": node, "spec": taint_spec}
+
+    if cmd == "untaint" and len(tokens) > 2:
+        node_query = tokens[1]
+        taint_spec = tokens[2]
+        matches = resolve_node_name(node_query)
+        if not matches:
+            return {"type": "untaint", "node": node_query, "spec": taint_spec}
+        from core.selector import choose_node
+        node = choose_node(matches)
+        if not node:
+            return None
+        return {"type": "untaint", "node": node, "spec": taint_spec}
 
     # Drain check
     if cmd == "drain-check" and len(tokens) > 1:

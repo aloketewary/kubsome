@@ -6,6 +6,7 @@ import { TagModule } from 'primeng/tag';
 import { ButtonModule } from 'primeng/button';
 import { TooltipModule } from 'primeng/tooltip';
 import { SpotlightComponent } from '../../shared/components/spotlight.component';
+import { SkeletonComponent } from '../../shared/components/skeleton.component';
 
 interface ResourceItem {
   type: string;
@@ -18,7 +19,7 @@ interface ResourceItem {
 @Component({
   selector: 'app-namespace',
   standalone: true,
-  imports: [FormsModule, TagModule, ButtonModule, TooltipModule, SpotlightComponent],
+  imports: [FormsModule, TagModule, ButtonModule, TooltipModule, SpotlightComponent, SkeletonComponent],
   template: `
     <app-spotlight id="namespace" title="Namespace Overview" icon="pi pi-folder"
       description="Summary of resources in the current namespace."
@@ -125,7 +126,8 @@ interface ResourceItem {
         </div>
       }
     } @else {
-      <div class="loading"><i class="pi pi-spin pi-spinner"></i> Loading namespace data...</div>
+      <app-skeleton variant="stats" />
+      <app-skeleton variant="list" [count]="6" />
     }
   `,
   styles: [`

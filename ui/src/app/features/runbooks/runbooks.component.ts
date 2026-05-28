@@ -471,6 +471,11 @@ interface Runbook {
     .completion-card h3 { font-size: 18px; font-weight: 700; margin: 0 0 8px; }
     .completion-card p { font-size: 13px; color: var(--text-secondary); margin: 0 0 16px; }
     .completion-actions { display: flex; gap: 8px; justify-content: center; }
+    @media (max-width: 768px) {
+      .page-header { flex-direction: column; gap: 12px; }
+      .runbook-grid { grid-template-columns: 1fr; }
+      .step-content { padding: 12px; }
+    }
   `],
 })
 export class RunbooksComponent implements OnInit {

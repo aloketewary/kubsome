@@ -89,6 +89,12 @@ def collect_now():
         from core.analytics.engine import is_writable
         if is_writable():
             drain()
+            # Aggregate raw → hourly/daily after drain
+            from core.analytics.aggregator import (
+                aggregate_hourly, aggregate_daily,
+            )
+            aggregate_hourly()
+            aggregate_daily()
     except Exception:
         pass
     return result
@@ -101,6 +107,12 @@ def _collection_loop():
     while _running:
         try:
             _collect_cycle()
+            # Aggregate after each cycle
+            from core.analytics.aggregator import (
+                aggregate_hourly, aggregate_daily,
+            )
+            aggregate_hourly()
+            aggregate_daily()
         except ImportError:
             # DuckDB not installed — stop trying
             break

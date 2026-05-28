@@ -99,7 +99,8 @@ import { RelatedPagesComponent } from '../../shared/components/related-pages.com
     .section-title { font-size: 14px; font-weight: 600; margin: 24px 0 12px; color: var(--text-secondary); }
 
     .integrations-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
-    .integration-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+    .integration-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; transition: all 0.25s cubic-bezier(0.34,1.56,0.64,1); }
+    .integration-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px -6px rgba(0,0,0,0.15); border-color: var(--border-hover); }
     .integration-card.healthy { border-left: 3px solid var(--success); }
     .integration-card.degraded { border-left: 3px solid var(--warning); }
     .integration-card.discovered { border-left: 3px solid var(--accent); }
@@ -118,6 +119,10 @@ import { RelatedPagesComponent } from '../../shared/components/related-pages.com
     .loading { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 60px; color: var(--text-muted); }
     .spin { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
+    @media (max-width: 768px) {
+      .page-header { flex-direction: column; gap: 12px; }
+      .integrations-grid { grid-template-columns: 1fr; }
+    }
   `],
 })
 export class IntegrationsComponent implements OnInit {

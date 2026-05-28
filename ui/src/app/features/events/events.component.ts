@@ -8,6 +8,7 @@ import { ApiService } from '../../core/services/api.service';
 import { WsService } from '../../core/services/ws.service';
 import { KubeEvent } from '../../core/models';
 import { SpotlightComponent } from '../../shared/components/spotlight.component';
+import { SkeletonComponent } from '../../shared/components/skeleton.component';
 import { TrendChartComponent } from '../../shared/components/trend-chart.component';
 
 interface HeatmapCell {
@@ -20,7 +21,7 @@ interface HeatmapCell {
 @Component({
   selector: 'app-events',
   standalone: true,
-  imports: [TagModule, ButtonModule, TooltipModule, FormsModule, SpotlightComponent, TrendChartComponent],
+  imports: [TagModule, ButtonModule, TooltipModule, FormsModule, SpotlightComponent, TrendChartComponent, SkeletonComponent],
   template: `
     <app-spotlight id="events" title="Cluster Events" icon="pi pi-bolt"
       description="Real-time Kubernetes events. Filter by type to spot issues."
@@ -106,7 +107,7 @@ interface HeatmapCell {
     </div>
 
     @if (loading && events.length === 0) {
-      <div class="loading-state"><i class="pi pi-spin pi-spinner"></i> Loading events...</div>
+      <app-skeleton variant="list" [count]="8" />
     }
 
     <!-- Events List -->
@@ -306,6 +307,11 @@ interface HeatmapCell {
       padding: 56px; color: var(--text-muted); font-size: 13px;
     }
     .empty-state i { font-size: 28px; opacity: 0.3; }
+    @media (max-width: 768px) {
+      .page-header { flex-direction: column; gap: 12px; }
+      .header-actions { flex-wrap: wrap; }
+      .summary-strip { flex-wrap: wrap; }
+    }
   `],
 })
 export class EventsComponent implements OnInit, OnDestroy {

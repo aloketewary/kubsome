@@ -53,10 +53,13 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
   `,
   styles: [`
     .header { margin-bottom: 24px; }
-    .header h2 { margin: 0; font-size: 22px; font-weight: 600; }
+    .header h2 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.03em; }
     .search-bar { margin-bottom: 16px; }
+    .search-bar :deep(input) { transition: border-color 0.2s, box-shadow 0.2s; }
+    .search-bar :deep(input:focus) { box-shadow: 0 0 0 2px var(--accent-subtle); }
     .results-card { margin-top: 16px; }
-    .empty { text-align: center; padding: 32px; opacity: 0.5; }
+    .mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+    .empty { text-align: center; padding: 48px; color: var(--text-muted); font-size: 13px; }
   `],
 })
 export class SearchComponent {

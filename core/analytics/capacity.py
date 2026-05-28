@@ -9,6 +9,15 @@ Answers:
 """
 
 from core.analytics.engine import get_conn
+from core.context import context as k8s_context
+
+
+def _ctx_filter():
+    """Return SQL AND clause for current context."""
+    ctx = k8s_context.current_context
+    if not ctx:
+        return ""
+    return f"AND context = '{ctx}'"
 
 
 def capacity_forecast(days_lookback=14):
@@ -22,13 +31,16 @@ def capacity_forecast(days_lookback=14):
         return None
 
     # Current capacity from node_state
-    capacity = conn.execute("""
+    ctx = k8s_context.current_context
+    ctx_where = f"WHERE context = '{ctx}'" if ctx else ""
+    capacity = conn.execute(f"""
         SELECT
             COUNT(*) AS nodes,
             SUM(cpu_allocatable) AS total_cpu_m,
             SUM(mem_allocatable_mb) AS total_mem_mb,
             SUM(pod_count) AS total_pod_slots
         FROM node_state
+        {ctx_where}
     """).fetchone()
 
     if not capacity or not capacity[1]:
@@ -48,6 +60,7 @@ def capacity_forecast(days_lookback=14):
                 SUM(pod_count)::INTEGER AS pod_count
             FROM hourly_pod_metrics
             WHERE hour >= NOW() - INTERVAL '{days_lookback} days'
+              {_ctx_filter()}
             GROUP BY day
             ORDER BY day
         ),
@@ -178,6 +191,7 @@ def namespace_growth(days=14):
             FROM hourly_pod_metrics
             WHERE hour >= NOW() - INTERVAL '{days} days'
               AND hour < NOW() - INTERVAL '{days // 2} days'
+              {_ctx_filter()}
             GROUP BY namespace
         ),
         second_half AS (
@@ -186,6 +200,7 @@ def namespace_growth(days=14):
                 AVG(mem_avg)::INTEGER AS mem
             FROM hourly_pod_metrics
             WHERE hour >= NOW() - INTERVAL '{days // 2} days'
+              {_ctx_filter()}
             GROUP BY namespace
         )
         SELECT

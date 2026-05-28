@@ -735,6 +735,13 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     .history-date { font-size: 10px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
     .history-meta { display: flex; gap: 12px; font-size: 11px; color: var(--text-muted); }
     .history-rc { font-size: 11px; color: var(--warning); margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    @media (max-width: 768px) {
+      .page-header { flex-direction: column; gap: 12px; }
+      .header-actions { flex-wrap: wrap; width: 100%; }
+      .incident-hero { flex-direction: column; }
+      .hero-stats { flex-wrap: wrap; }
+      .timeline-entry { flex-direction: column; gap: 4px; }
+    }
   `],
 })
 export class IncidentComponent implements OnInit, OnDestroy {

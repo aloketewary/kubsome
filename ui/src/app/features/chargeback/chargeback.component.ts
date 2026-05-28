@@ -351,6 +351,12 @@ import { RelatedPagesComponent } from '../../shared/components/related-pages.com
     .loading-state { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 80px; color: var(--text-muted); font-size: 13px; }
     .loader { width: 20px; height: 20px; border: 2.5px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.6s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
+    @media (max-width: 768px) {
+      .page-header { flex-direction: column; gap: 12px; }
+      .header-actions { flex-wrap: wrap; }
+      .summary-cards { grid-template-columns: repeat(2, 1fr); }
+      .env-cards { grid-template-columns: 1fr; }
+    }
   `],
 })
 export class ChargebackComponent implements OnInit {

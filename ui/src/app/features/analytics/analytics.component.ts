@@ -10,11 +10,12 @@ import { TooltipModule } from 'primeng/tooltip';
 import { PageInfoComponent } from '../../shared/components/page-info.component';
 import { SpotlightComponent } from '../../shared/components/spotlight.component';
 import { RelatedPagesComponent } from '../../shared/components/related-pages.component';
+import { SkeletonComponent } from '../../shared/components/skeleton.component';
 
 @Component({
   selector: 'app-analytics',
   standalone: true,
-  imports: [ButtonModule, TagModule, TabsModule, ChartModule, TooltipModule, FormsModule, DecimalPipe, PageInfoComponent, SpotlightComponent, RelatedPagesComponent],
+  imports: [ButtonModule, TagModule, TabsModule, ChartModule, TooltipModule, FormsModule, DecimalPipe, PageInfoComponent, SpotlightComponent, RelatedPagesComponent, SkeletonComponent],
   template: `
     <app-spotlight id="analytics" title="Analytics" icon="pi pi-chart-bar"
       description="DuckDB-powered cluster analytics — cost attribution, usage trends, alerts, and custom SQL queries."
@@ -37,7 +38,15 @@ import { RelatedPagesComponent } from '../../shared/components/related-pages.com
     </div>
 
     @if (loading && !stats) {
-      <div class="loading"><div class="spin"></div> Loading analytics...</div>
+      <div class="loading"><app-skeleton variant="stats" /><app-skeleton variant="card" /></div>
+    }
+
+    @if (loadError && !stats) {
+      <div class="error-state">
+        <i class="pi pi-exclamation-triangle"></i>
+        <span>Failed to connect to analytics engine. Is DuckDB installed?</span>
+        <button pButton label="Retry" icon="pi pi-refresh" class="p-button-outlined p-button-sm" (click)="refresh()"></button>
+      </div>
     }
 
     @if (stats) {
@@ -201,23 +210,27 @@ import { RelatedPagesComponent } from '../../shared/components/related-pages.com
     .subtitle { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
     .header-actions { display: flex; align-items: center; gap: 8px; }
     .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
-    .summary-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; text-align: center; }
+    .summary-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; text-align: center; transition: all 0.2s ease; }
+    .summary-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px -8px rgba(0,0,0,0.15); }
     .summary-card.warn { border-left: 3px solid var(--warning); }
     .summary-value { display: block; font-size: 28px; font-weight: 800; }
     .summary-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; }
 
     .charts-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
-    .chart-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+    .chart-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; transition: border-color 0.2s; }
+    .chart-card:hover { border-color: var(--border-hover); }
     .chart-card h4 { font-size: 13px; font-weight: 600; margin: 0 0 12px; }
 
     .cost-summary { display: flex; gap: 20px; font-size: 13px; margin-bottom: 16px; padding: 12px; background: var(--bg-elevated); border-radius: var(--radius); }
-    .cost-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 6px; font-size: 13px; }
+    .cost-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 6px; font-size: 13px; transition: all 0.15s ease; }
+    .cost-row:hover { background: var(--bg-hover); border-color: var(--border-hover); }
     .cost-name .ns { font-size: 11px; color: var(--text-muted); }
     .cost-metrics { font-size: 11px; color: var(--text-muted); }
     .cost-value { font-weight: 700; }
     .waste { color: var(--warning); font-size: 11px; font-weight: 400; }
 
-    .prediction-row { display: flex; align-items: flex-start; gap: 12px; padding: 12px 16px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 8px; }
+    .prediction-row { display: flex; align-items: flex-start; gap: 12px; padding: 12px 16px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 8px; transition: all 0.2s ease; }
+    .prediction-row:hover { transform: translateY(-1px); box-shadow: 0 4px 12px -4px rgba(0,0,0,0.1); }
     .prediction-row.sev-critical, .prediction-row.sev-high { border-left: 3px solid var(--danger); }
     .prediction-row.sev-medium { border-left: 3px solid var(--warning); }
     .prediction-row i { margin-top: 2px; color: var(--warning); }
@@ -240,12 +253,19 @@ import { RelatedPagesComponent } from '../../shared/components/related-pages.com
     .result-footer { font-size: 11px; color: var(--text-muted); padding: 6px 12px; }
 
     .export-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
-    .export-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; display: flex; justify-content: space-between; align-items: center; }
+    .export-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; display: flex; justify-content: space-between; align-items: center; transition: all 0.2s ease; }
+    .export-card:hover { border-color: var(--border-hover); box-shadow: 0 4px 12px -4px rgba(0,0,0,0.08); }
     .export-desc { font-size: 11px; color: var(--text-muted); }
     .export-actions { display: flex; gap: 6px; }
 
     .empty-tab { color: var(--text-muted); font-size: 13px; padding: 20px 0; }
-    .loading { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 60px; color: var(--text-muted); }
+    .loading { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 40px; }
+    .error-state {
+      display: flex; flex-direction: column; align-items: center; gap: 12px;
+      padding: 48px; color: var(--text-muted); font-size: 13px;
+      background: var(--bg-card); border: 1px solid var(--danger); border-radius: var(--radius);
+    }
+    .error-state i { font-size: 24px; color: var(--danger); }
     .spin { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
     @media (max-width: 768px) { .summary-grid { grid-template-columns: repeat(2, 1fr); } .charts-grid { grid-template-columns: 1fr; } }
@@ -259,6 +279,7 @@ export class AnalyticsComponent implements OnInit {
   alerts: any[] = [];
   predictions: any[] = [];
   loading = false;
+  loadError = false;
   collecting = false;
   querying = false;
   activeTab = '0';
@@ -272,21 +293,24 @@ export class AnalyticsComponent implements OnInit {
   consumersChart: any = null;
   eventChart: any = null;
 
-  lineOptions = {
+  lineOptions: any = {
     plugins: { legend: { labels: { color: '#aaa', font: { size: 11 } } } },
     scales: { x: { ticks: { color: '#666', font: { size: 10 } } }, y: { ticks: { color: '#666' } } },
     maintainAspectRatio: false,
+    responsive: true,
   };
-  barOptions = {
+  barOptions: any = {
     plugins: { legend: { display: false } },
-    scales: { x: { ticks: { color: '#666', font: { size: 10 } } }, y: { ticks: { color: '#666' } } },
+    scales: { x: { ticks: { color: '#666', font: { size: 10 } } }, y: { beginAtZero: true, ticks: { color: '#666' } } },
     maintainAspectRatio: false,
+    responsive: true,
   };
-  horizontalBarOptions = {
-    indexAxis: 'y' as const,
+  horizontalBarOptions: any = {
+    indexAxis: 'y',
     plugins: { legend: { labels: { color: '#aaa', font: { size: 11 } } } },
-    scales: { x: { ticks: { color: '#666' } }, y: { ticks: { color: '#666', font: { size: 10 } } } },
+    scales: { x: { beginAtZero: true, ticks: { color: '#666' } }, y: { ticks: { color: '#666', font: { size: 10 } } } },
     maintainAspectRatio: false,
+    responsive: true,
   };
 
   exportQueries = [
@@ -307,8 +331,8 @@ export class AnalyticsComponent implements OnInit {
   refresh() {
     this.loading = true;
     this.http.get<any>('/api/analytics').subscribe({
-      next: (res) => { this.stats = res; this.loading = false; },
-      error: () => { this.stats = null; this.loading = false; },
+      next: (res) => { this.stats = res; this.loading = false; this.loadError = false; },
+      error: () => { this.stats = null; this.loading = false; this.loadError = true; },
     });
     this.http.get<any>('/api/analytics/cost').subscribe({
       next: (res) => { this.costData = res.deployments || []; this.costSummary = res.summary; },
@@ -343,10 +367,10 @@ export class AnalyticsComponent implements OnInit {
     this.http.get<any>('/api/analytics/series/cost?days=30').subscribe({
       next: (res) => {
         const series = res.series || [];
-        if (series.length) {
+        if (series.length > 0) {
           this.costChart = {
             labels: series.map((s: any) => s.day?.substring(5, 10) || ''),
-            datasets: [{ data: series.map((s: any) => s.cost), backgroundColor: '#22c55e', borderRadius: 3 }],
+            datasets: [{ label: 'Daily Cost ($)', data: series.map((s: any) => s.cost || 0), backgroundColor: '#22c55e', borderRadius: 3 }],
           };
         }
       },
@@ -358,10 +382,10 @@ export class AnalyticsComponent implements OnInit {
         const consumers = res.consumers || [];
         if (consumers.length) {
           this.consumersChart = {
-            labels: consumers.map((c: any) => c.deployment),
+            labels: consumers.map((c: any) => c.deployment?.substring(0, 20) || ''),
             datasets: [
-              { label: 'CPU (m)', data: consumers.map((c: any) => c.cpu_avg), backgroundColor: '#22d3ee' },
-              { label: 'Memory (Mi)', data: consumers.map((c: any) => c.mem_avg), backgroundColor: '#a78bfa' },
+              { label: 'CPU (m)', data: consumers.map((c: any) => c.cpu_avg || 0), backgroundColor: '#22d3ee', borderRadius: 3 },
+              { label: 'Memory (Mi)', data: consumers.map((c: any) => c.mem_avg || 0), backgroundColor: '#a78bfa', borderRadius: 3 },
             ],
           };
         }
@@ -373,14 +397,14 @@ export class AnalyticsComponent implements OnInit {
       next: (res) => {
         const series = res.series || [];
         if (series.length) {
+          const allHours = [...new Set(series.map((s: any) => s.ts?.substring(11, 13) || ''))].sort();
           const warnings = series.filter((s: any) => s.type === 'Warning');
           const normals = series.filter((s: any) => s.type === 'Normal');
-          const allHours = [...new Set(series.map((s: any) => s.ts?.substring(11, 13)))].sort();
           this.eventChart = {
             labels: allHours,
             datasets: [
-              { data: allHours.map(h => warnings.find((w: any) => w.ts?.substring(11, 13) === h)?.count || 0), backgroundColor: '#f59e0b', label: 'Warning' },
-              { data: allHours.map(h => normals.find((n: any) => n.ts?.substring(11, 13) === h)?.count || 0), backgroundColor: '#6b7280', label: 'Normal' },
+              { label: 'Warning', data: allHours.map(h => warnings.find((w: any) => w.ts?.substring(11, 13) === h)?.count || 0), backgroundColor: '#f59e0b', borderRadius: 3 },
+              { label: 'Normal', data: allHours.map(h => normals.find((n: any) => n.ts?.substring(11, 13) === h)?.count || 0), backgroundColor: '#6b7280', borderRadius: 3 },
             ],
           };
         }

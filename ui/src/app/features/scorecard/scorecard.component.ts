@@ -5,12 +5,13 @@ import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
 import { PageInfoComponent } from '../../shared/components/page-info.component';
 import { SpotlightComponent } from '../../shared/components/spotlight.component';
+import { SkeletonComponent } from '../../shared/components/skeleton.component';
 import { TrendChartComponent } from '../../shared/components/trend-chart.component';
 
 @Component({
   selector: 'app-scorecard',
   standalone: true,
-  imports: [ButtonModule, TagModule, PageInfoComponent, SpotlightComponent, TrendChartComponent],
+  imports: [ButtonModule, TagModule, PageInfoComponent, SpotlightComponent, TrendChartComponent, SkeletonComponent],
   template: `
     <app-spotlight id="scorecard" title="Cluster Scorecard" icon="pi pi-star"
       description="A-F health grade across reliability, performance, security."
@@ -98,7 +99,8 @@ import { TrendChartComponent } from '../../shared/components/trend-chart.compone
         [labelSlice]="[5, 10]"
         [datasets]="[{label: 'Daily Cost', field: 'cost', color: '#22c55e', fill: false}]" />
     } @else {
-      <div class="loading"><div class="spin"></div> Generating scorecard...</div>
+      <app-skeleton variant="card" />
+      <app-skeleton variant="stats" />
     }
   `,
   styles: [`

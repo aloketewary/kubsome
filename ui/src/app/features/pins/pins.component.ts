@@ -75,9 +75,10 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     .pins-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
     .pin-card {
       background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
-      padding: 16px; display: flex; flex-direction: column; gap: 8px; transition: border-color 0.12s;
+      padding: 16px; display: flex; flex-direction: column; gap: 8px;
+      transition: all 0.25s cubic-bezier(0.34,1.56,0.64,1);
     }
-    .pin-card:hover { border-color: var(--border-hover); }
+    .pin-card:hover { border-color: var(--border-hover); transform: translateY(-2px); box-shadow: 0 6px 20px -6px rgba(0,0,0,0.15); }
     .pin-header { display: flex; align-items: center; justify-content: space-between; }
     .pin-name { font-size: 14px; font-weight: 600; }
     .pin-query { font-size: 12px; color: var(--accent); font-family: 'JetBrains Mono', monospace; padding: 6px 10px; background: var(--bg-elevated); border-radius: 6px; }

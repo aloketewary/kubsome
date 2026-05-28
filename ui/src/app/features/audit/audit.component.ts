@@ -3,18 +3,14 @@ import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { TagModule } from 'primeng/tag';
 import { ButtonModule } from 'primeng/button';
+import { PageHeaderComponent } from '../../shared/components/page-header.component';
 
 @Component({
   selector: 'app-audit',
   standalone: true,
-  imports: [FormsModule, TagModule, ButtonModule],
+  imports: [FormsModule, TagModule, ButtonModule, PageHeaderComponent],
   template: `
-    <div class="page-header">
-      <div>
-        <h1>Audit Log</h1>
-        <p class="subtitle">Track destructive operations across the team</p>
-      </div>
-      <div class="header-actions">
+    <app-page-header title="Audit Log" subtitle="Track destructive operations across the team">
         <select class="filter-select" [(ngModel)]="filterAction" (ngModelChange)="load()">
           <option value="">All Actions</option>
           @for (action of actionTypes; track action) {
@@ -22,7 +18,7 @@ import { ButtonModule } from 'primeng/button';
           }
         </select>
         <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm" (click)="load()" [loading]="loading"></button>
-      </div>
+    </app-page-header>
     </div>
 
     <!-- Summary Cards -->
@@ -153,6 +149,10 @@ import { ButtonModule } from 'primeng/button';
     }
     .empty-state h3 { font-size: 16px; font-weight: 600; color: var(--text); margin: 0; }
     .empty-state p { font-size: 13px; margin: 0; }
+    @media (max-width: 768px) {
+      .page-header { flex-direction: column; gap: 12px; }
+      .summary-row { flex-wrap: wrap; }
+    }
   `],
 })
 export class AuditComponent implements OnInit {

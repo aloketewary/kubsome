@@ -49,6 +49,9 @@ def render_help():
         ("rollback <deployment>", "Undo last rollout"),
         ("forward <pod> <port>", "Port forward"),
         ("apply <file.yaml>", "Apply manifest"),
+        ("taints", "List all node taints"),
+        ("taint <node> key=val:Effect", "Apply taint"),
+        ("untaint <node> key:Effect", "Remove taint"),
     ])
 
     _section("Diagnose", [

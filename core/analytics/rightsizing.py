@@ -56,7 +56,10 @@ def pod_rightsizing(days=7, namespace=None, labels=None,
         workload_type: filter by type (deployment/statefulset/daemonset)
         min_savings_usd: minimum monthly savings to include
     """
-    cache_key = f"rightsizing_{days}_{namespace}_{workload_type}"
+    cache_key = (
+        f"rightsizing_{days}_{namespace}_{workload_type}"
+        f"_{context.current_context}"
+    )
     cached = _get_cached_recommendations(cache_key)
     if cached:
         return cached
@@ -64,11 +67,14 @@ def pod_rightsizing(days=7, namespace=None, labels=None,
     conn = get_conn()
 
     # Build WHERE filters
+    ctx = context.current_context
     filters = [
         f"hour >= NOW() - INTERVAL '{days} days'",
         "deployment != ''",
         "cpu_request > 0",
     ]
+    if ctx:
+        filters.append(f"context = '{ctx}'")
     if namespace:
         filters.append(f"namespace = '{namespace}'")
 
@@ -256,6 +262,22 @@ def _compute_recommendation(data, cpu_rate, mem_rate):
     cpu_dir = "decrease" if cpu_delta > 0 else "increase" if cpu_delta < 0 else "keep"
     mem_dir = "decrease" if mem_delta > 0 else "increase" if mem_delta < 0 else "keep"
 
+    # Reason summary
+    reasons = []
+    if cpu_dir == "decrease":
+        reasons.append(
+            f"CPU P95={cpu_p95}m vs request={cpu_req_current}m"
+        )
+    if mem_dir == "decrease":
+        reasons.append(
+            f"Mem P95={mem_p95}Mi vs request={mem_req_current}Mi"
+        )
+    if cpu_volatile:
+        reasons.append("CPU volatile (+30% buffer)")
+    if mem_volatile:
+        reasons.append("Mem volatile (+30% buffer)")
+    reason = "; ".join(reasons) if reasons else "Usage below request"
+
     return {
         "deployment": deployment,
         "namespace": namespace,
@@ -287,6 +309,7 @@ def _compute_recommendation(data, cpu_rate, mem_rate):
         "direction": {"cpu": cpu_dir, "mem": mem_dir},
         "confidence": confidence,
         "risk": risk,
+        "reason": reason,
         "total_savings_monthly": total_savings,
         "cpu_savings_monthly": round(cpu_savings, 2),
         "mem_savings_monthly": round(mem_savings, 2),
@@ -605,7 +628,9 @@ def invalidate_recommendations():
 def underprovisioned(days=7, namespace=None):
     """Find workloads at risk of OOM/throttle."""
     conn = get_conn()
+    ctx = context.current_context
     ns_filter = f"AND namespace = '{namespace}'" if namespace else ""
+    ctx_filter = f"AND context = '{ctx}'" if ctx else ""
 
     rows = conn.execute(f"""
         SELECT
@@ -625,6 +650,7 @@ def underprovisioned(days=7, namespace=None):
         FROM hourly_pod_metrics
         WHERE hour >= NOW() - INTERVAL '{days} days'
           AND deployment != '' AND cpu_request > 0
+          {ctx_filter}
           {ns_filter}
         GROUP BY deployment, namespace
         HAVING cpu_util_pct > 85 OR mem_util_pct > 85
@@ -636,13 +662,26 @@ def underprovisioned(days=7, namespace=None):
         "cpu_request", "cpu_p95", "mem_request", "mem_p95",
         "cpu_util_pct", "mem_util_pct", "restarts",
     ]
-    return [dict(zip(cols, row)) for row in rows]
+    results = [dict(zip(cols, row)) for row in rows]
+
+    # Add action hint for renderer
+    for r in results:
+        if r["mem_util_pct"] and r["mem_util_pct"] > 90:
+            r["action"] = f"Increase mem to {int(r['mem_p95'] * 1.3)}Mi"
+        elif r["cpu_util_pct"] and r["cpu_util_pct"] > 90:
+            r["action"] = f"Increase cpu to {int(r['cpu_p95'] * 1.3)}m"
+        else:
+            r["action"] = "Review resource limits"
+
+    return results
 
 
 def usage_summary(days=7, namespace=None):
     """Cluster resource usage summary."""
     conn = get_conn()
+    ctx = context.current_context
     ns_filter = f"AND namespace = '{namespace}'" if namespace else ""
+    ctx_filter = f"AND context = '{ctx}'" if ctx else ""
 
     row = conn.execute(f"""
         SELECT
@@ -662,6 +701,7 @@ def usage_summary(days=7, namespace=None):
             FROM hourly_pod_metrics
             WHERE hour >= NOW() - INTERVAL '{days} days'
               AND deployment != ''
+              {ctx_filter}
               {ns_filter}
             GROUP BY deployment
         )

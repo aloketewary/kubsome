@@ -170,6 +170,9 @@ def run_maintenance():
         conn.execute(
             "DELETE FROM event_log WHERE ts < ?", [cutoff]
         )
+        conn.execute(
+            "DELETE FROM audit_log WHERE ts < ?", [cutoff]
+        )
     except Exception:
         pass
     # Refresh materialized views

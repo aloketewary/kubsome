@@ -71,6 +71,21 @@ def choose_cronjob(matches):
     ).ask()
 
 
+def choose_node(matches):
+    if not matches:
+        return None
+    if len(matches) == 1:
+        return matches[0]
+    if not _is_interactive():
+        return matches[0]
+
+    choices = matches[:MAX_CHOICES]
+    return questionary.select(
+        f"Select Node ({len(matches)} matches):",
+        choices=choices
+    ).ask()
+
+
 def choose_context(contexts):
     if not contexts:
         return None

@@ -280,6 +280,11 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     }
     .log-empty i { font-size: 24px; opacity: 0.3; }
     .empty-hint { font-size: 11px; opacity: 0.6; }
+    @media (max-width: 768px) {
+      .page-header { flex-direction: column; gap: 12px; }
+      .header-actions { flex-wrap: wrap; width: 100%; }
+      .log-toolbar { flex-wrap: wrap; }
+    }
   `],
 })
 export class LogsComponent implements OnInit, OnDestroy {

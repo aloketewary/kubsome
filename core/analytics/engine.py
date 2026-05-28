@@ -429,6 +429,40 @@ def _init_schema(conn):
         )
     """)
 
+    # --- Shared tables (also created by their own modules) ---
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS event_log (
+            ts TIMESTAMP,
+            context VARCHAR,
+            namespace VARCHAR,
+            type VARCHAR,
+            reason VARCHAR,
+            object VARCHAR,
+            kind VARCHAR,
+            message VARCHAR,
+            count INTEGER
+        )
+    """)
+
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS command_usage (
+            ts TIMESTAMP,
+            cmd VARCHAR,
+            target VARCHAR
+        )
+    """)
+
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS audit_log (
+            ts TIMESTAMP,
+            context VARCHAR,
+            namespace VARCHAR,
+            action VARCHAR,
+            target VARCHAR,
+            details VARCHAR
+        )
+    """)
+
     # --- Indexes for common query patterns ---
     conn.execute("""
         CREATE INDEX IF NOT EXISTS idx_raw_pods_ts

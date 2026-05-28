@@ -254,6 +254,11 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     }
     .all-good h3 { font-size: 16px; font-weight: 600; color: var(--text); margin: 0; }
     .all-good p { font-size: 13px; margin: 0; }
+    @media (max-width: 768px) {
+      .score-hero { flex-direction: column; align-items: stretch; gap: 16px; }
+      .score-stats { flex-wrap: wrap; justify-content: center; }
+      .page-header { flex-direction: column; gap: 12px; }
+    }
   `],
 })
 export class CostComponent implements OnInit {

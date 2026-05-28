@@ -167,6 +167,9 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     .loading { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 60px; color: var(--text-muted); }
     .spin { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
+    @media (max-width: 768px) {
+      .page-header { flex-direction: column; gap: 12px; }
+    }
   `],
 })
 export class WatchManagerComponent implements OnInit, OnDestroy {

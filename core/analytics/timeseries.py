@@ -21,6 +21,8 @@ def cpu_memory_series(deployment=None, hours=24, interval="1 hour"):
     """
     Time-series CPU/memory for charting.
     Returns [{ts, cpu, mem, pods}] at given interval.
+    Combines aggregated hourly data with raw data for the
+    current incomplete hour.
     """
     try:
         conn = get_conn()
@@ -31,6 +33,7 @@ def cpu_memory_series(deployment=None, hours=24, interval="1 hour"):
         f"AND deployment = '{deployment}'" if deployment else ""
     )
 
+    # Aggregated completed hours
     rows = conn.execute(f"""
         SELECT
             DATE_TRUNC('{interval}', hour) AS bucket,
@@ -45,10 +48,32 @@ def cpu_memory_series(deployment=None, hours=24, interval="1 hour"):
         ORDER BY bucket
     """).fetchall()
 
-    return [
+    result = [
         {"ts": str(r[0]), "cpu": r[1], "mem": r[2], "pods": r[3]}
         for r in rows
     ]
+
+    # Include current incomplete hour from raw data
+    raw_rows = conn.execute(f"""
+        SELECT
+            DATE_TRUNC('hour', ts) AS bucket,
+            AVG(cpu_millicores)::INTEGER AS cpu,
+            AVG(memory_mb)::INTEGER AS mem,
+            COUNT(DISTINCT pod)::INTEGER AS pods
+        FROM raw_pod_metrics
+        WHERE ts >= DATE_TRUNC('hour', NOW())
+          AND deployment != ''
+          {deploy_filter}
+          {_ctx_filter()}
+        GROUP BY bucket
+    """).fetchall()
+
+    for r in raw_rows:
+        result.append(
+            {"ts": str(r[0]), "cpu": r[1], "mem": r[2], "pods": r[3]}
+        )
+
+    return result
 
 
 def node_series(node=None, hours=24):
@@ -223,6 +248,25 @@ def top_consumers(hours=6, limit=10):
         ORDER BY cpu_avg + mem_avg DESC
         LIMIT {limit}
     """).fetchall()
+
+    # Fallback to raw data if no hourly rows yet
+    if not rows:
+        rows = conn.execute(f"""
+            SELECT
+                deployment,
+                namespace,
+                AVG(cpu_millicores)::INTEGER AS cpu_avg,
+                AVG(memory_mb)::INTEGER AS mem_avg,
+                COUNT(DISTINCT pod)::INTEGER AS pods,
+                SUM(restarts) AS restarts
+            FROM raw_pod_metrics
+            WHERE ts >= NOW() - INTERVAL '{hours} hours'
+              AND deployment != ''
+              {_ctx_filter()}
+            GROUP BY deployment, namespace
+            ORDER BY cpu_avg + mem_avg DESC
+            LIMIT {limit}
+        """).fetchall()
 
     return [
         {

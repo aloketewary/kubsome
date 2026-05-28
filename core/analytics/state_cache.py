@@ -404,7 +404,7 @@ def _ingest_events(conn, ctx, ns, events_raw):
             continue
 
         conn.execute(
-            "INSERT INTO event_log VALUES (?,?,?,?,?,?,?,?)",
+            "INSERT INTO event_log VALUES (?,?,?,?,?,?,?,?,?)",
             [
                 event_ts, ctx, ns,
                 item.get("type", "Normal"),

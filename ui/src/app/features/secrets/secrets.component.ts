@@ -187,7 +187,9 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     .missing-card {
       background: var(--bg-card); border: 1px solid var(--border); border-left: 3px solid var(--danger);
       border-radius: var(--radius); padding: 16px; margin-bottom: 10px;
+      transition: all 0.2s ease;
     }
+    .missing-card:hover { transform: translateY(-1px); box-shadow: 0 4px 12px -4px rgba(0,0,0,0.1); }
     .flow-diagram { display: flex; align-items: center; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
     .flow-step { display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 80px; }
     .flow-icon {
@@ -235,7 +237,9 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
       display: flex; align-items: center; gap: 10px;
       padding: 10px 14px; background: var(--bg-card);
       border: 1px solid var(--border); border-radius: var(--radius);
+      transition: all 0.2s ease;
     }
+    .sa-card:hover { border-color: var(--border-hover); box-shadow: 0 2px 8px -2px rgba(0,0,0,0.08); }
     .sa-card.sa-empty { opacity: 0.7; }
     .sa-icon {
       width: 24px; height: 24px; border-radius: 6px;
@@ -260,6 +264,10 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
       border-radius: 50%; animation: spin 0.7s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
+    @media (max-width: 768px) {
+      .page-header { flex-direction: column; gap: 12px; }
+      .sa-grid { grid-template-columns: 1fr; }
+    }
   `],
 })
 export class SecretsComponent implements OnInit, OnDestroy {

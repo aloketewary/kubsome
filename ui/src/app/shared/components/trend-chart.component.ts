@@ -62,7 +62,7 @@ export class TrendChartComponent implements OnInit {
     this.http.get<any>(this.endpoint).subscribe({
       next: (res) => {
         const series = res.series || res.data || res;
-        if (!Array.isArray(series) || series.length < 3) return;
+        if (!Array.isArray(series) || series.length < 1) return;
         this.buildChart(series);
       },
     });
@@ -74,20 +74,24 @@ export class TrendChartComponent implements OnInit {
       return val.substring(this.labelSlice[0], this.labelSlice[1]);
     });
 
+    const isBar = this.chartType === 'bar';
+
     const builtDatasets = this.datasets.length
       ? this.datasets.map(ds => ({
           label: ds.label,
-          data: series.map(s => s[ds.field]),
+          data: series.map(s => s[ds.field] || 0),
           borderColor: ds.color,
-          backgroundColor: ds.fill ? ds.color + '15' : 'transparent',
-          fill: ds.fill ?? true,
+          backgroundColor: isBar ? ds.color : (ds.fill !== false ? ds.color + '15' : 'transparent'),
+          fill: isBar ? false : (ds.fill ?? true),
+          borderRadius: isBar ? 3 : 0,
         }))
       : [{
           label: 'Value',
           data: series.map(s => s.value || s.count || 0),
           borderColor: '#22d3ee',
-          backgroundColor: 'rgba(34,211,238,0.1)',
-          fill: true,
+          backgroundColor: isBar ? '#22d3ee' : 'rgba(34,211,238,0.1)',
+          fill: !isBar,
+          borderRadius: isBar ? 3 : 0,
         }];
 
     this.chartData = { labels, datasets: builtDatasets };
@@ -95,8 +99,13 @@ export class TrendChartComponent implements OnInit {
     // Adjust options for bar charts
     if (this.chartType === 'bar') {
       this.chartOptions = {
-        ...this.chartOptions,
         plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: '#666', font: { size: 9 }, maxTicksLimit: 12 } },
+          y: { beginAtZero: true, ticks: { color: '#666', font: { size: 10 } } },
+        },
+        maintainAspectRatio: false,
+        responsive: true,
       };
     }
   }

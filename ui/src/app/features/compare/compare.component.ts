@@ -154,7 +154,8 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     .pill-value { font-weight: 600; }
     .pill-label { color: var(--text-muted); }
 
-    .section { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 12px; overflow: hidden; }
+    .section { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 12px; overflow: hidden; transition: border-color 0.2s, box-shadow 0.2s; }
+    .section:hover { border-color: var(--border-hover); box-shadow: 0 2px 8px -2px rgba(0,0,0,0.08); }
     .section-header {
       display: flex; align-items: center; gap: 8px; padding: 10px 16px;
       background: var(--bg-elevated); border-bottom: 1px solid var(--border);
@@ -188,6 +189,10 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     .spin { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
     .error-banner { display: flex; align-items: center; gap: 8px; padding: 12px 16px; background: var(--danger-subtle); border-radius: var(--radius); font-size: 12px; color: var(--danger); margin-bottom: 12px; }
+    @media (max-width: 768px) {
+      .page-header { flex-direction: column; gap: 12px; }
+      .compare-bar { flex-direction: column; gap: 8px; }
+    }
   `],
 })
 export class CompareComponent implements OnInit {

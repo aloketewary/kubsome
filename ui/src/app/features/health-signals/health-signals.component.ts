@@ -194,9 +194,10 @@ import { RelatedPagesComponent } from '../../shared/components/related-pages.com
     .signal-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
     .signal-card {
       background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
-      padding: 16px; display: flex; align-items: center; gap: 14px; cursor: pointer; transition: all 0.15s;
+      padding: 16px; display: flex; align-items: center; gap: 14px; cursor: pointer;
+      transition: all 0.25s cubic-bezier(0.34,1.56,0.64,1);
     }
-    .signal-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .signal-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px -8px rgba(0,0,0,0.18); }
     .signal-card.danger { border-left: 3px solid var(--danger); }
     .signal-card.warn { border-left: 3px solid var(--warning); }
     .sc-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; }

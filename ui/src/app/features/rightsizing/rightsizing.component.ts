@@ -3,15 +3,15 @@ import { HttpClient } from '@angular/common/http';
 import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
 import { TabsModule } from 'primeng/tabs';
-import { TitleCasePipe } from '@angular/common';
 import { PageInfoComponent } from '../../shared/components/page-info.component';
 import { SpotlightComponent } from '../../shared/components/spotlight.component';
+import { SkeletonComponent } from '../../shared/components/skeleton.component';
 import { RelatedPagesComponent } from '../../shared/components/related-pages.component';
 
 @Component({
   selector: 'app-rightsizing',
   standalone: true,
-  imports: [ButtonModule, TagModule, TabsModule, TitleCasePipe, PageInfoComponent, SpotlightComponent, RelatedPagesComponent],
+  imports: [ButtonModule, TagModule, TabsModule, PageInfoComponent, SpotlightComponent, RelatedPagesComponent, SkeletonComponent],
   template: `
     <app-spotlight id="rightsizing" title="Right-Sizing" icon="pi pi-sliders-h"
       description="Data-driven CPU/memory recommendations based on actual P95 usage."
@@ -43,7 +43,8 @@ import { RelatedPagesComponent } from '../../shared/components/related-pages.com
     }
 
     @if (loading && !data) {
-      <div class="loading"><div class="spin"></div> Analyzing resource usage...</div>
+      <app-skeleton variant="stats" />
+      <app-skeleton variant="list" [count]="5" />
     }
 
     @if (data) {

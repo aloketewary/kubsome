@@ -11,6 +11,15 @@ Predictions:
 
 from datetime import datetime, timedelta
 from core.analytics.engine import get_conn
+from core.context import context as k8s_context
+
+
+def _ctx_filter():
+    """Return SQL AND clause for current context."""
+    ctx = k8s_context.current_context
+    if not ctx:
+        return ""
+    return f"AND context = '{ctx}'"
 
 
 def check_predictive_alerts(hours_lookback=12):
@@ -55,6 +64,7 @@ def _predict_memory_oom(hours):
             WHERE hour >= NOW() - INTERVAL '{hours} hours'
               AND deployment != ''
               AND mem_request > 0
+              {_ctx_filter()}
             GROUP BY deployment, namespace
             HAVING COUNT(*) >= 6
         )
@@ -169,6 +179,7 @@ def _predict_cpu_saturation(hours):
             WHERE hour >= NOW() - INTERVAL '{hours} hours'
               AND deployment != ''
               AND cpu_request > 0
+              {_ctx_filter()}
             GROUP BY deployment, namespace
             HAVING COUNT(*) >= 6
         )
@@ -243,6 +254,7 @@ def _predict_restart_acceleration(hours):
         FROM hourly_pod_metrics
         WHERE hour >= NOW() - INTERVAL '{hours} hours'
           AND deployment != ''
+          {_ctx_filter()}
         GROUP BY deployment, namespace
         HAVING recent_3h > 3
           AND recent_3h > earlier * 1.5
@@ -286,12 +298,15 @@ def _predict_capacity_exhaustion():
         return []
 
     # Check if we have node data
-    row = conn.execute("""
+    ctx = k8s_context.current_context
+    ctx_filter = f"WHERE context = '{ctx}'" if ctx else ""
+    row = conn.execute(f"""
         SELECT
             SUM(cpu_allocatable) AS total_cpu,
             SUM(mem_allocatable_mb) AS total_mem,
             COUNT(*) AS node_count
         FROM node_state
+        {ctx_filter}
     """).fetchone()
 
     if not row or not row[0]:
@@ -301,12 +316,13 @@ def _predict_capacity_exhaustion():
     total_mem = row[1]
 
     # Current usage from recent hourly data
-    usage = conn.execute("""
+    usage = conn.execute(f"""
         SELECT
             SUM(cpu_avg)::INTEGER AS cpu_used,
             SUM(mem_avg)::INTEGER AS mem_used
         FROM hourly_pod_metrics
         WHERE hour >= NOW() - INTERVAL '1 hour'
+          {_ctx_filter()}
     """).fetchone()
 
     if not usage or not usage[0]:

@@ -662,6 +662,18 @@ def _handle_correlate(cmd, env):
 
 
 def _handle_optimize(cmd, env):
+    # Use analytics-backed rightsizing if data available
+    try:
+        from core.analytics.rightsizing import optimization_report
+        with loading("Analyzing resource usage (analytics)..."):
+            report = optimization_report()
+        if report["summary"]["deployments"] > 0:
+            _handle_rightsizing(cmd, env)
+            return
+    except Exception:
+        pass
+
+    # Fallback to basic point-in-time analysis
     with loading("Analyzing resource usage..."):
         recs = resource_recommendations()
     render_cost_recommendations(recs)
@@ -3148,6 +3160,55 @@ def _handle_helm_diff(cmd, env):
     console.print(Panel("\n".join(lines), title=f"[bold]\u2388 Helm Diff: {release}[/bold]", border_style="cyan"))
 
 
+def _handle_taints_list(cmd, env):
+    from core.collectors.taints import collect_taints
+    from core.renderers.taints_renderer import render_taints
+
+    with loading("Fetching node taints..."):
+        nodes = collect_taints()
+    render_taints(nodes)
+
+
+def _handle_taint(cmd, env):
+    from core.collectors.taints import apply_taint
+
+    node = cmd["node"]
+    spec = cmd["spec"]
+
+    if not confirm_production({"environment": env}):
+        console.print("[yellow]Cancelled[/yellow]")
+        return
+
+    success, output = apply_taint(node, spec)
+    if success:
+        log_action("taint", node, spec)
+        console.print(
+            f"[green]\u2713 Tainted {node} with {spec}[/green]"
+        )
+    else:
+        console.print(f"[red]{output}[/red]")
+
+
+def _handle_untaint(cmd, env):
+    from core.collectors.taints import remove_taint
+
+    node = cmd["node"]
+    spec = cmd["spec"]
+
+    if not confirm_production({"environment": env}):
+        console.print("[yellow]Cancelled[/yellow]")
+        return
+
+    success, output = remove_taint(node, spec)
+    if success:
+        log_action("untaint", node, spec)
+        console.print(
+            f"[green]\u2713 Removed taint {spec} from {node}[/green]"
+        )
+    else:
+        console.print(f"[red]{output}[/red]")
+
+
 # Handler registry
 HANDLERS = {
     "noop": lambda cmd, env: None,
@@ -3291,4 +3352,7 @@ HANDLERS = {
     "helm_values": _handle_helm_values,
     "helm_rollback": _handle_helm_rollback,
     "helm_diff": _handle_helm_diff,
+    "taints_list": _handle_taints_list,
+    "taint": _handle_taint,
+    "untaint": _handle_untaint,
 }

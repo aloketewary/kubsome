@@ -191,6 +191,11 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
       padding: 56px; color: var(--text-muted); font-size: 13px;
     }
     .empty-state i { font-size: 28px; opacity: 0.3; }
+    @media (max-width: 768px) {
+      .page-header { flex-direction: column; gap: 12px; }
+      .header-actions { flex-wrap: wrap; }
+      .tl-entry { padding-left: 16px; }
+    }
   `],
 })
 export class TimelineComponent implements OnInit, OnDestroy {

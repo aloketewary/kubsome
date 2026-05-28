@@ -619,6 +619,41 @@ def delete_schedule(name: str):
     return {"removed": True, "name": name}
 
 
+# ─── Node Taints ──────────────────────────────────────────────────────────────
+
+@router.get("/taints")
+def get_taints():
+    from core.collectors.taints import collect_taints
+    return {"nodes": collect_taints()}
+
+
+class TaintRequest(BaseModel):
+    node: str
+    spec: str
+
+
+@router.post("/taint")
+def post_taint(req: TaintRequest):
+    _validate_k8s_name(req.node)
+    from core.collectors.taints import apply_taint
+    from core.audit import log_action
+    success, output = apply_taint(req.node, req.spec)
+    if success:
+        log_action("taint", req.node, req.spec)
+    return {"success": success, "output": output}
+
+
+@router.post("/untaint")
+def post_untaint(req: TaintRequest):
+    _validate_k8s_name(req.node)
+    from core.collectors.taints import remove_taint
+    from core.audit import log_action
+    success, output = remove_taint(req.node, req.spec)
+    if success:
+        log_action("untaint", req.node, req.spec)
+    return {"success": success, "output": output}
+
+
 # ─── Explain / Generate ───────────────────────────────────────────────────────
 
 class ExplainRequest(BaseModel):

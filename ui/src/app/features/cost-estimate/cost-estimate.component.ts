@@ -188,6 +188,12 @@ import { TrendChartComponent } from '../../shared/components/trend-chart.compone
     .loading { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 60px; color: var(--text-muted); }
     .spin { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
+    @media (max-width: 768px) {
+      .table-header, .table-row { grid-template-columns: 2fr 0.5fr 1fr 1fr; }
+      .col-cpu, .col-mem { display: none; }
+      .trend-row { flex-wrap: wrap; gap: 12px; }
+      .cost-bars { display: none; }
+    }
   `],
 })
 export class CostEstimateComponent implements OnInit {

@@ -49,6 +49,50 @@ def get_anomalies():
 
 @router.get("/optimize")
 def get_optimize():
+    # Use analytics-backed rightsizing if data available
+    try:
+        from core.analytics.rightsizing import optimization_report
+        report = optimization_report()
+        if report["summary"]["deployments"] > 0:
+            # Transform to match UI expected format
+            recs = []
+            for r in report["recommendations"]:
+                recs.append({
+                    "name": r["deployment"],
+                    "pod": r["deployment"],
+                    "type": r["direction"]["cpu"] + "_cpu",
+                    "severity": r["risk"],
+                    "detail": r["reason"],
+                    "recommendation": r["reason"],
+                    "current": (
+                        f"CPU {r['current']['cpu_request']}m, "
+                        f"Mem {r['current']['mem_request']}Mi"
+                    ),
+                    "suggested": (
+                        f"CPU {r['recommended']['cpu_request']}m, "
+                        f"Mem {r['recommended']['mem_request']}Mi"
+                    ),
+                    "savings": f"${r['total_savings_monthly']:.2f}/mo",
+                    "confidence": r["confidence"],
+                    "data_source": f"{r['sample_hours']}h analytics",
+                })
+            for r in report["at_risk"]:
+                recs.append({
+                    "name": r["deployment"],
+                    "pod": r["deployment"],
+                    "type": "under_provisioned",
+                    "severity": "warning",
+                    "detail": (
+                        f"CPU {r['cpu_util_pct']}% / "
+                        f"Mem {r['mem_util_pct']}% of request"
+                    ),
+                    "recommendation": r["action"],
+                })
+            return {"recommendations": recs}
+    except Exception:
+        pass
+
+    # Fallback to basic point-in-time analysis
     recs = resource_recommendations()
     return {"recommendations": recs}
 

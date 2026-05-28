@@ -418,9 +418,10 @@ export class ShellComponent implements OnInit {
     { path: '/gateway-monitor', icon: 'pi pi-server', label: 'Gateway' },
     { path: '/gitops', icon: 'pi pi-sync', label: 'GitOps', badge: 'NEW' },
     { path: '/mesh', icon: 'pi pi-share-alt', label: 'Service Mesh', badge: 'NEW' },
-    { path: '/integrations', icon: 'pi pi-plug', label: 'Integrations', badge: 'NEW' },
+    { path: '/integrations', icon: 'pi pi-link', label: 'Integrations', badge: 'NEW' },
     { path: '/compare', icon: 'pi pi-arrows-h', label: 'Compare' },
     { path: '/policy', icon: 'pi pi-verified', label: 'Policy' },
+    { path: '/taints', icon: 'pi pi-ban', label: 'Node Taints' },
   ];
 
   costItems: any[] = [

@@ -283,6 +283,11 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
       background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
     }
     .empty-state i { font-size: 16px; opacity: 0.5; }
+    @media (max-width: 768px) {
+      .page-header { flex-direction: column; gap: 12px; }
+      .header-actions { flex-wrap: wrap; }
+      .summary-strip { flex-wrap: wrap; }
+    }
   `],
 })
 export class RbacComponent implements OnInit, OnDestroy {

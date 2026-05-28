@@ -4,6 +4,16 @@ to existing features. Gracefully returns None if analytics
 is unavailable or has insufficient data.
 """
 
+from core.context import context as k8s_context
+
+
+def _ctx_filter():
+    """Return SQL AND clause for current context."""
+    ctx = k8s_context.current_context
+    if not ctx:
+        return ""
+    return f"AND context = '{ctx}'"
+
 
 def enrich_pod_metrics(pod_name):
     """
@@ -25,6 +35,7 @@ def enrich_pod_metrics(pod_name):
         FROM raw_pod_metrics
         WHERE pod = ?
           AND ts >= NOW() - INTERVAL '7 days'
+          {_ctx_filter()}
     """, [pod_name]).fetchone()
 
     if not row or not row[0]:
@@ -38,6 +49,7 @@ def enrich_pod_metrics(pod_name):
         FROM raw_pod_metrics
         WHERE pod = ?
           AND ts >= NOW() - INTERVAL '1 hour'
+          {_ctx_filter()}
     """, [pod_name]).fetchone()
 
     cpu_trend = None
@@ -84,6 +96,7 @@ def enrich_deployment_metrics(deployment_name):
         FROM hourly_pod_metrics
         WHERE deployment = ?
           AND hour >= NOW() - INTERVAL '7 days'
+          {_ctx_filter()}
     """, [deployment_name]).fetchone()
 
     if not row or not row[7] or row[7] < 6:
@@ -106,6 +119,7 @@ def enrich_deployment_metrics(deployment_name):
         FROM hourly_pod_metrics
         WHERE deployment = ?
           AND hour >= NOW() - INTERVAL '7 days'
+          {_ctx_filter()}
     """, [deployment_name]).fetchone()
 
     trend = "stable"
@@ -165,6 +179,7 @@ def enrich_diagnosis(pod_name):
         FROM raw_pod_metrics
         WHERE pod = ?
           AND ts >= NOW() - INTERVAL '7 days'
+          {_ctx_filter()}
         GROUP BY day
         ORDER BY day
     """, [pod_name]).fetchall()
@@ -231,14 +246,15 @@ def enrich_scorecard():
         return None
 
     # Availability from daily_summary
-    avail = conn.execute("""
+    avail = conn.execute(f"""
         SELECT AVG(availability_pct) AS avg_avail
         FROM daily_summary
         WHERE day >= CURRENT_DATE - INTERVAL '7 days'
+          {_ctx_filter()}
     """).fetchone()
 
     # Cost trend
-    cost = conn.execute("""
+    cost = conn.execute(f"""
         SELECT
             SUM(CASE WHEN day >= CURRENT_DATE - 7
                 THEN cost_estimate_usd END) AS recent,
@@ -246,6 +262,7 @@ def enrich_scorecard():
                 AND day >= CURRENT_DATE - 14
                 THEN cost_estimate_usd END) AS previous
         FROM daily_summary
+        WHERE 1=1 {_ctx_filter()}
     """).fetchone()
 
     cost_trend = "stable"
@@ -257,7 +274,7 @@ def enrich_scorecard():
             cost_trend = "shrinking"
 
     # Degrading deployments (restarts increasing)
-    degrading = conn.execute("""
+    degrading = conn.execute(f"""
         SELECT deployment, namespace
         FROM (
             SELECT
@@ -269,6 +286,7 @@ def enrich_scorecard():
             FROM hourly_pod_metrics
             WHERE hour >= NOW() - INTERVAL '7 days'
               AND deployment != ''
+              {_ctx_filter()}
             GROUP BY deployment, namespace
         )
         WHERE recent_restarts > older_restarts * 2
@@ -297,7 +315,7 @@ def enrich_overview():
     except (ImportError, Exception):
         return None
 
-    row = conn.execute("""
+    row = conn.execute(f"""
         SELECT
             SUM(CASE WHEN hour >= NOW() - INTERVAL '6 hours'
                 THEN restart_count END) AS restarts_6h,
@@ -311,6 +329,7 @@ def enrich_overview():
                 THEN cpu_avg END)::INTEGER AS cpu_baseline
         FROM hourly_pod_metrics
         WHERE hour >= NOW() - INTERVAL '24 hours'
+          {_ctx_filter()}
     """).fetchone()
 
     if not row or not row[0]:

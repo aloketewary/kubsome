@@ -51,4 +51,5 @@ export const routes: Routes = [
   { path: 'health-signals', title: 'Health Signals — Kubsome', loadComponent: () => import('./features/health-signals/health-signals.component').then(m => m.HealthSignalsComponent) },
   { path: 'chargeback', title: 'Chargeback — Kubsome', loadComponent: () => import('./features/chargeback/chargeback.component').then(m => m.ChargebackComponent) },
   { path: 'idle-resources', title: 'Idle Resources — Kubsome', loadComponent: () => import('./features/idle-resources/idle-resources.component').then(m => m.IdleResourcesComponent) },
+  { path: 'taints', title: 'Node Taints — Kubsome', loadComponent: () => import('./features/taints/taints.component').then(m => m.TaintsComponent) },
 ];

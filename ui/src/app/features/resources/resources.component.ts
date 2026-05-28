@@ -269,6 +269,11 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     }
     .spin { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
+    @media (max-width: 768px) {
+      .page-header { flex-direction: column; gap: 12px; }
+      .header-actions { flex-wrap: wrap; }
+      .resource-grid { grid-template-columns: 1fr; }
+    }
   `],
 })
 export class ResourcesComponent implements OnInit {

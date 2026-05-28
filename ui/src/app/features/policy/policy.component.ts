@@ -122,7 +122,9 @@ import { TagModule } from 'primeng/tag';
       display: flex; align-items: flex-start; gap: 12px;
       padding: 14px 16px; background: var(--bg-card);
       border: 1px solid var(--border); border-radius: 8px;
+      transition: all 0.2s ease;
     }
+    .policy-card:hover { transform: translateY(-1px); box-shadow: 0 4px 16px -4px rgba(0,0,0,0.12); border-color: var(--border-hover); }
     .policy-violated { border-left: 3px solid var(--danger); }
     .pc-icon {
       width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
@@ -160,6 +162,11 @@ import { TagModule } from 'primeng/tag';
     .empty-state h3 { font-size: 16px; font-weight: 600; color: var(--text); margin: 0; }
     .empty-state p { font-size: 13px; margin: 0; }
     .empty-state code { font-family: 'JetBrains Mono', monospace; font-size: 12px; background: var(--bg-elevated); padding: 2px 6px; border-radius: 4px; }
+    @media (max-width: 768px) {
+      .page-header { flex-direction: column; gap: 12px; }
+      .score-banner { flex-direction: column; gap: 12px; }
+      .score-stats { flex-wrap: wrap; }
+    }
   `],
 })
 export class PolicyComponent implements OnInit {

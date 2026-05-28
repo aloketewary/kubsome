@@ -461,6 +461,13 @@ interface Message {
       margin-top: 6px;
       text-align: center;
     }
+    @media (max-width: 768px) {
+      .chat-container { padding: 12px; }
+      .suggestions { flex-direction: column; }
+      .sug-btn { width: 100%; }
+      .input-row { flex-direction: column; }
+      .input-row input { width: 100%; }
+    }
   `],
 })
 export class AiComponent implements OnInit, AfterViewChecked {

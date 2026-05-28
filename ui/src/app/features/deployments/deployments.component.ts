@@ -106,8 +106,15 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
       @if (filtered.length === 0 && searchQuery) {
         <div class="empty-state"><i class="pi pi-search"></i> No deployments matching "{{ searchQuery }}"</div>
       }
-      @if (filtered.length === 0 && !searchQuery) {
+      @if (filtered.length === 0 && !searchQuery && !loadError) {
         <div class="empty-state"><i class="pi pi-send"></i> No deployments in this namespace</div>
+      }
+      @if (loadError) {
+        <div class="error-state">
+          <i class="pi pi-exclamation-triangle"></i>
+          <span>Failed to load deployments</span>
+          <button pButton label="Retry" icon="pi pi-refresh" class="p-button-outlined p-button-sm" (click)="refresh()"></button>
+        </div>
       }
     </div>
 
@@ -251,6 +258,16 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
       padding: 48px; color: var(--text-muted); font-size: 13px;
     }
     .empty-state i { font-size: 16px; }
+    .error-state {
+      display: flex; flex-direction: column; align-items: center; gap: 12px;
+      padding: 48px; color: var(--text-muted); font-size: 13px;
+      background: var(--bg-card); border: 1px solid var(--danger); border-radius: var(--radius);
+    }
+    .error-state i { font-size: 24px; color: var(--danger); }
+    @media (max-width: 768px) {
+      .page-header { flex-direction: column; gap: 12px; }
+      .header-actions { flex-wrap: wrap; }
+    }
   `],
 })
 export class DeploymentsComponent implements OnInit, OnDestroy {
@@ -261,6 +278,7 @@ export class DeploymentsComponent implements OnInit, OnDestroy {
   filtered: Deployment[] = [];
   searchQuery = '';
   loading = false;
+  loadError = false;
   autoRefresh = true;
   lastUpdated = '';
   private refreshTimer: any;
@@ -307,11 +325,18 @@ export class DeploymentsComponent implements OnInit, OnDestroy {
 
   refresh() {
     this.loading = true;
-    this.api.getDeployments().subscribe(res => {
-      this.deployments = res.deployments;
-      this.filter();
-      this.loading = false;
-      this.lastUpdated = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    this.api.getDeployments().subscribe({
+      next: (res) => {
+        this.deployments = res.deployments;
+        this.filter();
+        this.loading = false;
+        this.loadError = false;
+        this.lastUpdated = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      },
+      error: () => {
+        this.loading = false;
+        this.loadError = true;
+      },
     });
   }
 

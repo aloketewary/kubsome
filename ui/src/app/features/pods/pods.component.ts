@@ -17,6 +17,7 @@ import { AiInsightDrawerComponent } from '../../shared/components/ai-insight-dra
 import { LogTerminalComponent } from '../../shared/components/log-terminal.component';
 import { ShellTerminalComponent } from '../../shared/components/shell-terminal.component';
 import { SpotlightComponent } from '../../shared/components/spotlight.component';
+import { SkeletonComponent } from '../../shared/components/skeleton.component';
 
 interface PodGroup {
   deployment: string;
@@ -30,7 +31,7 @@ interface PodGroup {
 @Component({
   selector: 'app-pods',
   standalone: true,
-  imports: [JsonPipe, TagModule, ButtonModule, TooltipModule, DialogModule, InputTextModule, FormsModule, PodDrawerComponent, PageInfoComponent, AiInsightDrawerComponent, LogTerminalComponent, ShellTerminalComponent, SpotlightComponent],
+  imports: [JsonPipe, TagModule, ButtonModule, TooltipModule, DialogModule, InputTextModule, FormsModule, PodDrawerComponent, PageInfoComponent, AiInsightDrawerComponent, LogTerminalComponent, ShellTerminalComponent, SpotlightComponent, SkeletonComponent],
   template: `
     <app-spotlight id="pods" title="Pod Management" icon="pi pi-box"
       description="View, inspect, and diagnose pods grouped by deployment. Select pods for combined log views."
@@ -210,9 +211,13 @@ interface PodGroup {
       </div>
     }
     @if (loading && pods.length === 0) {
-      <div class="empty-state">
-        <i class="pi pi-spin pi-spinner"></i>
-        <span>Loading pods...</span>
+      <app-skeleton variant="table" [count]="10" />
+    }
+    @if (loadError && pods.length === 0) {
+      <div class="error-state">
+        <i class="pi pi-exclamation-triangle"></i>
+        <span>Failed to load pods. Check cluster connectivity.</span>
+        <button pButton label="Retry" icon="pi pi-refresh" class="p-button-outlined p-button-sm" (click)="refresh()"></button>
       </div>
     }
     @if (hasMore) {
@@ -458,6 +463,12 @@ interface PodGroup {
       padding: 48px; color: var(--text-muted); font-size: 13px;
     }
     .empty-state i { font-size: 28px; opacity: 0.3; }
+    .error-state {
+      display: flex; flex-direction: column; align-items: center; gap: 12px;
+      padding: 48px; color: var(--text-muted); font-size: 13px;
+      background: var(--bg-card); border: 1px solid var(--danger); border-radius: var(--radius);
+    }
+    .error-state i { font-size: 24px; color: var(--danger); }
 
     /* Load More */
     .load-more {
@@ -504,6 +515,7 @@ export class PodsComponent implements OnInit, OnDestroy {
   pageSize = 50;
   totalPods = 0;
   loading = false;
+  loadError = false;
   hasMore = false;
 
   // Dialogs
@@ -674,17 +686,24 @@ export class PodsComponent implements OnInit, OnDestroy {
   private fetchPods(append = false) {
     this.loading = true;
     const search = this.searchQuery || undefined;
-    this.api.getPods(this.currentPage, this.pageSize, search).subscribe(res => {
-      if (append) {
-        this.pods = [...this.pods, ...res.pods];
-      } else {
-        this.pods = res.pods;
-      }
-      this.totalPods = res.total;
-      this.hasMore = this.pods.length < res.total;
-      this.groupPods();
-      this.applyStatusFilter();
-      this.loading = false;
+    this.api.getPods(this.currentPage, this.pageSize, search).subscribe({
+      next: (res) => {
+        if (append) {
+          this.pods = [...this.pods, ...res.pods];
+        } else {
+          this.pods = res.pods;
+        }
+        this.totalPods = res.total;
+        this.hasMore = this.pods.length < res.total;
+        this.groupPods();
+        this.applyStatusFilter();
+        this.loading = false;
+        this.loadError = false;
+      },
+      error: () => {
+        this.loading = false;
+        this.loadError = true;
+      },
     });
   }
 

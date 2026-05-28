@@ -115,6 +115,31 @@ def resolve_deployment_name(query: str):
 
 
 @cached(ttl=10)
+def resolve_node_name(query: str):
+    """Fuzzy match node names. Requires 2+ chars."""
+    if len(query) < 2:
+        return None
+    import subprocess
+    from core.context import context
+
+    cmd = [
+        "kubectl", "--context", str(context.current_context or ""),
+        "get", "nodes",
+        "-o", "jsonpath={.items[*].metadata.name}"
+    ]
+
+    r = subprocess.run(
+        cmd,
+        capture_output=True, text=True
+    )
+
+    names = r.stdout.strip().split()
+    if not names:
+        return None
+    return _fuzzy_match(query, names)
+
+
+@cached(ttl=10)
 def resolve_cronjob_name(query: str):
     """Fuzzy match cronjob names. Requires 2+ chars."""
     if len(query) < 2:
