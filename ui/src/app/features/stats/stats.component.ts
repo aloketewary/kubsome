@@ -65,6 +65,22 @@ import { TrendChartComponent } from '../../shared/components/trend-chart.compone
         </div>
       </div>
 
+      <!-- Growth: Recovery Efficiency Metric -->
+      <div class="recovery-banner glass stagger-5">
+        <div class="rb-icon"><i class="pi pi-heart-fill"></i></div>
+        <div class="rb-content">
+          <h3>Recovery Efficiency</h3>
+          <p>You have resolved <strong>{{ coveragePct }}%</strong> of all cluster anomalies using Kubsome. Automated remediations handled <strong>{{ stats.auto_remediations }}</strong> issues without manual intervention.</p>
+        </div>
+        <div class="rb-score">
+          <svg viewBox="0 0 36 36" class="rb-svg">
+            <path class="rb-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+            <path class="rb-fill" [attr.stroke-dasharray]="coveragePct + ', 100'" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+          </svg>
+          <span class="rb-val">{{ coveragePct }}%</span>
+        </div>
+      </div>
+
       <div class="details-row">
         <div class="detail-card glass stagger-5">
           <div class="detail-header">
@@ -127,6 +143,26 @@ import { TrendChartComponent } from '../../shared/components/trend-chart.compone
     .details-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
     .detail-card { border-radius: 16px; border: 1px solid var(--border); overflow: hidden; }
     .detail-header { padding: 16px 20px; border-bottom: 1px solid var(--border); background: var(--bg-card); }
+
+    /* Recovery Efficiency Banner */
+    .recovery-banner {
+      display: flex; align-items: center; gap: 24px; padding: 24px 32px;
+      margin-bottom: 24px; border-radius: 20px; border: 1px solid var(--border);
+      background: linear-gradient(90deg, var(--bg-card), var(--accent-subtle));
+    }
+    .rb-icon {
+      width: 52px; height: 52px; border-radius: 14px;
+      background: var(--accent); color: #fff;
+      display: flex; align-items: center; justify-content: center; font-size: 24px;
+    }
+    .rb-content { flex: 1; }
+    .rb-content h3 { margin: 0 0 4px; font-size: 18px; font-weight: 700; }
+    .rb-content p { margin: 0; color: var(--text-secondary); font-size: 13px; line-height: 1.5; }
+    .rb-score { position: relative; width: 64px; height: 64px; }
+    .rb-svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+    .rb-bg { fill: none; stroke: var(--bg-elevated); stroke-width: 3; }
+    .rb-fill { fill: none; stroke: var(--accent); stroke-width: 3.5; stroke-linecap: round; transition: stroke-dasharray 1s ease-out; }
+    .rb-val { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 800; }
     .detail-header h3 { margin: 0; font-size: 14px; font-weight: 700; }
     .detail-body { padding: 12px 20px; }
 

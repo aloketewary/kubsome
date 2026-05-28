@@ -228,10 +228,12 @@ interface PodGroup {
     <app-ai-insight-drawer
       [visible]="aiDrawerVisible"
       [loading]="aiLoading"
+      [remediating]="remediating"
       [resourceName]="activePodName"
       [summary]="aiSummary"
       [findings]="aiFindings"
       [reasoning]="aiReasoning"
+      (remediate)="onRemediate()"
       (closed)="aiDrawerVisible = false" />
 
     <!-- Logs Dialog -->
@@ -519,6 +521,7 @@ export class PodsComponent implements OnInit, OnDestroy {
   // AI Insight State
   aiDrawerVisible = false;
   aiLoading = false;
+  remediating = false;
   aiSummary = '';
   aiFindings: any[] = [];
   aiReasoning = '';
@@ -641,6 +644,7 @@ export class PodsComponent implements OnInit, OnDestroy {
     this.activePodName = name;
     this.aiDrawerVisible = true;
     this.aiLoading = true;
+    this.remediating = false;
     this.aiFindings = [];
     this.aiSummary = '';
     this.aiReasoning = '';
@@ -655,6 +659,27 @@ export class PodsComponent implements OnInit, OnDestroy {
       error: () => {
         this.aiSummary = 'Failed to perform AI diagnosis. Please check cluster connectivity.';
         this.aiLoading = false;
+      }
+    });
+  }
+
+  onRemediate() {
+    if (!this.activePodName || this.remediating) return;
+    this.remediating = true;
+    this.api.remediate(this.activePodName).subscribe({
+      next: (res) => {
+        this.remediating = false;
+        if (res.success) {
+          this.aiSummary = `Successfully applied fix for ${this.activePodName}. Pod should recover shortly.`;
+          this.aiFindings = [];
+          this.refresh();
+        } else {
+          this.aiSummary = `Failed to apply fix: ${res.error || 'Unknown error'}`;
+        }
+      },
+      error: (err) => {
+        this.remediating = false;
+        this.aiSummary = `Error calling remediation API: ${err.message || 'Unknown error'}`;
       }
     });
   }

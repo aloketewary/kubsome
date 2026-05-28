@@ -70,7 +70,11 @@ import { DrawerModule } from 'primeng/drawer';
 
       <ng-template pTemplate="footer">
         <div class="drawer-footer">
-          <button pButton label="Apply Automated Fix" icon="pi pi-bolt" class="p-button-sm p-button-primary w-full" [disabled]="findings.length === 0"></button>
+          <button pButton [label]="remediating ? 'Applying Fix...' : 'Apply Automated Fix'"
+                  [icon]="remediating ? 'pi pi-spin pi-spinner' : 'pi pi-bolt'"
+                  class="p-button-sm p-button-primary w-full"
+                  [disabled]="findings.length === 0 || remediating"
+                  (click)="remediate.emit()"></button>
         </div>
       </ng-template>
     </p-drawer>
@@ -120,10 +124,12 @@ import { DrawerModule } from 'primeng/drawer';
 export class AiInsightDrawerComponent {
   @Input() visible = false;
   @Input() loading = false;
+  @Input() remediating = false;
   @Input() resourceName = '';
   @Input() summary = '';
   @Input() findings: any[] = [];
   @Input() reasoning = '';
   @Output() closed = new EventEmitter<void>();
+  @Output() remediate = new EventEmitter<void>();
   fullscreen = false;
 }

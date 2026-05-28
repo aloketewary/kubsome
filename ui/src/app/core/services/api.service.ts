@@ -138,6 +138,14 @@ export class ApiService {
     return this.http.post<AiResponse>(`${this.base}/ai`, { query });
   }
 
+  getAiSuggestions(): Observable<any> {
+    return this.http.get<any>(`${this.base}/ai/suggestions`);
+  }
+
+  remediate(pod: string): Observable<any> {
+    return this.http.post<any>(`${this.base}/remediate/${pod}`, {});
+  }
+
   getStats(): Observable<any> {
     return this.http.get<any>(`${this.base}/stats`);
   }

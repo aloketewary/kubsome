@@ -473,24 +473,9 @@ export class AiComponent implements OnInit, AfterViewChecked {
   loading = false;
   private shouldScroll = false;
 
-  diagnoseSuggestions = [
-    'why is payment-api failing',
-    'diagnose high restart pods',
-    'which pods are unhealthy',
-    'what\'s wrong with billing',
-  ];
-  analyzeSuggestions = [
-    'summarize cluster health',
-    'how many pods running',
-    'top resource consumers',
-    'is billing-api healthy',
-  ];
-  investigateSuggestions = [
-    'what changed recently',
-    'show warning events',
-    'any anomalies detected',
-    'count customer pods',
-  ];
+  diagnoseSuggestions = ['why is payment-api failing', 'which pods are unhealthy'];
+  analyzeSuggestions = ['summarize cluster health', 'top resource consumers'];
+  investigateSuggestions = ['what changed recently', 'any anomalies detected'];
 
   ngAfterViewChecked() {
     if (this.shouldScroll) {
@@ -585,6 +570,17 @@ export class AiComponent implements OnInit, AfterViewChecked {
   }
 
   ngOnInit() {
+    this.api.getAiSuggestions().subscribe({
+      next: (res) => {
+        if (res.diagnose && res.diagnose.length > 0) this.diagnoseSuggestions = res.diagnose;
+        if (res.analyze && res.analyze.length > 0) this.analyzeSuggestions = res.analyze;
+        if (res.investigate && res.investigate.length > 0) this.investigateSuggestions = res.investigate;
+      },
+      error: () => {
+        console.warn('Could not fetch dynamic AI suggestions, using defaults.');
+      }
+    });
+
     this.route.queryParams.subscribe(params => {
       const q = params['q'];
       if (q) {
