@@ -7,6 +7,7 @@ import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/services/api.service';
 import { PageInfoComponent } from '../../shared/components/page-info.component';
 import { SpotlightComponent } from '../../shared/components/spotlight.component';
+import { PageHeaderComponent } from '../../shared/components/page-header.component';
 
 @Pipe({ name: 'safeHtml', standalone: true })
 export class SafeHtmlPipe implements PipeTransform {
@@ -32,26 +33,20 @@ interface Message {
 @Component({
   selector: 'app-ai',
   standalone: true,
-  imports: [ButtonModule, TooltipModule, FormsModule, PageInfoComponent, SafeHtmlPipe, SpotlightComponent],
+  imports: [ButtonModule, TooltipModule, FormsModule, PageInfoComponent, SafeHtmlPipe, SpotlightComponent, PageHeaderComponent],
   template: `
     <app-spotlight id="ai" title="AI Assistant" icon="pi pi-sparkles"
       description="Ask natural language questions about your cluster. Get explanations, suggestions, and generated manifests."
       [capabilities]="['Natural language queries', 'Root cause explanations', 'YAML generation', 'Command suggestions']" [compact]="true" />
 
-        <div class="page-header">
-      <div>
-        <h1>AI Assistant</h1>
-        <p class="subtitle">Natural language cluster intelligence</p>
-      </div>
-      <div class="header-actions">
+    <app-page-header title="AI Assistant" subtitle="Natural language cluster intelligence">
         @if (messages.length > 0) {
           <button pButton icon="pi pi-trash" label="Clear" class="p-button-text p-button-sm" (click)="clearHistory()" pTooltip="Clear conversation"></button>
         }
         <app-page-info title="AI Assistant" description="Ask natural language questions about your cluster. AI analyzes pods, events, metrics, and logs to answer."
           [tips]="['Type naturally: why is payment failing?', 'When multiple pods match, click to select one', 'AI correlates logs + events + metrics for diagnosis', 'Works offline — no external API needed']"
           [commands]="['why is <pod> failing', 'how many <name> pods running', 'summarize cluster health', 'is it safe to restart <dep>']" />
-      </div>
-    </div>
+    </app-page-header>
 
     <div class="chat-layout">
       <!-- Messages Area -->

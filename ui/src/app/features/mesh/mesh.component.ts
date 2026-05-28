@@ -6,28 +6,23 @@ import { TagModule } from 'primeng/tag';
 import { TabsModule } from 'primeng/tabs';
 import { PageInfoComponent } from '../../shared/components/page-info.component';
 import { SpotlightComponent } from '../../shared/components/spotlight.component';
+import { PageHeaderComponent } from '../../shared/components/page-header.component';
 
 @Component({
   selector: 'app-mesh',
   standalone: true,
-  imports: [ButtonModule, TagModule, TabsModule, TitleCasePipe, PageInfoComponent, SpotlightComponent],
+  imports: [ButtonModule, TagModule, TabsModule, TitleCasePipe, PageInfoComponent, SpotlightComponent, PageHeaderComponent],
   template: `
     <app-spotlight id="mesh" title="Service Mesh" icon="pi pi-share-alt"
       description="Istio/Linkerd visibility — traffic routing, mTLS, circuit breakers."
       [capabilities]="['mTLS status', 'VirtualService routing', 'Circuit breakers', 'Sidecar injection']" [compact]="true" />
 
-    <div class="page-header">
-      <div>
-        <h1>Service Mesh</h1>
-        <p class="subtitle">{{ data?.mesh ? (data.mesh | titlecase) + ' mesh' : 'Detecting mesh...' }} · {{ lastUpdated }}</p>
-      </div>
-      <div class="header-actions">
+    <app-page-header title="Service Mesh" [subtitle]="data?.mesh ? (data.mesh | titlecase) + ' mesh · ' + lastUpdated : 'Detecting mesh...'">
         <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="refresh()" [loading]="loading"></button>
-      </div>
-      <app-page-info title="Service Mesh" description="Deep visibility into Istio or Linkerd service mesh — mTLS enforcement, traffic routing, circuit breakers, and sidecar injection."
-        [tips]="['Green lock = mTLS STRICT', 'Yellow = PERMISSIVE (accepts plaintext)', 'Check injection coverage for gaps']"
-        [commands]="['mesh-detail', 'vs', 'dr', 'mtls', 'mesh']" />
-    </div>
+        <app-page-info title="Service Mesh" description="Deep visibility into Istio or Linkerd service mesh — mTLS enforcement, traffic routing, circuit breakers, and sidecar injection."
+          [tips]="['Green lock = mTLS STRICT', 'Yellow = PERMISSIVE (accepts plaintext)', 'Check injection coverage for gaps']"
+          [commands]="['mesh-detail', 'vs', 'dr', 'mtls', 'mesh']" />
+    </app-page-header>
 
     @if (data && !data.mesh) {
       <div class="empty-state">

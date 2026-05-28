@@ -485,6 +485,140 @@ def _init_schema(conn):
         )
     """)
 
+    # --- Telemetry ---
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS unresolved_queries (
+            ts TIMESTAMP,
+            query VARCHAR,
+            nlp_score DOUBLE
+        )
+    """)
+
+    # --- State cache tables ---
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS pod_state (
+            context VARCHAR,
+            namespace VARCHAR,
+            name VARCHAR,
+            status VARCHAR,
+            restarts INTEGER,
+            deployment VARCHAR,
+            cpu_request INTEGER,
+            mem_request INTEGER,
+            age_seconds INTEGER,
+            labels VARCHAR
+        )
+    """)
+
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS deployment_state (
+            context VARCHAR,
+            namespace VARCHAR,
+            name VARCHAR,
+            desired INTEGER,
+            available INTEGER,
+            ready INTEGER,
+            image VARCHAR,
+            labels VARCHAR
+        )
+    """)
+
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS node_state (
+            context VARCHAR,
+            name VARCHAR,
+            ready BOOLEAN,
+            cpu_allocatable INTEGER,
+            mem_allocatable_mb INTEGER,
+            pod_count INTEGER,
+            labels VARCHAR
+        )
+    """)
+
+    # --- Enriched collector tables ---
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS hpa_metrics (
+            ts TIMESTAMP,
+            context VARCHAR,
+            namespace VARCHAR,
+            hpa_name VARCHAR,
+            target_deployment VARCHAR,
+            min_replicas INTEGER,
+            max_replicas INTEGER,
+            current_replicas INTEGER,
+            desired_replicas INTEGER,
+            cpu_target_pct INTEGER,
+            cpu_current_pct INTEGER,
+            at_max BOOLEAN,
+            scaling_up BOOLEAN
+        )
+    """)
+
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS oomkill_events (
+            ts TIMESTAMP,
+            context VARCHAR,
+            namespace VARCHAR,
+            pod VARCHAR,
+            container VARCHAR,
+            mem_limit_mb INTEGER,
+            killed_at VARCHAR
+        )
+    """)
+
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS quota_metrics (
+            ts TIMESTAMP,
+            context VARCHAR,
+            namespace VARCHAR,
+            quota_name VARCHAR,
+            resource VARCHAR,
+            hard_value DOUBLE,
+            used_value DOUBLE,
+            used_pct DOUBLE
+        )
+    """)
+
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS rollout_metrics (
+            ts TIMESTAMP,
+            context VARCHAR,
+            namespace VARCHAR,
+            deployment VARCHAR,
+            desired INTEGER,
+            updated INTEGER,
+            available INTEGER,
+            unavailable INTEGER,
+            state VARCHAR
+        )
+    """)
+
+    # --- Chargeback tables ---
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS label_mapping (
+            context VARCHAR,
+            namespace VARCHAR,
+            deployment VARCHAR,
+            team VARCHAR,
+            app VARCHAR,
+            env VARCHAR
+        )
+    """)
+
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS cloud_billing (
+            ts TIMESTAMP,
+            context VARCHAR,
+            namespace VARCHAR,
+            team VARCHAR,
+            cpu_cost DOUBLE,
+            mem_cost DOUBLE,
+            pv_cost DOUBLE,
+            network_cost DOUBLE,
+            total_cost DOUBLE
+        )
+    """)
+
     # --- Indexes for common query patterns ---
     conn.execute("""
         CREATE INDEX IF NOT EXISTS idx_raw_pods_ts
@@ -505,6 +639,18 @@ def _init_schema(conn):
     conn.execute("""
         CREATE INDEX IF NOT EXISTS idx_daily_day
         ON daily_summary (day)
+    """)
+    conn.execute("""
+        CREATE INDEX IF NOT EXISTS idx_cmd_ts
+        ON command_usage (ts)
+    """)
+    conn.execute("""
+        CREATE INDEX IF NOT EXISTS idx_hpa_ts
+        ON hpa_metrics (context, ts)
+    """)
+    conn.execute("""
+        CREATE INDEX IF NOT EXISTS idx_event_log_ts
+        ON event_log (ts)
     """)
 
     # --- Materialized views (pre-computed aggregates) ---

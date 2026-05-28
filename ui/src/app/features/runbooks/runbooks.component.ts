@@ -5,6 +5,7 @@ import { TagModule } from 'primeng/tag';
 import { ButtonModule } from 'primeng/button';
 import { TooltipModule } from 'primeng/tooltip';
 import { SpotlightComponent } from '../../shared/components/spotlight.component';
+import { PageHeaderComponent } from '../../shared/components/page-header.component';
 
 interface RunbookStep {
   title: string;
@@ -38,18 +39,14 @@ interface Runbook {
 @Component({
   selector: 'app-runbooks',
   standalone: true,
-  imports: [FormsModule, TagModule, ButtonModule, TooltipModule, SpotlightComponent],
+  imports: [FormsModule, TagModule, ButtonModule, TooltipModule, SpotlightComponent, PageHeaderComponent],
   template: `
     <app-spotlight id="runbooks" title="Runbooks" icon="pi pi-book"
       description="Step-by-step remediation guides for common issues."
       [capabilities]="['26 playbooks', 'Step-by-step guides', 'Copy commands']" [compact]="true" />
 
-        <div class="page-header">
-      <div>
-        <h1>Runbooks</h1>
-        <p class="subtitle">Guided incident response workflows</p>
-      </div>
-    </div>
+    <app-page-header title="Runbooks" subtitle="Guided incident response workflows">
+    </app-page-header>
 
     <!-- Playbook Selection -->
     @if (!activeRunbook) {

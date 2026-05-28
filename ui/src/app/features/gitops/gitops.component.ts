@@ -5,28 +5,23 @@ import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
 import { PageInfoComponent } from '../../shared/components/page-info.component';
 import { SpotlightComponent } from '../../shared/components/spotlight.component';
+import { PageHeaderComponent } from '../../shared/components/page-header.component';
 
 @Component({
   selector: 'app-gitops',
   standalone: true,
-  imports: [ButtonModule, TagModule, TitleCasePipe, PageInfoComponent, SpotlightComponent],
+  imports: [ButtonModule, TagModule, TitleCasePipe, PageInfoComponent, SpotlightComponent, PageHeaderComponent],
   template: `
     <app-spotlight id="gitops" title="GitOps Status" icon="pi pi-sync"
       description="ArgoCD/Flux sync status, drift detection, and deployment tracking."
       [capabilities]="['Sync status', 'Drift detection', 'Revision tracking', 'Health monitoring']" [compact]="true" />
 
-    <div class="page-header">
-      <div>
-        <h1>GitOps Status</h1>
-        <p class="subtitle">{{ data?.provider ? (data.provider | titlecase) + ' · ' + data.total + ' apps' : 'Detecting GitOps provider...' }} · {{ lastUpdated }}</p>
-      </div>
-      <div class="header-actions">
+    <app-page-header title="GitOps Status" [subtitle]="data?.provider ? (data.provider | titlecase) + ' · ' + data.total + ' apps · ' + lastUpdated : 'Detecting GitOps provider...'">
         <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="refresh()" [loading]="loading"></button>
-      </div>
-      <app-page-info title="GitOps" description="Shows ArgoCD or Flux application sync status, health, and drift detection."
-        [tips]="['Green = synced with Git', 'Yellow = drifted from desired state', 'Click app name for details']"
-        [commands]="['gitops', 'gitops <app>', 'argocd', 'flux']" />
-    </div>
+        <app-page-info title="GitOps" description="Shows ArgoCD or Flux application sync status, health, and drift detection."
+          [tips]="['Green = synced with Git', 'Yellow = drifted from desired state', 'Click app name for details']"
+          [commands]="['gitops', 'gitops <app>', 'argocd', 'flux']" />
+    </app-page-header>
 
     @if (data && !data.provider) {
       <div class="empty-state">

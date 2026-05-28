@@ -11,31 +11,24 @@ import { PageInfoComponent } from '../../shared/components/page-info.component';
 import { SpotlightComponent } from '../../shared/components/spotlight.component';
 import { RelatedPagesComponent } from '../../shared/components/related-pages.component';
 import { SkeletonComponent } from '../../shared/components/skeleton.component';
+import { PageHeaderComponent } from '../../shared/components/page-header.component';
 
 @Component({
   selector: 'app-analytics',
   standalone: true,
-  imports: [ButtonModule, TagModule, TabsModule, ChartModule, TooltipModule, FormsModule, DecimalPipe, PageInfoComponent, SpotlightComponent, RelatedPagesComponent, SkeletonComponent],
+  imports: [ButtonModule, TagModule, TabsModule, ChartModule, TooltipModule, FormsModule, DecimalPipe, PageInfoComponent, SpotlightComponent, RelatedPagesComponent, SkeletonComponent, PageHeaderComponent],
   template: `
     <app-spotlight id="analytics" title="Analytics" icon="pi pi-chart-bar"
       description="DuckDB-powered cluster analytics — cost attribution, usage trends, alerts, and custom SQL queries."
       [capabilities]="['Time-series charts', 'Cost per deployment', 'Custom SQL', 'CSV/Parquet export', 'Predictive alerts']" [compact]="true" />
 
-    <div class="page-header">
-      <div>
-        <h1>Analytics</h1>
-        <p class="subtitle">
-          @if (stats) { {{ stats.raw_rows + stats.hourly_rows + stats.daily_rows | number }} rows · {{ stats.db_size_mb }}MB }
-        </p>
-      </div>
-      <div class="header-actions">
+    <app-page-header title="Analytics" [subtitle]="stats ? (stats.raw_rows + stats.hourly_rows + stats.daily_rows) + ' rows · ' + stats.db_size_mb + 'MB' : ''">
         <button pButton icon="pi pi-database" label="Collect Now" class="p-button-outlined p-button-sm" (click)="collectNow()" [loading]="collecting"></button>
         <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="refresh()" [loading]="loading"></button>
         <app-page-info title="Analytics" description="DuckDB-backed analytics engine. Auto-collects every 5 min."
           [tips]="['Charts tab shows time-series from DuckDB', 'SQL tab for ad-hoc queries', 'Export to CSV or Parquet']"
           [commands]="['analytics', 'collect', 'cost-query', 'predict', 'capacity-plan']" />
-      </div>
-    </div>
+    </app-page-header>
 
     @if (loading && !stats) {
       <div class="loading"><app-skeleton variant="stats" /><app-skeleton variant="card" /></div>

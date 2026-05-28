@@ -6,23 +6,20 @@ import { TagModule } from 'primeng/tag';
 import { TooltipModule } from 'primeng/tooltip';
 import { PreferencesService } from '../../core/services/preferences.service';
 import { SpotlightComponent } from '../../shared/components/spotlight.component';
+import { PageHeaderComponent } from '../../shared/components/page-header.component';
 import { ConfirmService } from '../../shared/services/confirm.service';
 
 @Component({
   selector: 'app-settings',
   standalone: true,
-  imports: [FormsModule, ButtonModule, TagModule, TooltipModule, SpotlightComponent],
+  imports: [FormsModule, ButtonModule, TagModule, TooltipModule, SpotlightComponent, PageHeaderComponent],
   template: `
     <app-spotlight id="settings" title="Settings" icon="pi pi-cog"
       description="Configure theme, refresh intervals, and preferences."
       [capabilities]="['Theme selection', 'Refresh intervals', 'Shortcuts reference', 'Data management']" [compact]="true" />
 
-    <div class="page-header">
-      <div>
-        <h1>Settings</h1>
-        <p class="subtitle">Customize your workspace</p>
-      </div>
-    </div>
+    <app-page-header title="Settings" subtitle="Customize your workspace">
+    </app-page-header>
 
     <div class="settings-grid">
       <!-- Left: Settings -->

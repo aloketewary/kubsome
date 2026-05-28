@@ -5,29 +5,24 @@ import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
 import { PageInfoComponent } from '../../shared/components/page-info.component';
 import { SpotlightComponent } from '../../shared/components/spotlight.component';
+import { PageHeaderComponent } from '../../shared/components/page-header.component';
 import { RelatedPagesComponent } from '../../shared/components/related-pages.component';
 
 @Component({
   selector: 'app-health-signals',
   standalone: true,
-  imports: [ButtonModule, TagModule, PageInfoComponent, SpotlightComponent, RelatedPagesComponent],
+  imports: [ButtonModule, TagModule, PageInfoComponent, SpotlightComponent, RelatedPagesComponent, PageHeaderComponent],
   template: `
     <app-spotlight id="health-signals" title="Health Signals" icon="pi pi-wave-pulse"
       description="Cluster-wide health signals — OOMKills, HPA pressure, quota usage, and rollout state."
       [capabilities]="['OOMKill detection', 'HPA scaling pressure', 'Quota saturation', 'Stalled rollouts']" [compact]="true" />
 
-    <div class="page-header">
-      <div>
-        <h1>Health Signals</h1>
-        <p class="subtitle">{{ lastUpdated || 'Loading...' }}</p>
-      </div>
-      <div class="header-actions">
+    <app-page-header title="Health Signals" [subtitle]="lastUpdated || 'Loading...'">
         <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="refresh()" [loading]="loading"></button>
-      </div>
-      <app-page-info title="Health Signals" description="Aggregated health signals from enriched monitoring — OOMKills, HPA scaling limits, resource quota pressure, and deployment rollout issues."
-        [tips]="['Red = immediate attention needed', 'Yellow = trending toward issue', 'Data collected every 5 min']"
-        [commands]="['signals', 'oomkills', 'hpa', 'quotas']" />
-    </div>
+        <app-page-info title="Health Signals" description="Aggregated health signals from enriched monitoring — OOMKills, HPA scaling limits, resource quota pressure, and deployment rollout issues."
+          [tips]="['Red = immediate attention needed', 'Yellow = trending toward issue', 'Data collected every 5 min']"
+          [commands]="['signals', 'oomkills', 'hpa', 'quotas']" />
+    </app-page-header>
 
     <!-- Summary Cards -->
     @if (signals) {

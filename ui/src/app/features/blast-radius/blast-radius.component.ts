@@ -5,22 +5,19 @@ import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
 import { SpotlightComponent } from '../../shared/components/spotlight.component';
+import { PageHeaderComponent } from '../../shared/components/page-header.component';
 
 @Component({
   selector: 'app-blast-radius',
   standalone: true,
-  imports: [ButtonModule, TagModule, FormsModule, UpperCasePipe, SpotlightComponent],
+  imports: [ButtonModule, TagModule, FormsModule, UpperCasePipe, SpotlightComponent, PageHeaderComponent],
   template: `
     <app-spotlight id="blast-radius" title="Blast Radius" icon="pi pi-exclamation-circle"
       description="Analyze impact before destructive operations — what breaks if you touch this?"
       [capabilities]="['Service dependency mapping', 'PDB violation check', 'Risk scoring 1-10', 'Actionable recommendations']" [compact]="true" />
 
-    <div class="page-header">
-      <div>
-        <h1>Blast Radius Analysis</h1>
-        <p class="subtitle">Understand impact before you act</p>
-      </div>
-    </div>
+    <app-page-header title="Blast Radius Analysis" subtitle="Understand impact before you act">
+    </app-page-header>
 
     <!-- Input -->
     <div class="input-section">

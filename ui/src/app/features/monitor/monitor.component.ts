@@ -11,6 +11,7 @@ import { TooltipModule } from 'primeng/tooltip';
 import { DialogModule } from 'primeng/dialog';
 import { SpotlightComponent } from '../../shared/components/spotlight.component';
 import { SkeletonComponent } from '../../shared/components/skeleton.component';
+import { PageHeaderComponent } from '../../shared/components/page-header.component';
 
 interface ActionEntry {
   time: string;
@@ -43,22 +44,16 @@ interface MonitorCard {
 @Component({
   selector: 'app-monitor',
   standalone: true,
-  imports: [FormsModule, SlicePipe, Select, ButtonModule, TagModule, TooltipModule, DialogModule, SpotlightComponent, SkeletonComponent],
+  imports: [FormsModule, SlicePipe, Select, ButtonModule, TagModule, TooltipModule, DialogModule, SpotlightComponent, SkeletonComponent, PageHeaderComponent],
   template: `
     <app-spotlight id="monitor" title="Multi-Cluster Monitor" icon="pi pi-desktop"
       description="Add cards to watch cluster or app health. Configure alerts, perform actions, and track activity across environments."
       [capabilities]="['Monitor cluster-wide or specific app', 'Auto-refresh with configurable intervals', 'Health alerts with browser notifications', 'Restart and scale from the dialog', 'Drag to reorder cards']" [compact]="true" />
 
-    <div class="page-header">
-      <div>
-        <h1>Monitor</h1>
-        <p class="subtitle">{{ cards.length }} card{{ cards.length !== 1 ? 's' : '' }} · Multi-cluster overview</p>
-      </div>
-      <div class="header-actions">
+    <app-page-header title="Monitor" [subtitle]="cards.length + ' card' + (cards.length !== 1 ? 's' : '') + ' · Multi-cluster overview'">
         <button pButton icon="pi pi-refresh" label="Refresh All" class="p-button-sm p-button-outlined" (click)="refreshAll()"></button>
         <button pButton icon="pi pi-plus" label="Add" class="p-button-sm" (click)="addCard()"></button>
-      </div>
-    </div>
+    </app-page-header>
 
     <!-- Global Health Strip -->
     @if (cards.length > 0 && loadedCards > 0) {

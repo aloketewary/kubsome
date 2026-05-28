@@ -18,6 +18,7 @@ import { LogTerminalComponent } from '../../shared/components/log-terminal.compo
 import { ShellTerminalComponent } from '../../shared/components/shell-terminal.component';
 import { SpotlightComponent } from '../../shared/components/spotlight.component';
 import { SkeletonComponent } from '../../shared/components/skeleton.component';
+import { PageHeaderComponent } from '../../shared/components/page-header.component';
 
 interface PodGroup {
   deployment: string;
@@ -31,19 +32,14 @@ interface PodGroup {
 @Component({
   selector: 'app-pods',
   standalone: true,
-  imports: [JsonPipe, TagModule, ButtonModule, TooltipModule, DialogModule, InputTextModule, FormsModule, PodDrawerComponent, PageInfoComponent, AiInsightDrawerComponent, LogTerminalComponent, ShellTerminalComponent, SpotlightComponent, SkeletonComponent],
+  imports: [JsonPipe, TagModule, ButtonModule, TooltipModule, DialogModule, InputTextModule, FormsModule, PodDrawerComponent, PageInfoComponent, AiInsightDrawerComponent, LogTerminalComponent, ShellTerminalComponent, SpotlightComponent, SkeletonComponent, PageHeaderComponent],
   template: `
     <app-spotlight id="pods" title="Pod Management" icon="pi pi-box"
       description="View, inspect, and diagnose pods grouped by deployment. Select pods for combined log views."
       [capabilities]="['Click pod name to open detail drawer', 'Multi-select for combined logcat', 'AI-powered diagnosis per pod', 'Live streaming via WebSocket', 'Grouped by deployment with health bars']" [compact]="true" />
 
     <!-- Header -->
-    <div class="page-header">
-      <div>
-        <h1>Pods</h1>
-        <p class="subtitle">{{ pods.length }} pods across {{ filteredGroups.length }} deployments</p>
-      </div>
-      <div class="header-actions">
+    <app-page-header title="Pods" [subtitle]="pods.length + ' pods across ' + filteredGroups.length + ' deployments'">
         <div class="search-wrap">
           <i class="pi pi-search"></i>
           <input pInputText [(ngModel)]="searchQuery" placeholder="Filter..." (ngModelChange)="filterGroups()" />
@@ -57,8 +53,7 @@ interface PodGroup {
           [tips]="['Click pod name to open detail drawer', 'Select multiple pods for combined logs', 'Red border = unhealthy deployment', 'Watch mode streams live updates']"
           [commands]="['pods', 'pods watch', 'inspect <pod>', 'diagnose <pod>', 'logs <pod>']"
           [shortcuts]="[{key: 'G+P', action: 'Navigate to Pods'}]" />
-      </div>
-    </div>
+    </app-page-header>
 
     <!-- Summary Strip + Status Filters -->
     <div class="summary-strip">
