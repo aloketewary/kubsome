@@ -13,7 +13,7 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
   template: `
     <div class="sidebar-header" [class.header-mini]="collapsed">
       <div class="ctx-block" [class.glass]="!collapsed">
-        <div class="ctx-dot" [class.dot-ok]="clusterOk" [class.dot-bad]="!clusterOk"></div>
+        <div class="ctx-dot" [class.dot-ok]="clusterOk" [class.dot-bad]="!clusterOk" role="status" [attr.aria-label]="clusterOk ? 'Cluster connected' : 'Cluster unreachable'"></div>
         @if (!collapsed) {
           <div class="ctx-info">
             <span class="ctx-name">{{ currentContext }}</span>
@@ -154,11 +154,13 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
     </div>
 
     @if (helpVisible) {
-      <div class="help-overlay" (click)="helpVisible = false">
-        <div class="help-modal" (click)="$event.stopPropagation()">
+      <div class="help-overlay" (click)="helpVisible = false" (keydown.escape)="helpVisible = false">
+        <div class="help-modal" role="dialog" aria-modal="true" aria-label="Kubsome Help" (click)="$event.stopPropagation()">
           <div class="help-header">
-            <span>Kubsome Help</span>
-            <button class="help-close" (click)="helpVisible = false"><i class="pi pi-times"></i></button>
+            <span id="help-dialog-title">Kubsome Help</span>
+            <button class="help-close" (click)="helpVisible = false" aria-label="Close help dialog" #helpCloseBtn>
+              <i class="pi pi-times"></i>
+            </button>
           </div>
           <div class="help-body">
             <app-help-dialog />
@@ -365,6 +367,7 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
       cursor: pointer; padding: 4px; border-radius: 4px;
     }
     .help-close:hover { background: var(--bg-hover); color: var(--text); }
+    .help-close:focus-visible { outline: none; background: var(--bg-hover); color: var(--text); box-shadow: 0 0 0 2px var(--accent); }
     .help-body { padding: 20px; overflow-y: auto; }
   `],
 })
