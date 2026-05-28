@@ -36,3 +36,23 @@ As a Product Growth Manager for Kubsome, I have identified and implemented the f
 **Observation:** Open debugging sessions (incidents) were easily forgotten if the user navigated away.
 **Improvement:** Added a "Resume Active Incident" nudge to the main dashboard when an incident is in progress.
 **Growth Impact:** Increases retention by pulling users back into their active workflows, ensuring Kubsome remains the "source of truth" for the duration of a cluster issue.
+
+## 8. ROI Visibility: Achievement Milestones
+**Observation:** Value realization (ROI) was hidden in the Stats page.
+**Improvement:** Added an "ROI Milestone" insight pill to the Dashboard that appears when the user saves more than 1 hour of manual work.
+**Growth Impact:** Provides immediate positive reinforcement of the tool's value, increasing long-term retention and "stickiness" among power users.
+
+## 9. Contextual Awareness: 24h Activity Summary
+**Observation:** Users often start their day wondering "what happened while I was away?"
+**Improvement:** Added a "24h Activity" summary pill to the Dashboard, highlighting recent restarts and deployments.
+**Growth Impact:** Drives daily active usage (DAU) by positioning the dashboard as the essential "morning briefing" for cluster health.
+
+## 10. Feature Discovery: Dynamic Pro Tips
+**Observation:** Advanced features like Scorecard and Security Scan were underutilized based on telemetry.
+**Improvement:** Implemented dynamic "Pro Tip" nudges that suggest high-value features if they haven't been used recently, tailored to the user's actual behavior.
+**Growth Impact:** Increases feature breadth and depth of engagement, turning casual users into advanced operators.
+
+## 11. Frictionless Remediation: AI-Linked Recommendations
+**Observation:** Scorecard recommendations required manual effort to execute.
+**Improvement:** Added "Run with AI" buttons to Scorecard recommendations, deep-linking directly to the AI Assistant with the suggested action.
+**Growth Impact:** Shortens the path from "insight" to "action," dramatically increasing the conversion rate of health recommendations into actual cluster improvements.
