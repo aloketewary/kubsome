@@ -19,7 +19,6 @@ import { PageHeaderComponent } from '../../shared/components/page-header.compone
         </select>
         <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm" (click)="load()" [loading]="loading"></button>
     </app-page-header>
-    </div>
 
     <!-- Summary Cards -->
     @if (summary && Object.keys(summary).length > 0) {

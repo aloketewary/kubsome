@@ -19,7 +19,6 @@ import { PageHeaderComponent } from '../../shared/components/page-header.compone
         <button pButton icon="pi pi-stop" label="Stop All" class="p-button-outlined p-button-sm p-button-danger" (click)="stopAll()" [disabled]="!forwards.length"></button>
         <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="refresh()"></button>
     </app-page-header>
-    </div>
 
     <!-- New Forward Form -->
     <div class="new-forward">

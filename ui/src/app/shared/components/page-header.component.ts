@@ -1,5 +1,23 @@
 import { Component, Input } from '@angular/core';
 
+/**
+ * Shared page header component — standardizes layout, typography,
+ * and responsive behavior across all feature pages.
+ *
+ * Usage:
+ *   <app-page-header title="Pods" [subtitle]="pods.length + ' pods'">
+ *     <button pButton icon="pi pi-refresh" (click)="refresh()"></button>
+ *   </app-page-header>
+ *
+ * Actions are projected via <ng-content> — supports any buttons,
+ * search inputs, dropdowns, or custom controls.
+ *
+ * Exempted pages (custom headers due to specialized controls):
+ *   - gateway-monitor: interval config, column config, fullscreen, live streaming
+ *   - graph: canvas zoom/pan controls, layout toggles
+ *   - custom-dashboard: drag-and-drop widget builder, layout mode switcher
+ */
+
 @Component({
   selector: 'app-page-header',
   standalone: true,

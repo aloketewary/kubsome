@@ -14,7 +14,6 @@ import { PageHeaderComponent } from '../../shared/components/page-header.compone
     <app-page-header title="Schedules" subtitle="Recurring command sequences (cron-like)">
       <button pButton icon="pi pi-plus" label="New Schedule" class="p-button-sm" (click)="showForm = !showForm"></button>
     </app-page-header>
-    </div>
 
     <!-- Add Form -->
     @if (showForm) {

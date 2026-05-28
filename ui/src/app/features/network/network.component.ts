@@ -24,7 +24,6 @@ import { PageHeaderComponent } from '../../shared/components/page-header.compone
         </button>
         <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="load()" pTooltip="Refresh" [loading]="loading"></button>
     </app-page-header>
-    </div>
 
     <!-- Summary -->
     <div class="summary-strip">
