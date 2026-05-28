@@ -11,22 +11,18 @@ import { Deployment } from '../../core/models';
 import { ConfirmService } from '../../shared/services/confirm.service';
 import { AiInsightDrawerComponent } from '../../shared/components/ai-insight-drawer.component';
 import { SpotlightComponent } from '../../shared/components/spotlight.component';
+import { PageHeaderComponent } from '../../shared/components/page-header.component';
 
 @Component({
   selector: 'app-deployments',
   standalone: true,
-  imports: [TagModule, ButtonModule, TooltipModule, DialogModule, FormsModule, InputTextModule, AiInsightDrawerComponent, SpotlightComponent],
+  imports: [TagModule, ButtonModule, TooltipModule, DialogModule, FormsModule, InputTextModule, AiInsightDrawerComponent, SpotlightComponent, PageHeaderComponent],
   template: `
     <app-spotlight id="deployments" title="Deployments" icon="pi pi-send"
       description="Manage deployments with rollout history, scaling, and rollback."
       [capabilities]="['Rolling restart/rollback', 'Visual replica scaling', 'Rollout history', 'AI diagnosis']" [compact]="true" />
 
-        <div class="page-header">
-      <div>
-        <h1>Deployments</h1>
-        <p class="subtitle">{{ deployments.length }} deployments in namespace · {{ lastUpdated }}</p>
-      </div>
-      <div class="header-actions">
+    <app-page-header title="Deployments" [subtitle]="deployments.length + ' deployments in namespace · ' + lastUpdated">
         <button class="ar-btn" [class.ar-active]="autoRefresh" (click)="toggleAutoRefresh()" [pTooltip]="autoRefresh ? 'Auto-refresh on (30s)' : 'Auto-refresh off'">
           <i class="pi" [class.pi-sync]="autoRefresh" [class.pi-pause]="!autoRefresh"></i>
         </button>
@@ -35,8 +31,7 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
           <input pInputText [(ngModel)]="searchQuery" placeholder="Filter..." (ngModelChange)="filter()" />
         </div>
         <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="refresh()" pTooltip="Refresh" [loading]="loading"></button>
-      </div>
-    </div>
+    </app-page-header>
 
     <!-- Summary -->
     <div class="summary-strip">
@@ -162,10 +157,7 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     </p-dialog>
   `,
   styles: [`
-    .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; }
-    .page-header h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.03em; }
-    .subtitle { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
-    .header-actions { display: flex; align-items: center; gap: 8px; }
+
     .ar-btn {
       width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--border);
       background: var(--bg-card); color: var(--text-muted); cursor: pointer; transition: all 0.15s;
@@ -264,10 +256,7 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
       background: var(--bg-card); border: 1px solid var(--danger); border-radius: var(--radius);
     }
     .error-state i { font-size: 24px; color: var(--danger); }
-    @media (max-width: 768px) {
-      .page-header { flex-direction: column; gap: 12px; }
-      .header-actions { flex-wrap: wrap; }
-    }
+    @media (max-width: 768px) { }
   `],
 })
 export class DeploymentsComponent implements OnInit, OnDestroy {

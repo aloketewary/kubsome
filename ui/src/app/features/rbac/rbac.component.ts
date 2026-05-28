@@ -6,27 +6,23 @@ import { TooltipModule } from 'primeng/tooltip';
 import { FormsModule } from '@angular/forms';
 import { InputTextModule } from 'primeng/inputtext';
 import { SpotlightComponent } from '../../shared/components/spotlight.component';
+import { PageHeaderComponent } from '../../shared/components/page-header.component';
 
 @Component({
   selector: 'app-rbac',
   standalone: true,
-  imports: [TagModule, ButtonModule, TooltipModule, FormsModule, InputTextModule, SpotlightComponent],
+  imports: [TagModule, ButtonModule, TooltipModule, FormsModule, InputTextModule, SpotlightComponent, PageHeaderComponent],
   template: `
     <app-spotlight id="rbac" title="RBAC" icon="pi pi-lock"
       description="View role bindings and access control configuration."
       [capabilities]="['Role bindings', 'Service accounts', 'Permission overview']" [compact]="true" />
 
-        <div class="page-header">
-      <div>
-        <h1>RBAC</h1>
-        <p class="subtitle">Access control bindings · {{ lastUpdated }}</p>
-      </div>
-      <div class="header-actions">
+    <app-page-header title="RBAC" [subtitle]="'Access control bindings · ' + lastUpdated">
         <button class="ar-btn" [class.ar-active]="autoRefresh" (click)="toggleAutoRefresh()" [pTooltip]="autoRefresh ? 'Auto-refresh on (30s)' : 'Auto-refresh off'">
           <i class="pi" [class.pi-sync]="autoRefresh" [class.pi-pause]="!autoRefresh"></i>
         </button>
         <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="load()" pTooltip="Refresh" [loading]="loading"></button>
-      </div>
+    </app-page-header>
     </div>
 
     <!-- Summary -->
@@ -151,8 +147,7 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     </div>
   `,
   styles: [`
-    .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; }
-    .page-header h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.03em; }
+
     .subtitle { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
     .header-actions { display: flex; align-items: center; gap: 8px; }
     .ar-btn {
@@ -284,8 +279,6 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     }
     .empty-state i { font-size: 16px; opacity: 0.5; }
     @media (max-width: 768px) {
-      .page-header { flex-direction: column; gap: 12px; }
-      .header-actions { flex-wrap: wrap; }
       .summary-strip { flex-wrap: wrap; }
     }
   `],

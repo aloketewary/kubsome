@@ -74,10 +74,7 @@ import { PageHeaderComponent } from '../../shared/components/page-header.compone
     }
   `,
   styles: [`
-    .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px; }
-    .page-header h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.03em; }
-    .subtitle { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
-    .header-actions { display: flex; align-items: center; gap: 8px; }
+
     .filter-select {
       padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border);
       background: var(--bg-elevated); color: var(--text); font-size: 12px; outline: none;
@@ -149,10 +146,7 @@ import { PageHeaderComponent } from '../../shared/components/page-header.compone
     }
     .empty-state h3 { font-size: 16px; font-weight: 600; color: var(--text); margin: 0; }
     .empty-state p { font-size: 13px; margin: 0; }
-    @media (max-width: 768px) {
-      .page-header { flex-direction: column; gap: 12px; }
-      .summary-row { flex-wrap: wrap; }
-    }
+
   `],
 })
 export class AuditComponent implements OnInit {

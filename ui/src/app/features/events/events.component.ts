@@ -8,6 +8,7 @@ import { ApiService } from '../../core/services/api.service';
 import { WsService } from '../../core/services/ws.service';
 import { KubeEvent } from '../../core/models';
 import { SpotlightComponent } from '../../shared/components/spotlight.component';
+import { PageHeaderComponent } from '../../shared/components/page-header.component';
 import { SkeletonComponent } from '../../shared/components/skeleton.component';
 import { TrendChartComponent } from '../../shared/components/trend-chart.component';
 
@@ -21,7 +22,7 @@ interface HeatmapCell {
 @Component({
   selector: 'app-events',
   standalone: true,
-  imports: [TagModule, ButtonModule, TooltipModule, FormsModule, SpotlightComponent, TrendChartComponent, SkeletonComponent],
+  imports: [TagModule, ButtonModule, TooltipModule, FormsModule, SpotlightComponent, TrendChartComponent, SkeletonComponent, PageHeaderComponent],
   template: `
     <app-spotlight id="events" title="Cluster Events" icon="pi pi-bolt"
       description="Real-time Kubernetes events. Filter by type to spot issues."
@@ -61,12 +62,7 @@ interface HeatmapCell {
       [datasets]="[{label: 'Events', field: 'count', color: '#f59e0b', fill: false}]" />
 
         <!-- Header -->
-    <div class="page-header">
-      <div>
-        <h1>Events</h1>
-        <p class="subtitle">{{ filteredEvents.length }} events · {{ warningCount }} warnings</p>
-      </div>
-      <div class="header-actions">
+    <app-page-header title="Events" [subtitle]="filteredEvents.length + ' events · ' + warningCount + ' warnings'">
         <button class="ar-btn" [class.ar-active]="autoRefresh" (click)="toggleAutoRefresh()" [pTooltip]="autoRefresh ? 'Auto-refresh on (30s)' : 'Auto-refresh off'">
           <i class="pi" [class.pi-sync]="autoRefresh" [class.pi-pause]="!autoRefresh"></i>
         </button>
@@ -75,8 +71,7 @@ interface HeatmapCell {
           {{ watching ? 'Live' : 'Watch' }}
         </button>
         <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="refresh()" pTooltip="Refresh" [loading]="loading"></button>
-      </div>
-    </div>
+    </app-page-header>
 
     <!-- Summary + Filters -->
     <div class="controls-bar">
@@ -185,10 +180,7 @@ interface HeatmapCell {
     .heatmap-labels { display: flex; justify-content: space-between; margin-top: 4px; font-size: 9px; color: var(--text-muted); }
 
     /* Header */
-    .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; }
-    .page-header h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.03em; }
-    .subtitle { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
-    .header-actions { display: flex; align-items: center; gap: 8px; }
+
     .ar-btn {
       width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--border);
       background: var(--bg-card); color: var(--text-muted); cursor: pointer; transition: all 0.15s;
@@ -308,8 +300,6 @@ interface HeatmapCell {
     }
     .empty-state i { font-size: 28px; opacity: 0.3; }
     @media (max-width: 768px) {
-      .page-header { flex-direction: column; gap: 12px; }
-      .header-actions { flex-wrap: wrap; }
       .summary-strip { flex-wrap: wrap; }
     }
   `],

@@ -2,19 +2,16 @@ import { Component, inject, OnInit } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
+import { PageHeaderComponent } from '../../shared/components/page-header.component';
 
 @Component({
   selector: 'app-policy',
   standalone: true,
-  imports: [ButtonModule, TagModule],
+  imports: [ButtonModule, TagModule, PageHeaderComponent],
   template: `
-    <div class="page-header">
-      <div>
-        <h1>Policy Check</h1>
-        <p class="subtitle">Cluster guardrails and compliance · {{ lastChecked }}</p>
-      </div>
+    <app-page-header title="Policy Check" [subtitle]="'Cluster guardrails and compliance · ' + lastChecked">
       <button pButton icon="pi pi-refresh" label="Scan" class="p-button-outlined p-button-sm" (click)="load()" [loading]="loading"></button>
-    </div>
+    </app-page-header>
 
     <!-- Score Banner -->
     @if (data) {
@@ -90,9 +87,7 @@ import { TagModule } from 'primeng/tag';
     }
   `,
   styles: [`
-    .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px; }
-    .page-header h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.03em; }
-    .subtitle { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+
 
     .score-banner {
       display: flex; align-items: center; gap: 20px;
@@ -163,7 +158,6 @@ import { TagModule } from 'primeng/tag';
     .empty-state p { font-size: 13px; margin: 0; }
     .empty-state code { font-family: 'JetBrains Mono', monospace; font-size: 12px; background: var(--bg-elevated); padding: 2px 6px; border-radius: 4px; }
     @media (max-width: 768px) {
-      .page-header { flex-direction: column; gap: 12px; }
       .score-banner { flex-direction: column; gap: 12px; }
       .score-stats { flex-wrap: wrap; }
     }

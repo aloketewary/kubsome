@@ -8,31 +8,26 @@ import { ChartModule } from 'primeng/chart';
 import { ApiService } from '../../core/services/api.service';
 import { PodMetrics, NodeMetrics } from '../../core/models';
 import { SpotlightComponent } from '../../shared/components/spotlight.component';
+import { PageHeaderComponent } from '../../shared/components/page-header.component';
 import { SkeletonComponent } from '../../shared/components/skeleton.component';
 
 @Component({
   selector: 'app-metrics',
   standalone: true,
-  imports: [FormsModule, TagModule, ButtonModule, TooltipModule, ChartModule, SpotlightComponent, SkeletonComponent],
+  imports: [FormsModule, TagModule, ButtonModule, TooltipModule, ChartModule, SpotlightComponent, SkeletonComponent, PageHeaderComponent],
   template: `
     <app-spotlight id="metrics" title="Metrics" icon="pi pi-chart-bar"
       description="CPU and memory usage for pods and nodes."
       [capabilities]="['Pod CPU/memory', 'Node pressure', 'Sortable tables', 'Auto-refresh']" [compact]="true" />
 
-    <div class="page-header">
-      <div>
-        <h1>Metrics</h1>
-        <p class="subtitle">Resource consumption across cluster · {{ lastUpdated || 'Loading...' }}</p>
-      </div>
-      <div class="header-actions">
+    <app-page-header title="Metrics" [subtitle]="'Resource consumption across cluster · ' + (lastUpdated || 'Loading...')">
         <div class="auto-refresh-toggle">
           <button class="ar-btn" [class.ar-active]="autoRefresh" (click)="toggleAutoRefresh()" [pTooltip]="autoRefresh ? 'Auto-refresh on (30s)' : 'Auto-refresh off'">
             <i class="pi" [class.pi-sync]="autoRefresh" [class.pi-pause]="!autoRefresh"></i>
           </button>
         </div>
         <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="refresh()" pTooltip="Refresh" [loading]="loading"></button>
-      </div>
-    </div>
+    </app-page-header>
 
     <!-- Trend Chart -->
     @if (trendChart) {
@@ -161,10 +156,7 @@ import { SkeletonComponent } from '../../shared/components/skeleton.component';
     </div>
   `,
   styles: [`
-    .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px; }
-    .page-header h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.03em; }
-    .subtitle { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
-    .header-actions { display: flex; align-items: center; gap: 8px; }
+
     .ar-btn {
       width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--border);
       background: var(--bg-card); color: var(--text-muted); cursor: pointer; transition: all 0.15s;
@@ -291,8 +283,6 @@ import { SkeletonComponent } from '../../shared/components/skeleton.component';
     .empty-hint { font-size: 11px; opacity: 0.6; }
     .trend-section { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 16px; }
     @media (max-width: 768px) {
-      .page-header { flex-direction: column; gap: 12px; }
-      .header-actions { flex-wrap: wrap; }
       .metrics-grid { grid-template-columns: repeat(2, 1fr); }
     }
   `],

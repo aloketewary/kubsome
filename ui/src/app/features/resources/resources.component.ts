@@ -7,26 +7,21 @@ import { InputTextModule } from 'primeng/inputtext';
 import { TooltipModule } from 'primeng/tooltip';
 import { TagModule } from 'primeng/tag';
 import { SpotlightComponent } from '../../shared/components/spotlight.component';
+import { PageHeaderComponent } from '../../shared/components/page-header.component';
 
 @Component({
   selector: 'app-resources',
   standalone: true,
-  imports: [FormsModule, ButtonModule, Select, InputTextModule, TooltipModule, TagModule, SpotlightComponent],
+  imports: [FormsModule, ButtonModule, Select, InputTextModule, TooltipModule, TagModule, SpotlightComponent, PageHeaderComponent],
   template: `
     <app-spotlight id="resources" title="Resources" icon="pi pi-database"
       description="Browse all Kubernetes resource types with describe views."
       [capabilities]="['Multi-resource browser', 'Describe view', 'YAML output']" [compact]="true" />
 
         <!-- Header -->
-    <div class="page-header">
-      <div>
-        <h1>Resources</h1>
-        <p class="subtitle">Browse & describe Kubernetes resources</p>
-      </div>
-      <div class="header-actions">
+    <app-page-header title="Resources" subtitle="Browse & describe Kubernetes resources">
         <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="listResources()" pTooltip="Refresh"></button>
-      </div>
-    </div>
+    </app-page-header>
 
     <!-- Controls -->
     <div class="summary-strip">
@@ -153,10 +148,7 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     }
   `,
   styles: [`
-    .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; }
-    .page-header h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.03em; }
-    .subtitle { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
-    .header-actions { display: flex; align-items: center; gap: 8px; }
+
 
     .summary-strip {
       display: flex; align-items: center; gap: 12px;
@@ -270,8 +262,6 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     .spin { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
     @media (max-width: 768px) {
-      .page-header { flex-direction: column; gap: 12px; }
-      .header-actions { flex-wrap: wrap; }
       .resource-grid { grid-template-columns: 1fr; }
     }
   `],

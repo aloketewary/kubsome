@@ -7,27 +7,23 @@ import { ButtonModule } from 'primeng/button';
 import { TooltipModule } from 'primeng/tooltip';
 import { InputTextModule } from 'primeng/inputtext';
 import { SpotlightComponent } from '../../shared/components/spotlight.component';
+import { PageHeaderComponent } from '../../shared/components/page-header.component';
 
 @Component({
   selector: 'app-network',
   standalone: true,
-  imports: [FormsModule, JsonPipe, TagModule, ButtonModule, TooltipModule, InputTextModule, SpotlightComponent],
+  imports: [FormsModule, JsonPipe, TagModule, ButtonModule, TooltipModule, InputTextModule, SpotlightComponent, PageHeaderComponent],
   template: `
     <app-spotlight id="network" title="Network" icon="pi pi-globe"
       description="Inspect network policies, services, and connectivity."
       [capabilities]="['Network policies', 'Service endpoints', 'Ingress routes', 'DNS debug']" [compact]="true" />
 
-        <div class="page-header">
-      <div>
-        <h1>Network</h1>
-        <p class="subtitle">Ingress routing, DNS, and service mesh · {{ lastUpdated }}</p>
-      </div>
-      <div class="header-actions">
+    <app-page-header title="Network" [subtitle]="'Ingress routing, DNS, and service mesh · ' + lastUpdated">
         <button class="ar-btn" [class.ar-active]="autoRefresh" (click)="toggleAutoRefresh()" [pTooltip]="autoRefresh ? 'Auto-refresh on (30s)' : 'Auto-refresh off'">
           <i class="pi" [class.pi-sync]="autoRefresh" [class.pi-pause]="!autoRefresh"></i>
         </button>
         <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="load()" pTooltip="Refresh" [loading]="loading"></button>
-      </div>
+    </app-page-header>
     </div>
 
     <!-- Summary -->
@@ -242,8 +238,7 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     </div>
   `,
   styles: [`
-    .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; }
-    .page-header h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.03em; }
+
     .subtitle { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
     .header-actions { display: flex; align-items: center; gap: 8px; }
     .ar-btn {
@@ -385,8 +380,6 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     }
     .empty-state i { font-size: 16px; opacity: 0.5; }
     @media (max-width: 768px) {
-      .page-header { flex-direction: column; gap: 12px; }
-      .header-actions { flex-wrap: wrap; }
       .summary-strip { flex-wrap: wrap; }
     }
   `],

@@ -4,18 +4,16 @@ import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
 import { TooltipModule } from 'primeng/tooltip';
+import { PageHeaderComponent } from '../../shared/components/page-header.component';
 
 @Component({
   selector: 'app-schedule',
   standalone: true,
-  imports: [FormsModule, ButtonModule, TagModule, TooltipModule],
+  imports: [FormsModule, ButtonModule, TagModule, TooltipModule, PageHeaderComponent],
   template: `
-    <div class="page-header">
-      <div>
-        <h1>Schedules</h1>
-        <p class="subtitle">Recurring command sequences (cron-like)</p>
-      </div>
+    <app-page-header title="Schedules" subtitle="Recurring command sequences (cron-like)">
       <button pButton icon="pi pi-plus" label="New Schedule" class="p-button-sm" (click)="showForm = !showForm"></button>
+    </app-page-header>
     </div>
 
     <!-- Add Form -->
@@ -86,9 +84,7 @@ import { TooltipModule } from 'primeng/tooltip';
     }
   `,
   styles: [`
-    .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px; }
-    .page-header h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.03em; }
-    .subtitle { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+
 
     .add-form {
       padding: 20px; margin-bottom: 20px;
@@ -157,7 +153,6 @@ import { TooltipModule } from 'primeng/tooltip';
     .empty-state h3 { font-size: 16px; font-weight: 600; color: var(--text); margin: 0; }
     .empty-state p { font-size: 13px; margin: 0; max-width: 400px; text-align: center; }
     @media (max-width: 768px) {
-      .page-header { flex-direction: column; gap: 12px; }
       .form-row { flex-direction: column; }
     }
   `],

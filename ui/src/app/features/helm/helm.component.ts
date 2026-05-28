@@ -3,25 +3,20 @@ import { HttpClient } from '@angular/common/http';
 import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
 import { SpotlightComponent } from '../../shared/components/spotlight.component';
+import { PageHeaderComponent } from '../../shared/components/page-header.component';
 
 @Component({
   selector: 'app-helm',
   standalone: true,
-  imports: [ButtonModule, TagModule, SpotlightComponent],
+  imports: [ButtonModule, TagModule, SpotlightComponent, PageHeaderComponent],
   template: `
     <app-spotlight id="helm" title="Helm Releases" icon="pi pi-box"
       description="Manage Helm releases — status, history, values diff, and rollback."
       [capabilities]="['Release list', 'Revision history', 'Values diff', 'Safe rollback']" [compact]="true" />
 
-    <div class="page-header">
-      <div>
-        <h1>Helm Releases</h1>
-        <p class="subtitle">{{ releases.length }} releases</p>
-      </div>
-      <div class="header-actions">
+    <app-page-header title="Helm Releases" [subtitle]="releases.length + ' releases'">
         <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="refresh()" [loading]="loading"></button>
-      </div>
-    </div>
+    </app-page-header>
 
     @if (!releases.length && !loading) {
       <div class="empty-state"><i class="pi pi-box"></i><h3>No Helm Releases</h3><p>No releases found. Is Helm installed?</p></div>
@@ -93,8 +88,7 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     @if (loading) { <div class="loading"><div class="spin"></div></div> }
   `,
   styles: [`
-    .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px; }
-    .page-header h1 { font-size: 24px; font-weight: 700; }
+
     .subtitle { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
     .header-actions { display: flex; gap: 8px; }
     .releases-table { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
@@ -133,7 +127,6 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     .spin { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
     @media (max-width: 768px) {
-      .page-header { flex-direction: column; gap: 12px; }
       .release-grid { grid-template-columns: 1fr; }
     }
   `],

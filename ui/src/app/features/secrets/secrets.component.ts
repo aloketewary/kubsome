@@ -4,23 +4,20 @@ import { TagModule } from 'primeng/tag';
 import { ButtonModule } from 'primeng/button';
 import { TooltipModule } from 'primeng/tooltip';
 import { SpotlightComponent } from '../../shared/components/spotlight.component';
+import { PageHeaderComponent } from '../../shared/components/page-header.component';
 
 @Component({
   selector: 'app-secrets',
   standalone: true,
-  imports: [TagModule, ButtonModule, TooltipModule, SpotlightComponent],
+  imports: [TagModule, ButtonModule, TooltipModule, SpotlightComponent, PageHeaderComponent],
   template: `
     <app-spotlight id="secrets" title="Secrets & ConfigMaps" icon="pi pi-key"
       description="View and manage secrets and config maps."
       [capabilities]="['Secret listing', 'Base64 decode', 'ConfigMap viewer']" [compact]="true" />
 
-        <div class="page-header">
-      <div>
-        <h1>Pull Secrets</h1>
-        <p class="subtitle">Image registry credential verification · {{ lastScanned }}</p>
-      </div>
+    <app-page-header title="Pull Secrets" [subtitle]="'Image registry credential verification · ' + lastScanned">
       <button pButton icon="pi pi-refresh" label="Scan" class="p-button-outlined p-button-sm" (click)="load()" [loading]="loading"></button>
-    </div>
+    </app-page-header>
 
     @if (data) {
       <!-- Status Hero -->
@@ -153,9 +150,7 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     }
   `,
   styles: [`
-    .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px; }
-    .page-header h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.03em; }
-    .subtitle { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+
 
     /* Status Hero */
     .status-hero {
@@ -265,7 +260,6 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     }
     @keyframes spin { to { transform: rotate(360deg); } }
     @media (max-width: 768px) {
-      .page-header { flex-direction: column; gap: 12px; }
       .sa-grid { grid-template-columns: 1fr; }
     }
   `],

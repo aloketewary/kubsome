@@ -4,25 +4,21 @@ import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
 import { SpotlightComponent } from '../../shared/components/spotlight.component';
+import { PageHeaderComponent } from '../../shared/components/page-header.component';
 
 @Component({
   selector: 'app-port-forwards',
   standalone: true,
-  imports: [ButtonModule, TagModule, FormsModule, SpotlightComponent],
+  imports: [ButtonModule, TagModule, FormsModule, SpotlightComponent, PageHeaderComponent],
   template: `
     <app-spotlight id="port-forwards" title="Port Forwards" icon="pi pi-link"
       description="Manage background port-forwards — start, stop, and monitor."
       [capabilities]="['Background forwarding', 'Health monitoring', 'Persistent across sessions']" [compact]="true" />
 
-    <div class="page-header">
-      <div>
-        <h1>Port Forwards</h1>
-        <p class="subtitle">{{ forwards.length }} active</p>
-      </div>
-      <div class="header-actions">
+    <app-page-header title="Port Forwards" [subtitle]="forwards.length + ' active'">
         <button pButton icon="pi pi-stop" label="Stop All" class="p-button-outlined p-button-sm p-button-danger" (click)="stopAll()" [disabled]="!forwards.length"></button>
         <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="refresh()"></button>
-      </div>
+    </app-page-header>
     </div>
 
     <!-- New Forward Form -->
@@ -70,8 +66,7 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     }
   `,
   styles: [`
-    .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px; }
-    .page-header h1 { font-size: 24px; font-weight: 700; }
+
     .subtitle { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
     .header-actions { display: flex; gap: 8px; }
     .new-forward { display: flex; align-items: center; gap: 8px; padding: 16px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 16px; }

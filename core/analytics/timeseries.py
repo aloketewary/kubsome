@@ -2,39 +2,50 @@
 Analytics Time-Series — query functions that return chart-ready
 data from DuckDB for the Web UI.
 Filters by current context automatically.
+Uses parameterized queries to prevent SQL injection.
 """
 
 from core.analytics.engine import get_conn
 from core.context import context as k8s_context
 
 
-def _ctx_filter(alias=""):
-    """Return SQL AND clause for current context."""
+def _ctx_clause(alias=""):
+    """Return (sql_fragment, params) for current context filter."""
     ctx = k8s_context.current_context
     if not ctx:
-        return ""
+        return "", []
     col = f"{alias}.context" if alias else "context"
-    return f"AND {col} = '{ctx}'"
+    return f"AND {col} = ?", [ctx]
+
+
+def _execute(conn, sql, params):
+    """Execute parameterized query safely."""
+    if params:
+        return conn.execute(sql, params).fetchall()
+    return conn.execute(sql).fetchall()
 
 
 def cpu_memory_series(deployment=None, hours=24, interval="1 hour"):
     """
     Time-series CPU/memory for charting.
     Returns [{ts, cpu, mem, pods}] at given interval.
-    Combines aggregated hourly data with raw data for the
-    current incomplete hour.
     """
     try:
         conn = get_conn()
     except (ImportError, Exception):
         return []
 
-    deploy_filter = (
-        f"AND deployment = '{deployment}'" if deployment else ""
-    )
+    ctx_sql, ctx_params = _ctx_clause()
+    params = []
 
-    # Aggregated completed hours
-    rows = conn.execute(f"""
+    deploy_sql = ""
+    if deployment:
+        deploy_sql = "AND deployment = ?"
+        params.append(deployment)
+
+    params.extend(ctx_params)
+
+    rows = _execute(conn, f"""
         SELECT
             DATE_TRUNC('{interval}', hour) AS bucket,
             SUM(cpu_avg)::INTEGER AS cpu,
@@ -42,11 +53,11 @@ def cpu_memory_series(deployment=None, hours=24, interval="1 hour"):
             SUM(pod_count)::INTEGER AS pods
         FROM hourly_pod_metrics
         WHERE hour >= NOW() - INTERVAL '{hours} hours'
-          {deploy_filter}
-          {_ctx_filter()}
+          {deploy_sql}
+          {ctx_sql}
         GROUP BY bucket
         ORDER BY bucket
-    """).fetchall()
+    """, params)
 
     result = [
         {"ts": str(r[0]), "cpu": r[1], "mem": r[2], "pods": r[3]}
@@ -54,7 +65,12 @@ def cpu_memory_series(deployment=None, hours=24, interval="1 hour"):
     ]
 
     # Include current incomplete hour from raw data
-    raw_rows = conn.execute(f"""
+    raw_params = []
+    if deployment:
+        raw_params.append(deployment)
+    raw_params.extend(ctx_params)
+
+    raw_rows = _execute(conn, f"""
         SELECT
             DATE_TRUNC('hour', ts) AS bucket,
             AVG(cpu_millicores)::INTEGER AS cpu,
@@ -63,10 +79,10 @@ def cpu_memory_series(deployment=None, hours=24, interval="1 hour"):
         FROM raw_pod_metrics
         WHERE ts >= DATE_TRUNC('hour', NOW())
           AND deployment != ''
-          {deploy_filter}
-          {_ctx_filter()}
+          {deploy_sql}
+          {ctx_sql}
         GROUP BY bucket
-    """).fetchall()
+    """, raw_params)
 
     for r in raw_rows:
         result.append(
@@ -83,9 +99,17 @@ def node_series(node=None, hours=24):
     except (ImportError, Exception):
         return []
 
-    node_filter = f"AND node = '{node}'" if node else ""
+    ctx_sql, ctx_params = _ctx_clause()
+    params = []
 
-    rows = conn.execute(f"""
+    node_sql = ""
+    if node:
+        node_sql = "AND node = ?"
+        params.append(node)
+
+    params.extend(ctx_params)
+
+    rows = _execute(conn, f"""
         SELECT
             hour,
             node,
@@ -93,10 +117,10 @@ def node_series(node=None, hours=24):
             mem_avg
         FROM hourly_node_metrics
         WHERE hour >= NOW() - INTERVAL '{hours} hours'
-          {node_filter}
-          {_ctx_filter()}
+          {node_sql}
+          {ctx_sql}
         ORDER BY hour
-    """).fetchall()
+    """, params)
 
     return [
         {"ts": str(r[0]), "node": r[1], "cpu": r[2], "mem": r[3]}
@@ -111,11 +135,17 @@ def restart_series(deployment=None, hours=48):
     except (ImportError, Exception):
         return []
 
-    deploy_filter = (
-        f"AND deployment = '{deployment}'" if deployment else ""
-    )
+    ctx_sql, ctx_params = _ctx_clause()
+    params = []
 
-    rows = conn.execute(f"""
+    deploy_sql = ""
+    if deployment:
+        deploy_sql = "AND deployment = ?"
+        params.append(deployment)
+
+    params.extend(ctx_params)
+
+    rows = _execute(conn, f"""
         SELECT
             hour,
             deployment,
@@ -123,10 +153,10 @@ def restart_series(deployment=None, hours=48):
         FROM hourly_pod_metrics
         WHERE hour >= NOW() - INTERVAL '{hours} hours'
           AND restart_count > 0
-          {deploy_filter}
-          {_ctx_filter()}
+          {deploy_sql}
+          {ctx_sql}
         ORDER BY hour
-    """).fetchall()
+    """, params)
 
     return [
         {"ts": str(r[0]), "deployment": r[1], "restarts": r[2]}
@@ -141,17 +171,19 @@ def cost_series(days=30):
     except (ImportError, Exception):
         return []
 
-    rows = conn.execute(f"""
+    ctx_sql, ctx_params = _ctx_clause()
+
+    rows = _execute(conn, f"""
         SELECT
             day,
             SUM(cost_estimate_usd) AS daily_cost,
             COUNT(DISTINCT deployment) AS deployments
         FROM daily_summary
         WHERE day >= CURRENT_DATE - INTERVAL '{days} days'
-          {_ctx_filter()}
+          {ctx_sql}
         GROUP BY day
         ORDER BY day
-    """).fetchall()
+    """, ctx_params)
 
     return [
         {"day": str(r[0]), "cost": round(r[1], 2), "deployments": r[2]}
@@ -166,19 +198,23 @@ def event_timeline(hours=24, event_type=None):
     except (ImportError, Exception):
         return []
 
-    type_filter = f"AND type = '{event_type}'" if event_type else ""
+    params = []
+    type_sql = ""
+    if event_type:
+        type_sql = "AND type = ?"
+        params.append(event_type)
 
-    rows = conn.execute(f"""
+    rows = _execute(conn, f"""
         SELECT
             DATE_TRUNC('hour', ts) AS bucket,
             type,
             COUNT(*) AS count
         FROM event_log
         WHERE ts >= NOW() - INTERVAL '{hours} hours'
-          {type_filter}
+          {type_sql}
         GROUP BY bucket, type
         ORDER BY bucket
-    """).fetchall()
+    """, params)
 
     return [
         {"ts": str(r[0]), "type": r[1], "count": r[2]}
@@ -196,9 +232,11 @@ def deployment_comparison(deployments, hours=24):
     if not deployments:
         return []
 
-    deploy_list = ", ".join(f"'{d}'" for d in deployments)
+    ctx_sql, ctx_params = _ctx_clause()
+    placeholders = ", ".join("?" for _ in deployments)
+    params = list(deployments) + ctx_params
 
-    rows = conn.execute(f"""
+    rows = _execute(conn, f"""
         SELECT
             deployment,
             AVG(cpu_avg)::INTEGER AS cpu_avg,
@@ -209,11 +247,11 @@ def deployment_comparison(deployments, hours=24):
             SUM(restart_count) AS restarts
         FROM hourly_pod_metrics
         WHERE hour >= NOW() - INTERVAL '{hours} hours'
-          AND deployment IN ({deploy_list})
-          {_ctx_filter()}
+          AND deployment IN ({placeholders})
+          {ctx_sql}
         GROUP BY deployment
         ORDER BY cpu_avg DESC
-    """).fetchall()
+    """, params)
 
     return [
         {
@@ -232,7 +270,9 @@ def top_consumers(hours=6, limit=10):
     except (ImportError, Exception):
         return []
 
-    rows = conn.execute(f"""
+    ctx_sql, ctx_params = _ctx_clause()
+
+    rows = _execute(conn, f"""
         SELECT
             deployment,
             namespace,
@@ -243,15 +283,15 @@ def top_consumers(hours=6, limit=10):
         FROM hourly_pod_metrics
         WHERE hour >= NOW() - INTERVAL '{hours} hours'
           AND deployment != ''
-          {_ctx_filter()}
+          {ctx_sql}
         GROUP BY deployment, namespace
         ORDER BY cpu_avg + mem_avg DESC
         LIMIT {limit}
-    """).fetchall()
+    """, ctx_params)
 
     # Fallback to raw data if no hourly rows yet
     if not rows:
-        rows = conn.execute(f"""
+        rows = _execute(conn, f"""
             SELECT
                 deployment,
                 namespace,
@@ -262,11 +302,11 @@ def top_consumers(hours=6, limit=10):
             FROM raw_pod_metrics
             WHERE ts >= NOW() - INTERVAL '{hours} hours'
               AND deployment != ''
-              {_ctx_filter()}
+              {ctx_sql}
             GROUP BY deployment, namespace
             ORDER BY cpu_avg + mem_avg DESC
             LIMIT {limit}
-        """).fetchall()
+        """, ctx_params)
 
     return [
         {

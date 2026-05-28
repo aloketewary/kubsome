@@ -5,26 +5,21 @@ import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
 import { TooltipModule } from 'primeng/tooltip';
 import { SpotlightComponent } from '../../shared/components/spotlight.component';
+import { PageHeaderComponent } from '../../shared/components/page-header.component';
 
 @Component({
   selector: 'app-watch-manager',
   standalone: true,
-  imports: [FormsModule, ButtonModule, TagModule, TooltipModule, SpotlightComponent],
+  imports: [FormsModule, ButtonModule, TagModule, TooltipModule, SpotlightComponent, PageHeaderComponent],
   template: `
     <app-spotlight id="watch-manager" title="Watch Manager" icon="pi pi-eye"
       description="Manage background watchers that trigger alerts."
       [capabilities]="['Condition monitoring', 'Crash detection', 'Alert notifications']" [compact]="true" />
 
-    <div class="page-header">
-      <div>
-        <h1>Watch Manager</h1>
-        <p class="subtitle">Background condition monitors</p>
-      </div>
-      <div class="header-actions">
+    <app-page-header title="Watch Manager" subtitle="Background condition monitors">
         <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="refresh()" pTooltip="Refresh"></button>
         <button pButton icon="pi pi-plus" label="Add Watch" class="p-button-sm" (click)="showForm = !showForm"></button>
-      </div>
-    </div>
+    </app-page-header>
 
     <!-- Add Watch Form -->
     @if (showForm) {
@@ -104,10 +99,7 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     }
   `,
   styles: [`
-    .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; }
-    .page-header h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.03em; }
-    .subtitle { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
-    .header-actions { display: flex; gap: 8px; }
+
 
     /* Add Form */
     .add-form {
@@ -167,9 +159,6 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     .loading { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 60px; color: var(--text-muted); }
     .spin { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
-    @media (max-width: 768px) {
-      .page-header { flex-direction: column; gap: 12px; }
-    }
   `],
 })
 export class WatchManagerComponent implements OnInit, OnDestroy {

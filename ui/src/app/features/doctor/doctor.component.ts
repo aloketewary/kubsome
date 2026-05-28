@@ -1,19 +1,16 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { ButtonModule } from 'primeng/button';
+import { PageHeaderComponent } from '../../shared/components/page-header.component';
 
 @Component({
   selector: 'app-doctor',
   standalone: true,
-  imports: [ButtonModule],
+  imports: [ButtonModule, PageHeaderComponent],
   template: `
-    <div class="page-header">
-      <div>
-        <h1>System Health</h1>
-        <p class="subtitle">Pre-flight diagnostics and connectivity checks</p>
-      </div>
+    <app-page-header title="System Health" subtitle="Pre-flight diagnostics and connectivity checks">
       <button pButton icon="pi pi-refresh" label="Re-check" class="p-button-outlined p-button-sm" (click)="load()" [loading]="loading"></button>
-    </div>
+    </app-page-header>
 
     @if (checks.length > 0) {
       <div class="checks-list">
@@ -49,9 +46,7 @@ import { ButtonModule } from 'primeng/button';
     }
   `,
   styles: [`
-    .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 24px; }
-    .page-header h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.03em; }
-    .subtitle { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+
 
     .checks-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
     .check-card {

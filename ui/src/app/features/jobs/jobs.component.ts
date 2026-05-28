@@ -5,22 +5,18 @@ import { TagModule } from 'primeng/tag';
 import { ButtonModule } from 'primeng/button';
 import { TooltipModule } from 'primeng/tooltip';
 import { SpotlightComponent } from '../../shared/components/spotlight.component';
+import { PageHeaderComponent } from '../../shared/components/page-header.component';
 
 @Component({
   selector: 'app-jobs',
   standalone: true,
-  imports: [FormsModule, TagModule, ButtonModule, TooltipModule, SpotlightComponent],
+  imports: [FormsModule, TagModule, ButtonModule, TooltipModule, SpotlightComponent, PageHeaderComponent],
   template: `
     <app-spotlight id="jobs" title="Jobs & CronJobs" icon="pi pi-clock"
       description="View and manage Jobs and CronJobs. Trigger manual runs."
       [capabilities]="['CronJob scheduling', 'Manual trigger', 'Completion status']" [compact]="true" />
 
-        <div class="page-header">
-      <div>
-        <h1>Jobs</h1>
-        <p class="subtitle">Scheduled tasks and batch workloads · {{ lastUpdated }}</p>
-      </div>
-      <div class="header-actions">
+    <app-page-header title="Jobs" [subtitle]="'Scheduled tasks and batch workloads · ' + lastUpdated">
         <div class="search-wrap">
           <i class="pi pi-search"></i>
           <input type="text" [(ngModel)]="searchQuery" placeholder="Filter..." (ngModelChange)="applyFilter()" />
@@ -29,8 +25,7 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
           <i class="pi" [class.pi-sync]="autoRefresh" [class.pi-pause]="!autoRefresh"></i>
         </button>
         <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="load()" pTooltip="Refresh" [loading]="loading"></button>
-      </div>
-    </div>
+    </app-page-header>
 
     <!-- Summary -->
     <div class="summary-strip">
@@ -159,10 +154,7 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     </div>
   `,
   styles: [`
-    .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; }
-    .page-header h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.03em; }
-    .subtitle { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
-    .header-actions { display: flex; align-items: center; gap: 8px; }
+
     .search-wrap { position: relative; display: flex; align-items: center; }
     .search-wrap i { position: absolute; left: 8px; font-size: 12px; color: var(--text-muted); }
     .search-wrap input {
@@ -278,8 +270,6 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     }
     .empty-state i { font-size: 16px; opacity: 0.5; }
     @media (max-width: 768px) {
-      .page-header { flex-direction: column; gap: 12px; }
-      .header-actions { flex-wrap: wrap; }
       .summary-cards { grid-template-columns: repeat(2, 1fr); }
     }
   `],

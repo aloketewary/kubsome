@@ -4,30 +4,25 @@ import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
 import { PageInfoComponent } from '../../shared/components/page-info.component';
 import { SpotlightComponent } from '../../shared/components/spotlight.component';
+import { PageHeaderComponent } from '../../shared/components/page-header.component';
 import { RelatedPagesComponent } from '../../shared/components/related-pages.component';
 
 @Component({
   selector: 'app-integrations',
   standalone: true,
-  imports: [ButtonModule, TagModule, PageInfoComponent, SpotlightComponent, RelatedPagesComponent],
+  imports: [ButtonModule, TagModule, PageInfoComponent, SpotlightComponent, RelatedPagesComponent, PageHeaderComponent],
   template: `
     <app-spotlight id="integrations" title="Integrations" icon="pi pi-link"
       description="Connect external tools like Prometheus, Grafana, and alerting systems."
       [capabilities]="['Auto-discovery', 'Health checks', 'Connect/disconnect', 'Status monitoring']" [compact]="true" />
 
-    <div class="page-header">
-      <div>
-        <h1>Integrations</h1>
-        <p class="subtitle">{{ integrations.length }} connected · {{ discovered.length }} discovered</p>
-      </div>
-      <div class="header-actions">
+    <app-page-header title="Integrations" [subtitle]="integrations.length + ' connected · ' + discovered.length + ' discovered'">
         <button pButton icon="pi pi-search" label="Discover" class="p-button-outlined p-button-sm" (click)="discover()" [loading]="discovering"></button>
         <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="refresh()" [loading]="loading"></button>
-      </div>
-      <app-page-info title="Integrations" description="Manage connections to external monitoring, alerting, and observability tools in your cluster."
-        [tips]="['Green = connected and healthy', 'Yellow = connected but degraded', 'Use Discover to auto-detect tools']"
-        [commands]="['connect', 'disconnect <name>', 'connect discover', 'integrations']" />
-    </div>
+        <app-page-info title="Integrations" description="Manage connections to external monitoring, alerting, and observability tools in your cluster."
+          [tips]="['Green = connected and healthy', 'Yellow = connected but degraded', 'Use Discover to auto-detect tools']"
+          [commands]="['connect', 'disconnect <name>', 'connect discover', 'integrations']" />
+    </app-page-header>
 
     <!-- Connected Integrations -->
     @if (integrations.length) {
@@ -91,10 +86,7 @@ import { RelatedPagesComponent } from '../../shared/components/related-pages.com
     <app-related-pages label="Related" [pages]="relatedPages" />
   `,
   styles: [`
-    .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px; }
-    .page-header h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.03em; }
-    .subtitle { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
-    .header-actions { display: flex; align-items: center; gap: 8px; }
+
 
     .section-title { font-size: 14px; font-weight: 600; margin: 24px 0 12px; color: var(--text-secondary); }
 
@@ -120,7 +112,6 @@ import { RelatedPagesComponent } from '../../shared/components/related-pages.com
     .spin { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
     @media (max-width: 768px) {
-      .page-header { flex-direction: column; gap: 12px; }
       .integrations-grid { grid-template-columns: 1fr; }
     }
   `],

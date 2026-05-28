@@ -2,6 +2,8 @@
 Kubsome API — FastAPI backend exposing the Kubernetes engine.
 """
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -11,10 +13,48 @@ from api.routes import pods, overview, contexts, events, metrics, logs, deployme
 from api.auth import AuthMiddleware, generate_token
 from api.ratelimit import RateLimitMiddleware
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Startup and shutdown lifecycle."""
+    token = generate_token()
+    print(f"  🔑 API Token: {token}")
+    print(f"  Saved to: ~/.kubsome/.api_token")
+
+    from core.cache import prewarm
+    prewarm()
+
+    # Start background metrics recorder (every 5 min)
+    import threading
+
+    def _record_loop():
+        import time
+        time.sleep(30)
+        while True:
+            try:
+                from core.collectors.metrics_history import record_snapshot
+                record_snapshot()
+            except Exception:
+                pass
+            time.sleep(300)
+
+    threading.Thread(target=_record_loop, daemon=True).start()
+
+    # Start DuckDB analytics collector
+    try:
+        from core.analytics.collector import start_collector
+        start_collector()
+    except ImportError:
+        pass
+
+    yield
+
+
 app = FastAPI(
     title="Kubsome API",
     version="1.0.0",
     description="Kubernetes Operations Engine API",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -55,39 +95,6 @@ app.include_router(ws.router)
 @app.get("/health")
 def health_root():
     return {"status": "ok"}
-
-
-@app.on_event("startup")
-def _on_startup():
-    token = generate_token()
-    print(f"  🔑 API Token: {token}")
-    print(f"  Saved to: ~/.kubsome/.api_token")
-
-    from core.cache import prewarm
-    prewarm()
-
-    # Start background metrics recorder (every 5 min)
-    import threading
-
-    def _record_loop():
-        import time
-        time.sleep(30)  # Wait for cluster connection
-        while True:
-            try:
-                from core.collectors.metrics_history import record_snapshot
-                record_snapshot()
-            except Exception:
-                pass
-            time.sleep(300)  # 5 min
-
-    threading.Thread(target=_record_loop, daemon=True).start()
-
-    # Start DuckDB analytics collector
-    try:
-        from core.analytics.collector import start_collector
-        start_collector()
-    except ImportError:
-        pass
 
 
 @app.get("/api/health")

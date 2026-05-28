@@ -10,11 +10,12 @@ import { WsService } from '../../core/services/ws.service';
 import { Pod } from '../../core/models';
 import { PageInfoComponent } from '../../shared/components/page-info.component';
 import { SpotlightComponent } from '../../shared/components/spotlight.component';
+import { PageHeaderComponent } from '../../shared/components/page-header.component';
 
 @Component({
   selector: 'app-logs',
   standalone: true,
-  imports: [ButtonModule, Select, TooltipModule, FormsModule, InputTextModule, PageInfoComponent, SpotlightComponent],
+  imports: [ButtonModule, Select, TooltipModule, FormsModule, InputTextModule, PageInfoComponent, SpotlightComponent, PageHeaderComponent],
   host: {
     '[class.logs-fullscreen-active]': 'fullscreen',
     '[class.logs-nowrap]': '!wordWrap',
@@ -24,18 +25,12 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
       description="Stream and search pod logs in real-time. Filter by container, level, or text."
       [capabilities]="['Container-specific log filtering', 'Live streaming via WebSocket', 'Error/Warn level filters', 'Fullscreen mode for focused debugging', 'Copy and search across lines']" [compact]="true" />
 
-    <div class="page-header">
-      <div>
-        <h1>Logs</h1>
-        <p class="subtitle">Pod log viewer</p>
-      </div>
-      <div class="header-actions">
+    <app-page-header title="Logs" subtitle="Pod log viewer">
         <app-page-info title="Logs" description="View and stream pod logs. Supports filtering by level and full-text search."
           [tips]="['Select a pod and click Fetch or Live', 'Live mode streams via WebSocket in real-time', 'Filter by Error/Warn to find issues fast', 'Fullscreen mode for focused debugging']"
           [commands]="['logs <pod>', 'logs <pod> --follow', 'logs <pod> --errors', 'correlate-logs <pod1> <pod2>']"
           [shortcuts]="[{key: 'G+L', action: 'Navigate to Logs'}]" />
-      </div>
-    </div>
+    </app-page-header>
 
     <!-- Controls Bar -->
     <div class="controls-bar">
@@ -144,10 +139,6 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     </div>
   `,
   styles: [`
-    .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; }
-    .page-header h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.03em; }
-    .subtitle { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
-
     /* Controls */
     .controls-bar {
       display: flex; align-items: center; justify-content: space-between;
@@ -281,8 +272,6 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     .log-empty i { font-size: 24px; opacity: 0.3; }
     .empty-hint { font-size: 11px; opacity: 0.6; }
     @media (max-width: 768px) {
-      .page-header { flex-direction: column; gap: 12px; }
-      .header-actions { flex-wrap: wrap; width: 100%; }
       .log-toolbar { flex-wrap: wrap; }
     }
   `],

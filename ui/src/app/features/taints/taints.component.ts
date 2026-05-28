@@ -6,25 +6,20 @@ import { TooltipModule } from 'primeng/tooltip';
 import { FormsModule } from '@angular/forms';
 import { InputTextModule } from 'primeng/inputtext';
 import { SpotlightComponent } from '../../shared/components/spotlight.component';
+import { PageHeaderComponent } from '../../shared/components/page-header.component';
 
 @Component({
   selector: 'app-taints',
   standalone: true,
-  imports: [TagModule, ButtonModule, TooltipModule, FormsModule, InputTextModule, SpotlightComponent],
+  imports: [TagModule, ButtonModule, TooltipModule, FormsModule, InputTextModule, SpotlightComponent, PageHeaderComponent],
   template: `
     <app-spotlight id="taints" title="Node Taints" icon="pi pi-ban"
       description="View and manage Kubernetes node taints."
       [capabilities]="['List taints', 'Apply taint', 'Remove taint']" [compact]="true" />
 
-    <div class="page-header">
-      <div>
-        <h1>Node Taints</h1>
-        <p class="subtitle">Manage scheduling constraints · {{ lastUpdated }}</p>
-      </div>
-      <div class="header-actions">
+    <app-page-header title="Node Taints" [subtitle]="'Manage scheduling constraints · ' + lastUpdated">
         <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="load()" pTooltip="Refresh" [loading]="loading"></button>
-      </div>
-    </div>
+    </app-page-header>
 
     <!-- Summary -->
     <div class="summary-strip">
@@ -111,8 +106,7 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     </div>
   `,
   styles: [`
-    .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; }
-    .page-header h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.03em; }
+
     .subtitle { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
     .header-actions { display: flex; align-items: center; gap: 8px; }
 
@@ -169,7 +163,6 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     }
     .empty-state i { font-size: 16px; color: var(--success); }
     @media (max-width: 768px) {
-      .page-header { flex-direction: column; gap: 12px; }
       .summary-strip { flex-wrap: wrap; }
     }
   `],
