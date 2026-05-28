@@ -1,9 +1,11 @@
 import subprocess
 import json
+from concurrent.futures import ThreadPoolExecutor
 
 from rapidfuzz import process
 
 from core.context import context
+from core.cache import cached
 
 
 def search_resources(query):
@@ -13,30 +15,42 @@ def search_resources(query):
     """
     results = []
 
-    resources = [
-        ("Pod", _get_names("pods")),
-        ("Deployment", _get_names("deployments")),
-        ("Service", _get_names("services")),
-        ("ConfigMap", _get_names("configmaps")),
-        ("Secret", _get_names("secrets")),
-        ("Ingress", _get_names("ingress")),
+    kinds = [
+        "Pod", "Deployment", "Service",
+        "ConfigMap", "Secret", "Ingress"
+    ]
+    resource_types = [
+        "pods", "deployments", "services",
+        "configmaps", "secrets", "ingress"
     ]
 
-    for kind, names in resources:
-        if not names:
-            continue
+    # Bolt: Parallelize name fetching to achieve O(1) latency
+    ns = context.namespace
+    ctx = context.current_context
 
-        matches = process.extract(
-            query, names, limit=3
-        )
+    with ThreadPoolExecutor(max_workers=len(resource_types)) as executor:
+        futures = {
+            executor.submit(_get_names, r, ns, ctx): k
+            for r, k in zip(resource_types, kinds)
+        }
 
-        for match in matches:
-            if match[1] > 40:
-                results.append({
-                    "kind": kind,
-                    "name": match[0],
-                    "score": match[1],
-                })
+        for future in futures:
+            kind = futures[future]
+            names = future.result()
+            if not names:
+                continue
+
+            matches = process.extract(
+                query, names, limit=3
+            )
+
+            for match in matches:
+                if match[1] > 40:
+                    results.append({
+                        "kind": kind,
+                        "name": match[0],
+                        "score": match[1],
+                    })
 
     # Sort by score
     results.sort(
@@ -46,13 +60,17 @@ def search_resources(query):
     return results[:10]
 
 
-def _get_names(resource_type):
-    cmd = [
-        "kubectl", "--context", str(context.current_context or ""),
+@cached(ttl=60)
+def _get_names(resource_type, ns, ctx):
+    """Fetch resource names with caching."""
+    cmd = ["kubectl"]
+    if ctx:
+        cmd.extend(["--context", str(ctx)])
+    cmd.extend([
         "get", resource_type,
-        "-n", str(context.namespace),
+        "-n", str(ns),
         "-o", "jsonpath={.items[*].metadata.name}"
-    ]
+    ])
 
     result = subprocess.run(
         cmd,
