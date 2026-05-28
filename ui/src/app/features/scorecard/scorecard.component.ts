@@ -5,33 +5,28 @@ import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
 import { PageInfoComponent } from '../../shared/components/page-info.component';
 import { SpotlightComponent } from '../../shared/components/spotlight.component';
+import { PageHeaderComponent } from '../../shared/components/page-header.component';
 import { SkeletonComponent } from '../../shared/components/skeleton.component';
 import { TrendChartComponent } from '../../shared/components/trend-chart.component';
 
 @Component({
   selector: 'app-scorecard',
   standalone: true,
-  imports: [ButtonModule, TagModule, PageInfoComponent, SpotlightComponent, TrendChartComponent, SkeletonComponent],
+  imports: [ButtonModule, TagModule, PageInfoComponent, SpotlightComponent, TrendChartComponent, SkeletonComponent, PageHeaderComponent],
   template: `
     <app-spotlight id="scorecard" title="Cluster Scorecard" icon="pi pi-star"
       description="A-F health grade across reliability, performance, security."
       [capabilities]="['4-dimension scoring', 'A-F grades', 'Improvement suggestions']" [compact]="true" />
 
-        <div class="page-header">
-      <div>
-        <h1>Cluster Scorecard</h1>
-        <p class="subtitle">Health grade across availability, stability, resources & operations · {{ lastUpdated }}</p>
-      </div>
-      <div class="header-actions">
+    <app-page-header title="Cluster Scorecard" [subtitle]="'Health grade across availability, stability, resources & operations · ' + lastUpdated">
         <button class="ar-btn" [class.ar-active]="autoRefresh" (click)="toggleAutoRefresh()">
           <i class="pi" [class.pi-sync]="autoRefresh" [class.pi-pause]="!autoRefresh"></i>
         </button>
         <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="refresh()" [loading]="loading"></button>
-      </div>
-      <app-page-info title="Scorecard" description="Cluster health graded A-F across availability, stability, resources, and operations. Refreshes on demand."
-        [tips]="['Grade A-B = healthy, C = fair, D-F = needs attention', 'Click Refresh to re-evaluate', 'Recommendations link to CLI commands']"
-        [commands]="['scorecard', 'check', 'security']" />
-    </div>
+        <app-page-info title="Scorecard" description="Cluster health graded A-F across availability, stability, resources, and operations. Refreshes on demand."
+          [tips]="['Grade A-B = healthy, C = fair, D-F = needs attention', 'Click Refresh to re-evaluate', 'Recommendations link to CLI commands']"
+          [commands]="['scorecard', 'check', 'security']" />
+    </app-page-header>
 
     @if (data) {
       <!-- Overall Grade -->

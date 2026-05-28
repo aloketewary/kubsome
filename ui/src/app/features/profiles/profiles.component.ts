@@ -4,30 +4,25 @@ import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
 import { PageInfoComponent } from '../../shared/components/page-info.component';
 import { SpotlightComponent } from '../../shared/components/spotlight.component';
+import { PageHeaderComponent } from '../../shared/components/page-header.component';
 import { RelatedPagesComponent } from '../../shared/components/related-pages.component';
 
 @Component({
   selector: 'app-profiles',
   standalone: true,
-  imports: [ButtonModule, TagModule, PageInfoComponent, SpotlightComponent, RelatedPagesComponent],
+  imports: [ButtonModule, TagModule, PageInfoComponent, SpotlightComponent, RelatedPagesComponent, PageHeaderComponent],
   template: `
     <app-spotlight id="profiles" title="Profiles" icon="pi pi-user"
       description="Switch between configuration profiles for different environments or workflows."
       [capabilities]="['Quick switch', 'Environment presets', 'Custom configs', 'Reset to default']" [compact]="true" />
 
-    <div class="page-header">
-      <div>
-        <h1>Profiles</h1>
-        <p class="subtitle">Active: {{ active || 'default' }}</p>
-      </div>
-      <div class="header-actions">
+    <app-page-header title="Profiles" [subtitle]="'Active: ' + (active || 'default')">
         <button pButton icon="pi pi-undo" label="Reset" class="p-button-outlined p-button-sm" (click)="reset()" [disabled]="!active"></button>
         <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="refresh()" [loading]="loading"></button>
-      </div>
-      <app-page-info title="Profiles" description="Manage configuration profiles that bundle context, namespace, theme, and feature settings."
-        [tips]="['Active profile shown with green badge', 'Reset returns to default settings', 'Profiles stored in ~/.kubsome/profiles/']"
-        [commands]="['profiles', 'profile use <name>', 'profile reset']" />
-    </div>
+        <app-page-info title="Profiles" description="Manage configuration profiles that bundle context, namespace, theme, and feature settings."
+          [tips]="['Active profile shown with green badge', 'Reset returns to default settings', 'Profiles stored in ~/.kubsome/profiles/']"
+          [commands]="['profiles', 'profile use <name>', 'profile reset']" />
+    </app-page-header>
 
     @if (profiles.length) {
       <div class="profiles-grid">

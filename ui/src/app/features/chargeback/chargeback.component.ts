@@ -8,28 +8,23 @@ import { SelectButtonModule } from 'primeng/selectbutton';
 import { FormsModule } from '@angular/forms';
 import { PageInfoComponent } from '../../shared/components/page-info.component';
 import { SpotlightComponent } from '../../shared/components/spotlight.component';
+import { PageHeaderComponent } from '../../shared/components/page-header.component';
 import { RelatedPagesComponent } from '../../shared/components/related-pages.component';
 
 @Component({
   selector: 'app-chargeback',
   standalone: true,
-  imports: [CommonModule, ButtonModule, TagModule, TabsModule, SelectButtonModule, FormsModule, PageInfoComponent, SpotlightComponent, RelatedPagesComponent],
+  imports: [CommonModule, ButtonModule, TagModule, TabsModule, SelectButtonModule, FormsModule, PageInfoComponent, SpotlightComponent, RelatedPagesComponent, PageHeaderComponent],
   template: `
     <app-spotlight id="chargeback" title="Cost Chargeback" icon="pi pi-wallet"
       description="Label-based cost attribution — map cloud spend to teams, apps, and environments."
       [capabilities]="['Team cost breakdown', 'App-level attribution', 'Namespace billing', 'OpenCost integration', 'CSV/Markdown export']" [compact]="true" />
 
-    <div class="page-header">
-      <div>
-        <h1>Chargeback</h1>
-        <p class="subtitle">Cost attribution across teams, apps & namespaces</p>
-      </div>
-      <div class="header-actions">
+    <app-page-header title="Chargeback" subtitle="Cost attribution across teams, apps & namespaces">
         <p-selectbutton [options]="periodOptions" [(ngModel)]="days" (onChange)="refresh()" optionLabel="label" optionValue="value" size="small" />
         <button pButton icon="pi pi-download" label="Export" class="p-button-outlined p-button-sm" (click)="exportReport('csv')" [disabled]="!hasData"></button>
         <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="refresh()" [loading]="loading"></button>
-      </div>
-    </div>
+    </app-page-header>
 
     <app-page-info title="Chargeback" description="Maps resource usage to teams via Kubernetes labels. Blends with OpenCost or cloud billing CSV for accurate showback."
       [tips]="['Label pods with team/app/env for attribution', 'Import OpenCost data for real cloud costs', 'Unattributed = missing team label']"

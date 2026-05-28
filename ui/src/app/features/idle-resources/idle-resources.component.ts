@@ -4,31 +4,24 @@ import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
 import { PageInfoComponent } from '../../shared/components/page-info.component';
 import { SpotlightComponent } from '../../shared/components/spotlight.component';
+import { PageHeaderComponent } from '../../shared/components/page-header.component';
 
 @Component({
   selector: 'app-idle-resources',
   standalone: true,
-  imports: [ButtonModule, TagModule, PageInfoComponent, SpotlightComponent],
+  imports: [ButtonModule, TagModule, PageInfoComponent, SpotlightComponent, PageHeaderComponent],
   template: `
     <app-spotlight id="idle-resources" title="Idle & Orphaned Resources" icon="pi pi-trash"
       description="Detect wasted resources — idle deployments, orphaned configs, unbound PVCs, stale jobs."
       [capabilities]="['Usage-based idle detection', 'Orphan detection', 'Safe cleanup commands', 'Savings estimation']" [compact]="true" />
 
-    <div class="page-header">
-      <div>
-        <h1>Idle Resources</h1>
-        <p class="subtitle">
-          @if (summary) { {{ summary.total }} found · {{ "$" + summary.total_savings_monthly?.toFixed(2) }}/mo savings }
-        </p>
-      </div>
-      <div class="header-actions">
+    <app-page-header title="Idle Resources" [subtitle]="summary ? summary.total + ' found · $' + summary.total_savings_monthly?.toFixed(2) + '/mo savings' : ''">
         <button pButton icon="pi pi-list" label="Dry Run" class="p-button-outlined p-button-sm" (click)="dryRun()" [disabled]="!items.length" [loading]="dryRunning"></button>
         <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="refresh()" [loading]="loading"></button>
-      </div>
-      <app-page-info title="Idle Resources" description="Scans for resources consuming cost without providing value. Uses 24h analytics data for idle detection and live state for orphan detection."
-        [tips]="['Idle = near-zero usage for 24h+', 'Orphaned = not referenced by any pod', 'Dry Run shows commands without executing']"
-        [commands]="['unused', 'cleanup', 'cleanup-apply']" />
-    </div>
+        <app-page-info title="Idle Resources" description="Scans for resources consuming cost without providing value."
+          [tips]="['Idle = near-zero usage for 24h+', 'Orphaned = not referenced by any pod', 'Dry Run shows commands without executing']"
+          [commands]="['unused', 'cleanup', 'cleanup-apply']" />
+    </app-page-header>
 
     <!-- Summary Cards -->
     @if (summary && summary.total > 0) {
@@ -105,10 +98,7 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     }
   `,
   styles: [`
-    .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px; }
-    .page-header h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.03em; }
-    .subtitle { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
-    .header-actions { display: flex; align-items: center; gap: 8px; }
+
 
     .summary-row { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
     .cat-card {
@@ -157,7 +147,6 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     .spin { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
     @media (max-width: 768px) {
-      .page-header { flex-direction: column; gap: 12px; }
       .summary-cards { grid-template-columns: repeat(2, 1fr); }
     }
   `],

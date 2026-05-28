@@ -4,29 +4,24 @@ import { ButtonModule } from 'primeng/button';
 import { TooltipModule } from 'primeng/tooltip';
 import { PageInfoComponent } from '../../shared/components/page-info.component';
 import { SpotlightComponent } from '../../shared/components/spotlight.component';
+import { PageHeaderComponent } from '../../shared/components/page-header.component';
 import { TrendChartComponent } from '../../shared/components/trend-chart.component';
 
 @Component({
   selector: 'app-cost-estimate',
   standalone: true,
-  imports: [ButtonModule, TooltipModule, PageInfoComponent, SpotlightComponent, TrendChartComponent],
+  imports: [ButtonModule, TooltipModule, PageInfoComponent, SpotlightComponent, TrendChartComponent, PageHeaderComponent],
   template: `
     <app-spotlight id="cost-estimate" title="Cost Estimation" icon="pi pi-dollar"
       description="Estimated monthly spend per deployment based on resource requests."
       [capabilities]="['Per-deployment cost', 'CPU/memory pricing', 'Right-sizing tips']" [compact]="true" />
 
-        <div class="page-header">
-      <div>
-        <h1>Cost Estimation</h1>
-        <p class="subtitle">Estimated monthly spend based on resource requests · {{ lastUpdated }}</p>
-      </div>
-      <div class="header-actions">
+    <app-page-header title="Cost Estimation" [subtitle]="'Estimated monthly spend based on resource requests · ' + lastUpdated">
         <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="refresh()" [loading]="loading"></button>
         <app-page-info title="Cost Estimation" description="Estimated monthly spend per deployment based on CPU and memory resource requests."
           [tips]="['Based on AWS on-demand pricing (~$30/vCPU, ~$4/GB)', 'Sorted by highest cost first', 'Reduce cost by right-sizing: optimize command']"
           [commands]="['cost-estimate', 'optimize', 'top pods']" />
-      </div>
-    </div>
+    </app-page-header>
 
     @if (data) {
       <!-- Cost Trend Chart (auto-hides if no DuckDB data) -->

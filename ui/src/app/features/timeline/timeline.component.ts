@@ -4,30 +4,25 @@ import { TagModule } from 'primeng/tag';
 import { ButtonModule } from 'primeng/button';
 import { TooltipModule } from 'primeng/tooltip';
 import { SpotlightComponent } from '../../shared/components/spotlight.component';
+import { PageHeaderComponent } from '../../shared/components/page-header.component';
 
 @Component({
   selector: 'app-timeline',
   standalone: true,
-  imports: [TagModule, ButtonModule, TooltipModule, SpotlightComponent],
+  imports: [TagModule, ButtonModule, TooltipModule, SpotlightComponent, PageHeaderComponent],
   template: `
     <app-spotlight id="timeline" title="Timeline" icon="pi pi-history"
       description="Chronological view of cluster changes and events."
       [capabilities]="['Change timeline', 'Event correlation', 'Time-range filtering']" [compact]="true" />
 
-        <div class="page-header">
-      <div>
-        <h1>Timeline</h1>
-        <p class="subtitle">Cluster activity stream · {{ lastUpdated }}</p>
-      </div>
-      <div class="header-actions">
+    <app-page-header title="Timeline" [subtitle]="'Cluster activity stream · ' + lastUpdated">
         <div class="time-range">
           @for (r of ranges; track r.value) {
             <button class="range-btn" [class.active]="selectedRange === r.value" (click)="setRange(r.value)">{{ r.label }}</button>
           }
         </div>
         <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="load()" pTooltip="Refresh" [loading]="loading"></button>
-      </div>
-    </div>
+    </app-page-header>
 
     <!-- Activity Summary -->
     <div class="activity-strip">
@@ -101,10 +96,7 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     </div>
   `,
   styles: [`
-    .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; }
-    .page-header h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.03em; }
-    .subtitle { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
-    .header-actions { display: flex; align-items: center; gap: 10px; }
+
 
     /* Time Range */
     .time-range { display: flex; gap: 2px; background: var(--bg-elevated); border-radius: 8px; padding: 3px; }
@@ -192,8 +184,6 @@ import { SpotlightComponent } from '../../shared/components/spotlight.component'
     }
     .empty-state i { font-size: 28px; opacity: 0.3; }
     @media (max-width: 768px) {
-      .page-header { flex-direction: column; gap: 12px; }
-      .header-actions { flex-wrap: wrap; }
       .tl-entry { padding-left: 16px; }
     }
   `],

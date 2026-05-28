@@ -6,22 +6,19 @@ import { InputTextModule } from 'primeng/inputtext';
 import { TooltipModule } from 'primeng/tooltip';
 import { ConfirmService } from '../../shared/services/confirm.service';
 import { SpotlightComponent } from '../../shared/components/spotlight.component';
+import { PageHeaderComponent } from '../../shared/components/page-header.component';
 
 @Component({
   selector: 'app-pins',
   standalone: true,
-  imports: [FormsModule, ButtonModule, InputTextModule, TooltipModule, SpotlightComponent],
+  imports: [FormsModule, ButtonModule, InputTextModule, TooltipModule, SpotlightComponent, PageHeaderComponent],
   template: `
     <app-spotlight id="pins" title="Saved Queries" icon="pi pi-bookmark"
       description="Pin frequently used commands for quick access."
       [capabilities]="['Save commands', 'Quick re-run', 'Custom intervals']" [compact]="true" />
 
-        <div class="page-header">
-      <div>
-        <h1>Pinned Queries</h1>
-        <p class="subtitle">Saved commands for quick access & monitoring</p>
-      </div>
-    </div>
+    <app-page-header title="Pinned Queries" subtitle="Saved commands for quick access & monitoring">
+    </app-page-header>
 
     <!-- Add New -->
     <div class="add-bar">

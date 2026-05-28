@@ -6,6 +6,7 @@ import { TagModule } from 'primeng/tag';
 import { ButtonModule } from 'primeng/button';
 import { TooltipModule } from 'primeng/tooltip';
 import { SpotlightComponent } from '../../shared/components/spotlight.component';
+import { PageHeaderComponent } from '../../shared/components/page-header.component';
 import { SkeletonComponent } from '../../shared/components/skeleton.component';
 
 interface ResourceItem {
@@ -19,24 +20,18 @@ interface ResourceItem {
 @Component({
   selector: 'app-namespace',
   standalone: true,
-  imports: [FormsModule, TagModule, ButtonModule, TooltipModule, SpotlightComponent, SkeletonComponent],
+  imports: [FormsModule, TagModule, ButtonModule, TooltipModule, SpotlightComponent, SkeletonComponent, PageHeaderComponent],
   template: `
     <app-spotlight id="namespace" title="Namespace Overview" icon="pi pi-folder"
       description="Summary of resources in the current namespace."
       [capabilities]="['Resource counts', 'Service listing', 'ConfigMap overview']" [compact]="true" />
 
-        <div class="page-header">
-      <div>
-        <h1>Namespace</h1>
-        <p class="subtitle">Resource inventory for <strong>{{ data?.namespace || '...' }}</strong> · {{ lastUpdated }}</p>
-      </div>
-      <div class="header-actions">
+    <app-page-header title="Namespace" [subtitle]="'Resource inventory for ' + (data?.namespace || '...') + ' · ' + lastUpdated">
         <button class="ar-btn" [class.ar-active]="autoRefresh" (click)="toggleAutoRefresh()" [pTooltip]="autoRefresh ? 'Auto-refresh on (30s)' : 'Auto-refresh off'">
           <i class="pi" [class.pi-sync]="autoRefresh" [class.pi-pause]="!autoRefresh"></i>
         </button>
         <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="load()" [loading]="loading" pTooltip="Refresh"></button>
-      </div>
-    </div>
+    </app-page-header>
 
     @if (data) {
       <!-- Summary Hero -->

@@ -5,24 +5,20 @@ import { TagModule } from 'primeng/tag';
 import { TabsModule } from 'primeng/tabs';
 import { PageInfoComponent } from '../../shared/components/page-info.component';
 import { SpotlightComponent } from '../../shared/components/spotlight.component';
+import { PageHeaderComponent } from '../../shared/components/page-header.component';
 import { SkeletonComponent } from '../../shared/components/skeleton.component';
 import { RelatedPagesComponent } from '../../shared/components/related-pages.component';
 
 @Component({
   selector: 'app-rightsizing',
   standalone: true,
-  imports: [ButtonModule, TagModule, TabsModule, PageInfoComponent, SpotlightComponent, RelatedPagesComponent, SkeletonComponent],
+  imports: [ButtonModule, TagModule, TabsModule, PageInfoComponent, SpotlightComponent, RelatedPagesComponent, SkeletonComponent, PageHeaderComponent],
   template: `
     <app-spotlight id="rightsizing" title="Right-Sizing" icon="pi pi-sliders-h"
       description="Data-driven CPU/memory recommendations based on actual P95 usage."
       [capabilities]="['P95-based requests', 'P99-based limits', 'Safe rollout phases', 'YAML patch export']" [compact]="true" />
 
-    <div class="page-header">
-      <div>
-        <h1>Right-Sizing Recommendations</h1>
-        <p class="subtitle">Based on {{ data?.methodology?.min_samples || 12 }}h+ of hourly metrics · Cache: {{ data?.methodology?.cache_ttl_hours || 6 }}h</p>
-      </div>
-      <div class="header-actions">
+    <app-page-header title="Right-Sizing Recommendations" [subtitle]="'Based on ' + (data?.methodology?.min_samples || 12) + 'h+ of hourly metrics'">
         <button pButton icon="pi pi-check-circle" label="Dry Run" class="p-button-outlined p-button-sm" (click)="dryRun()" [loading]="dryRunning" [disabled]="!data?.recommendations?.length"></button>
         <button pButton icon="pi pi-code" label="GitOps" class="p-button-outlined p-button-sm" (click)="exportGitops()" [disabled]="!data?.recommendations?.length"></button>
         <button pButton icon="pi pi-download" label="YAML" class="p-button-outlined p-button-sm" (click)="exportYaml()" [disabled]="!data?.recommendations?.length"></button>
@@ -30,8 +26,7 @@ import { RelatedPagesComponent } from '../../shared/components/related-pages.com
         <app-page-info title="Right-Sizing" description="Analyzes hourly P95/P99 usage vs current requests/limits. Generates safe recommendations with confidence scoring and phased rollout."
           [tips]="['Green = safe to apply', 'Yellow = apply with monitoring', 'Red = manual review', 'Export YAML for kubectl apply']"
           [commands]="['rightsizing', 'cost-query', 'analytics']" />
-      </div>
-    </div>
+    </app-page-header>
 
     @if (!data && !loading) {
       <div class="empty-state">

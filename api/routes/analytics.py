@@ -48,9 +48,7 @@ def get_cost_attribution(
         deployments = cost_by_deployment(days=days, model=model)
         summary = monthly_cost_summary(model=model)
         return {"deployments": deployments, "summary": summary}
-    except ImportError:
-        return {"deployments": [], "summary": None}
-    except Exception as e:
+    except (ImportError, Exception) as e:
         return {"deployments": [], "summary": None, "error": str(e)}
 
 
@@ -72,9 +70,7 @@ def get_predictions():
     try:
         from core.analytics.predictive import check_predictive_alerts
         return {"predictions": check_predictive_alerts()}
-    except ImportError:
-        return {"predictions": []}
-    except Exception as e:
+    except (ImportError, Exception) as e:
         return {"predictions": [], "error": str(e)}
 
 

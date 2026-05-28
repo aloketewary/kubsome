@@ -33,6 +33,8 @@ MAIN_DB = ANALYTICS_DIR / "kubsome.duckdb"
 
 _conn = None
 _conn_lock = threading.Lock()
+_last_recovery = 0
+_RECOVERY_COOLDOWN = 5  # seconds between recovery attempts
 # --- App-level query cache ---
 _query_cache = {}
 _cache_lock = threading.Lock()
@@ -136,13 +138,29 @@ def _cleanup_stale_dbs():
 
 
 def _recover_db():
-    """Delete corrupted DB and create fresh."""
+    """Delete corrupted DB and create fresh. Returns new raw connection."""
+    global _conn, _last_recovery
     import logging
+
+    now = time.time()
+    if now - _last_recovery < _RECOVERY_COOLDOWN:
+        # Avoid repeated recovery within cooldown
+        raw = duckdb.connect(":memory:")
+        _configure_conn(raw)
+        _init_schema(raw)
+        return raw
+
+    _last_recovery = now
     logging.warning(
         "DuckDB corrupted — recreating: %s", MAIN_DB
     )
+    # Reset global connection
+    _conn = None
     for f in MAIN_DB.parent.glob("kubsome.duckdb*"):
-        f.unlink(missing_ok=True)
+        try:
+            f.unlink(missing_ok=True)
+        except OSError:
+            pass
     raw = duckdb.connect(
         str(MAIN_DB), config={"access_mode": "READ_WRITE"}
     )
@@ -181,12 +199,16 @@ class _ThreadSafeConn:
                     duckdb.InvalidInputException) as e:
                 if "invalidated" in str(e) or "Fatal" in str(e):
                     self._conn = _recover_db()
-                    if params:
-                        result = self._conn.execute(sql, params)
-                    else:
-                        result = self._conn.execute(sql)
-                    desc = result.description
-                    rows = result.fetchall()
+                    try:
+                        if params:
+                            result = self._conn.execute(sql, params)
+                        else:
+                            result = self._conn.execute(sql)
+                        desc = result.description
+                        rows = result.fetchall()
+                    except Exception:
+                        # Recovery failed — return empty
+                        return _MaterializedResult([], None)
                 else:
                     raise
         return _MaterializedResult(rows, desc)

@@ -5,29 +5,24 @@ import { TagModule } from 'primeng/tag';
 import { ButtonModule } from 'primeng/button';
 import { TooltipModule } from 'primeng/tooltip';
 import { SpotlightComponent } from '../../shared/components/spotlight.component';
+import { PageHeaderComponent } from '../../shared/components/page-header.component';
 
 @Component({
   selector: 'app-cost',
   standalone: true,
-  imports: [FormsModule, TagModule, ButtonModule, TooltipModule, SpotlightComponent],
+  imports: [FormsModule, TagModule, ButtonModule, TooltipModule, SpotlightComponent, PageHeaderComponent],
   template: `
     <app-spotlight id="cost" title="Cost Analysis" icon="pi pi-chart-line"
       description="Analyze resource costs and identify optimization opportunities."
       [capabilities]="['Utilization analysis', 'Over-provisioned detection', 'Optimization tips']" [compact]="true" />
 
-        <div class="page-header">
-      <div>
-        <h1>Optimization</h1>
-        <p class="subtitle">Resource efficiency and waste detection · {{ lastScanned }}</p>
-      </div>
-      <div class="header-actions">
+    <app-page-header title="Optimization" [subtitle]="'Resource efficiency and waste detection · ' + lastScanned">
         <div class="search-wrap">
           <i class="pi pi-search"></i>
           <input type="text" [(ngModel)]="searchQuery" placeholder="Filter..." (ngModelChange)="applyFilter()" />
         </div>
         <button pButton icon="pi pi-refresh" label="Scan" class="p-button-outlined p-button-sm" (click)="load()" [loading]="loading"></button>
-      </div>
-    </div>
+    </app-page-header>
 
     <!-- Score Hero -->
     <div class="score-hero">
