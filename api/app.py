@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 
-from api.routes import pods, overview, contexts, events, metrics, logs, deployments, diagnostics, intelligence, terminal, operations, ws, describe, gateway, gitops
+from api.routes import pods, overview, contexts, events, metrics, logs, deployments, diagnostics, intelligence, terminal, operations, ws, describe, gateway, gitops, analytics
 from api.auth import AuthMiddleware, generate_token
 from api.ratelimit import RateLimitMiddleware
 
@@ -48,6 +48,7 @@ app.include_router(operations.router, prefix="/api")
 app.include_router(describe.router, prefix="/api")
 app.include_router(gateway.router, prefix="/api")
 app.include_router(gitops.router, prefix="/api")
+app.include_router(analytics.router, prefix="/api")
 app.include_router(ws.router)
 
 

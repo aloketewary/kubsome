@@ -37,7 +37,7 @@ def aggregate_hourly():
             MAX(mem_request) AS mem_request,
             SUM(restarts) AS restart_count
         FROM raw_pod_metrics
-        WHERE ts >= (
+        WHERE ts > (
             SELECT COALESCE(MAX(hour), '1970-01-01')
             FROM hourly_pod_metrics
         )
@@ -58,7 +58,7 @@ def aggregate_hourly():
             AVG(mem_pct)::INTEGER AS mem_avg,
             MAX(mem_pct) AS mem_max
         FROM raw_node_metrics
-        WHERE ts >= (
+        WHERE ts > (
             SELECT COALESCE(MAX(hour), '1970-01-01')
             FROM hourly_node_metrics
         )
@@ -100,9 +100,10 @@ def aggregate_daily():
         FROM hourly_pod_metrics h
         CROSS JOIN cost_model c
         WHERE c.name = 'default'
-        AND hour >= (
-            SELECT COALESCE(MAX(day), '1970-01-01')
-            FROM daily_summary
+        AND hour > (
+            SELECT COALESCE(
+                MAX(day) + INTERVAL '1 day', '1970-01-01'
+            ) FROM daily_summary
         )
         AND DATE_TRUNC('day', hour) < CURRENT_DATE
         GROUP BY day, h.context, h.namespace, h.deployment,
