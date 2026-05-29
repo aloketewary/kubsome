@@ -5,15 +5,14 @@ import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
 import { TooltipModule } from 'primeng/tooltip';
 import { Select } from 'primeng/select';
-import { SpotlightComponent } from '../../shared/components/spotlight.component';
-import { PageHeaderComponent } from '../../shared/components/page-header.component';
+import { IntelHeaderComponent } from '../../shared/components/futuristic/intel-header.component';
 import { ConfirmService } from '../../shared/services/confirm.service';
 
 
 @Component({
   selector: 'app-yaml-editor',
   standalone: true,
-  imports: [FormsModule, ButtonModule, TagModule, TooltipModule, Select, SpotlightComponent, PageHeaderComponent],
+  imports: [FormsModule, ButtonModule, TagModule, TooltipModule, Select, IntelHeaderComponent],
   templateUrl: './yaml-editor.html',
   styleUrl: './yaml-editor.scss',
 })

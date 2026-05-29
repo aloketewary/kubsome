@@ -10,11 +10,12 @@ import { StatusBeaconComponent } from '../../shared/components/futuristic/status
 import { CommandBarComponent } from '../../shared/components/futuristic/command-bar.component';
 import type { CommandPill } from '../../shared/components/futuristic/command-bar.component';
 import { LiveIndicatorComponent } from '../../shared/components/futuristic/live-indicator.component';
+import { IntelHeaderComponent } from '../../shared/components/futuristic/intel-header.component';
 
 @Component({
   selector: 'app-network',
   standalone: true,
-  imports: [FormsModule, JsonPipe, TagModule, TooltipModule, HoloCardComponent, MetricTileComponent, StatusBeaconComponent, CommandBarComponent, LiveIndicatorComponent],
+  imports: [FormsModule, JsonPipe, TagModule, TooltipModule, HoloCardComponent, MetricTileComponent, StatusBeaconComponent, CommandBarComponent, LiveIndicatorComponent, IntelHeaderComponent],
   templateUrl: './network.html',
   styleUrl: './network.scss',
 })

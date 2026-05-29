@@ -6,11 +6,12 @@ import { HoloCardComponent } from '../../shared/components/futuristic/holo-card.
 import { MetricTileComponent } from '../../shared/components/futuristic/metric-tile.component';
 import { StatusBeaconComponent } from '../../shared/components/futuristic/status-beacon.component';
 import { ActionIconComponent } from '../../shared/components/futuristic/action-icon.component';
+import { IntelHeaderComponent } from '../../shared/components/futuristic/intel-header.component';
 
 @Component({
   selector: 'app-secrets',
   standalone: true,
-  imports: [TagModule, TooltipModule, HoloCardComponent, MetricTileComponent, StatusBeaconComponent, ActionIconComponent],
+  imports: [TagModule, TooltipModule, HoloCardComponent, MetricTileComponent, StatusBeaconComponent, ActionIconComponent, IntelHeaderComponent],
   templateUrl: './secrets.html',
   styleUrl: './secrets.scss',
 })

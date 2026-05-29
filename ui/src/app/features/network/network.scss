@@ -1,23 +1,65 @@
 @use '../../styles/futuristic';
 :host { display: block; width: 100%; }
-.title-icon { color: #4ade80; }
 
-.ing-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.025); font-size: 11px; }
+/* ─── Ingress Rows ───────────────────────────────────────────────── */
+.ing-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(94, 84, 75, 0.06);
+  font-size: 11px; transition: background 0.12s;
+}
 .ing-row:last-child { border-bottom: none; }
-.ing-name { color: rgba(255,255,255,0.7); font-weight: 600; }
-.ing-host { color: #d09c60; }
-.ing-path { color: rgba(255,255,255,0.35); }
-.ing-backend { color: rgba(255,255,255,0.4); margin-left: auto; }
+.ing-row:hover { background: rgba(208, 156, 96, 0.02); }
+.ing-name { color: var(--text); font-weight: 600; font-family: 'JetBrains Mono', monospace; }
+.ing-host { color: var(--accent); font-family: 'JetBrains Mono', monospace; font-weight: 500; }
+.ing-path { color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+.ing-backend { color: var(--text-muted); margin-left: auto; font-family: 'JetBrains Mono', monospace; opacity: 0.7; }
 
+/* ─── DNS Lookup ─────────────────────────────────────────────────── */
 .dns-bar { display: flex; gap: 6px; margin-bottom: 8px; }
-.dns-bar input { flex: 1; padding: 7px 10px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 6px; color: var(--text); font-size: 11px; font-family: 'JetBrains Mono', monospace; outline: none; }
-.dns-bar input:focus { border-color: rgba(0,212,255,0.3); }
-.dns-result { font-size: 10px; font-family: 'JetBrains Mono', monospace; color: rgba(255,255,255,0.5); background: rgba(8,11,20,0.8); padding: 8px; border-radius: 6px; white-space: pre-wrap; max-height: 120px; overflow-y: auto; margin: 0; }
+.dns-bar input {
+  flex: 1; padding: 8px 10px;
+  background: transparent; border: none;
+  border-bottom: 1px solid rgba(94, 84, 75, 0.15);
+  color: var(--text); font-size: 11px;
+  font-family: 'JetBrains Mono', monospace; outline: none;
+}
+.dns-bar input:focus { border-bottom-color: var(--accent); }
+.dns-result {
+  font-size: 10px; font-family: 'JetBrains Mono', monospace;
+  color: var(--text-secondary); background: transparent;
+  padding: 10px 0; border-top: 1px solid rgba(94, 84, 75, 0.06);
+  white-space: pre-wrap; max-height: 120px; overflow-y: auto; margin: 0;
+}
 
-.ep-list { display: flex; flex-direction: column; gap: 3px; }
-.ep-row { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 8px; background: linear-gradient(180deg, rgba(13,17,28,0.7) 0%, rgba(8,11,20,0.75) 100%); border: 1px solid rgba(255,255,255,0.04); transition: all 0.15s; }
-.ep-row:hover { border-color: rgba(255,255,255,0.07); }
-.ep-unhealthy { border-left: 2px solid rgba(244,63,94,0.4); }
-.ep-name { font-size: 11px; color: rgba(255,255,255,0.7); }
-.ep-type { font-size: 9px; color: rgba(255,255,255,0.3); padding: 1px 5px; background: rgba(255,255,255,0.03); border-radius: 3px; }
-.ep-ports { font-size: 9px; color: rgba(255,255,255,0.25); font-family: 'JetBrains Mono', monospace; margin-left: auto; }
+/* ─── Endpoint List ──────────────────────────────────────────────── */
+.ep-list { display: flex; flex-direction: column; gap: 0; }
+.ep-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 12px; background: transparent; border: none;
+  border-bottom: 1px solid rgba(94, 84, 75, 0.06);
+  transition: background 0.12s;
+}
+.ep-row:hover { background: rgba(208, 156, 96, 0.02); }
+.ep-unhealthy { border-left: 2px solid rgba(244, 63, 94, 0.4); }
+.ep-name { font-size: 11px; color: var(--text); font-family: 'JetBrains Mono', monospace; font-weight: 500; }
+.ep-type {
+  font-size: 9px; color: var(--text-muted); padding: 1px 5px;
+  background: transparent; border: 1px solid rgba(94, 84, 75, 0.12);
+  font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em;
+}
+.ep-ports { font-size: 9px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; margin-left: auto; opacity: 0.7; }
+
+/* ─── Light Mode ─────────────────────────────────────────────────── */
+:host-context([data-theme="light"]) {
+  .ing-row { border-bottom-color: rgba(0, 0, 0, 0.04); }
+  .ing-row:hover { background: rgba(0, 0, 0, 0.015); }
+  .ing-host { color: #9a5129; }
+  .dns-bar input { border-bottom-color: rgba(0, 0, 0, 0.08); }
+  .dns-bar input:focus { border-bottom-color: #9a5129; }
+  .dns-result { border-top-color: rgba(0, 0, 0, 0.04); }
+  .ep-row { border-bottom-color: rgba(0, 0, 0, 0.04); }
+  .ep-row:hover { background: rgba(0, 0, 0, 0.015); }
+  .ep-unhealthy { border-left-color: rgba(220, 38, 38, 0.3); }
+  .ep-type { border-color: rgba(0, 0, 0, 0.06); }
+}

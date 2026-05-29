@@ -1,11 +1,6 @@
-<div class="intel-header"><div class="intel-title-block"><h1 class="intel-title">Incident</h1></div></div>
-
-    <app-spotlight id="incident" title="Incident Tracking" icon="pi pi-exclamation-circle"
-      description="Track production incidents with timeline, notes, and snapshots."
-      [capabilities]="['Timeline with notes', 'Cluster snapshots', 'AI analysis', 'Export reports']" [compact]="true" />
-
-    <app-page-header title="Incident" subtitle="Track and document production issues">
-    </app-page-header>
+<app-intel-header title="Incident" icon="pi pi-exclamation-circle"
+  subtitle="Track and document production issues">
+</app-intel-header>
 
     <!-- Resolved Summary -->
     @if (resolved) {

@@ -1,11 +1,6 @@
-<div class="intel-header"><div class="intel-title-block"><h1 class="intel-title">YAML Diff</h1></div></div>
-
-    <app-spotlight id="yaml-diff" title="YAML Diff" icon="pi pi-file-edit"
-      description="Compare YAML revisions side-by-side."
-      [capabilities]="['Side-by-side diff', 'Revision history', 'Change highlighting']" [compact]="true" />
-
-    <app-page-header title="YAML Diff" subtitle="Side-by-side revision comparison">
-    </app-page-header>
+<app-intel-header title="YAML Diff" icon="pi pi-copy"
+  subtitle="Side-by-side revision comparison">
+</app-intel-header>
 
     <div class="controls">
       <p-select [options]="deployments" [(ngModel)]="selected" placeholder="Select deployment..."

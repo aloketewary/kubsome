@@ -1,14 +1,9 @@
 <!-- ─── Header ─────────────────────────────────────────────────────── -->
-<div class="intel-header">
-  <div class="intel-title-block">
-    <h1 class="intel-title"><span class="title-icon">▶</span> Deployments</h1>
-    <p class="intel-subtitle">{{ deployments.length }} deployments · {{ lastUpdated || 'loading...' }}</p>
-  </div>
-  <div class="intel-controls">
-    <app-live-indicator [active]="autoRefresh" label="AUTO" offLabel="PAUSED" (click)="toggleAutoRefresh()" />
-    <button class="ctrl-btn" (click)="refresh()" pTooltip="Refresh"><i class="pi pi-refresh" [class.spinning]="loading"></i></button>
-  </div>
-</div>
+<app-intel-header title="Deployments" icon="pi pi-send"
+  [subtitle]="deployments.length + ' deployments · ' + (lastUpdated || 'loading...')">
+  <app-live-indicator [active]="autoRefresh" label="AUTO" offLabel="PAUSED" (click)="toggleAutoRefresh()" />
+  <button class="ctrl-btn" (click)="refresh()" pTooltip="Refresh"><i class="pi pi-refresh" [class.spinning]="loading"></i></button>
+</app-intel-header>
 
 <!-- ─── Metrics ────────────────────────────────────────────────────── -->
 <div class="metrics-strip">

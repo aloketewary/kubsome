@@ -1,5 +1,5 @@
 <!-- ─── Header ─────────────────────────────────────────────────────── -->
-<app-intel-header title="Cluster Scorecard" icon="★"
+<app-intel-header title="Cluster Scorecard" icon="pi pi-trophy"
   [subtitle]="'Health grade · ' + (lastUpdated || 'loading...')">
   <app-live-indicator [active]="autoRefresh" label="AUTO" offLabel="PAUSED" (click)="toggleAutoRefresh()" />
   <button class="ctrl-btn" (click)="refresh()" pTooltip="Refresh">

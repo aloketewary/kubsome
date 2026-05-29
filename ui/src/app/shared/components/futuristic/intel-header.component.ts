@@ -7,7 +7,7 @@ import { Component, Input } from '@angular/core';
     <div class="intel-header">
       <div class="intel-title-block">
         <h1 class="intel-title">
-          @if (icon) { <span class="title-icon">{{ icon }}</span> }
+          @if (icon) { <i [class]="icon" class="title-icon"></i> }
           {{ title }}
         </h1>
         @if (subtitle) { <p class="intel-subtitle">{{ subtitle }}</p> }
@@ -27,7 +27,7 @@ import { Component, Input } from '@angular/core';
       margin: 0; display: flex; align-items: center; gap: 8px;
       color: var(--text);
     }
-    .title-icon { font-size: 14px; color: #d09c60; }
+    .title-icon { font-size: 14px; color: #d09c60; opacity: 0.7; }
     .intel-subtitle {
       font-size: 11px; color: var(--text-muted); margin: 3px 0 0;
       font-family: 'JetBrains Mono', monospace; letter-spacing: 0.01em;
@@ -35,7 +35,7 @@ import { Component, Input } from '@angular/core';
     .intel-controls { display: flex; align-items: center; gap: 6px; }
 
     :host-context([data-theme="light"]) .intel-title { color: var(--text); }
-    :host-context([data-theme="light"]) .title-icon { color: #9a5129; }
+    :host-context([data-theme="light"]) .title-icon { color: #9a5129; opacity: 0.7; }
     :host-context([data-theme="light"]) .intel-subtitle { color: var(--text-muted); }
   `],
 })

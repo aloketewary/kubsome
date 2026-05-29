@@ -1,13 +1,8 @@
-<div class="intel-header">
-  <div class="intel-title-block">
-    <h1 class="intel-title"><span class="title-icon">🌐</span> Network</h1>
-    <p class="intel-subtitle">ingress · endpoints · DNS · {{ lastUpdated || '...' }}</p>
-  </div>
-  <div class="intel-controls">
-    <app-live-indicator [active]="autoRefresh" label="AUTO" offLabel="PAUSED" (click)="toggleAutoRefresh()" />
-    <button class="ctrl-btn" (click)="load()"><i class="pi pi-refresh" [class.spinning]="loading"></i></button>
-  </div>
-</div>
+<app-intel-header title="Network" icon="pi pi-globe"
+  [subtitle]="'ingress · endpoints · DNS · ' + (lastUpdated || '...')">
+  <app-live-indicator [active]="autoRefresh" label="AUTO" offLabel="PAUSED" (click)="toggleAutoRefresh()" />
+  <button class="ctrl-btn" (click)="load()" pTooltip="Refresh"><i class="pi pi-refresh" [class.spinning]="loading"></i></button>
+</app-intel-header>
 
 <div class="metrics-strip">
   <app-metric-tile label="Ingresses" [value]="'' + ingresses.length" accent="cyan" />

@@ -10,7 +10,7 @@ import { PageHeaderComponent } from '../../shared/components/page-header.compone
 @Component({
   selector: 'app-yaml-diff',
   standalone: true,
-  imports: [FormsModule, Select, ButtonModule, SpotlightComponent, PageHeaderComponent],
+  imports: [FormsModule, Select, ButtonModule, IntelHeaderComponent],
   templateUrl: './yaml-diff.html',
   styleUrl: './yaml-diff.scss',
 })

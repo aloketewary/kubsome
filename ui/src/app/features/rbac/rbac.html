@@ -1,13 +1,8 @@
-<div class="intel-header">
-  <div class="intel-title-block">
-    <h1 class="intel-title"><span class="title-icon">🔐</span> RBAC</h1>
-    <p class="intel-subtitle">{{ bindings.length }} bindings · {{ uniqueRoles.length }} roles · {{ lastUpdated || '...' }}</p>
-  </div>
-  <div class="intel-controls">
-    <app-live-indicator [active]="autoRefresh" label="AUTO" offLabel="PAUSED" (click)="toggleAutoRefresh()" />
-    <button class="ctrl-btn" (click)="load()"><i class="pi pi-refresh" [class.spinning]="loading"></i></button>
-  </div>
-</div>
+<app-intel-header title="RBAC" icon="pi pi-shield"
+  [subtitle]="bindings.length + ' bindings · ' + uniqueRoles.length + ' roles · ' + (lastUpdated || '...')">
+  <app-live-indicator [active]="autoRefresh" label="AUTO" offLabel="PAUSED" (click)="toggleAutoRefresh()" />
+  <button class="ctrl-btn" (click)="load()" pTooltip="Refresh"><i class="pi pi-refresh" [class.spinning]="loading"></i></button>
+</app-intel-header>
 
 <div class="metrics-strip">
   <app-metric-tile label="Bindings" [value]="'' + bindings.length" accent="cyan" />

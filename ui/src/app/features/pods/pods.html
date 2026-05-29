@@ -4,7 +4,7 @@
      ═══════════════════════════════════════════════════════════════════ -->
 
 <!-- ─── Header ─────────────────────────────────────────────────────── -->
-<app-intel-header title="Pod Intelligence" icon="◆"
+<app-intel-header title="Pod Intelligence" icon="pi pi-box"
   [subtitle]="pods.length + ' pods · ' + filteredGroups.length + ' deployments · ' + (statusFilter !== 'all' ? statusFilter : 'all states')">
   <app-live-indicator [active]="watching" (click)="toggleWatch()" />
   <button class="ctrl-btn" (click)="toggleAllGroups()" [pTooltip]="allExpanded ? 'Collapse all' : 'Expand all'">

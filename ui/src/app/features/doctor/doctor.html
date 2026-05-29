@@ -1,5 +1,5 @@
 <!-- ─── Header ─────────────────────────────────────────────────────── -->
-<app-intel-header title="System Health" icon="♥"
+<app-intel-header title="System Health" icon="pi pi-heart"
   [subtitle]="checks.length ? passCount + '/' + checks.length + ' passed · ' + lastChecked : 'pre-flight diagnostics'">
   <button class="ctrl-btn" (click)="load()" pTooltip="Run diagnostics">
     <i class="pi pi-refresh" [class.spinning]="loading"></i>

@@ -10,12 +10,13 @@ import { InputTextModule } from 'primeng/inputtext';
 import { ConfirmService } from '../../shared/services/confirm.service';
 import { SpotlightComponent } from '../../shared/components/spotlight.component';
 import { PageHeaderComponent } from '../../shared/components/page-header.component';
+import { IntelHeaderComponent } from '../../shared/components/futuristic/intel-header.component';
 
 
 @Component({
   selector: 'app-incident',
   standalone: true,
-  imports: [FormsModule, SlicePipe, TagModule, ButtonModule, TooltipModule, InputTextModule, SpotlightComponent, PageHeaderComponent],
+  imports: [FormsModule, SlicePipe, TagModule, ButtonModule, TooltipModule, InputTextModule, IntelHeaderComponent],
   templateUrl: './incident.html',
   styleUrl: './incident.scss',
 })

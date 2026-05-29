@@ -12,11 +12,12 @@ import { StatusBeaconComponent } from '../../shared/components/futuristic/status
 import { CommandBarComponent } from '../../shared/components/futuristic/command-bar.component';
 import type { CommandPill } from '../../shared/components/futuristic/command-bar.component';
 import { LiveIndicatorComponent } from '../../shared/components/futuristic/live-indicator.component';
+import { IntelHeaderComponent } from '../../shared/components/futuristic/intel-header.component';
 
 @Component({
   selector: 'app-logs',
   standalone: true,
-  imports: [Select, ButtonModule, TooltipModule, FormsModule, HoloCardComponent, MetricTileComponent, StatusBeaconComponent, CommandBarComponent, LiveIndicatorComponent],
+  imports: [Select, ButtonModule, TooltipModule, FormsModule, HoloCardComponent, MetricTileComponent, StatusBeaconComponent, CommandBarComponent, LiveIndicatorComponent, IntelHeaderComponent],
   host: { '[class.logs-nowrap]': '!wordWrap' },
   templateUrl: './logs.html',
   styleUrl: './logs.scss',

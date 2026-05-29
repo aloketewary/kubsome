@@ -1,14 +1,9 @@
 <!-- ─── Header ─────────────────────────────────────────────────────── -->
-<div class="intel-header">
-  <div class="intel-title-block">
-    <h1 class="intel-title"><span class="title-icon">⬡</span> Namespace</h1>
-    <p class="intel-subtitle">{{ data?.namespace || '...' }} · {{ totalResources }} resources · {{ lastUpdated || 'loading...' }}</p>
-  </div>
-  <div class="intel-controls">
-    <app-live-indicator [active]="autoRefresh" label="AUTO" offLabel="PAUSED" (click)="toggleAutoRefresh()" />
-    <button class="ctrl-btn" (click)="load()" pTooltip="Refresh"><i class="pi pi-refresh" [class.spinning]="loading"></i></button>
-  </div>
-</div>
+<app-intel-header title="Namespace" icon="pi pi-th-large"
+  [subtitle]="(data?.namespace || '...') + ' · ' + totalResources + ' resources · ' + (lastUpdated || 'loading...')">
+  <app-live-indicator [active]="autoRefresh" label="AUTO" offLabel="PAUSED" (click)="toggleAutoRefresh()" />
+  <button class="ctrl-btn" (click)="load()" pTooltip="Refresh"><i class="pi pi-refresh" [class.spinning]="loading"></i></button>
+</app-intel-header>
 
 @if (data) {
   <!-- ─── Hero Stats + Pod Ring ──────────────────────────────────────── -->

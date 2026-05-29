@@ -1,14 +1,9 @@
 <!-- ─── Header ─────────────────────────────────────────────────────── -->
-<div class="intel-header">
-  <div class="intel-title-block">
-    <h1 class="intel-title"><span class="title-icon">⏱</span> Jobs & CronJobs</h1>
-    <p class="intel-subtitle">{{ cronjobs.length }} cronjobs · {{ jobs.length }} jobs · {{ lastUpdated || 'loading...' }}</p>
-  </div>
-  <div class="intel-controls">
-    <app-live-indicator [active]="autoRefresh" label="AUTO" offLabel="PAUSED" (click)="toggleAutoRefresh()" />
-    <button class="ctrl-btn" (click)="load()" pTooltip="Refresh"><i class="pi pi-refresh" [class.spinning]="loading"></i></button>
-  </div>
-</div>
+<app-intel-header title="Jobs & CronJobs" icon="pi pi-clock"
+  [subtitle]="cronjobs.length + ' cronjobs · ' + jobs.length + ' jobs · ' + (lastUpdated || 'loading...')">
+  <app-live-indicator [active]="autoRefresh" label="AUTO" offLabel="PAUSED" (click)="toggleAutoRefresh()" />
+  <button class="ctrl-btn" (click)="load()" pTooltip="Refresh"><i class="pi pi-refresh" [class.spinning]="loading"></i></button>
+</app-intel-header>
 
 <!-- ─── Metrics ────────────────────────────────────────────────────── -->
 <div class="metrics-strip">

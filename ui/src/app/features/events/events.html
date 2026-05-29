@@ -4,7 +4,7 @@
      ═══════════════════════════════════════════════════════════════════ -->
 
 <!-- ─── Header ─────────────────────────────────────────────────────── -->
-<app-intel-header title="Event Stream" icon="⚡"
+<app-intel-header title="Event Stream" icon="pi pi-bolt"
   [subtitle]="filteredEvents.length + ' events · ' + warningCount + ' warnings · ' + (autoRefresh ? '30s refresh' : 'paused')">
   <button class="ctrl-btn" [class.ctrl-btn-active]="autoRefresh" (click)="toggleAutoRefresh()"
           [pTooltip]="autoRefresh ? 'Auto-refresh on' : 'Auto-refresh off'">

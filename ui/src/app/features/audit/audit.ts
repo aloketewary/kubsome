@@ -6,11 +6,12 @@ import { MetricTileComponent } from '../../shared/components/futuristic/metric-t
 import { StatusBeaconComponent } from '../../shared/components/futuristic/status-beacon.component';
 import { CommandBarComponent } from '../../shared/components/futuristic/command-bar.component';
 import type { CommandPill } from '../../shared/components/futuristic/command-bar.component';
+import { IntelHeaderComponent } from '../../shared/components/futuristic/intel-header.component';
 
 @Component({
   selector: 'app-audit',
   standalone: true,
-  imports: [FormsModule, HoloCardComponent, MetricTileComponent, StatusBeaconComponent, CommandBarComponent],
+  imports: [FormsModule, HoloCardComponent, MetricTileComponent, StatusBeaconComponent, CommandBarComponent, IntelHeaderComponent],
   templateUrl: './audit.html',
   styleUrl: './audit.scss',
 })

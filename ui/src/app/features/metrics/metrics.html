@@ -4,7 +4,7 @@
      ═══════════════════════════════════════════════════════════════════ -->
 
 <!-- ─── Header ─────────────────────────────────────────────────────── -->
-<app-intel-header title="Resource Metrics" icon="▣"
+<app-intel-header title="Resource Metrics" icon="pi pi-chart-line"
   [subtitle]="topNodes.length + ' nodes · ' + topPods.length + ' pods · ' + (lastUpdated || 'loading...')">
   <app-live-indicator [active]="autoRefresh" label="AUTO" offLabel="PAUSED" (click)="toggleAutoRefresh()" />
   <button class="ctrl-btn" (click)="refresh()" pTooltip="Refresh">

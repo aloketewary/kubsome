@@ -1,29 +1,51 @@
 @use '../../styles/futuristic';
 :host { display: block; width: 100%; }
-.title-icon { color: #8b5cf6; }
-
-.checker { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; }
-.checker-select { flex: 1; padding: 7px 10px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 6px; color: var(--text); font-size: 11px; outline: none; }
-.checker-select:focus { border-color: rgba(0,212,255,0.3); }
 .disabled { opacity: 0.3; pointer-events: none; }
 
+/* ─── Checker ────────────────────────────────────────────────────── */
+.checker { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; }
+.checker-select { flex: 1; padding: 7px 10px; background: transparent; border: none; border-bottom: 1px solid rgba(94, 84, 75, 0.15); color: var(--text); font-size: 11px; font-family: 'JetBrains Mono', monospace; outline: none; }
+.checker-select:focus { border-bottom-color: var(--accent); }
+
+/* ─── Permission Grid ────────────────────────────────────────────── */
 .perm-grid { margin-top: 10px; font-size: 10px; }
 .pg-header, .pg-row { display: grid; grid-template-columns: 2fr repeat(5, 1fr); gap: 4px; padding: 4px 0; }
-.pg-header { color: rgba(255,255,255,0.3); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid rgba(255,255,255,0.03); }
-.pg-res { font-family: 'JetBrains Mono', monospace; color: rgba(255,255,255,0.5); }
+.pg-header { color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; border-bottom: 1px solid rgba(94, 84, 75, 0.1); }
+.pg-row { border-bottom: 1px solid rgba(94, 84, 75, 0.04); }
+.pg-res { font-family: 'JetBrains Mono', monospace; color: var(--text-secondary); }
 .pg-verb { text-align: center; }
 .pg-cell { text-align: center; }
-.pg-yes { color: #10b981; }
-.pg-no { color: rgba(255,255,255,0.15); }
+.pg-yes { color: var(--success); }
+.pg-no { color: var(--text-muted); opacity: 0.3; }
 
-.binding-list { display: flex; flex-direction: column; gap: 3px; }
-.binding-row { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border-radius: 8px; background: linear-gradient(180deg, rgba(13,17,28,0.7) 0%, rgba(8,11,20,0.75) 100%); border: 1px solid rgba(255,255,255,0.04); transition: all 0.15s; }
-.binding-row:hover { border-color: rgba(255,255,255,0.07); }
-.binding-admin { border-left: 2px solid rgba(244,63,94,0.4); }
+/* ─── Binding List ───────────────────────────────────────────────── */
+.binding-list { display: flex; flex-direction: column; gap: 0; }
+.binding-row {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 12px; background: transparent; border: none;
+  border-bottom: 1px solid rgba(94, 84, 75, 0.06);
+  transition: background 0.12s;
+}
+.binding-row:hover { background: rgba(208, 156, 96, 0.02); }
+.binding-admin { border-left: 2px solid rgba(244, 63, 94, 0.4); }
 .binding-body { flex: 1; display: flex; flex-direction: column; gap: 3px; }
 .binding-top { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.binding-name { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.8); }
-.binding-role { font-size: 10px; color: rgba(255,255,255,0.35); }
-.binding-level { color: rgba(0,212,255,0.6); font-weight: 600; }
+.binding-name { font-size: 11px; font-weight: 600; color: var(--text); }
+.binding-role { font-size: 10px; color: var(--text-muted); }
+.binding-level { color: var(--accent); font-weight: 600; }
 .binding-subjects { display: flex; gap: 3px; flex-wrap: wrap; margin-top: 2px; }
-.subject-chip { font-size: 9px; padding: 2px 6px; border-radius: 4px; background: rgba(255,255,255,0.03); color: rgba(255,255,255,0.4); font-family: 'JetBrains Mono', monospace; }
+.subject-chip { font-size: 9px; padding: 2px 6px; background: transparent; border: 1px solid rgba(94, 84, 75, 0.12); color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+
+/* ─── Light Mode ─────────────────────────────────────────────────── */
+:host-context([data-theme="light"]) {
+  .checker-select { border-bottom-color: rgba(0, 0, 0, 0.08); }
+  .checker-select:focus { border-bottom-color: #9a5129; }
+  .pg-header { border-bottom-color: rgba(0, 0, 0, 0.06); }
+  .pg-row { border-bottom-color: rgba(0, 0, 0, 0.03); }
+  .pg-yes { color: #16a34a; }
+  .binding-row { border-bottom-color: rgba(0, 0, 0, 0.04); }
+  .binding-row:hover { background: rgba(0, 0, 0, 0.015); }
+  .binding-admin { border-left-color: rgba(220, 38, 38, 0.3); }
+  .binding-level { color: #9a5129; }
+  .subject-chip { border-color: rgba(0, 0, 0, 0.06); }
+}

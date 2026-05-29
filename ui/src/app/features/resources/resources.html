@@ -1,12 +1,7 @@
-<div class="intel-header">
-  <div class="intel-title-block">
-    <h1 class="intel-title"><span class="title-icon">📦</span> Resources</h1>
-    <p class="intel-subtitle">browse and describe Kubernetes resources</p>
-  </div>
-  <div class="intel-controls">
-    <button class="ctrl-btn" (click)="listResources()"><i class="pi pi-refresh" [class.spinning]="loading"></i></button>
-  </div>
-</div>
+<app-intel-header title="Resources" icon="pi pi-database"
+  subtitle="browse and describe Kubernetes resources">
+  <button class="ctrl-btn" (click)="listResources()" pTooltip="Refresh"><i class="pi pi-refresh" [class.spinning]="loading"></i></button>
+</app-intel-header>
 
 <!-- Controls -->
 <app-holo-card [compact]="true" glow="cyan">

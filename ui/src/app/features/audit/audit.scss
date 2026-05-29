@@ -1,17 +1,40 @@
 @use '../../styles/futuristic';
 :host { display: block; width: 100%; }
-.title-icon { color: #f59e0b; }
 
-.audit-list { display: flex; flex-direction: column; gap: 3px; }
+/* ─── Audit List ─────────────────────────────────────────────────── */
+.audit-list { display: flex; flex-direction: column; gap: 0; }
 .audit-row {
   display: flex; align-items: center; gap: 10px;
-  padding: 9px 12px; border-radius: 8px;
-  background: linear-gradient(180deg, rgba(13,17,28,0.7) 0%, rgba(8,11,20,0.75) 100%);
-  border: 1px solid rgba(255,255,255,0.04); transition: all 0.15s;
+  padding: 9px 12px; background: transparent; border: none;
+  border-bottom: 1px solid rgba(94, 84, 75, 0.06);
+  transition: background 0.12s;
 }
-.audit-row:hover { border-color: rgba(255,255,255,0.07); }
-.audit-action { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.7); min-width: 60px; }
-.audit-target { font-size: 10px; font-family: 'JetBrains Mono', monospace; color: rgba(255,255,255,0.5); }
-.audit-details { font-size: 9px; color: rgba(255,255,255,0.3); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.audit-meta { font-size: 9px; color: rgba(255,255,255,0.2); font-family: 'JetBrains Mono', monospace; }
-.audit-time { font-size: 9px; color: rgba(255,255,255,0.25); font-family: 'JetBrains Mono', monospace; margin-left: auto; }
+.audit-row:hover { background: rgba(208, 156, 96, 0.02); }
+.audit-action {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.04em; min-width: 70px;
+  color: var(--warning);
+}
+.audit-target {
+  font-size: 11px; font-family: 'JetBrains Mono', monospace;
+  color: var(--text); font-weight: 500;
+}
+.audit-details {
+  font-size: 10px; color: var(--text-muted);
+  flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.audit-meta {
+  font-size: 9px; color: var(--text-muted); opacity: 0.6;
+  font-family: 'JetBrains Mono', monospace;
+}
+.audit-time {
+  font-size: 9px; color: var(--text-muted); opacity: 0.5;
+  font-family: 'JetBrains Mono', monospace; margin-left: auto;
+}
+
+/* ─── Light Mode ─────────────────────────────────────────────────── */
+:host-context([data-theme="light"]) {
+  .audit-row { border-bottom-color: rgba(0, 0, 0, 0.04); }
+  .audit-row:hover { background: rgba(0, 0, 0, 0.015); }
+  .audit-action { color: #b45309; }
+}

@@ -1,36 +1,37 @@
 @use '../../styles/futuristic';
 :host { display: block; width: 100%; }
-.title-icon { color: #d09c60; }
 
-/* Controls */
+/* ─── Controls ───────────────────────────────────────────────────── */
 .log-controls {
   display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
-  padding: 10px 14px; margin-bottom: 10px;
-  background: linear-gradient(180deg, rgba(13,17,28,0.8) 0%, rgba(8,11,20,0.85) 100%);
-  border: 1px solid rgba(255,255,255,0.04); border-radius: 0;
+  padding: 10px 0; margin-bottom: 10px;
+  background: transparent; border: none;
+  border-bottom: 1px solid rgba(94, 84, 75, 0.1);
 }
-.tail-group { display: flex; gap: 2px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04); border-radius: 5px; padding: 2px; }
-.tail-btn { padding: 3px 8px; border: none; border-radius: 3px; font-size: 10px; font-weight: 600; cursor: pointer; background: transparent; color: rgba(255,255,255,0.3); transition: all 0.12s; }
-.tail-active { background: #d09c60; color: #fff !important; }
-.ctrl-btn-warn { border-color: rgba(245,158,11,0.2) !important; color: #f59e0b !important; }
+.tail-group { display: flex; gap: 0; border: 1px solid rgba(94, 84, 75, 0.15); padding: 0; }
+.tail-btn { padding: 4px 10px; border: none; font-size: 10px; font-weight: 600; cursor: pointer; background: transparent; color: var(--text-muted); transition: all 0.12s; border-right: 1px solid rgba(94, 84, 75, 0.1); }
+.tail-btn:last-child { border-right: none; }
+.tail-btn:hover { color: var(--text-secondary); }
+.tail-active { background: var(--accent); color: #0B0908 !important; }
+.ctrl-btn-warn { border-color: rgba(245, 158, 11, 0.2) !important; color: #f59e0b !important; }
 .disabled { opacity: 0.3; pointer-events: none; }
 
-/* Toolbar */
-.log-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 4px; }
+/* ─── Toolbar ────────────────────────────────────────────────────── */
+.log-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 4px; padding-bottom: 8px; border-bottom: 1px solid rgba(94, 84, 75, 0.06); }
 .tb-left { display: flex; align-items: center; gap: 8px; }
-.tb-streaming { font-size: 10px; color: #4ade80; font-weight: 600; }
+.tb-streaming { font-size: 10px; color: var(--success); font-weight: 600; font-family: 'JetBrains Mono', monospace; }
 .tb-right { flex: 1; }
 
-/* Log Container */
+/* ─── Log Container ──────────────────────────────────────────────── */
 .log-container {
-  background: linear-gradient(180deg, rgba(8,11,20,0.95) 0%, rgba(5,7,14,0.98) 100%);
-  border: 1px solid rgba(255,255,255,0.03); border-radius: 0;
+  background: var(--bg);
+  border: none; border-top: 1px solid rgba(94, 84, 75, 0.08);
   overflow: hidden; min-height: 200px;
 }
 .log-fs {
   position: fixed !important; inset: 0 !important; z-index: 9999;
-  border-radius: 0; min-height: 100vh;
   display: flex; flex-direction: column;
+  background: var(--bg);
 }
 .log-fs .log-viewer { flex: 1; max-height: none; }
 
@@ -39,24 +40,43 @@
   font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 1.7;
   max-height: calc(100vh - 380px);
 }
-.log-line { display: flex; gap: 0; padding: 0 10px; align-items: flex-start; }
-.log-line:hover { background: rgba(255,255,255,0.015); }
-.ln { color: rgba(255,255,255,0.12); min-width: 28px; text-align: right; user-select: none; padding-right: 6px; }
-.ll { min-width: 28px; font-size: 8px; font-weight: 700; text-transform: uppercase; padding: 2px 0; text-align: center; letter-spacing: 0.03em; }
-.lt { white-space: pre-wrap; word-break: break-all; padding-left: 6px; color: rgba(255,255,255,0.7); }
+.log-line { display: flex; gap: 0; padding: 0 10px; align-items: flex-start; border-bottom: 1px solid rgba(94, 84, 75, 0.02); }
+.log-line:hover { background: rgba(208, 156, 96, 0.02); }
+.ln { color: var(--text-muted); opacity: 0.4; min-width: 28px; text-align: right; user-select: none; padding-right: 6px; }
+.ll { min-width: 28px; font-size: 8px; font-weight: 700; text-transform: uppercase; padding: 2px 0; text-align: center; letter-spacing: 0.03em; color: var(--text-muted); }
+.lt { white-space: pre-wrap; word-break: break-all; padding-left: 6px; color: var(--text-secondary); }
 :host-context(.logs-nowrap) .lt { white-space: pre; word-break: normal; }
 
-/* Level colors */
-.level-error { background: rgba(244,63,94,0.03); }
+/* ─── Level Colors ───────────────────────────────────────────────── */
+.level-error { border-left: 2px solid rgba(244, 63, 94, 0.3); }
 .level-error .ll { color: #f43f5e; }
 .level-error .lt { color: #f43f5e; }
 .level-warn .ll { color: #f59e0b; }
-.level-debug .ll { color: #d09c60; }
-.level-debug .lt { color: rgba(255,255,255,0.4); }
+.level-debug .ll { color: var(--accent); }
+.level-debug .lt { color: var(--text-muted); }
 
-/* Actions */
-.log-actions { display: flex; gap: 4px; margin-top: 8px; }
+/* ─── Actions ────────────────────────────────────────────────────── */
+.log-actions { display: flex; gap: 4px; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(94, 84, 75, 0.06); }
 
 @media (max-width: 768px) {
   .log-controls { flex-direction: column; align-items: stretch; }
+}
+
+/* ─── Light Mode ─────────────────────────────────────────────────── */
+:host-context([data-theme="light"]) {
+  .log-controls { border-bottom-color: rgba(0, 0, 0, 0.06); }
+  .tail-group { border-color: rgba(0, 0, 0, 0.08); }
+  .tail-btn { border-right-color: rgba(0, 0, 0, 0.05); }
+  .tail-btn:hover { color: var(--text); }
+  .tail-active { background: #9a5129; color: #fff !important; }
+  .log-toolbar { border-bottom-color: rgba(0, 0, 0, 0.04); }
+  .tb-streaming { color: #16a34a; }
+  .log-container { border-top-color: rgba(0, 0, 0, 0.05); }
+  .log-line { border-bottom-color: rgba(0, 0, 0, 0.015); }
+  .log-line:hover { background: rgba(0, 0, 0, 0.015); }
+  .level-error { border-left-color: rgba(220, 38, 38, 0.2); }
+  .level-error .ll, .level-error .lt { color: #dc2626; }
+  .level-warn .ll { color: #b45309; }
+  .level-debug .ll { color: #9a5129; }
+  .log-actions { border-top-color: rgba(0, 0, 0, 0.04); }
 }

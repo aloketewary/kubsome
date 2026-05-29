@@ -1,5 +1,5 @@
 <!-- ─── Header ─────────────────────────────────────────────────────── -->
-<app-intel-header title="Health Signals" icon="◈" [subtitle]="totalIssues + ' active signals · ' + (lastUpdated || 'loading...')">
+<app-intel-header title="Health Signals" icon="pi pi-wave-pulse" [subtitle]="totalIssues + ' active signals · ' + (lastUpdated || 'loading...')">
   <app-live-indicator [active]="autoRefresh" label="LIVE" offLabel="PAUSED" (click)="toggleAutoRefresh()" />
   <button class="ctrl-btn" (click)="refresh()" pTooltip="Refresh">
     <i class="pi pi-refresh" [class.spinning]="loading"></i>

@@ -1,12 +1,7 @@
-<div class="intel-header">
-  <div class="intel-title-block">
-    <h1 class="intel-title"><span class="title-icon">▤</span> Logs</h1>
-    <p class="intel-subtitle">{{ selectedPod || 'select a pod' }} · {{ lines.length }} lines</p>
-  </div>
-  <div class="intel-controls">
-    <app-live-indicator [active]="streaming" label="LIVE" offLabel="STREAM" (click)="toggleLive()" />
-  </div>
-</div>
+<app-intel-header title="Logs" icon="pi pi-align-left"
+  [subtitle]="(selectedPod || 'select a pod') + ' · ' + lines.length + ' lines'">
+  <app-live-indicator [active]="streaming" label="LIVE" offLabel="STREAM" (click)="toggleLive()" />
+</app-intel-header>
 
 <!-- Controls -->
 <div class="log-controls">
