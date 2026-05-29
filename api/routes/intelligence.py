@@ -104,13 +104,15 @@ def get_unused():
 
 @router.get("/ai/suggestions")
 def get_ai_suggestions():
-    """Generate contextual AI suggestions based on cluster state."""
+    """Generate contextual AI suggestions based on cluster state and telemetry."""
     from core.collectors.pods import collect_pods
     from core.collectors.events import collect_events
+    from core.telemetry import get_stats
 
     diagnose = ["diagnose high restart pods", "which pods are unhealthy"]
     analyze = ["summarize cluster health", "top resource consumers", "is billing-api healthy"]
     investigate = ["what changed recently", "any anomalies detected", "count customer pods"]
+    frequent = []
 
     try:
         pods = collect_pods()
@@ -124,6 +126,13 @@ def get_ai_suggestions():
         warnings = [e for e in events if e["type"] == "Warning"]
         if warnings:
             investigate.insert(0, "show warning events")
+
+        # Growth: Add telemetry-based suggestions
+        stats = get_stats()
+        if stats and stats.get("top_unresolved"):
+            # Use unresolved queries as suggestions for what users might want to try again
+            # but phrased as successful queries.
+            frequent = [q[0] for q in stats["top_unresolved"][:3]]
     except Exception:
         pass
 
@@ -131,6 +140,7 @@ def get_ai_suggestions():
         "diagnose": diagnose[:4],
         "analyze": analyze[:4],
         "investigate": investigate[:4],
+        "frequent": frequent
     }
 
 

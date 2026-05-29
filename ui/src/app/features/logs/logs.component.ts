@@ -1,4 +1,5 @@
 import { Component, inject, OnInit, OnDestroy, ViewChild, ElementRef } from '@angular/core';
+import { Router } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { Select } from 'primeng/select';
 import { TooltipModule } from 'primeng/tooltip';
@@ -87,6 +88,10 @@ import { PageHeaderComponent } from '../../shared/components/page-header.compone
           <button pButton icon="pi pi-download" class="p-button-sm p-button-text p-button-rounded" pTooltip="Download .log" (click)="downloadLogs()"></button>
           <button pButton [icon]="wordWrap ? 'pi pi-align-justify' : 'pi pi-arrows-h'" class="p-button-sm p-button-text p-button-rounded" [pTooltip]="wordWrap ? 'Wrap on' : 'Wrap off'" (click)="wordWrap = !wordWrap"></button>
           <button pButton [icon]="fullscreen ? 'pi pi-window-minimize' : 'pi pi-window-maximize'" class="p-button-sm p-button-text p-button-rounded" [pTooltip]="fullscreen ? 'Exit fullscreen' : 'Fullscreen'" (click)="fullscreen = !fullscreen"></button>
+          @if (errorCount > 0) {
+            <button pButton icon="pi pi-sparkles" label="Diagnose" class="p-button-sm p-button-warning p-button-text"
+                    pTooltip="Diagnose errors with AI" (click)="diagnoseWithAi()"></button>
+          }
         </div>
       </div>
     }
@@ -134,6 +139,23 @@ import { PageHeaderComponent } from '../../shared/components/page-header.compone
           <i class="pi pi-terminal"></i>
           <span>Select a pod and fetch or stream logs</span>
           <span class="empty-hint">Tip: Use "Live" for real-time streaming via WebSocket</span>
+
+          @if (suggestedPods.length > 0) {
+            <div class="suggested-pods">
+              <span class="sug-label">Suggested Pods (recent issues):</span>
+              <div class="sug-list">
+                @for (p of suggestedPods; track p.name) {
+                  <button class="sug-pod-btn" (click)="selectedPod = p.name; onPodChange(); fetchLogs()">
+                    <span class="sug-pod-dot" [class.dot-crit]="p.status !== 'Running'"></span>
+                    <span class="sug-pod-name">{{ p.name }}</span>
+                    @if (p.restarts > 0) {
+                      <span class="sug-pod-restarts">↻ {{ p.restarts }}</span>
+                    }
+                  </button>
+                }
+              </div>
+            </div>
+          }
         </div>
       }
     </div>
@@ -269,6 +291,23 @@ import { PageHeaderComponent } from '../../shared/components/page-header.compone
       display: flex; flex-direction: column; align-items: center; gap: 8px;
       padding: 56px; color: var(--text-muted); font-size: 13px;
     }
+
+    .suggested-pods {
+      margin-top: 32px; width: 100%; max-width: 400px;
+      display: flex; flex-direction: column; gap: 12px;
+    }
+    .sug-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.6; }
+    .sug-list { display: flex; flex-direction: column; gap: 8px; }
+    .sug-pod-btn {
+      display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px;
+      color: var(--text-secondary); font-size: 12px; cursor: pointer; transition: all 0.2s;
+    }
+    .sug-pod-btn:hover { border-color: var(--accent); background: var(--accent-subtle); color: var(--accent); }
+    .sug-pod-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--warning); }
+    .sug-pod-dot.dot-crit { background: var(--danger); box-shadow: 0 0 6px var(--danger); }
+    .sug-pod-name { flex: 1; text-align: left; font-family: 'JetBrains Mono', monospace; }
+    .sug-pod-restarts { font-size: 11px; opacity: 0.7; }
     .log-empty i { font-size: 24px; opacity: 0.3; }
     .empty-hint { font-size: 11px; opacity: 0.6; }
     @media (max-width: 768px) {
@@ -279,6 +318,7 @@ import { PageHeaderComponent } from '../../shared/components/page-header.compone
 export class LogsComponent implements OnInit, OnDestroy {
   private api = inject(ApiService);
   private ws = inject(WsService);
+  private router = inject(Router);
 
   @ViewChild('logEl') logEl!: ElementRef;
 
@@ -295,6 +335,7 @@ export class LogsComponent implements OnInit, OnDestroy {
   watching = false;
   watchInterval = 5;
   searchQuery = '';
+  suggestedPods: Pod[] = [];
   levelFilter: 'all' | 'error' | 'warn' = 'all';
   fullscreen = false;
   wordWrap = true;
@@ -311,6 +352,12 @@ export class LogsComponent implements OnInit, OnDestroy {
         label: `${p.status === 'Running' ? '●' : '○'} ${p.name}`,
         value: p.name,
       }));
+
+      // Find suggested pods (unhealthy or restarts)
+      this.suggestedPods = res.pods
+        .filter(p => p.status !== 'Running' || p.restarts > 0)
+        .sort((a, b) => b.restarts - a.restarts)
+        .slice(0, 3);
     });
   }
 
@@ -438,5 +485,11 @@ export class LogsComponent implements OnInit, OnDestroy {
     this.streamClose?.();
     this.streamSub = null;
     this.streamClose = null;
+  }
+
+  diagnoseWithAi() {
+    if (!this.selectedPod) return;
+    const q = `why is pod ${this.selectedPod} having errors in its logs?`;
+    this.router.navigate(['/ai'], { queryParams: { q } });
   }
 }

@@ -85,6 +85,16 @@ interface Message {
                   }
                 </div>
               </div>
+              @if (frequentSuggestions.length > 0) {
+                <div class="sug-category">
+                  <span class="sug-cat-label"><i class="pi pi-history"></i> Recent Queries</span>
+                  <div class="sug-items">
+                    @for (s of frequentSuggestions; track s) {
+                      <button class="sug-btn" (click)="query = s; ask()">{{ s }}</button>
+                    }
+                  </div>
+                </div>
+              }
             </div>
           </div>
         }
@@ -493,6 +503,7 @@ export class AiComponent implements OnInit, AfterViewChecked {
     'any anomalies detected',
     'count customer pods',
   ];
+  frequentSuggestions: string[] = [];
 
   ngAfterViewChecked() {
     if (this.shouldScroll) {
@@ -542,6 +553,15 @@ export class AiComponent implements OnInit, AfterViewChecked {
     });
   }
 
+  loadSuggestions() {
+    this.api.getAiSuggestions().subscribe(res => {
+      if (res.diagnose) this.diagnoseSuggestions = res.diagnose;
+      if (res.analyze) this.analyzeSuggestions = res.analyze;
+      if (res.investigate) this.investigateSuggestions = res.investigate;
+      if (res.frequent) this.frequentSuggestions = res.frequent;
+    });
+  }
+
   clearHistory() {
     this.messages = [];
   }
@@ -587,6 +607,7 @@ export class AiComponent implements OnInit, AfterViewChecked {
   }
 
   ngOnInit() {
+    this.loadSuggestions();
     this.route.queryParams.subscribe(params => {
       const q = params['q'];
       if (q) {
