@@ -2,21 +2,63 @@
 :host { display: block; width: 100%; }
 .title-icon { color: #a78bfa; }
 
-.stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
-.freq-row { display: flex; align-items: center; gap: 8px; padding: 5px 0; }
+/* ─── Hero Section ───────────────────────────────────────────────── */
+.stats-hero {
+  display: flex; align-items: center; gap: 20px;
+  padding: 16px 0; margin-bottom: 16px;
+  border-bottom: 1px solid rgba(94, 84, 75, 0.08);
+}
+.hero-info { display: flex; flex-direction: column; gap: 3px; }
+.hero-title {
+  font-size: 16px; font-weight: 700; letter-spacing: -0.03em;
+  color: var(--text);
+}
+.hero-sub {
+  font-size: 11px; color: var(--text-muted);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* ─── Stats Grid ─────────────────────────────────────────────────── */
+.stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0; }
+
+/* ─── Frequency Rows ─────────────────────────────────────────────── */
+.freq-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 0; border-bottom: 1px solid rgba(94, 84, 75, 0.04);
+}
+.freq-row:last-child { border-bottom: none; }
+
+.freq-rank {
+  font-size: 9px; font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--text-muted); min-width: 16px; text-align: center;
+}
+.rank-miss { color: #f59e0b; }
+
 .freq-label {
   font-size: 11px; color: var(--text-secondary); min-width: 80px;
   font-family: 'JetBrains Mono', monospace;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .freq-miss { color: #f59e0b; font-style: italic; }
-.freq-bar-wrap { flex: 1; height: 4px; border-radius: 2px; background: rgba(94, 84, 75, 0.08); overflow: hidden; }
-.freq-bar { height: 100%; border-radius: 2px; background: #d09c60; box-shadow: 0 0 3px rgba(208, 156, 96, 0.3); transition: width 0.4s; }
+
+.freq-bar-wrap {
+  flex: 1; height: 3px; border-radius: 1px;
+  background: rgba(94, 84, 75, 0.08); overflow: hidden;
+}
+.freq-bar {
+  height: 100%; border-radius: 1px;
+  background: #d09c60; box-shadow: 0 0 3px rgba(208, 156, 96, 0.3);
+  transition: width 0.4s;
+}
 .bar-miss { background: #f59e0b; box-shadow: 0 0 3px rgba(245, 158, 11, 0.3); }
+
 .freq-val {
-  font-size: 10px; font-weight: 700; font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
   color: var(--text-muted); min-width: 24px; text-align: right;
 }
+
 .empty-hint { font-size: 10px; color: var(--text-muted); padding: 12px 0; }
 
 @media (max-width: 768px) { .stats-grid { grid-template-columns: 1fr; } }
@@ -24,7 +66,10 @@
 /* ─── Light Mode ─────────────────────────────────────────────────── */
 :host-context([data-theme="light"]) {
   .title-icon { color: #7c3aed; }
+  .stats-hero { border-bottom-color: rgba(0, 0, 0, 0.05); }
+  .freq-row { border-bottom-color: rgba(0, 0, 0, 0.03); }
   .freq-miss { color: #b45309; }
+  .rank-miss { color: #b45309; }
   .freq-bar-wrap { background: rgba(0, 0, 0, 0.04); }
   .freq-bar { background: #9a5129; box-shadow: none; }
   .bar-miss { background: #b45309; box-shadow: none; }

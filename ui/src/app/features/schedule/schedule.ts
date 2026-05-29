@@ -5,13 +5,14 @@ import { TagModule } from 'primeng/tag';
 import { TooltipModule } from 'primeng/tooltip';
 import { IntelHeaderComponent } from '../../shared/components/futuristic/intel-header.component';
 import { MetricTileComponent } from '../../shared/components/futuristic/metric-tile.component';
+import { HoloCardComponent } from '../../shared/components/futuristic/holo-card.component';
 import { DataRowComponent } from '../../shared/components/futuristic/data-row.component';
 import { ActionIconComponent } from '../../shared/components/futuristic/action-icon.component';
 
 @Component({
   selector: 'app-schedule',
   standalone: true,
-  imports: [FormsModule, TagModule, TooltipModule, IntelHeaderComponent, MetricTileComponent, DataRowComponent, ActionIconComponent],
+  imports: [FormsModule, TagModule, TooltipModule, IntelHeaderComponent, MetricTileComponent, HoloCardComponent, DataRowComponent, ActionIconComponent],
   templateUrl: './schedule.html',
   styleUrl: './schedule.scss',
 })

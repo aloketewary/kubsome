@@ -1,6 +1,6 @@
 <!-- ─── Header ─────────────────────────────────────────────────────── -->
 <app-intel-header title="Profiles" icon="pi pi-user"
-  [subtitle]="'active: ' + (active || 'default')">
+  [subtitle]="profiles.length + ' profiles · active: ' + (active || 'default')">
   <button class="ctrl-btn" (click)="reset()" [class.disabled]="!active" pTooltip="Reset to default">
     <i class="pi pi-undo"></i>
   </button>
@@ -19,17 +19,31 @@
 @if (profiles.length) {
   <div class="profile-list">
     @for (p of profiles; track p.name) {
-      <app-data-row [primary]="p.name" [secondary]="profileMeta(p)"
-                    [status]="p.name === active ? 'ok' : 'idle'"
-                    [selected]="p.name === active">
-        <p-tag meta [value]="p.name === active ? 'active' : ''" [severity]="'success'" [rounded]="true"
-               [style.visibility]="p.name === active ? 'visible' : 'hidden'" />
-        @if (p.name !== active) {
-          <app-action-icon icon="pi pi-check" tooltip="Activate" accent="green" (clicked)="activate(p.name)" />
-        } @else {
-          <app-action-icon icon="pi pi-times" tooltip="Deactivate" accent="red" (clicked)="reset()" />
-        }
-      </app-data-row>
+      <div class="profile-row" [class.profile-active]="p.name === active">
+        <app-status-beacon [status]="p.name === active ? 'ok' : 'idle'" size="sm" />
+        <div class="profile-body">
+          <div class="profile-top">
+            <span class="profile-name">{{ p.name }}</span>
+            @if (p.name === active) {
+              <p-tag value="active" severity="success" [rounded]="true" />
+            }
+          </div>
+          @if (p.context || p.namespace || p.theme) {
+            <div class="profile-details">
+              @if (p.context) { <span class="pd">ctx: {{ p.context }}</span> }
+              @if (p.namespace) { <span class="pd">ns: {{ p.namespace }}</span> }
+              @if (p.theme) { <span class="pd">theme: {{ p.theme }}</span> }
+            </div>
+          }
+        </div>
+        <div class="profile-actions">
+          @if (p.name !== active) {
+            <app-action-icon icon="pi pi-check" tooltip="Activate" accent="green" (clicked)="activate(p.name)" />
+          } @else {
+            <app-action-icon icon="pi pi-times" tooltip="Deactivate" accent="red" (clicked)="reset()" />
+          }
+        </div>
+      </div>
     }
   </div>
 }
@@ -38,6 +52,7 @@
   <div class="empty-state">
     <div class="empty-icon"><i class="pi pi-user"></i></div>
     <span>No profiles configured</span>
+    <span class="empty-hint">Profiles let you switch context, namespace, and theme together</span>
   </div>
 }
 @if (loading && !profiles.length) {

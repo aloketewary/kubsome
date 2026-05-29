@@ -15,17 +15,19 @@
 
 <!-- ─── Add Form ───────────────────────────────────────────────────── -->
 @if (showForm) {
-  <div class="form-grid">
-    <input [(ngModel)]="newName" placeholder="Name" />
-    <input [(ngModel)]="newCron" placeholder="Cron (e.g. 0 8 * * *)" />
-    <input [(ngModel)]="newCommands" placeholder="Commands (comma-separated)" />
-  </div>
-  <div class="presets">
-    @for (p of presets; track p.cron) {
-      <button class="preset-btn" (click)="newCron = p.cron">{{ p.label }}</button>
-    }
-  </div>
-  <button class="ctrl-btn ctrl-btn-wide" style="margin-top: 8px;" (click)="addSchedule()" [class.disabled]="!newName || !newCron || !newCommands">Create</button>
+  <app-holo-card title="New Schedule" icon="pi pi-plus" glow="purple" [compact]="true">
+    <div class="form-grid">
+      <input [(ngModel)]="newName" placeholder="Name" />
+      <input [(ngModel)]="newCron" placeholder="Cron (e.g. 0 8 * * *)" />
+      <input [(ngModel)]="newCommands" placeholder="Commands (comma-separated)" />
+    </div>
+    <div class="presets">
+      @for (p of presets; track p.cron) {
+        <button class="preset-btn" (click)="newCron = p.cron">{{ p.label }}</button>
+      }
+    </div>
+    <button class="ctrl-btn ctrl-btn-wide" style="margin-top: 8px;" (click)="addSchedule()" [class.disabled]="!newName || !newCron || !newCommands">Create</button>
+  </app-holo-card>
 }
 
 <!-- ─── Schedule List ──────────────────────────────────────────────── -->

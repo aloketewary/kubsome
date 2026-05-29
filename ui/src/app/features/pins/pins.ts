@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { TooltipModule } from 'primeng/tooltip';
 import { IntelHeaderComponent } from '../../shared/components/futuristic/intel-header.component';
 import { MetricTileComponent } from '../../shared/components/futuristic/metric-tile.component';
+import { HoloCardComponent } from '../../shared/components/futuristic/holo-card.component';
 import { DataRowComponent } from '../../shared/components/futuristic/data-row.component';
 import { ActionIconComponent } from '../../shared/components/futuristic/action-icon.component';
 import { ConfirmService } from '../../shared/services/confirm.service';
@@ -11,7 +12,7 @@ import { ConfirmService } from '../../shared/services/confirm.service';
 @Component({
   selector: 'app-pins',
   standalone: true,
-  imports: [FormsModule, TooltipModule, IntelHeaderComponent, MetricTileComponent, DataRowComponent, ActionIconComponent],
+  imports: [FormsModule, TooltipModule, IntelHeaderComponent, MetricTileComponent, HoloCardComponent, DataRowComponent, ActionIconComponent],
   templateUrl: './pins.html',
   styleUrl: './pins.scss',
 })

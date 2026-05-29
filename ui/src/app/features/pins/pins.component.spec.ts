@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { PinsComponent } from './pins.component';
+import { PinsComponent } from './pins';
 
 describe('PinsComponent', () => {
   let component: PinsComponent;

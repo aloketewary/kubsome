@@ -4,13 +4,13 @@ import { TagModule } from 'primeng/tag';
 import { TooltipModule } from 'primeng/tooltip';
 import { IntelHeaderComponent } from '../../shared/components/futuristic/intel-header.component';
 import { MetricTileComponent } from '../../shared/components/futuristic/metric-tile.component';
-import { DataRowComponent } from '../../shared/components/futuristic/data-row.component';
+import { StatusBeaconComponent } from '../../shared/components/futuristic/status-beacon.component';
 import { ActionIconComponent } from '../../shared/components/futuristic/action-icon.component';
 
 @Component({
   selector: 'app-profiles',
   standalone: true,
-  imports: [TagModule, TooltipModule, IntelHeaderComponent, MetricTileComponent, DataRowComponent, ActionIconComponent],
+  imports: [TagModule, TooltipModule, IntelHeaderComponent, MetricTileComponent, StatusBeaconComponent, ActionIconComponent],
   templateUrl: './profiles.html',
   styleUrl: './profiles.scss',
 })
@@ -36,13 +36,5 @@ export class ProfilesComponent implements OnInit {
 
   reset() {
     this.http.post<any>('/api/profiles/deactivate', {}).subscribe({ next: () => { this.active = null; } });
-  }
-
-  profileMeta(p: any): string {
-    const parts: string[] = [];
-    if (p.context) parts.push(`ctx: ${p.context}`);
-    if (p.namespace) parts.push(`ns: ${p.namespace}`);
-    if (p.theme) parts.push(`theme: ${p.theme}`);
-    return parts.join(' · ');
   }
 }

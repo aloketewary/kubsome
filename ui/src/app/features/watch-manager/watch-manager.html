@@ -19,16 +19,18 @@
 
 <!-- ─── Add Form ───────────────────────────────────────────────────── -->
 @if (showForm) {
-  <div class="watch-form">
-    <input [(ngModel)]="newTarget" placeholder="Pod/app pattern" />
-    <select [(ngModel)]="newCondition">
-      <option value="crash">Crash</option>
-      <option value="restart">Restart</option>
-      <option value="count">Count</option>
-    </select>
-    <button class="ctrl-btn ctrl-btn-wide" (click)="createWatch()" [class.disabled]="!newTarget">Create</button>
-  </div>
-  @if (formError) { <span class="form-error">{{ formError }}</span> }
+  <app-holo-card title="New Watch" icon="pi pi-plus" glow="cyan" [compact]="true">
+    <div class="watch-form">
+      <input [(ngModel)]="newTarget" placeholder="Pod/app pattern" />
+      <select [(ngModel)]="newCondition">
+        <option value="crash">Crash</option>
+        <option value="restart">Restart</option>
+        <option value="count">Count</option>
+      </select>
+      <button class="ctrl-btn ctrl-btn-wide" (click)="createWatch()" [class.disabled]="!newTarget">Create</button>
+    </div>
+    @if (formError) { <span class="form-error">{{ formError }}</span> }
+  </app-holo-card>
 }
 
 <!-- ─── Watch List ─────────────────────────────────────────────────── -->

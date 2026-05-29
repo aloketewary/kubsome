@@ -4,11 +4,12 @@ import { UsageStats } from '../../core/models';
 import { IntelHeaderComponent } from '../../shared/components/futuristic/intel-header.component';
 import { MetricTileComponent } from '../../shared/components/futuristic/metric-tile.component';
 import { HoloCardComponent } from '../../shared/components/futuristic/holo-card.component';
+import { HealthRingComponent } from '../../shared/components/futuristic/health-ring.component';
 
 @Component({
   selector: 'app-stats',
   standalone: true,
-  imports: [IntelHeaderComponent, MetricTileComponent, HoloCardComponent],
+  imports: [IntelHeaderComponent, MetricTileComponent, HoloCardComponent, HealthRingComponent],
   templateUrl: './stats.html',
   styleUrl: './stats.scss',
 })

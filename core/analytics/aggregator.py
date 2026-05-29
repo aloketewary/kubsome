@@ -14,8 +14,12 @@ def aggregate_hourly():
     """
     Roll up raw_pod_metrics into hourly_pod_metrics.
     Only processes hours not yet aggregated.
+    Deletes processed raw rows after successful aggregation.
     """
     conn = get_conn()
+
+    # Determine cutoff: only aggregate completed hours
+    cutoff_hour = "DATE_TRUNC('hour', NOW())"
 
     conn.execute("""
         INSERT INTO hourly_pod_metrics
@@ -46,6 +50,12 @@ def aggregate_hourly():
         HAVING hour < DATE_TRUNC('hour', NOW())
     """)
 
+    # Remove raw pod rows that have been aggregated (completed hours only)
+    conn.execute(f"""
+        DELETE FROM raw_pod_metrics
+        WHERE ts < {cutoff_hour}
+    """)
+
     # Node hourly
     conn.execute("""
         INSERT INTO hourly_node_metrics
@@ -66,11 +76,18 @@ def aggregate_hourly():
         HAVING hour < DATE_TRUNC('hour', NOW())
     """)
 
+    # Remove raw node rows that have been aggregated
+    conn.execute(f"""
+        DELETE FROM raw_node_metrics
+        WHERE ts < {cutoff_hour}
+    """)
+
 
 def aggregate_daily():
     """
     Roll up hourly_pod_metrics into daily_summary.
     Includes cost estimation.
+    Deletes processed hourly rows from completed days.
     """
     conn = get_conn()
 
@@ -110,9 +127,22 @@ def aggregate_daily():
                  c.cpu_per_core_hour, c.mem_per_gb_hour
     """)
 
+    # Remove hourly rows from completed days (keep last 7 days for queries)
+    conn.execute("""
+        DELETE FROM hourly_pod_metrics
+        WHERE hour < CURRENT_DATE - INTERVAL '7 days'
+    """)
+    conn.execute("""
+        DELETE FROM hourly_node_metrics
+        WHERE hour < CURRENT_DATE - INTERVAL '7 days'
+    """)
+
 
 def prune_raw():
-    """Delete raw data older than retention period."""
+    """Delete leftover raw data older than retention period.
+    Most raw data is already cleaned by aggregate_hourly();
+    this catches rows that were skipped (e.g. empty deployment).
+    """
     conn = get_conn()
     cutoff = datetime.utcnow() - timedelta(days=RAW_RETENTION_DAYS)
     conn.execute(
@@ -140,14 +170,11 @@ def prune_raw():
 
 
 def prune_aggregated():
-    """Delete aggregated data older than retention period."""
+    """Delete daily_summary older than retention period."""
     conn = get_conn()
     cutoff = datetime.utcnow() - timedelta(days=AGG_RETENTION_DAYS)
     conn.execute(
-        "DELETE FROM hourly_pod_metrics WHERE hour < ?", [cutoff]
-    )
-    conn.execute(
-        "DELETE FROM hourly_node_metrics WHERE hour < ?", [cutoff]
+        "DELETE FROM daily_summary WHERE day < ?", [cutoff]
     )
 
 
@@ -160,10 +187,38 @@ def run_maintenance():
     aggregate_daily()
     prune_raw()
     prune_aggregated()
-    # Prune telemetry
+
+    conn = get_conn()
+    cutoff = datetime.utcnow() - timedelta(days=AGG_RETENTION_DAYS)
+    cutoff_7d = datetime.utcnow() - timedelta(days=RAW_RETENTION_DAYS)
+
+    # Prune collection_log (keep 7 days)
     try:
-        conn = get_conn()
-        cutoff = datetime.utcnow() - timedelta(days=AGG_RETENTION_DAYS)
+        conn.execute(
+            "DELETE FROM collection_log WHERE ts < ?", [cutoff_7d]
+        )
+    except Exception:
+        pass
+
+    # Prune enriched snapshot tables (keep 7 days)
+    try:
+        conn.execute(
+            "DELETE FROM hpa_metrics WHERE ts < ?", [cutoff_7d]
+        )
+        conn.execute(
+            "DELETE FROM quota_metrics WHERE ts < ?", [cutoff_7d]
+        )
+        conn.execute(
+            "DELETE FROM rollout_metrics WHERE ts < ?", [cutoff_7d]
+        )
+        conn.execute(
+            "DELETE FROM oomkill_events WHERE ts < ?", [cutoff_7d]
+        )
+    except Exception:
+        pass
+
+    # Prune telemetry/logs (keep 90 days)
+    try:
         conn.execute(
             "DELETE FROM command_usage WHERE ts < ?", [cutoff]
         )
@@ -173,8 +228,12 @@ def run_maintenance():
         conn.execute(
             "DELETE FROM audit_log WHERE ts < ?", [cutoff]
         )
+        conn.execute(
+            "DELETE FROM unresolved_queries WHERE ts < ?", [cutoff]
+        )
     except Exception:
         pass
+
     # Refresh materialized views
     from core.analytics.engine import (
         refresh_materialized_views, archive_to_parquet
@@ -183,6 +242,5 @@ def run_maintenance():
     # Archive old data to Parquet (>90 days)
     archive_to_parquet(older_than_days=90)
     # Compact
-    conn = get_conn()
     conn.execute("CHECKPOINT")
     return {"status": "ok"}

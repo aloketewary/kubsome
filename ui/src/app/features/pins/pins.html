@@ -16,11 +16,13 @@
 
 <!-- ─── Add Form ───────────────────────────────────────────────────── -->
 @if (showForm) {
-  <div class="add-form">
-    <input [(ngModel)]="newName" placeholder="Name" />
-    <input [(ngModel)]="newQuery" placeholder="Query (e.g. scorecard)" />
-    <button class="ctrl-btn ctrl-btn-wide" (click)="addPin()" [class.disabled]="!newName || !newQuery">Add</button>
-  </div>
+  <app-holo-card title="New Pin" icon="pi pi-plus" glow="cyan" [compact]="true">
+    <div class="add-form">
+      <input [(ngModel)]="newName" placeholder="Name" />
+      <input [(ngModel)]="newQuery" placeholder="Query (e.g. scorecard)" />
+      <button class="ctrl-btn ctrl-btn-wide" (click)="addPin()" [class.disabled]="!newName || !newQuery">Add</button>
+    </div>
+  </app-holo-card>
 }
 
 <!-- ─── Pins List ──────────────────────────────────────────────────── -->

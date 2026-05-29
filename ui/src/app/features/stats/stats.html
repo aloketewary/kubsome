@@ -1,41 +1,56 @@
 <!-- ─── Header ─────────────────────────────────────────────────────── -->
 <app-intel-header title="Usage Analytics" icon="pi pi-chart-bar"
-  [subtitle]="stats ? 'command frequency · coverage · time saved' : 'loading...'">
+  [subtitle]="stats ? stats.days_tracked + ' days tracked · ' + stats.total_commands + ' commands' : 'loading...'">
 </app-intel-header>
 
 @if (stats) {
+  <!-- ─── Hero: Coverage Ring + Key Metrics ─────────────────────────── -->
+  <div class="stats-hero">
+    <app-health-ring [pct]="coveragePct"
+      [status]="coveragePct > 80 ? 'ok' : coveragePct > 50 ? 'warning' : 'critical'"
+      size="lg" />
+    <div class="hero-info">
+      <span class="hero-title">{{ coveragePct }}% Resolution Rate</span>
+      <span class="hero-sub">{{ stats.total_commands - stats.unresolved_count }} of {{ stats.total_commands }} queries resolved</span>
+    </div>
+  </div>
+
   <!-- ─── Metrics Strip ──────────────────────────────────────────────── -->
   <div class="metrics-strip">
     <app-metric-tile label="Commands" [value]="'' + stats.total_commands" accent="cyan" />
-    <app-metric-tile label="Coverage" [value]="coveragePct + '%'" accent="green" />
     <app-metric-tile label="Unresolved" [value]="'' + stats.unresolved_count" [accent]="stats.unresolved_count > 0 ? 'amber' : 'green'" />
     <app-metric-tile label="Time Saved" [value]="timeSavedHuman" accent="purple" />
     <app-metric-tile label="Auto-fixes" [value]="'' + stats.auto_remediations" accent="green" />
-    <app-metric-tile label="Days" [value]="'' + stats.days_tracked" accent="default" />
   </div>
 
   <!-- ─── Stats Grid ───────────────────────────────────────────────── -->
   <div class="stats-grid">
     <app-holo-card title="Top Commands" icon="pi pi-bolt" glow="cyan" [compact]="true">
-      @for (cmd of stats.top_commands; track cmd[0]) {
+      @for (cmd of stats.top_commands; track cmd[0]; let i = $index) {
         <div class="freq-row">
+          <span class="freq-rank">{{ i + 1 }}</span>
           <span class="freq-label">{{ cmd[0] }}</span>
           <div class="freq-bar-wrap"><div class="freq-bar" [style.width.%]="(cmd[1] / maxCmdCount) * 100"></div></div>
           <span class="freq-val">{{ cmd[1] }}</span>
         </div>
       }
-      @if (stats.top_commands.length === 0) { <span class="empty-hint">No commands recorded</span> }
+      @if (stats.top_commands.length === 0) {
+        <span class="empty-hint">No commands recorded</span>
+      }
     </app-holo-card>
 
     <app-holo-card title="Unresolved Queries" icon="pi pi-question-circle" glow="amber" [compact]="true">
-      @for (un of stats.top_unresolved; track un[0]) {
+      @for (un of stats.top_unresolved; track un[0]; let i = $index) {
         <div class="freq-row">
+          <span class="freq-rank rank-miss">{{ i + 1 }}</span>
           <span class="freq-label freq-miss">"{{ un[0] }}"</span>
           <div class="freq-bar-wrap"><div class="freq-bar bar-miss" [style.width.%]="(un[1] / maxUnresolvedCount) * 100"></div></div>
           <span class="freq-val">{{ un[1] }}</span>
         </div>
       }
-      @if (stats.top_unresolved.length === 0) { <span class="empty-hint">All queries resolved!</span> }
+      @if (stats.top_unresolved.length === 0) {
+        <span class="empty-hint">All queries resolved!</span>
+      }
     </app-holo-card>
   </div>
 } @else {
