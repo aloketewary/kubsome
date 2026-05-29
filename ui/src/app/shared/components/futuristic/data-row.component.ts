@@ -64,6 +64,14 @@ import { StatusBeaconComponent } from './status-beacon.component';
       opacity: 0; transition: opacity 0.12s;
     }
     @media (hover: none) { .dr-actions { opacity: 1; } }
+
+    /* Light Mode */
+    :host-context([data-theme="light"]) .dr:hover { background: rgba(0,0,0,0.015); border-color: rgba(0,0,0,0.04); }
+    :host-context([data-theme="light"]) .dr:focus-visible { box-shadow: inset 0 0 0 1px rgba(154,81,41,0.2); }
+    :host-context([data-theme="light"]) .dr-sel { background: rgba(154,81,41,0.03); border-color: rgba(154,81,41,0.08); }
+    :host-context([data-theme="light"]) .dr-alert { background: rgba(220,38,38,0.02); border-color: rgba(220,38,38,0.06); }
+    :host-context([data-theme="light"]) .dr-primary { color: rgba(0,0,0,0.75); }
+    :host-context([data-theme="light"]) .dr-secondary { color: rgba(0,0,0,0.4); }
   `],
 })
 export class DataRowComponent {

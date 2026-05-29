@@ -3,16 +3,14 @@ import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
-import { PageInfoComponent } from '../../shared/components/page-info.component';
-import { SpotlightComponent } from '../../shared/components/spotlight.component';
-import { PageHeaderComponent } from '../../shared/components/page-header.component';
-import { SkeletonComponent } from '../../shared/components/skeleton.component';
+import { TooltipModule } from 'primeng/tooltip';
 import { TrendChartComponent } from '../../shared/components/trend-chart.component';
+import { IntelHeaderComponent, MetricTileComponent, HoloCardComponent, HealthRingComponent, LiveIndicatorComponent, StatusBeaconComponent } from '../../shared/components/futuristic';
 
 @Component({
   selector: 'app-scorecard',
   standalone: true,
-  imports: [ButtonModule, TagModule, PageInfoComponent, SpotlightComponent, TrendChartComponent, SkeletonComponent, PageHeaderComponent],
+  imports: [ButtonModule, TagModule, TooltipModule, TrendChartComponent, IntelHeaderComponent, MetricTileComponent, HoloCardComponent, HealthRingComponent, LiveIndicatorComponent, StatusBeaconComponent],
   templateUrl: './scorecard.html',
   styleUrl: './scorecard.scss',
 })
@@ -26,11 +24,7 @@ export class ScorecardComponent implements OnInit, OnDestroy {
   lastUpdated = '';
   private refreshTimer: any;
 
-  ngOnInit() {
-    this.refresh();
-    this.startAutoRefresh();
-  }
-
+  ngOnInit() { this.refresh(); this.startAutoRefresh(); }
   ngOnDestroy() { clearInterval(this.refreshTimer); }
 
   toggleAutoRefresh() {
@@ -57,6 +51,12 @@ export class ScorecardComponent implements OnInit, OnDestroy {
       },
       error: () => { this.data = { overall_grade: 'F', overall_score: 0, summary: 'Cannot reach cluster', categories: {}, recommendations: [] }; this.categories = []; this.loading = false; },
     });
+  }
+
+  gradeStatus(grade: string): 'ok' | 'warning' | 'critical' {
+    if (grade === 'A' || grade === 'B') return 'ok';
+    if (grade === 'C') return 'warning';
+    return 'critical';
   }
 
   gradeLabel(grade: string): string {

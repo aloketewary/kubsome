@@ -358,10 +358,7 @@ import { ConfirmDialogComponent } from './shared/components/confirm-dialog.compo
     .scope-selector {
       display: flex;
       align-items: center;
-      padding: 2px 4px;
-      // background: var(--bg-elevated);
-      // border: 1px solid var(--border);
-      // border-radius: 8px;
+      padding: 0;
       gap: 1px;
     }
     .scope-selector .p-select-label {
@@ -375,21 +372,21 @@ import { ConfirmDialogComponent } from './shared/components/confirm-dialog.compo
       gap: 4px;
     }
     .scope-dot {
-      width: 7px; height: 7px; border-radius: 50%;
+      width: 6px; height: 6px; border-radius: 50%;
     }
     .scope-dot.dot-healthy { background: var(--success); box-shadow: 0 0 4px var(--success); }
     .scope-dot.dot-degraded { background: var(--warning); box-shadow: 0 0 4px var(--warning); }
     .scope-dot.dot-critical { background: var(--danger); box-shadow: 0 0 4px var(--danger); }
     .scope-key {
-      font-size: 10px;
-      font-weight: 600;
+      font-size: 9px;
+      font-weight: 700;
       color: var(--text-muted);
       text-transform: uppercase;
-      letter-spacing: 0.03em;
+      letter-spacing: 0.06em;
     }
     .scope-sep {
-      font-size: 14px;
-      color: var(--border-hover);
+      font-size: 12px;
+      color: rgba(94, 84, 75, 0.3);
       margin: 0 2px;
     }
 

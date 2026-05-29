@@ -51,6 +51,10 @@ import { TooltipModule } from 'primeng/tooltip';
       background: rgba(167, 139, 250, 0.08);
       box-shadow: 0 0 6px -2px rgba(167, 139, 250, 0.3);
     }
+
+    /* Light Mode */
+    :host-context([data-theme="light"]) .ai { color: rgba(0,0,0,0.35); }
+    :host-context([data-theme="light"]) .ai:hover { background: rgba(0,0,0,0.04); color: rgba(0,0,0,0.7); box-shadow: none; }
   `],
 })
 export class ActionIconComponent {

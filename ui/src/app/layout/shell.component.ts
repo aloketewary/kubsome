@@ -205,9 +205,10 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
       align-items: center;
       gap: 8px;
       padding: 8px 12px;
-      border-radius: 8px;
-      background: rgba(255, 255, 255, 0.02);
-      border: 1px solid rgba(255, 255, 255, 0.04);
+      border-radius: 0;
+      background: transparent;
+      border: none;
+      border-bottom: 1px solid rgba(94, 84, 75, 0.1);
     }
     .ctx-dot {
       width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
@@ -230,79 +231,87 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
       letter-spacing: -0.02em;
     }
     .nav-section {
-      margin-bottom: 8px;
+      margin-bottom: 4px;
+      padding-top: 8px;
+      border-top: 1px solid rgba(94, 84, 75, 0.06);
     }
+    .nav-section:first-of-type { border-top: none; padding-top: 0; }
     .nav-label {
       display: flex;
       align-items: center;
       gap: 4px;
       font-size: 9px;
       font-weight: 700;
-      color: rgba(168, 158, 148, 0.6);
+      color: rgba(168, 158, 148, 0.45);
+      text-transform: uppercase;
       letter-spacing: 0.08em;
-      padding: 4px 10px 4px;
+      padding: 6px 12px 4px;
       user-select: none;
       cursor: pointer;
       outline: none;
     }
     .nav-label:focus-visible { color: #d09c60; }
     .collapse-icon {
-      font-size: 9px;
+      font-size: 8px;
+      opacity: 0.5;
     }
     .nav-item {
       display: flex;
       align-items: center;
       gap: 10px;
       padding: 7px 12px;
-      margin: 1px 8px;
-      border-radius: 8px;
+      margin: 0 8px;
+      border-radius: 0;
       font-size: 12px;
       font-weight: 500;
       color: rgba(168, 158, 148, 0.5);
       cursor: pointer;
-      transition: all 0.15s;
+      transition: all 0.12s;
       text-decoration: none;
       overflow: hidden;
       white-space: nowrap;
-      border: 1px solid transparent;
+      border: none;
+      border-left: 2px solid transparent;
     }
     .nav-item:hover {
-      background: rgba(245, 240, 235, 0.03);
       color: rgba(245, 240, 235, 0.85);
-      border-color: rgba(245, 240, 235, 0.04);
+      background: transparent;
       transform: translateX(2px);
     }
     .nav-item.active {
-      background: rgba(208, 156, 96, 0.04);
       color: #d09c60;
-      border-color: rgba(208, 156, 96, 0.1);
-      box-shadow: inset 2px 0 0 #d09c60;
+      border-left-color: #d09c60;
+      background: transparent;
     }
     .nav-item:focus-visible {
       outline: none;
-      box-shadow: inset 0 0 0 1px rgba(208, 156, 96, 0.3);
+      border-left-color: rgba(208, 156, 96, 0.4);
     }
     .nav-badge {
-      font-size: 7px; font-weight: 800; padding: 1px 4px; border-radius: 4px;
-      background: rgba(208, 156, 96, 0.12); color: #d09c60; margin-left: 6px;
+      font-size: 7px; font-weight: 800; padding: 1px 4px; border-radius: 0;
+      background: transparent; color: rgba(208, 156, 96, 0.7); margin-left: 6px;
       text-transform: uppercase; letter-spacing: 0.06em;
+      border: 1px solid rgba(208, 156, 96, 0.2);
     }
     .nav-item i {
       font-size: 12px;
       width: 16px;
       text-align: center;
-      opacity: 0.5;
+      opacity: 0.4;
     }
+    .nav-item:hover i { opacity: 0.7; }
     .nav-item.active i { opacity: 1; }
     .nav-item kbd {
       margin-left: auto;
       font-size: 9px;
       padding: 1px 4px;
-      border-radius: 3px;
-      background: rgba(245, 240, 235, 0.03);
-      border: 1px solid rgba(94, 84, 75, 0.15);
-      color: rgba(168, 158, 148, 0.4);
+      border-radius: 0;
+      background: transparent;
+      border: none;
+      border-left: 1px solid rgba(94, 84, 75, 0.12);
+      color: rgba(168, 158, 148, 0.35);
       font-family: 'JetBrains Mono', monospace;
+      padding-left: 6px;
     }
     .fav-row, .nav-row {
       display: flex;
@@ -364,35 +373,29 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
 
     /* ─── Light Mode ──────────────────────────────────────────────── */
     :host-context([data-theme="light"]) .ctx-block {
-      background: rgba(0, 0, 0, 0.03);
-      border-color: rgba(0, 0, 0, 0.08);
+      border-bottom-color: rgba(0, 0, 0, 0.06);
     }
     :host-context([data-theme="light"]) .ctx-name { color: rgba(0, 0, 0, 0.7); }
     :host-context([data-theme="light"]) .nav-label { color: rgba(0, 0, 0, 0.35); }
     :host-context([data-theme="light"]) .nav-label:focus-visible { color: #9a5129; }
-    :host-context([data-theme="light"]) .nav-item { color: rgba(0, 0, 0, 0.45); }
+    :host-context([data-theme="light"]) .nav-item { color: rgba(0, 0, 0, 0.4); }
     :host-context([data-theme="light"]) .nav-item:hover {
-      background: rgba(0, 0, 0, 0.02);
       color: rgba(0, 0, 0, 0.8);
-      border-color: rgba(0, 0, 0, 0.04);
     }
     :host-context([data-theme="light"]) .nav-item.active {
-      background: rgba(154, 81, 41, 0.05);
       color: #9a5129;
-      border-color: rgba(154, 81, 41, 0.1);
-      box-shadow: inset 2px 0 0 #9a5129;
+      border-left-color: #9a5129;
     }
     :host-context([data-theme="light"]) .nav-item:focus-visible {
-      box-shadow: inset 0 0 0 1px rgba(154, 81, 41, 0.25);
+      border-left-color: rgba(154, 81, 41, 0.3);
     }
     :host-context([data-theme="light"]) .nav-badge {
-      background: rgba(154, 81, 41, 0.08); color: #9a5129;
+      color: rgba(154, 81, 41, 0.7); border-color: rgba(154, 81, 41, 0.15);
     }
     :host-context([data-theme="light"]) .nav-item i { opacity: 0.5; }
     :host-context([data-theme="light"]) .nav-item.active i { opacity: 1; }
     :host-context([data-theme="light"]) .nav-item kbd {
-      background: rgba(0, 0, 0, 0.02);
-      border-color: rgba(0, 0, 0, 0.06);
+      border-left-color: rgba(0, 0, 0, 0.06);
       color: rgba(0, 0, 0, 0.25);
     }
     :host-context([data-theme="light"]) .fav-remove, :host-context([data-theme="light"]) .star-btn {

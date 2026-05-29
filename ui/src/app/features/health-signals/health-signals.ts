@@ -1,23 +1,19 @@
 import { Component, inject, OnInit, OnDestroy } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Router } from '@angular/router';
-import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
-import { PageInfoComponent } from '../../shared/components/page-info.component';
-import { SpotlightComponent } from '../../shared/components/spotlight.component';
-import { PageHeaderComponent } from '../../shared/components/page-header.component';
+import { TooltipModule } from 'primeng/tooltip';
 import { RelatedPagesComponent } from '../../shared/components/related-pages.component';
+import { IntelHeaderComponent, MetricTileComponent, StatusBeaconComponent, HoloCardComponent, LiveIndicatorComponent } from '../../shared/components/futuristic';
 
 @Component({
   selector: 'app-health-signals',
   standalone: true,
-  imports: [ButtonModule, TagModule, PageInfoComponent, SpotlightComponent, RelatedPagesComponent, PageHeaderComponent],
+  imports: [TagModule, TooltipModule, RelatedPagesComponent, IntelHeaderComponent, MetricTileComponent, StatusBeaconComponent, HoloCardComponent, LiveIndicatorComponent],
   templateUrl: './health-signals.html',
   styleUrl: './health-signals.scss',
 })
 export class HealthSignalsComponent implements OnInit, OnDestroy {
   private http = inject(HttpClient);
-  private router = inject(Router);
 
   signals: any = null;
   oomkills: any[] = [];
@@ -25,6 +21,7 @@ export class HealthSignalsComponent implements OnInit, OnDestroy {
   quotas: any[] = [];
   rollouts: any[] = [];
   loading = false;
+  autoRefresh = true;
   lastUpdated = '';
   private timer: any;
 
@@ -35,8 +32,27 @@ export class HealthSignalsComponent implements OnInit, OnDestroy {
     { path: '/rightsizing', icon: 'pi pi-sliders-h', label: 'Right-Sizing', description: 'Resource recommendations' },
   ];
 
-  ngOnInit() { this.refresh(); this.timer = setInterval(() => this.refresh(), 60000); }
+  get totalIssues(): number {
+    if (!this.signals) return 0;
+    return this.signals.oomkills_24h + this.signals.hpa_at_max + this.signals.quota_pressure + this.signals.stalled_rollouts;
+  }
+
+  get overallStatus(): 'ok' | 'warning' | 'critical' {
+    if (!this.signals) return 'ok';
+    if (this.signals.oomkills_24h > 0 || this.signals.stalled_rollouts > 0) return 'critical';
+    if (this.signals.hpa_at_max > 0 || this.signals.quota_pressure > 0) return 'warning';
+    return 'ok';
+  }
+
+  ngOnInit() { this.refresh(); this.timer = setInterval(() => { if (this.autoRefresh) this.refresh(); }, 60000); }
   ngOnDestroy() { clearInterval(this.timer); }
+
+  toggleAutoRefresh() { this.autoRefresh = !this.autoRefresh; }
+
+  isRecent(ts: string): boolean {
+    if (!ts) return false;
+    return (Date.now() - new Date(ts).getTime()) < 3600000;
+  }
 
   refresh() {
     this.loading = true;
@@ -60,10 +76,6 @@ export class HealthSignalsComponent implements OnInit, OnDestroy {
       next: (res) => { this.rollouts = (res.rollouts || []).filter((r: any) => r.state !== 'complete'); this.loading = false; this.lastUpdated = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }); },
       error: () => { this.rollouts = []; this.loading = false; },
     });
-  }
-
-  scrollTo(id: string) {
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   formatTime(ts: string): string {

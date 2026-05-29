@@ -10,11 +10,12 @@ import { HoloCardComponent } from '../../shared/components/futuristic/holo-card.
 import { MetricTileComponent } from '../../shared/components/futuristic/metric-tile.component';
 import { StatusBeaconComponent } from '../../shared/components/futuristic/status-beacon.component';
 import { LiveIndicatorComponent } from '../../shared/components/futuristic/live-indicator.component';
+import { HealthRingComponent } from '../../shared/components/futuristic/health-ring.component';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [TagModule, ButtonModule, TooltipModule, HoloCardComponent, MetricTileComponent, StatusBeaconComponent, LiveIndicatorComponent],
+  imports: [TagModule, ButtonModule, TooltipModule, HoloCardComponent, MetricTileComponent, StatusBeaconComponent, LiveIndicatorComponent, HealthRingComponent],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.scss',
 })

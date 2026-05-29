@@ -10,6 +10,7 @@ import { StatusBeaconComponent } from '../../shared/components/futuristic/status
 import { CommandBarComponent } from '../../shared/components/futuristic/command-bar.component';
 import type { CommandPill } from '../../shared/components/futuristic/command-bar.component';
 import { ActionIconComponent } from '../../shared/components/futuristic/action-icon.component';
+import { IntelHeaderComponent } from '../../shared/components/futuristic/intel-header.component';
 
 interface RunbookStep { title: string; description: string; command?: string; commandTemplate?: string; paramName?: string; paramValue?: string; done: boolean; output?: string; outputExpanded?: boolean; loading?: boolean; note?: string; isInfo?: boolean; copied?: boolean; outputCopied?: boolean; }
 interface Runbook { id: string; name: string; description: string; icon: string; color: string; severity: string; estimatedTime: string; source?: string; steps: RunbookStep[]; }
@@ -17,7 +18,7 @@ interface Runbook { id: string; name: string; description: string; icon: string;
 @Component({
   selector: 'app-runbooks',
   standalone: true,
-  imports: [FormsModule, TagModule, ButtonModule, TooltipModule, HoloCardComponent, MetricTileComponent, StatusBeaconComponent, CommandBarComponent, ActionIconComponent],
+  imports: [IntelHeaderComponent, FormsModule, TagModule, ButtonModule, TooltipModule, HoloCardComponent, MetricTileComponent, StatusBeaconComponent, CommandBarComponent, ActionIconComponent],
   templateUrl: './runbooks.html',
   styleUrl: './runbooks.scss',
 })

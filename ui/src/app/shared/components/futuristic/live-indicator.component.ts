@@ -52,6 +52,11 @@ import { Component, Input } from '@angular/core';
       0%, 100% { opacity: 1; }
       50% { opacity: 0.3; }
     }
+
+    /* Light Mode */
+    :host-context([data-theme="light"]) .li-on { background: rgba(220,38,38,0.06); border-color: rgba(220,38,38,0.15); color: #dc2626; }
+    :host-context([data-theme="light"]) .li-off { background: transparent; border-color: rgba(0,0,0,0.06); color: rgba(0,0,0,0.4); }
+    :host-context([data-theme="light"]) .li-off:hover { border-color: rgba(154,81,41,0.2); color: #9a5129; background: rgba(154,81,41,0.03); }
   `],
 })
 export class LiveIndicatorComponent {

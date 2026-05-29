@@ -13,11 +13,12 @@ import { CommandBarComponent } from '../../shared/components/futuristic/command-
 import type { CommandPill } from '../../shared/components/futuristic/command-bar.component';
 import { LiveIndicatorComponent } from '../../shared/components/futuristic/live-indicator.component';
 import { StatusBeaconComponent } from '../../shared/components/futuristic/status-beacon.component';
+import { IntelHeaderComponent } from '../../shared/components/futuristic/intel-header.component';
 
 @Component({
   selector: 'app-metrics',
   standalone: true,
-  imports: [
+  imports: [IntelHeaderComponent, 
     FormsModule, TagModule, ButtonModule, TooltipModule,
     HoloCardComponent, MetricTileComponent, CommandBarComponent,
     LiveIndicatorComponent, StatusBeaconComponent,

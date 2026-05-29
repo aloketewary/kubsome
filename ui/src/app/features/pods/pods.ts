@@ -21,6 +21,7 @@ import type { CommandPill } from '../../shared/components/futuristic/command-bar
 import { LiveIndicatorComponent } from '../../shared/components/futuristic/live-indicator.component';
 import { SectionGroupComponent } from '../../shared/components/futuristic/section-group.component';
 import { ActionIconComponent } from '../../shared/components/futuristic/action-icon.component';
+import { IntelHeaderComponent } from '../../shared/components/futuristic/intel-header.component';
 
 interface PodGroup {
   deployment: string;
@@ -38,6 +39,7 @@ interface PodGroup {
     PodDrawerComponent, AiInsightDrawerComponent, LogTerminalComponent, ShellTerminalComponent,
     StatusBeaconComponent, MetricTileComponent,
     CommandBarComponent, LiveIndicatorComponent, SectionGroupComponent, ActionIconComponent,
+    IntelHeaderComponent,
   ],
   templateUrl: './pods.html',
   styleUrl: './pods.scss',

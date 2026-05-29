@@ -1,168 +1,124 @@
-<div class="intel-header"><div class="intel-title-block"><h1 class="intel-title">Health Signals</h1></div></div>
+<!-- ─── Header ─────────────────────────────────────────────────────── -->
+<app-intel-header title="Health Signals" icon="◈" [subtitle]="totalIssues + ' active signals · ' + (lastUpdated || 'loading...')">
+  <app-live-indicator [active]="autoRefresh" label="LIVE" offLabel="PAUSED" (click)="toggleAutoRefresh()" />
+  <button class="ctrl-btn" (click)="refresh()" pTooltip="Refresh">
+    <i class="pi pi-refresh" [class.spinning]="loading"></i>
+  </button>
+</app-intel-header>
 
-    <app-spotlight id="health-signals" title="Health Signals" icon="pi pi-wave-pulse"
-      description="Cluster-wide health signals — OOMKills, HPA pressure, quota usage, and rollout state."
-      [capabilities]="['OOMKill detection', 'HPA scaling pressure', 'Quota saturation', 'Stalled rollouts']" [compact]="true" />
+<!-- ─── Metrics Strip ──────────────────────────────────────────────── -->
+@if (signals) {
+  <div class="metrics-strip">
+    <app-metric-tile label="OOMKills" [value]="'' + signals.oomkills_24h" [accent]="signals.oomkills_24h > 0 ? 'red' : 'green'" />
+    <app-metric-tile label="HPA Max" [value]="'' + signals.hpa_at_max" [accent]="signals.hpa_at_max > 0 ? 'amber' : 'green'" />
+    <app-metric-tile label="Quota" [value]="'' + signals.quota_pressure" [accent]="signals.quota_pressure > 0 ? 'amber' : 'green'" />
+    <app-metric-tile label="Stalled" [value]="'' + signals.stalled_rollouts" [accent]="signals.stalled_rollouts > 0 ? 'red' : 'green'" />
+  </div>
+}
 
-    <app-page-header title="Health Signals" [subtitle]="lastUpdated || 'Loading...'">
-        <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="refresh()" [loading]="loading"></button>
-        <app-page-info title="Health Signals" description="Aggregated health signals from enriched monitoring — OOMKills, HPA scaling limits, resource quota pressure, and deployment rollout issues."
-          [tips]="['Red = immediate attention needed', 'Yellow = trending toward issue', 'Data collected every 5 min']"
-          [commands]="['signals', 'oomkills', 'hpa', 'quotas']" />
-    </app-page-header>
-
-    <!-- Summary Cards -->
-    @if (signals) {
-      <div class="signal-cards">
-        <div class="signal-card" [class.danger]="signals.oomkills_24h > 0" (click)="scrollTo('oom')">
-          <div class="sc-icon danger-icon"><i class="pi pi-exclamation-circle"></i></div>
-          <div class="sc-body">
-            <span class="sc-value">{{ signals.oomkills_24h }}</span>
-            <span class="sc-label">OOMKills (24h)</span>
-          </div>
+<!-- ─── OOMKills ───────────────────────────────────────────────────── -->
+<app-holo-card title="OOMKills" icon="pi pi-exclamation-circle" [glow]="oomkills.length ? 'red' : 'green'">
+  <span header-actions class="section-hint">Last 48h</span>
+  @if (oomkills.length) {
+    <div class="data-list">
+      @for (item of oomkills; track $index) {
+        <div class="data-row" [class.row-recent]="isRecent(item.ts)">
+          <app-status-beacon status="critical" size="sm" [pulse]="isRecent(item.ts)" />
+          <span class="row-time">{{ formatTime(item.ts) }}</span>
+          <span class="row-primary">{{ item.pod }}</span>
+          <span class="row-secondary">{{ item.container }}</span>
+          <p-tag [value]="item.mem_limit_mb + 'Mi'" severity="danger" [rounded]="true" size="small" />
         </div>
-        <div class="signal-card" [class.warn]="signals.hpa_at_max > 0" (click)="scrollTo('hpa')">
-          <div class="sc-icon warn-icon"><i class="pi pi-arrows-v"></i></div>
-          <div class="sc-body">
-            <span class="sc-value">{{ signals.hpa_at_max }}</span>
-            <span class="sc-label">HPA at Max</span>
-          </div>
-        </div>
-        <div class="signal-card" [class.warn]="signals.quota_pressure > 0" (click)="scrollTo('quota')">
-          <div class="sc-icon warn-icon"><i class="pi pi-gauge"></i></div>
-          <div class="sc-body">
-            <span class="sc-value">{{ signals.quota_pressure }}</span>
-            <span class="sc-label">Quota &gt;80%</span>
-          </div>
-        </div>
-        <div class="signal-card" [class.danger]="signals.stalled_rollouts > 0" (click)="scrollTo('rollout')">
-          <div class="sc-icon danger-icon"><i class="pi pi-pause-circle"></i></div>
-          <div class="sc-body">
-            <span class="sc-value">{{ signals.stalled_rollouts }}</span>
-            <span class="sc-label">Stalled Rollouts</span>
-          </div>
-        </div>
-      </div>
-    }
-
-    <!-- OOMKills Section -->
-    <div class="section" id="oom">
-      <div class="section-header">
-        <h2><i class="pi pi-exclamation-circle"></i> OOMKills</h2>
-        <span class="section-hint">Last 48 hours</span>
-      </div>
-      @if (oomkills.length) {
-        <div class="table-wrap">
-          <div class="table-header">
-            <span class="col-time">Time</span>
-            <span class="col-pod">Pod</span>
-            <span class="col-container">Container</span>
-            <span class="col-limit">Memory Limit</span>
-          </div>
-          @for (item of oomkills; track $index) {
-            <div class="table-row">
-              <span class="col-time">{{ formatTime(item.ts) }}</span>
-              <span class="col-pod mono">{{ item.pod }}</span>
-              <span class="col-container">{{ item.container }}</span>
-              <span class="col-limit"><p-tag [value]="item.mem_limit_mb + 'Mi'" severity="danger" [rounded]="true" size="small" /></span>
-            </div>
-          }
-        </div>
-      } @else {
-        <div class="empty-section"><i class="pi pi-check-circle"></i> No OOMKills in the last 48h</div>
       }
     </div>
-
-    <!-- HPA Section -->
-    <div class="section" id="hpa">
-      <div class="section-header">
-        <h2><i class="pi pi-arrows-v"></i> HPA Scaling Pressure</h2>
-        <span class="section-hint">Current state</span>
-      </div>
-      @if (hpa.length) {
-        <div class="hpa-grid">
-          @for (item of hpa; track item.name) {
-            <div class="hpa-card" [class.at-max]="item.at_max" [class.scaling]="item.scaling_up">
-              <div class="hpa-header">
-                <strong>{{ item.target }}</strong>
-                @if (item.at_max) { <p-tag value="AT MAX" severity="danger" [rounded]="true" size="small" /> }
-                @if (item.scaling_up && !item.at_max) { <p-tag value="SCALING" severity="info" [rounded]="true" size="small" /> }
-              </div>
-              <div class="hpa-body">
-                <div class="hpa-replicas">
-                  <div class="replica-bar">
-                    <div class="replica-fill" [style.width.%]="(item.current / item.max) * 100"></div>
-                  </div>
-                  <span class="replica-text">{{ item.current }}/{{ item.max }} replicas</span>
-                </div>
-                <div class="hpa-cpu">
-                  <span class="cpu-label">CPU</span>
-                  <div class="cpu-bar">
-                    <div class="cpu-fill" [style.width.%]="item.cpu_current" [class.cpu-hot]="item.cpu_current > item.cpu_target"></div>
-                  </div>
-                  <span class="cpu-text">{{ item.cpu_current }}% / {{ item.cpu_target }}% target</span>
-                </div>
-              </div>
-            </div>
-          }
-        </div>
-      } @else {
-        <div class="empty-section"><i class="pi pi-check-circle"></i> No HPAs under pressure</div>
-      }
+  } @else {
+    <div class="empty-state">
+      <div class="empty-icon"><i class="pi pi-check-circle"></i></div>
+      <span>No OOMKills in the last 48h</span>
     </div>
+  }
+</app-holo-card>
 
-    <!-- Quota Section -->
-    <div class="section" id="quota">
-      <div class="section-header">
-        <h2><i class="pi pi-gauge"></i> Resource Quotas</h2>
-        <span class="section-hint">Current namespace</span>
-      </div>
-      @if (quotas.length) {
-        <div class="quota-grid">
-          @for (item of quotas; track item.resource) {
-            <div class="quota-card" [class.pressure]="item.pct > 80" [class.critical]="item.pct > 95">
-              <div class="quota-header">
-                <span class="quota-resource">{{ item.resource }}</span>
-                <span class="quota-pct" [class.pct-warn]="item.pct > 80" [class.pct-crit]="item.pct > 95">{{ item.pct }}%</span>
-              </div>
-              <div class="quota-bar">
-                <div class="quota-fill" [style.width.%]="item.pct" [class.fill-warn]="item.pct > 80" [class.fill-crit]="item.pct > 95"></div>
-              </div>
-              <div class="quota-detail">{{ item.used }} / {{ item.hard }}</div>
-            </div>
-          }
-        </div>
-      } @else {
-        <div class="empty-section"><i class="pi pi-check-circle"></i> No quota pressure</div>
-      }
-    </div>
-
-    <!-- Rollouts Section -->
-    <div class="section" id="rollout">
-      <div class="section-header">
-        <h2><i class="pi pi-pause-circle"></i> Rollout State</h2>
-        <span class="section-hint">Current namespace</span>
-      </div>
-      @if (rollouts.length) {
-        <div class="table-wrap">
-          <div class="table-header">
-            <span class="col-deploy">Deployment</span>
-            <span class="col-replicas">Replicas</span>
-            <span class="col-state">State</span>
+<!-- ─── HPA ────────────────────────────────────────────────────────── -->
+<app-holo-card title="HPA Scaling Pressure" icon="pi pi-arrows-v" [glow]="hpa.length ? 'amber' : 'green'">
+  <span header-actions class="section-hint">Current state</span>
+  @if (hpa.length) {
+    <div class="hpa-grid">
+      @for (item of hpa; track item.name) {
+        <div class="hpa-card" [class.at-max]="item.at_max">
+          <div class="hpa-head">
+            <app-status-beacon [status]="item.at_max ? 'critical' : item.scaling_up ? 'info' : 'ok'" size="sm" />
+            <strong>{{ item.target }}</strong>
+            @if (item.at_max) { <p-tag value="AT MAX" severity="danger" [rounded]="true" size="small" /> }
+            @if (item.scaling_up && !item.at_max) { <p-tag value="SCALING" severity="info" [rounded]="true" size="small" /> }
           </div>
-          @for (item of rollouts; track item.deployment) {
-            <div class="table-row">
-              <span class="col-deploy mono">{{ item.deployment }}</span>
-              <span class="col-replicas">{{ item.available }}/{{ item.desired }} ready · {{ item.unavailable }} unavailable</span>
-              <span class="col-state">
-                <p-tag [value]="item.state" [severity]="stateSeverity(item.state)" [rounded]="true" size="small" />
-              </span>
+          <div class="hpa-bars">
+            <div class="bar-group">
+              <div class="bar-track"><div class="bar-fill bar-accent" [style.width.%]="(item.current / item.max) * 100" [class.bar-danger]="item.at_max"></div></div>
+              <span class="bar-label">{{ item.current }}/{{ item.max }} replicas</span>
             </div>
-          }
+            <div class="bar-group">
+              <span class="bar-key">CPU</span>
+              <div class="bar-track"><div class="bar-fill bar-success" [style.width.%]="item.cpu_current" [class.bar-danger]="item.cpu_current > item.cpu_target"></div></div>
+              <span class="bar-label">{{ item.cpu_current }}% / {{ item.cpu_target }}%</span>
+            </div>
+          </div>
         </div>
-      } @else {
-        <div class="empty-section"><i class="pi pi-check-circle"></i> All rollouts healthy</div>
       }
     </div>
+  } @else {
+    <div class="empty-state">
+      <div class="empty-icon"><i class="pi pi-check-circle"></i></div>
+      <span>No HPAs under pressure</span>
+    </div>
+  }
+</app-holo-card>
 
-    <app-related-pages label="Related" [pages]="relatedPages" />
+<!-- ─── Quotas ─────────────────────────────────────────────────────── -->
+<app-holo-card title="Resource Quotas" icon="pi pi-gauge" [glow]="quotas.length ? 'amber' : 'green'">
+  <span header-actions class="section-hint">Current namespace</span>
+  @if (quotas.length) {
+    <div class="quota-grid">
+      @for (item of quotas; track item.resource) {
+        <div class="quota-item" [class.quota-pressure]="item.pct > 80" [class.quota-critical]="item.pct > 95">
+          <div class="quota-head">
+            <span class="quota-name">{{ item.resource }}</span>
+            <span class="quota-pct" [class.pct-warn]="item.pct > 80" [class.pct-crit]="item.pct > 95">{{ item.pct }}%</span>
+          </div>
+          <div class="bar-track"><div class="bar-fill bar-success" [style.width.%]="item.pct" [class.bar-warning]="item.pct > 80" [class.bar-danger]="item.pct > 95"></div></div>
+          <span class="quota-detail">{{ item.used }} / {{ item.hard }}</span>
+        </div>
+      }
+    </div>
+  } @else {
+    <div class="empty-state">
+      <div class="empty-icon"><i class="pi pi-check-circle"></i></div>
+      <span>No quota pressure</span>
+    </div>
+  }
+</app-holo-card>
+
+<!-- ─── Rollouts ───────────────────────────────────────────────────── -->
+<app-holo-card title="Rollout State" icon="pi pi-pause-circle" [glow]="rollouts.length ? 'red' : 'green'">
+  <span header-actions class="section-hint">Current namespace</span>
+  @if (rollouts.length) {
+    <div class="data-list">
+      @for (item of rollouts; track item.deployment) {
+        <div class="data-row">
+          <app-status-beacon [status]="item.state === 'stalled' || item.state === 'degraded' ? 'critical' : item.state === 'progressing' ? 'info' : 'ok'" size="sm" />
+          <span class="row-primary">{{ item.deployment }}</span>
+          <span class="row-secondary">{{ item.available }}/{{ item.desired }} ready</span>
+          @if (item.unavailable > 0) { <span class="row-danger">{{ item.unavailable }} unavail</span> }
+          <p-tag [value]="item.state" [severity]="stateSeverity(item.state)" [rounded]="true" size="small" />
+        </div>
+      }
+    </div>
+  } @else {
+    <div class="empty-state">
+      <div class="empty-icon"><i class="pi pi-check-circle"></i></div>
+      <span>All rollouts healthy</span>
+    </div>
+  }
+</app-holo-card>
+
+<app-related-pages label="Related" [pages]="relatedPages" />

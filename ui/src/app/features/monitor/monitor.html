@@ -1,13 +1,12 @@
-<div class="intel-header"><div class="intel-title-block"><h1 class="intel-title">Monitor</h1></div></div>
-
-    <app-spotlight id="monitor" title="Multi-Cluster Monitor" icon="pi pi-desktop"
-      description="Add cards to watch cluster or app health. Configure alerts, perform actions, and track activity across environments."
-      [capabilities]="['Monitor cluster-wide or specific app', 'Auto-refresh with configurable intervals', 'Health alerts with browser notifications', 'Restart and scale from the dialog', 'Drag to reorder cards']" [compact]="true" />
-
-    <app-page-header title="Monitor" [subtitle]="cards.length + ' card' + (cards.length !== 1 ? 's' : '') + ' · Multi-cluster overview'">
-        <button pButton icon="pi pi-refresh" label="Refresh All" class="p-button-sm p-button-outlined" (click)="refreshAll()"></button>
-        <button pButton icon="pi pi-plus" label="Add" class="p-button-sm" (click)="addCard()"></button>
-    </app-page-header>
+<app-intel-header title="Monitor" icon="◈"
+  [subtitle]="cards.length + ' card' + (cards.length !== 1 ? 's' : '') + ' · multi-cluster overview'">
+  <button class="ctrl-btn" (click)="refreshAll()" pTooltip="Refresh All">
+    <i class="pi pi-refresh"></i>
+  </button>
+  <button class="ctrl-btn" (click)="addCard()" pTooltip="Add Card">
+    <i class="pi pi-plus"></i>
+  </button>
+</app-intel-header>
 
     <!-- Global Health Strip -->
     @if (cards.length > 0 && loadedCards > 0) {
@@ -134,11 +133,7 @@
               <!-- App-specific View -->
               <div class="mc-app-view">
                 <div class="app-replica-ring">
-                  <svg viewBox="0 0 36 36">
-                    <path class="ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                    <path class="ring-fill" [class]="ringClass(card)" [attr.stroke-dasharray]="healthPct(card) + ', 100'" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                  </svg>
-                  <span class="ring-val">{{ card.data.app_info?.available || 0 }}/{{ card.data.app_info?.desired || 0 }}</span>
+                  <app-health-ring [pct]="healthPct(card)" [label]="(card.data.app_info?.available || 0) + '/' + (card.data.app_info?.desired || 0)" [status]="cardHealth(card) === 'healthy' ? 'ok' : cardHealth(card) === 'degraded' ? 'warning' : 'critical'" size="md" />
                 </div>
                 <div class="app-details">
                   <div class="app-stat-row"><span class="app-stat-label">Pods</span><span class="app-stat-val">{{ card.data.pods?.total || 0 }}</span></div>
@@ -156,11 +151,7 @@
               <!-- Cluster View -->
               <div class="mc-compact">
                 <div class="compact-ring">
-                  <svg viewBox="0 0 36 36">
-                    <path class="ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                    <path class="ring-fill" [class]="ringClass(card)" [attr.stroke-dasharray]="healthPct(card) + ', 100'" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                  </svg>
-                  <span class="ring-val">{{ healthPct(card) }}%</span>
+                  <app-health-ring [pct]="healthPct(card)" [status]="cardHealth(card) === 'healthy' ? 'ok' : cardHealth(card) === 'degraded' ? 'warning' : 'critical'" size="md" />
                 </div>
                 <div class="compact-stats">
                   <div class="cs-row"><span class="cs-dot cs-ok"></span><span class="cs-num">{{ card.data.pods?.healthy || 0 }}</span> running</div>
@@ -175,14 +166,7 @@
             }
 
             <!-- Mini Activity -->
-            <div class="mc-mini-activity">
-              <span class="mini-label">Activity</span>
-              <div class="mini-chart">
-                @for (bar of card.activityBars; track $index) {
-                  <div class="mini-bar" [style.height.%]="bar" [class.mini-high]="bar > 70" [attr.title]="Math.round(bar) + '% activity'"></div>
-                }
-              </div>
-            </div>
+            <app-sparkline [bars]="card.activityBars" label="Activity" height="sm" />
 
             <!-- Footer -->
             <div class="mc-footer">
@@ -209,7 +193,7 @@
               </div>
             }
           } @else if (card.loading) {
-            <app-skeleton variant="stats" />
+            <div class="loading-state"><div class="loader-ring"></div></div>
           } @else if (card.data?.error) {
             <div class="mc-error"><i class="pi pi-exclamation-triangle"></i> {{ card.data.error }}</div>
           } @else {
@@ -235,11 +219,7 @@
           <!-- Health Row -->
           <div class="fsd-health-row">
             <div class="fsd-ring-wrap">
-              <svg viewBox="0 0 36 36">
-                <path class="ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                <path class="ring-fill" [class]="ringClass(fsCard!)" [attr.stroke-dasharray]="healthPct(fsCard!) + ', 100'" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-              </svg>
-              <span class="fsd-ring-val">{{ healthPct(fsCard!) }}%</span>
+              <app-health-ring [pct]="healthPct(fsCard!)" [status]="cardHealth(fsCard!) === 'healthy' ? 'ok' : cardHealth(fsCard!) === 'degraded' ? 'warning' : 'critical'" size="lg" />
             </div>
             <div class="fsd-stats">
               <div class="fsd-stat"><span class="fsd-stat-val">{{ fsCard!.data.pods?.healthy || 0 }}</span><span class="fsd-stat-label">Running</span></div>
@@ -265,11 +245,7 @@
               <h4>Activity</h4>
               <span class="fsd-hint">{{ fsCard!.events.length }} events · {{ fsCard!.actionLog.length }} actions</span>
             </div>
-            <div class="fsd-histogram">
-              @for (bar of fsCard!.activityBars; track $index) {
-                <div class="fsd-hbar" [style.height.%]="bar" [class.fsd-hbar-high]="bar > 70" [class.fsd-hbar-med]="bar > 40 && bar <= 70"></div>
-              }
-            </div>
+            <app-sparkline [bars]="fsCard!.activityBars" height="lg" />
           </div>
 
           <!-- Action Log -->

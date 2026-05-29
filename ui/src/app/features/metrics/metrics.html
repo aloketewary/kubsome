@@ -4,23 +4,13 @@
      ═══════════════════════════════════════════════════════════════════ -->
 
 <!-- ─── Header ─────────────────────────────────────────────────────── -->
-<div class="intel-header">
-  <div class="intel-title-block">
-    <h1 class="intel-title">
-      <span class="title-icon">▣</span>
-      Resource Metrics
-    </h1>
-    <p class="intel-subtitle">
-      {{ topNodes.length }} nodes · {{ topPods.length }} pods · {{ lastUpdated || 'loading...' }}
-    </p>
-  </div>
-  <div class="intel-controls">
-    <app-live-indicator [active]="autoRefresh" label="AUTO" offLabel="PAUSED" (click)="toggleAutoRefresh()" />
-    <button class="ctrl-btn" (click)="refresh()" pTooltip="Refresh">
-      <i class="pi pi-refresh" [class.spinning]="loading"></i>
-    </button>
-  </div>
-</div>
+<app-intel-header title="Resource Metrics" icon="▣"
+  [subtitle]="topNodes.length + ' nodes · ' + topPods.length + ' pods · ' + (lastUpdated || 'loading...')">
+  <app-live-indicator [active]="autoRefresh" label="AUTO" offLabel="PAUSED" (click)="toggleAutoRefresh()" />
+  <button class="ctrl-btn" (click)="refresh()" pTooltip="Refresh">
+    <i class="pi pi-refresh" [class.spinning]="loading"></i>
+  </button>
+</app-intel-header>
 
 <!-- ─── Cluster Summary ────────────────────────────────────────────── -->
 <div class="metrics-strip">

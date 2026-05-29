@@ -32,6 +32,13 @@ import { Component, Input } from '@angular/core';
       0%, 100% { opacity: 1; }
       50% { opacity: 0.35; }
     }
+
+    /* Light Mode — no glow */
+    :host-context([data-theme="light"]) [data-status="ok"] { background: #16a34a; box-shadow: none; }
+    :host-context([data-theme="light"]) [data-status="warning"] { background: #b45309; box-shadow: none; }
+    :host-context([data-theme="light"]) [data-status="critical"] { background: #dc2626; box-shadow: none; }
+    :host-context([data-theme="light"]) [data-status="info"] { background: #9a5129; box-shadow: none; }
+    :host-context([data-theme="light"]) [data-status="idle"] { background: rgba(0,0,0,0.15); }
   `],
 })
 export class StatusBeaconComponent {

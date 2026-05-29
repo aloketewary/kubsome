@@ -7,3 +7,6 @@ export type { CommandPill } from './command-bar.component';
 export { LiveIndicatorComponent } from './live-indicator.component';
 export { SectionGroupComponent } from './section-group.component';
 export { ActionIconComponent } from './action-icon.component';
+export { HealthRingComponent } from './health-ring.component';
+export { SparklineComponent } from './sparkline.component';
+export { IntelHeaderComponent } from './intel-header.component';

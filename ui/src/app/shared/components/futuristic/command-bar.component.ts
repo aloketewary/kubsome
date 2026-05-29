@@ -166,6 +166,16 @@ export interface CommandPill {
       .cb { flex-direction: column; align-items: stretch; }
       .cb-right { justify-content: flex-end; }
     }
+
+    /* Light Mode */
+    :host-context([data-theme="light"]) .cb { border-color: rgba(0,0,0,0.05); background: transparent; }
+    :host-context([data-theme="light"]) .pill { color: rgba(0,0,0,0.5); }
+    :host-context([data-theme="light"]) .pill:hover { background: rgba(0,0,0,0.03); color: rgba(0,0,0,0.75); }
+    :host-context([data-theme="light"]) .pill-active { background: rgba(154,81,41,0.06); color: #9a5129; }
+    :host-context([data-theme="light"]) .pill-count { background: rgba(0,0,0,0.04); color: rgba(0,0,0,0.5); }
+    :host-context([data-theme="light"]) .cb-search { border-color: rgba(0,0,0,0.06); background: transparent; color: var(--text); }
+    :host-context([data-theme="light"]) .cb-search:focus { border-color: rgba(154,81,41,0.25); }
+    :host-context([data-theme="light"]) .cb-search-icon { color: rgba(0,0,0,0.3); }
   `],
 })
 export class CommandBarComponent {

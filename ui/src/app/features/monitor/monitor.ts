@@ -9,9 +9,8 @@ import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
 import { TooltipModule } from 'primeng/tooltip';
 import { DialogModule } from 'primeng/dialog';
-import { SpotlightComponent } from '../../shared/components/spotlight.component';
-import { SkeletonComponent } from '../../shared/components/skeleton.component';
-import { PageHeaderComponent } from '../../shared/components/page-header.component';
+
+import { HealthRingComponent, SparklineComponent, IntelHeaderComponent } from '../../shared/components/futuristic';
 
 interface ActionEntry {
   time: string;
@@ -44,7 +43,7 @@ interface MonitorCard {
 @Component({
   selector: 'app-monitor',
   standalone: true,
-  imports: [FormsModule, SlicePipe, Select, ButtonModule, TagModule, TooltipModule, DialogModule, SpotlightComponent, SkeletonComponent, PageHeaderComponent],
+  imports: [FormsModule, SlicePipe, Select, ButtonModule, TagModule, TooltipModule, DialogModule, HealthRingComponent, SparklineComponent, IntelHeaderComponent],
   templateUrl: './monitor.html',
   styleUrl: './monitor.scss',
 })

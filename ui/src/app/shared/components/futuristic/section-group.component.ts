@@ -104,9 +104,26 @@ import { Component, Input, Output, EventEmitter } from '@angular/core';
     .sg-slot { margin-left: auto; }
 
     .sg-body {
-      border-top: 1px solid rgba(255, 255, 255, 0.025);
+      border-top: 1px solid rgba(94, 84, 75, 0.06);
       padding: 2px 6px 6px;
     }
+
+    /* Light Mode */
+    :host-context([data-theme="light"]) .sg { background: transparent; border-color: rgba(0,0,0,0.04); }
+    :host-context([data-theme="light"]) .sg::after { background: linear-gradient(90deg, transparent, rgba(0,0,0,0.04), transparent); }
+    :host-context([data-theme="light"]) .sg:hover { border-color: rgba(0,0,0,0.06); box-shadow: none; }
+    :host-context([data-theme="light"]) .sg-alert { border-left-color: rgba(220,38,38,0.3); }
+    :host-context([data-theme="light"]) .sg-alert::after { background: linear-gradient(90deg, transparent, rgba(220,38,38,0.1), transparent); }
+    :host-context([data-theme="light"]) .sg-head:hover { background: rgba(0,0,0,0.015); }
+    :host-context([data-theme="light"]) .sg-head:focus-visible { box-shadow: inset 0 0 0 1px rgba(154,81,41,0.2); }
+    :host-context([data-theme="light"]) .sg-name { color: rgba(0,0,0,0.75); }
+    :host-context([data-theme="light"]) .sg-head > i { color: rgba(0,0,0,0.3); }
+    :host-context([data-theme="light"]) .sg-bar { background: rgba(0,0,0,0.04); }
+    :host-context([data-theme="light"]) .sg-bar-ok { background: #16a34a; box-shadow: none; }
+    :host-context([data-theme="light"]) .sg-bar-bad { background: #dc2626; box-shadow: none; }
+    :host-context([data-theme="light"]) .sg-ratio { color: rgba(0,0,0,0.4); }
+    :host-context([data-theme="light"]) .sg-warn-badge { background: rgba(220,38,38,0.06); color: #dc2626; }
+    :host-context([data-theme="light"]) .sg-body { border-top-color: rgba(0,0,0,0.04); }
   `],
 })
 export class SectionGroupComponent {

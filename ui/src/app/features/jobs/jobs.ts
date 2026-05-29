@@ -10,11 +10,12 @@ import { CommandBarComponent } from '../../shared/components/futuristic/command-
 import type { CommandPill } from '../../shared/components/futuristic/command-bar.component';
 import { LiveIndicatorComponent } from '../../shared/components/futuristic/live-indicator.component';
 import { ActionIconComponent } from '../../shared/components/futuristic/action-icon.component';
+import { IntelHeaderComponent } from '../../shared/components/futuristic/intel-header.component';
 
 @Component({
   selector: 'app-jobs',
   standalone: true,
-  imports: [FormsModule, TagModule, TooltipModule, HoloCardComponent, MetricTileComponent, StatusBeaconComponent, CommandBarComponent, LiveIndicatorComponent, ActionIconComponent],
+  imports: [IntelHeaderComponent, FormsModule, TagModule, TooltipModule, HoloCardComponent, MetricTileComponent, StatusBeaconComponent, CommandBarComponent, LiveIndicatorComponent, ActionIconComponent],
   templateUrl: './jobs.html',
   styleUrl: './jobs.scss',
 })

@@ -4,28 +4,18 @@
      ═══════════════════════════════════════════════════════════════════ -->
 
 <!-- ─── Header ─────────────────────────────────────────────────────── -->
-<div class="intel-header">
-  <div class="intel-title-block">
-    <h1 class="intel-title">
-      <span class="title-icon">⚡</span>
-      Event Stream
-    </h1>
-    <p class="intel-subtitle">
-      {{ filteredEvents.length }} events · {{ warningCount }} warnings · {{ autoRefresh ? '30s refresh' : 'paused' }}
-    </p>
-  </div>
-  <div class="intel-controls">
-    <button class="ctrl-btn" [class.ctrl-btn-active]="autoRefresh" (click)="toggleAutoRefresh()"
-            [pTooltip]="autoRefresh ? 'Auto-refresh on' : 'Auto-refresh off'">
-      <i class="pi" [class.pi-sync]="autoRefresh" [class.pi-pause]="!autoRefresh"
-         [class.spinning]="autoRefresh"></i>
-    </button>
-    <app-live-indicator [active]="watching" (click)="toggleWatch()" />
-    <button class="ctrl-btn" (click)="refresh()" pTooltip="Refresh">
-      <i class="pi pi-refresh" [class.spinning]="loading"></i>
-    </button>
-  </div>
-</div>
+<app-intel-header title="Event Stream" icon="⚡"
+  [subtitle]="filteredEvents.length + ' events · ' + warningCount + ' warnings · ' + (autoRefresh ? '30s refresh' : 'paused')">
+  <button class="ctrl-btn" [class.ctrl-btn-active]="autoRefresh" (click)="toggleAutoRefresh()"
+          [pTooltip]="autoRefresh ? 'Auto-refresh on' : 'Auto-refresh off'">
+    <i class="pi" [class.pi-sync]="autoRefresh" [class.pi-pause]="!autoRefresh"
+       [class.spinning]="autoRefresh"></i>
+  </button>
+  <app-live-indicator [active]="watching" (click)="toggleWatch()" />
+  <button class="ctrl-btn" (click)="refresh()" pTooltip="Refresh">
+    <i class="pi pi-refresh" [class.spinning]="loading"></i>
+  </button>
+</app-intel-header>
 
 <!-- ─── Metrics Strip ──────────────────────────────────────────────── -->
 <div class="metrics-strip">

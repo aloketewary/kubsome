@@ -9,6 +9,7 @@ import { StatusBeaconComponent } from '../../shared/components/futuristic/status
 import { CommandBarComponent } from '../../shared/components/futuristic/command-bar.component';
 import type { CommandPill } from '../../shared/components/futuristic/command-bar.component';
 import { LiveIndicatorComponent } from '../../shared/components/futuristic/live-indicator.component';
+import { IntelHeaderComponent } from '../../shared/components/futuristic/intel-header.component';
 
 interface ResourceItem {
   type: string;
@@ -21,7 +22,7 @@ interface ResourceItem {
 @Component({
   selector: 'app-namespace',
   standalone: true,
-  imports: [FormsModule, TooltipModule, HoloCardComponent, MetricTileComponent, StatusBeaconComponent, CommandBarComponent, LiveIndicatorComponent],
+  imports: [IntelHeaderComponent, FormsModule, TooltipModule, HoloCardComponent, MetricTileComponent, StatusBeaconComponent, CommandBarComponent, LiveIndicatorComponent],
   templateUrl: './namespace.html',
   styleUrl: './namespace.scss',
 })

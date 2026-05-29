@@ -13,6 +13,7 @@ import { MetricTileComponent } from '../../shared/components/futuristic/metric-t
 import { CommandBarComponent } from '../../shared/components/futuristic/command-bar.component';
 import type { CommandPill } from '../../shared/components/futuristic/command-bar.component';
 import { LiveIndicatorComponent } from '../../shared/components/futuristic/live-indicator.component';
+import { IntelHeaderComponent } from '../../shared/components/futuristic/intel-header.component';
 
 interface HeatmapCell {
   count: number;
@@ -24,7 +25,7 @@ interface HeatmapCell {
 @Component({
   selector: 'app-events',
   standalone: true,
-  imports: [
+  imports: [IntelHeaderComponent, 
     FormsModule, TagModule, ButtonModule, TooltipModule,
     HoloCardComponent, StatusBeaconComponent, MetricTileComponent,
     CommandBarComponent, LiveIndicatorComponent,
