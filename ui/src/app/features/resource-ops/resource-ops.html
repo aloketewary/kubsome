@@ -1,0 +1,83 @@
+<app-intel-header title="Resource Operations" icon="pi pi-wrench"
+  subtitle="patch · annotate · set-image">
+</app-intel-header>
+
+<div class="metrics-strip">
+  <app-metric-tile label="Actions" [value]="'' + history.length" accent="cyan" />
+</div>
+
+<!-- Patch -->
+<app-holo-card title="Patch Resource" icon="pi pi-pencil" glow="cyan" [compact]="true">
+  <div class="ops-form">
+    <select [(ngModel)]="patchResource">
+      <option value="deployment">deployment</option>
+      <option value="service">service</option>
+      <option value="configmap">configmap</option>
+      <option value="statefulset">statefulset</option>
+      <option value="daemonset">daemonset</option>
+    </select>
+    <input [(ngModel)]="patchName" placeholder="resource name" />
+    <select [(ngModel)]="patchType">
+      <option value="strategic">strategic</option>
+      <option value="merge">merge</option>
+      <option value="json">json</option>
+    </select>
+  </div>
+  <textarea [(ngModel)]="patchData" placeholder='{"spec":{"replicas":3}}' rows="3" class="patch-textarea"></textarea>
+  <div class="ops-actions">
+    <button class="ctrl-btn ctrl-btn-wide" (click)="submitPatch()" [class.disabled]="!patchName || !patchData">Apply Patch</button>
+  </div>
+  @if (patchResult) {
+    <span class="action-msg" [class.msg-ok]="patchSuccess" [class.msg-err]="!patchSuccess">{{ patchResult }}</span>
+  }
+</app-holo-card>
+
+<!-- Annotate -->
+<app-holo-card title="Annotate Resource" icon="pi pi-tag" glow="amber" [compact]="true">
+  <div class="ops-form">
+    <select [(ngModel)]="annotateResource">
+      <option value="deployment">deployment</option>
+      <option value="pod">pod</option>
+      <option value="service">service</option>
+      <option value="namespace">namespace</option>
+      <option value="node">node</option>
+    </select>
+    <input [(ngModel)]="annotateName" placeholder="resource name" />
+    <input [(ngModel)]="annotateKV" placeholder="key=value, key2=value2" class="input-wide" />
+  </div>
+  <div class="ops-actions">
+    <button class="ctrl-btn ctrl-btn-wide" (click)="submitAnnotate()" [class.disabled]="!annotateName || !annotateKV">Annotate</button>
+  </div>
+  @if (annotateResult) {
+    <span class="action-msg" [class.msg-ok]="annotateSuccess" [class.msg-err]="!annotateSuccess">{{ annotateResult }}</span>
+  }
+</app-holo-card>
+
+<!-- Set Image -->
+<app-holo-card title="Set Image" icon="pi pi-image" glow="purple" [compact]="true">
+  <div class="ops-form">
+    <input [(ngModel)]="imageDeployment" placeholder="deployment name" />
+    <input [(ngModel)]="imageContainer" placeholder="container (optional)" />
+    <input [(ngModel)]="imageTag" placeholder="image:tag (e.g. nginx:1.25)" class="input-wide" />
+  </div>
+  <div class="ops-actions">
+    <button class="ctrl-btn ctrl-btn-wide" (click)="submitSetImage()" [class.disabled]="!imageDeployment || !imageTag">Update Image</button>
+  </div>
+  @if (imageResult) {
+    <span class="action-msg" [class.msg-ok]="imageSuccess" [class.msg-err]="!imageSuccess">{{ imageResult }}</span>
+  }
+</app-holo-card>
+
+<!-- History -->
+@if (history.length > 0) {
+  <app-holo-card title="Recent Actions" icon="pi pi-history" [compact]="true">
+    @for (h of history; track $index) {
+      <div class="history-row">
+        <span class="history-icon" [class.h-ok]="h.success" [class.h-err]="!h.success">{{ h.success ? '✓' : '✗' }}</span>
+        <code class="history-action">{{ h.action }}</code>
+        <span class="history-target">{{ h.target }}</span>
+        <span class="history-time">{{ h.time }}</span>
+      </div>
+    }
+  </app-holo-card>
+}

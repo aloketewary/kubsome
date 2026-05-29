@@ -1,12 +1,7 @@
-<div class="intel-header">
-  <div class="intel-title-block">
-    <h1 class="intel-title"><span class="title-icon">🛡</span> Policy Check</h1>
-    <p class="intel-subtitle">cluster guardrails · {{ lastChecked || '...' }}</p>
-  </div>
-  <div class="intel-controls">
-    <button class="ctrl-btn" (click)="load()"><i class="pi pi-refresh" [class.spinning]="loading"></i></button>
-  </div>
-</div>
+<app-intel-header title="Policy Check" icon="pi pi-verified"
+  [subtitle]="'cluster guardrails · ' + (lastChecked || '...')">
+  <button class="ctrl-btn" (click)="load()" pTooltip="Check"><i class="pi pi-refresh" [class.spinning]="loading"></i></button>
+</app-intel-header>
 
 @if (data) {
   <!-- Metrics -->

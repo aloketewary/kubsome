@@ -1,12 +1,7 @@
-<div class="intel-header">
-  <div class="intel-title-block">
-    <h1 class="intel-title"><span class="title-icon">🔄</span> GitOps</h1>
-    <p class="intel-subtitle">{{ data?.provider || 'detecting...' }} · {{ data?.apps?.length || 0 }} apps · {{ lastUpdated || '...' }}</p>
-  </div>
-  <div class="intel-controls">
-    <button class="ctrl-btn" (click)="refresh()"><i class="pi pi-refresh" [class.spinning]="loading"></i></button>
-  </div>
-</div>
+<app-intel-header title="GitOps" icon="pi pi-sync"
+  [subtitle]="(data?.provider || 'detecting...') + ' · ' + (data?.apps?.length || 0) + ' apps · ' + (lastUpdated || '...')">
+  <button class="ctrl-btn" (click)="refresh()" pTooltip="Refresh"><i class="pi pi-refresh" [class.spinning]="loading"></i></button>
+</app-intel-header>
 
 @if (data) {
   <div class="metrics-strip">

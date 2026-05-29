@@ -1,20 +1,26 @@
 @use '../../styles/futuristic';
 :host { display: block; width: 100%; }
-.title-icon { color: #f59e0b; }
 .disabled { opacity: 0.3; pointer-events: none; }
 
-.taint-form { display: flex; gap: 6px; align-items: center; }
-.taint-form select, .taint-form input { padding: 7px 10px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 6px; color: var(--text); font-size: 11px; outline: none; flex: 1; }
-.taint-form select:focus, .taint-form input:focus { border-color: rgba(0,212,255,0.3); }
+/* ─── Taint Form ─────────────────────────────────────────────────── */
+.taint-form { display: flex; gap: 6px; align-items: center; margin-bottom: 12px; }
 .action-msg { display: block; margin-top: 6px; font-size: 10px; }
-.msg-ok { color: #10b981; }
-.msg-err { color: #f43f5e; }
+.msg-ok { color: var(--success); }
+.msg-err { color: var(--danger); }
 
-.taint-list { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
-.node-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-.node-name { font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.8); }
-.taint-row { display: flex; align-items: center; gap: 8px; padding: 5px 0; border-bottom: 1px solid rgba(255,255,255,0.025); font-size: 11px; }
+/* ─── Taint List ─────────────────────────────────────────────────── */
+.taint-list { display: flex; flex-direction: column; gap: 0; margin-top: 12px; }
+.node-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; padding-top: 10px; border-top: 1px solid rgba(94, 84, 75, 0.06); }
+.node-head:first-child { border-top: none; padding-top: 0; }
+.node-name { font-size: 12px; font-weight: 600; color: var(--text); font-family: 'JetBrains Mono', monospace; }
+.taint-row { display: flex; align-items: center; gap: 8px; padding: 5px 0; border-bottom: 1px solid rgba(94, 84, 75, 0.04); font-size: 11px; }
 .taint-row:last-child { border-bottom: none; }
-.taint-key { color: rgba(255,255,255,0.6); font-weight: 600; }
-.taint-eq { color: rgba(255,255,255,0.15); }
-.taint-val { color: rgba(255,255,255,0.4); flex: 1; }
+.taint-key { color: var(--text-secondary); font-weight: 600; font-family: 'JetBrains Mono', monospace; }
+.taint-eq { color: var(--text-muted); opacity: 0.4; }
+.taint-val { color: var(--text-muted); flex: 1; font-family: 'JetBrains Mono', monospace; }
+
+/* ─── Light Mode ─────────────────────────────────────────────────── */
+:host-context([data-theme="light"]) {
+  .node-head { border-top-color: rgba(0, 0, 0, 0.05); }
+  .taint-row { border-bottom-color: rgba(0, 0, 0, 0.03); }
+}

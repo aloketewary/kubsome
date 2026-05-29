@@ -676,3 +676,159 @@ def post_generate(req: GenerateRequest):
     from core.ai.generator import generate_manifest
     yaml_output = generate_manifest(req.kind, req.name, context.namespace)
     return {"yaml": yaml_output or ""}
+
+
+# ─── Node Operations (cordon, uncordon, drain, wait, api-resources) ───────────
+
+class NodeRequest(BaseModel):
+    node: str
+
+class DrainRequest(BaseModel):
+    node: str
+    force: bool = False
+    delete_emptydir: bool = False
+
+class WaitRequest(BaseModel):
+    resource: str
+    name: str
+    condition: str = "condition=Available"
+    timeout: int = 120
+
+
+@router.get("/node-ops")
+def get_node_ops():
+    """List nodes with scheduling status and pod counts."""
+    import subprocess, json
+    from core.context import context as ctx
+    cmd = [
+        "kubectl", "--context", str(ctx.current_context or ""),
+        "get", "nodes", "-o", "json"
+    ]
+    r = subprocess.run(cmd, capture_output=True, text=True)
+    if r.returncode != 0:
+        return {"nodes": []}
+    data = json.loads(r.stdout)
+    nodes = []
+    for item in data.get("items", []):
+        conditions = item["status"].get("conditions", [])
+        ready = any(
+            c["type"] == "Ready" and c["status"] == "True"
+            for c in conditions
+        )
+        spec = item.get("spec", {})
+        schedulable = not spec.get("unschedulable", False)
+        name = item["metadata"]["name"]
+        # Count pods on node
+        cmd2 = [
+            "kubectl", "--context", str(ctx.current_context or ""),
+            "get", "pods", "--all-namespaces",
+            f"--field-selector=spec.nodeName={name}",
+            "-o", "jsonpath={.items[*].metadata.name}"
+        ]
+        r2 = subprocess.run(cmd2, capture_output=True, text=True)
+        pods_count = len(r2.stdout.strip().split()) if r2.stdout.strip() else 0
+        nodes.append({
+            "name": name, "ready": ready,
+            "schedulable": schedulable, "pods_count": pods_count
+        })
+    return {"nodes": nodes}
+
+
+@router.post("/node-ops/cordon")
+def post_cordon(req: NodeRequest):
+    _validate_k8s_name(req.node)
+    from core.collectors.node_ops import cordon_node
+    from core.audit import log_action
+    result = cordon_node(req.node)
+    if result["success"]:
+        log_action("cordon", req.node)
+    return result
+
+
+@router.post("/node-ops/uncordon")
+def post_uncordon(req: NodeRequest):
+    _validate_k8s_name(req.node)
+    from core.collectors.node_ops import uncordon_node
+    from core.audit import log_action
+    result = uncordon_node(req.node)
+    if result["success"]:
+        log_action("uncordon", req.node)
+    return result
+
+
+@router.post("/node-ops/drain")
+def post_drain(req: DrainRequest):
+    _validate_k8s_name(req.node)
+    from core.collectors.node_ops import drain_node
+    from core.audit import log_action
+    result = drain_node(req.node, force=req.force, delete_emptydir=req.delete_emptydir)
+    if result["success"]:
+        log_action("drain", req.node)
+    return result
+
+
+@router.post("/node-ops/wait")
+def post_wait(req: WaitRequest):
+    _validate_k8s_name(req.name)
+    from core.collectors.node_ops import wait_for
+    return wait_for(req.resource, req.name, req.condition, req.timeout)
+
+
+@router.get("/node-ops/api-resources")
+def get_api_resources():
+    from core.collectors.node_ops import list_api_resources
+    return {"resources": list_api_resources()}
+
+
+# ─── Resource Operations (patch, annotate, set-image) ─────────────────────────
+
+class PatchRequest(BaseModel):
+    resource: str
+    name: str
+    patch_type: str = "strategic"
+    patch_data: dict
+
+class AnnotateRequest(BaseModel):
+    resource: str
+    name: str
+    annotations: dict
+    remove: bool = False
+
+class SetImageRequest(BaseModel):
+    deployment: str
+    container: str
+    image: str
+
+
+@router.post("/resource-ops/patch")
+def post_patch(req: PatchRequest):
+    _validate_k8s_name(req.name)
+    from core.collectors.resource_ops import patch_resource
+    from core.audit import log_action
+    result = patch_resource(req.resource, req.name, req.patch_data, req.patch_type)
+    if result["success"]:
+        log_action("patch", f"{req.resource}/{req.name}")
+    return result
+
+
+@router.post("/resource-ops/annotate")
+def post_annotate(req: AnnotateRequest):
+    _validate_k8s_name(req.name)
+    from core.collectors.resource_ops import annotate_resource
+    from core.audit import log_action
+    result = annotate_resource(req.resource, req.name, req.annotations, req.remove)
+    if result["success"]:
+        action = "annotate-remove" if req.remove else "annotate"
+        log_action(action, f"{req.resource}/{req.name}")
+    return result
+
+
+@router.post("/resource-ops/set-image")
+def post_set_image(req: SetImageRequest):
+    _validate_k8s_name(req.deployment)
+    from core.collectors.resource_ops import set_image
+    from core.audit import log_action
+    result = set_image(req.deployment, req.container, req.image)
+    if result["success"]:
+        log_action("set-image", req.deployment, req.image)
+    return result

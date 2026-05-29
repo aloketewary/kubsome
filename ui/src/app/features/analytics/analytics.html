@@ -1,16 +1,8 @@
-<div class="intel-header"><div class="intel-title-block"><h1 class="intel-title">Analytics</h1></div></div>
-
-    <app-spotlight id="analytics" title="Analytics" icon="pi pi-chart-bar"
-      description="DuckDB-powered cluster analytics — cost attribution, usage trends, alerts, and custom SQL queries."
-      [capabilities]="['Time-series charts', 'Cost per deployment', 'Custom SQL', 'CSV/Parquet export', 'Predictive alerts']" [compact]="true" />
-
-    <app-page-header title="Analytics" [subtitle]="stats ? (stats.raw_rows + stats.hourly_rows + stats.daily_rows) + ' rows · ' + stats.db_size_mb + 'MB' : ''">
-        <button pButton icon="pi pi-database" label="Collect Now" class="p-button-outlined p-button-sm" (click)="collectNow()" [loading]="collecting"></button>
-        <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="refresh()" [loading]="loading"></button>
-        <app-page-info title="Analytics" description="DuckDB-backed analytics engine. Auto-collects every 5 min."
-          [tips]="['Charts tab shows time-series from DuckDB', 'SQL tab for ad-hoc queries', 'Export to CSV or Parquet']"
-          [commands]="['analytics', 'collect', 'cost-query', 'predict', 'capacity-plan']" />
-    </app-page-header>
+<app-intel-header title="Analytics" icon="pi pi-chart-bar"
+  [subtitle]="stats ? (stats.raw_rows + stats.hourly_rows + stats.daily_rows) + ' rows · ' + stats.db_size_mb + 'MB' : 'loading...'">
+  <button class="ctrl-btn ctrl-btn-wide" (click)="collectNow()" [class.disabled]="collecting"><i class="pi pi-database"></i> Collect</button>
+  <button class="ctrl-btn" (click)="refresh()" pTooltip="Refresh"><i class="pi pi-refresh" [class.spinning]="loading"></i></button>
+</app-intel-header>
 
     @if (loading && !stats) {
       <div class="loading"><app-skeleton variant="stats" /><app-skeleton variant="card" /></div>

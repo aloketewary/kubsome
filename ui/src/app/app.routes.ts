@@ -52,4 +52,6 @@ export const routes: Routes = [
   { path: 'chargeback', title: 'Chargeback — Kubsome', loadComponent: () => import('./features/chargeback/chargeback').then(m => m.ChargebackComponent) },
   { path: 'idle-resources', title: 'Idle Resources — Kubsome', loadComponent: () => import('./features/idle-resources/idle-resources').then(m => m.IdleResourcesComponent) },
   { path: 'taints', title: 'Node Taints — Kubsome', loadComponent: () => import('./features/taints/taints').then(m => m.TaintsComponent) },
+  { path: 'node-ops', title: 'Node Operations — Kubsome', loadComponent: () => import('./features/node-ops/node-ops').then(m => m.NodeOpsComponent) },
+  { path: 'resource-ops', title: 'Resource Operations — Kubsome', loadComponent: () => import('./features/resource-ops/resource-ops').then(m => m.ResourceOpsComponent) },
 ];

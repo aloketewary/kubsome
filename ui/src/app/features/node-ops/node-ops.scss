@@ -1,0 +1,42 @@
+@use '../../styles/futuristic';
+:host { display: block; width: 100%; }
+.disabled { opacity: 0.3; pointer-events: none; }
+
+/* ─── Action Banner ──────────────────────────────────────────────── */
+.action-banner { padding: 6px 12px; margin: 8px 0; font-size: 11px; font-family: 'JetBrains Mono', monospace; border-left: 2px solid; }
+.banner-ok { color: var(--success); border-color: var(--success); }
+.banner-err { color: var(--danger); border-color: var(--danger); }
+
+/* ─── Node List ──────────────────────────────────────────────────── */
+.node-list { display: flex; flex-direction: column; gap: 0; }
+.node-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid rgba(94, 84, 75, 0.06); }
+.node-row:last-child { border-bottom: none; }
+.node-name { font-size: 12px; font-weight: 600; color: var(--text); font-family: 'JetBrains Mono', monospace; flex: 1; }
+.node-pods { font-size: 10px; color: var(--text-muted); }
+.node-actions { display: flex; gap: 4px; }
+
+/* ─── Wait Form ──────────────────────────────────────────────────── */
+.wait-form { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.wait-input { flex: 1; min-width: 100px; }
+.wait-input-wide { flex: 2; }
+.wait-input-sm { flex: 0; width: 80px; }
+.action-msg { display: block; margin-top: 6px; font-size: 10px; }
+.msg-ok { color: var(--success); }
+.msg-err { color: var(--danger); }
+
+/* ─── API Resources ──────────────────────────────────────────────── */
+.resource-filter { width: 100%; margin-bottom: 8px; }
+.resource-table { font-size: 10px; font-family: 'JetBrains Mono', monospace; }
+.resource-header { display: grid; grid-template-columns: 2fr 1fr 1.5fr 1fr 1.5fr; gap: 8px; padding: 4px 0; border-bottom: 1px solid rgba(94, 84, 75, 0.15); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); font-size: 9px; }
+.resource-row { display: grid; grid-template-columns: 2fr 1fr 1.5fr 1fr 1.5fr; gap: 8px; padding: 4px 0; border-bottom: 1px solid rgba(94, 84, 75, 0.04); color: var(--text-secondary); }
+.resource-row code { color: var(--text); font-weight: 500; }
+.resource-row .dim { color: var(--text-muted); }
+.resource-row .kind { color: var(--accent); font-weight: 600; }
+
+/* ─── Light Mode ─────────────────────────────────────────────────── */
+:host-context([data-theme="light"]) {
+  .node-row { border-bottom-color: rgba(0, 0, 0, 0.04); }
+  .resource-header { border-bottom-color: rgba(0, 0, 0, 0.08); }
+  .resource-row { border-bottom-color: rgba(0, 0, 0, 0.03); }
+  .resource-row .kind { color: #9a5129; }
+}

@@ -6,11 +6,12 @@ import { HoloCardComponent } from '../../shared/components/futuristic/holo-card.
 import { MetricTileComponent } from '../../shared/components/futuristic/metric-tile.component';
 import { StatusBeaconComponent } from '../../shared/components/futuristic/status-beacon.component';
 import { ActionIconComponent } from '../../shared/components/futuristic/action-icon.component';
+import { IntelHeaderComponent } from '../../shared/components/futuristic/intel-header.component';
 
 @Component({
   selector: 'app-integrations',
   standalone: true,
-  imports: [ButtonModule, TagModule, HoloCardComponent, MetricTileComponent, StatusBeaconComponent, ActionIconComponent],
+  imports: [IntelHeaderComponent, TagModule, HoloCardComponent, MetricTileComponent, StatusBeaconComponent, ActionIconComponent],
   templateUrl: './integrations.html',
   styleUrl: './integrations.scss',
 })

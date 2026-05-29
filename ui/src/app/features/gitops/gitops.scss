@@ -1,12 +1,24 @@
 @use '../../styles/futuristic';
 :host { display: block; width: 100%; }
-.title-icon { color: #8b5cf6; }
 
-.app-list { display: flex; flex-direction: column; gap: 4px; }
-.app-row { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 10px; background: linear-gradient(180deg, rgba(13,17,28,0.75) 0%, rgba(8,11,20,0.8) 100%); border: 1px solid rgba(255,255,255,0.04); cursor: pointer; transition: all 0.15s; }
-.app-row:hover { border-color: rgba(255,255,255,0.07); transform: translateY(-1px); }
+/* ─── App List ───────────────────────────────────────────────────── */
+.app-list { display: flex; flex-direction: column; gap: 0; }
+.app-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px; background: transparent; border: none;
+  border-bottom: 1px solid rgba(94, 84, 75, 0.06);
+  cursor: pointer; transition: background 0.12s;
+}
+.app-row:hover { background: rgba(208, 156, 96, 0.02); }
 .app-body { flex: 1; display: flex; flex-direction: column; gap: 2px; }
-.app-name { font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.8); }
-.app-repo { font-size: 9px; color: rgba(255,255,255,0.3); font-family: 'JetBrains Mono', monospace; }
-.app-time { font-size: 9px; color: rgba(255,255,255,0.25); font-family: 'JetBrains Mono', monospace; }
-.detail-pre { font-size: 10px; font-family: 'JetBrains Mono', monospace; color: rgba(255,255,255,0.5); white-space: pre-wrap; max-height: 200px; overflow-y: auto; margin: 0; }
+.app-name { font-size: 12px; font-weight: 600; color: var(--text); }
+.app-repo { font-size: 9px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+.app-time { font-size: 9px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; opacity: 0.6; }
+.detail-pre { font-size: 10px; font-family: 'JetBrains Mono', monospace; color: var(--text-secondary); white-space: pre-wrap; max-height: 200px; overflow-y: auto; margin: 0; padding: 10px 0; border-top: 1px solid rgba(94, 84, 75, 0.06); }
+
+/* ─── Light Mode ─────────────────────────────────────────────────── */
+:host-context([data-theme="light"]) {
+  .app-row { border-bottom-color: rgba(0, 0, 0, 0.04); }
+  .app-row:hover { background: rgba(0, 0, 0, 0.015); }
+  .detail-pre { border-top-color: rgba(0, 0, 0, 0.04); }
+}

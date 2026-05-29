@@ -102,6 +102,20 @@ from core.renderers.scaling_renderer import (
     render_hpa, render_pdb, render_capacity,
     render_quota, render_drain_check
 )
+from core.collectors.node_ops import (
+    cordon_node, uncordon_node, drain_node,
+    wait_for, list_api_resources
+)
+from core.collectors.resource_ops import (
+    patch_resource, annotate_resource, set_image
+)
+from core.renderers.node_ops_renderer import (
+    render_cordon, render_uncordon, render_drain,
+    render_wait, render_api_resources
+)
+from core.renderers.resource_ops_renderer import (
+    render_patch, render_annotate, render_set_image
+)
 
 from core.diagnostics.recommendations import recommend
 from core.diagnostics.engine import diagnose
@@ -3209,6 +3223,110 @@ def _handle_untaint(cmd, env):
         console.print(f"[red]{output}[/red]")
 
 
+def _handle_cordon(cmd, env):
+    node = cmd["node"]
+    if not confirm_production({"environment": env, "name": f"cordon {node}"}):
+        console.print("[yellow]Cancelled[/yellow]")
+        return
+    with loading(f"Cordoning {node}..."):
+        result = cordon_node(node)
+    render_cordon(result)
+    if result["success"]:
+        log_action("cordon", node)
+
+
+def _handle_uncordon(cmd, env):
+    node = cmd["node"]
+    with loading(f"Uncordoning {node}..."):
+        result = uncordon_node(node)
+    render_uncordon(result)
+    if result["success"]:
+        log_action("uncordon", node)
+
+
+def _handle_drain(cmd, env):
+    node = cmd["node"]
+    if not confirm_production({"environment": env, "name": f"drain {node}", "risk": "HIGH"}):
+        console.print("[yellow]Cancelled[/yellow]")
+        return
+    with loading(f"Draining {node}..."):
+        result = drain_node(
+            node,
+            force=cmd.get("force", False),
+            delete_emptydir=cmd.get("delete_emptydir", False),
+        )
+    render_drain(result)
+    if result["success"]:
+        log_action("drain", node)
+
+
+def _handle_wait(cmd, env):
+    resource = cmd["resource"]
+    name = cmd["name"]
+    condition = cmd.get("condition", "condition=Available")
+    timeout = cmd.get("timeout", 120)
+    with loading(f"Waiting for {resource}/{name} ({condition})..."):
+        result = wait_for(resource, name, condition, timeout)
+    render_wait(result)
+
+
+def _handle_patch(cmd, env):
+    resource = cmd["resource"]
+    name = cmd["name"]
+    patch_data = cmd.get("patch_data")
+    if not patch_data:
+        console.print("[red]Missing patch data (-p flag)[/red]")
+        return
+    import json as _json
+    try:
+        parsed = _json.loads(patch_data)
+    except (ValueError, _json.JSONDecodeError):
+        console.print("[red]Invalid JSON patch data[/red]")
+        return
+    if not confirm_production({"environment": env, "name": f"patch {resource}/{name}"}):
+        console.print("[yellow]Cancelled[/yellow]")
+        return
+    result = patch_resource(resource, name, parsed, cmd.get("patch_type", "strategic"))
+    render_patch(result)
+    if result["success"]:
+        log_action("patch", f"{resource}/{name}")
+
+
+def _handle_annotate(cmd, env):
+    resource = cmd["resource"]
+    name = cmd["name"]
+    annotations = cmd.get("annotations", {})
+    if not annotations:
+        console.print("[red]No annotations specified[/red]")
+        return
+    result = annotate_resource(resource, name, annotations, cmd.get("remove", False))
+    render_annotate(result)
+    if result["success"]:
+        action = "annotate-remove" if cmd.get("remove") else "annotate"
+        log_action(action, f"{resource}/{name}")
+
+
+def _handle_set_image(cmd, env):
+    deployment = cmd["deployment"]
+    image = cmd["image"]
+    container = cmd.get("container") or deployment
+    if not confirm_production({"environment": env, "name": f"set-image {deployment}"}):
+        console.print("[yellow]Cancelled[/yellow]")
+        return
+    with loading(f"Updating image for {deployment}..."):
+        result = set_image(deployment, container, image)
+    render_set_image(result)
+    if result["success"]:
+        log_action("set-image", deployment, image)
+        invalidate_deployments()
+
+
+def _handle_api_resources(cmd, env):
+    with loading("Fetching API resources..."):
+        resources = list_api_resources()
+    render_api_resources(resources)
+
+
 # Handler registry
 HANDLERS = {
     "noop": lambda cmd, env: None,
@@ -3355,4 +3473,12 @@ HANDLERS = {
     "taints_list": _handle_taints_list,
     "taint": _handle_taint,
     "untaint": _handle_untaint,
+    "cordon": _handle_cordon,
+    "uncordon": _handle_uncordon,
+    "drain": _handle_drain,
+    "wait": _handle_wait,
+    "patch": _handle_patch,
+    "annotate": _handle_annotate,
+    "set_image": _handle_set_image,
+    "api_resources": _handle_api_resources,
 }

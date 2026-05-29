@@ -1,17 +1,22 @@
 @use '../../styles/futuristic';
 :host { display: block; width: 100%; }
-.title-icon { color: #d09c60; }
+.disabled { opacity: 0.3; pointer-events: none; }
 
 .compare-form { display: flex; align-items: flex-start; gap: 12px; }
 .side { flex: 1; display: flex; flex-direction: column; gap: 6px; }
-.side-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: rgba(255,255,255,0.3); }
-.vs { font-size: 11px; font-weight: 800; color: rgba(255,255,255,0.2); padding-top: 24px; }
-.disabled { opacity: 0.3; pointer-events: none; }
-.error-msg { padding: 10px 14px; margin: 10px 0; border-radius: 8px; background: rgba(244,63,94,0.06); border: 1px solid rgba(244,63,94,0.15); color: #f43f5e; font-size: 11px; }
+.side-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); }
+.vs { font-size: 11px; font-weight: 800; color: var(--text-muted); opacity: 0.4; padding-top: 24px; }
+.error-msg { padding: 10px 14px; margin: 10px 0; background: transparent; border: none; border-left: 2px solid rgba(244, 63, 94, 0.4); color: var(--danger); font-size: 11px; }
 
-.diff-row { display: flex; align-items: center; gap: 8px; padding: 5px 0; border-bottom: 1px solid rgba(255,255,255,0.025); font-size: 11px; }
+.diff-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid rgba(94, 84, 75, 0.04); font-size: 11px; }
 .diff-row:last-child { border-bottom: none; }
-.diff-row code { color: rgba(255,255,255,0.6); font-family: 'JetBrains Mono', monospace; }
-.diff-detail { font-size: 10px; color: rgba(255,255,255,0.3); margin-left: auto; }
+.diff-row code { color: var(--text-secondary); font-family: 'JetBrains Mono', monospace; }
+.diff-detail { font-size: 10px; color: var(--text-muted); margin-left: auto; }
 
 @media (max-width: 768px) { .compare-form { flex-direction: column; } .vs { padding: 0; text-align: center; } }
+
+/* ─── Light Mode ─────────────────────────────────────────────────── */
+:host-context([data-theme="light"]) {
+  .diff-row { border-bottom-color: rgba(0, 0, 0, 0.03); }
+  .error-msg { border-left-color: rgba(220, 38, 38, 0.25); color: #dc2626; }
+}

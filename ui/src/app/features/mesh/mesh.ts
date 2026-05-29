@@ -4,15 +4,13 @@ import { TitleCasePipe } from '@angular/common';
 import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
 import { TabsModule } from 'primeng/tabs';
-import { PageInfoComponent } from '../../shared/components/page-info.component';
-import { SpotlightComponent } from '../../shared/components/spotlight.component';
-import { PageHeaderComponent } from '../../shared/components/page-header.component';
+import { IntelHeaderComponent } from '../../shared/components/futuristic/intel-header.component';
 
 
 @Component({
   selector: 'app-mesh',
   standalone: true,
-  imports: [ButtonModule, TagModule, TabsModule, TitleCasePipe, PageInfoComponent, SpotlightComponent, PageHeaderComponent],
+  imports: [ButtonModule, TagModule, TabsModule, TitleCasePipe, IntelHeaderComponent],
   templateUrl: './mesh.html',
   styleUrl: './mesh.scss',
 })

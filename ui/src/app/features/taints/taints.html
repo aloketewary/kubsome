@@ -1,12 +1,7 @@
-<div class="intel-header">
-  <div class="intel-title-block">
-    <h1 class="intel-title"><span class="title-icon">🏷</span> Node Taints</h1>
-    <p class="intel-subtitle">scheduling constraints · {{ lastUpdated || '...' }}</p>
-  </div>
-  <div class="intel-controls">
-    <button class="ctrl-btn" (click)="load()"><i class="pi pi-refresh" [class.spinning]="loading"></i></button>
-  </div>
-</div>
+<app-intel-header title="Node Taints" icon="pi pi-ban"
+  [subtitle]="'scheduling constraints · ' + (lastUpdated || '...')">
+  <button class="ctrl-btn" (click)="load()" pTooltip="Refresh"><i class="pi pi-refresh" [class.spinning]="loading"></i></button>
+</app-intel-header>
 
 <div class="metrics-strip">
   <app-metric-tile label="Nodes" [value]="'' + nodes.length" accent="cyan" />

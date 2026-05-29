@@ -469,6 +469,8 @@ export class ShellComponent implements OnInit {
     { path: '/compare', icon: 'pi pi-arrows-h', label: 'Compare' },
     { path: '/policy', icon: 'pi pi-verified', label: 'Policy' },
     { path: '/taints', icon: 'pi pi-ban', label: 'Node Taints' },
+    { path: '/node-ops', icon: 'pi pi-cog', label: 'Node Ops', badge: 'NEW' },
+    { path: '/resource-ops', icon: 'pi pi-wrench', label: 'Resource Ops', badge: 'NEW' },
   ];
 
   costItems: any[] = [

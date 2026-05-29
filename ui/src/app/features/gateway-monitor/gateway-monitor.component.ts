@@ -6,6 +6,7 @@ import { TooltipModule } from 'primeng/tooltip';
 import { TagModule } from 'primeng/tag';
 import { InputTextModule } from 'primeng/inputtext';
 import { PageInfoComponent } from '../../shared/components/page-info.component';
+import { IntelHeaderComponent } from '../../shared/components/futuristic/intel-header.component';
 import { WsService } from '../../core/services/ws.service';
 import { Subscription } from 'rxjs';
 
@@ -43,48 +44,30 @@ interface ColumnDef {
   selector: 'app-gateway-monitor',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, ButtonModule, TooltipModule, TagModule, InputTextModule, PageInfoComponent],
+  imports: [FormsModule, ButtonModule, TooltipModule, TagModule, InputTextModule, PageInfoComponent, IntelHeaderComponent],
   host: { '[class.gw-fullscreen]': 'fullscreen' },
   template: `
-    <div class="page-header">
-      <div>
-        <h1>Gateway Monitor</h1>
-        <p class="subtitle">{{ filtered.length }} deployments · {{ visibleColumns.length }}/{{ columns.length }} columns</p>
+    <app-intel-header title="Gateway Monitor" icon="pi pi-server"
+      [subtitle]="filtered.length + ' deployments · ' + visibleColumns.length + '/' + columns.length + ' columns'">
+      <div class="search-wrap">
+        <i class="pi pi-search"></i>
+        <input pInputText [(ngModel)]="searchQuery" placeholder="Filter..." (ngModelChange)="filter()" />
       </div>
-      <div class="header-actions">
-        <div class="search-wrap">
-          <i class="pi pi-search"></i>
-          <input pInputText [(ngModel)]="searchQuery" placeholder="Filter..." (ngModelChange)="filter()" />
+      <div class="interval-config">
+        <span class="interval-label">Refresh</span>
+        <div class="interval-btns">
+          @for (opt of intervalOptions; track opt.value) {
+            <button class="int-btn" [class.active]="refreshInterval === opt.value" (click)="setInterval(opt.value)">{{ opt.label }}</button>
+          }
         </div>
-
-        <!-- Refresh Interval -->
-        <div class="interval-config">
-          <span class="interval-label">Refresh</span>
-          <div class="interval-btns">
-            @for (opt of intervalOptions; track opt.value) {
-              <button class="int-btn" [class.active]="refreshInterval === opt.value" (click)="setInterval(opt.value)">{{ opt.label }}</button>
-            }
-          </div>
-        </div>
-
-        <!-- Live -->
-        <button pButton [class]="streaming ? 'p-button-danger p-button-sm' : 'p-button-outlined p-button-sm'" (click)="toggleStream()">
-          <span class="live-dot" [class.pulsing]="streaming"></span>
-          {{ streaming ? 'Live' : 'Connect' }}
-        </button>
-
-        <!-- Column Config -->
-        <div class="col-config-wrap">
-          <button pButton icon="pi pi-cog" class="p-button-outlined p-button-sm p-button-rounded" pTooltip="Configure columns" (click)="configOpen = !configOpen; $event.stopPropagation()"></button>
-        </div>
-
-        <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="manualRefresh()" pTooltip="Manual refresh"></button>
-        <button pButton [icon]="fullscreen ? 'pi pi-window-minimize' : 'pi pi-window-maximize'" class="p-button-outlined p-button-sm p-button-rounded" (click)="fullscreen = !fullscreen" [pTooltip]="fullscreen ? 'Exit fullscreen' : 'Fullscreen'"></button>
-        <app-page-info title="Gateway Monitor" description="Deployment-level resource metrics. Configure visible columns via the gear icon."
-          [tips]="['Click gear icon to show/hide columns', 'Column config is saved to browser', 'Red rows = pods not ready', 'Change refresh interval while live']"
-          [commands]="['top pods', 'top nodes', 'overview']" />
       </div>
-    </div>
+      <button class="ctrl-btn" [class.ctrl-btn-live]="streaming" (click)="toggleStream()" pTooltip="Live stream">
+        <span class="live-dot" [class.pulsing]="streaming"></span>
+      </button>
+      <button class="ctrl-btn" (click)="configOpen = !configOpen; $event.stopPropagation()" pTooltip="Columns"><i class="pi pi-cog"></i></button>
+      <button class="ctrl-btn" (click)="manualRefresh()" pTooltip="Refresh"><i class="pi pi-refresh"></i></button>
+      <button class="ctrl-btn" (click)="fullscreen = !fullscreen" [pTooltip]="fullscreen ? 'Exit' : 'Fullscreen'"><i class="pi" [class.pi-window-minimize]="fullscreen" [class.pi-window-maximize]="!fullscreen"></i></button>
+    </app-intel-header>
 
     <!-- Column Config Panel (outside header to avoid overflow clipping) -->
     @if (configOpen) {
@@ -226,152 +209,151 @@ interface ColumnDef {
       background: var(--bg); overflow-y: auto;
       padding: 20px 24px;
     }
-    .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 12px; }
-    .page-header h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.03em; }
-    .subtitle { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
-    .header-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
     .search-wrap { position: relative; }
-    .search-wrap i { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 12px; }
-    .search-wrap input { padding-left: 30px !important; width: 160px; }
+    .search-wrap i { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 11px; }
+    .search-wrap input { padding-left: 28px !important; width: 140px; }
 
     /* Interval */
     .interval-config {
       display: flex; align-items: center; gap: 6px;
-      padding: 4px 8px; border-radius: 8px;
-      background: var(--bg-elevated); border: 1px solid var(--border);
+      padding: 0; border: none;
     }
-    .interval-label { font-size: 10px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
-    .interval-btns { display: flex; gap: 2px; }
+    .interval-label { font-size: 9px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
+    .interval-btns { display: flex; gap: 0; border: 1px solid rgba(94, 84, 75, 0.15); }
     .int-btn {
-      padding: 4px 8px; border: 1px solid transparent; border-radius: 4px;
-      background: none; color: var(--text-muted); font-size: 11px; font-weight: 500;
-      cursor: pointer; transition: all 0.15s;
+      padding: 4px 8px; border: none; border-right: 1px solid rgba(94, 84, 75, 0.1);
+      background: none; color: var(--text-muted); font-size: 10px; font-weight: 600;
+      cursor: pointer; transition: all 0.12s;
     }
-    .int-btn:hover { color: var(--text); background: var(--bg-hover); }
-    .int-btn.active { border-color: var(--accent); background: var(--accent-subtle); color: var(--accent); font-weight: 700; }
+    .int-btn:last-child { border-right: none; }
+    .int-btn:hover { color: var(--text-secondary); }
+    .int-btn.active { background: var(--accent); color: #0B0908; font-weight: 700; }
 
     /* Live */
-    .live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-muted); display: inline-block; margin-right: 6px; }
+    .ctrl-btn-live { border-color: rgba(244, 63, 94, 0.3) !important; }
+    .live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-muted); display: inline-block; }
     .live-dot.pulsing { background: var(--danger); animation: pulse 1.5s infinite; }
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
 
     /* Column Config */
-    .col-config-wrap { position: relative; }
-    .cfg-backdrop {
-      position: fixed; inset: 0; z-index: 999; background: transparent;
-    }
+    .cfg-backdrop { position: fixed; inset: 0; z-index: 999; }
     .col-config-panel {
       position: fixed; top: 80px; right: 24px; z-index: 1000;
-      width: 300px; max-height: 70vh; overflow-y: auto;
-      background: var(--bg-card); border: 1px solid var(--border);
-      border-radius: 12px; box-shadow: 0 16px 48px rgba(0,0,0,0.5);
+      width: 280px; max-height: 70vh; overflow-y: auto;
+      background: var(--bg); border: 1px solid rgba(94, 84, 75, 0.15);
+      border-radius: 0; box-shadow: 0 16px 48px rgba(0,0,0,0.6);
       padding: 16px; animation: cfgIn 0.2s ease-out;
     }
-    @keyframes cfgIn { from { opacity: 0; transform: translateY(-8px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+    @keyframes cfgIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
     .cfg-panel-header {
       display: flex; align-items: center; justify-content: space-between;
-      margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--border);
-      font-size: 13px; font-weight: 700;
+      margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid rgba(94, 84, 75, 0.1);
+      font-size: 12px; font-weight: 700;
     }
     .cfg-panel-actions { display: flex; align-items: center; gap: 8px; }
-    .cfg-link {
-      background: none; border: none; color: var(--accent); font-size: 11px;
-      cursor: pointer; font-weight: 500; padding: 0;
-    }
+    .cfg-link { background: none; border: none; color: var(--accent); font-size: 10px; cursor: pointer; font-weight: 600; }
     .cfg-link:hover { text-decoration: underline; }
-    .cfg-close {
-      background: none; border: none; color: var(--text-muted); cursor: pointer;
-      padding: 4px; border-radius: 4px; font-size: 12px;
-    }
-    .cfg-close:hover { color: var(--text); background: var(--bg-hover); }
+    .cfg-close { background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px; font-size: 11px; }
+    .cfg-close:hover { color: var(--text); }
     .cfg-group { margin-bottom: 12px; }
-    .cfg-group-label {
-      display: block; font-size: 9px; font-weight: 700; color: var(--text-muted);
-      text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px;
-    }
+    .cfg-group-label { display: block; font-size: 9px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
     .cfg-item {
       display: flex; align-items: center; gap: 8px;
-      padding: 5px 8px; border-radius: 6px; cursor: pointer; font-size: 12px;
+      padding: 4px 8px; cursor: pointer; font-size: 11px;
       color: var(--text-secondary); transition: background 0.1s;
     }
-    .cfg-item:hover { background: var(--bg-hover); }
-    .cfg-item input[type="checkbox"] {
-      width: 14px; height: 14px; accent-color: var(--accent); cursor: pointer;
-    }
+    .cfg-item:hover { background: rgba(208, 156, 96, 0.02); }
+    .cfg-item input[type="checkbox"] { width: 13px; height: 13px; accent-color: var(--accent); cursor: pointer; }
 
     /* Summary */
     .summary-strip {
-      display: flex; gap: 8px; margin-bottom: 16px;
-      padding: 14px 18px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+      display: flex; gap: 0; margin-bottom: 16px;
+      padding: 12px 0; border-bottom: 1px solid rgba(94, 84, 75, 0.1);
     }
-    .summary-pill { display: flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 20px; background: var(--bg-elevated); font-size: 12px; }
-    .pill-ok { background: var(--success-subtle); }
-    .pill-bad { background: var(--danger-subtle); }
+    .summary-pill { display: flex; align-items: center; gap: 6px; padding: 0 14px; border-right: 1px solid rgba(94, 84, 75, 0.1); font-size: 12px; }
+    .summary-pill:last-child { border-right: none; }
+    .pill-ok { }
+    .pill-bad { }
     .pill-time { margin-left: auto; }
     .pill-time i { font-size: 11px; color: var(--text-muted); }
     .pill-dot { width: 6px; height: 6px; border-radius: 50%; }
-    .dot-ok { background: var(--success); }
-    .dot-bad { background: var(--danger); }
-    .pill-val { font-weight: 700; }
-    .pill-label { color: var(--text-muted); }
+    .dot-ok { background: var(--success); box-shadow: 0 0 4px rgba(74, 222, 128, 0.3); }
+    .dot-bad { background: var(--danger); box-shadow: 0 0 4px rgba(244, 63, 94, 0.3); }
+    .pill-val { font-weight: 300; font-size: 16px; font-family: 'JetBrains Mono', monospace; }
+    .pill-label { color: var(--text-muted); font-size: 10px; }
 
     /* Table */
-    .table-container { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-card); }
-    .gw-table { width: 100%; border-collapse: collapse; font-size: 12px; white-space: nowrap; }
+    .table-container { overflow-x: auto; border: none; border-top: 1px solid rgba(94, 84, 75, 0.08); background: transparent; }
+    .gw-table { width: 100%; border-collapse: collapse; font-size: 11px; white-space: nowrap; }
     .gw-table thead { position: sticky; top: 0; z-index: 2; }
     .gw-table th {
-      padding: 10px 12px; text-align: left; font-size: 10px;
+      padding: 8px 12px; text-align: left; font-size: 9px;
       font-weight: 700; color: var(--text-muted); text-transform: uppercase;
-      letter-spacing: 0.04em; background: var(--bg-elevated);
-      border-bottom: 1px solid var(--border); cursor: pointer; user-select: none;
+      letter-spacing: 0.06em; background: var(--bg);
+      border-bottom: 1px solid rgba(94, 84, 75, 0.1); cursor: pointer; user-select: none;
     }
-    .gw-table th i { font-size: 9px; opacity: 0.4; margin-left: 2px; }
-    .gw-table th:hover { color: var(--text); }
-    .gw-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); color: var(--text-secondary); }
-    .gw-table tr:hover td { background: var(--bg-hover); }
+    .gw-table th i { font-size: 8px; opacity: 0.4; margin-left: 2px; }
+    .gw-table th:hover { color: var(--text-secondary); }
+    .gw-table td { padding: 8px 12px; border-bottom: 1px solid rgba(94, 84, 75, 0.04); color: var(--text-secondary); }
+    .gw-table tr:hover td { background: rgba(208, 156, 96, 0.02); }
     .gw-table tr:last-child td { border-bottom: none; }
-    .sticky-col { position: sticky; left: 0; z-index: 1; background: var(--bg-card); }
-    thead .sticky-col { background: var(--bg-elevated); z-index: 3; }
-    tr:hover .sticky-col { background: var(--bg-hover); }
+    .sticky-col { position: sticky; left: 0; z-index: 1; background: var(--bg); }
+    thead .sticky-col { z-index: 3; }
+    tr:hover .sticky-col { background: rgba(208, 156, 96, 0.02); }
 
     /* Cells */
     .cell-name-text { font-size: 11px; font-weight: 600; color: var(--text); }
     .cell-mono { font-family: 'JetBrains Mono', monospace; font-size: 11px; }
     .cell-num { font-family: 'JetBrains Mono', monospace; text-align: right; }
     .cell-hot { color: var(--danger); font-weight: 600; }
-    .cell-na { color: var(--text-muted); opacity: 0.5; }
-    .version-tag { font-size: 10px; padding: 2px 6px; border-radius: 4px; background: var(--bg-elevated); border: 1px solid var(--border); font-family: 'JetBrains Mono', monospace; }
-    .not-ready-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; padding: 2px 6px; border-radius: 10px; background: var(--danger-subtle); color: var(--danger); font-weight: 700; font-size: 11px; }
-    .all-ready { color: var(--text-muted); opacity: 0.5; }
+    .cell-na { color: var(--text-muted); opacity: 0.4; }
+    .version-tag { font-size: 10px; padding: 2px 6px; background: transparent; border: 1px solid rgba(94, 84, 75, 0.12); font-family: 'JetBrains Mono', monospace; }
+    .not-ready-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; padding: 2px 6px; background: rgba(244, 63, 94, 0.06); color: var(--danger); font-weight: 700; font-size: 11px; border: 1px solid rgba(244, 63, 94, 0.15); }
+    .all-ready { color: var(--text-muted); opacity: 0.4; }
     .hpa-pair { display: inline-flex; align-items: center; gap: 2px; }
     .hpa-target { color: var(--text-muted); }
-    .hpa-sep { color: var(--border-hover); }
+    .hpa-sep { color: rgba(94, 84, 75, 0.3); }
     .hpa-current { font-weight: 600; color: var(--success); }
     .hpa-over { color: var(--danger) !important; }
-    .ratio-bar { display: inline-block; width: 32px; height: 4px; border-radius: 2px; background: var(--bg-elevated); overflow: hidden; vertical-align: middle; margin-right: 4px; }
-    .ratio-fill { display: block; height: 100%; border-radius: 2px; background: var(--accent); }
+    .ratio-bar { display: inline-block; width: 32px; height: 3px; background: rgba(94, 84, 75, 0.1); overflow: hidden; vertical-align: middle; margin-right: 4px; }
+    .ratio-fill { display: block; height: 100%; background: var(--accent); }
     .ratio-text { font-size: 10px; color: var(--text-muted); }
-    .row-warn { background: var(--danger-subtle); }
-    .row-warn .sticky-col { background: var(--danger-subtle); }
-    .row-warn:hover td, .row-warn:hover .sticky-col { background: rgba(239, 68, 68, 0.08); }
+    .row-warn { background: rgba(244, 63, 94, 0.02); }
+    .row-warn .sticky-col { background: rgba(244, 63, 94, 0.02); }
+    .row-warn:hover td, .row-warn:hover .sticky-col { background: rgba(244, 63, 94, 0.04); }
 
     /* Sparkline */
     .sparkline { width: 60px; height: 20px; margin-left: 4px; }
     .sparkline path { fill: none; stroke: var(--accent); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
 
-    /* Cell flash on change */
+    /* Cell flash */
     .cell-flash-up { animation: flashUp 2s ease-out; }
     .cell-flash-down { animation: flashDown 2s ease-out; }
-    @keyframes flashUp {
-      0% { background: rgba(34, 197, 94, 0.3); }
-      100% { background: transparent; }
-    }
-    @keyframes flashDown {
-      0% { background: rgba(239, 68, 68, 0.3); }
-      100% { background: transparent; }
-    }
+    @keyframes flashUp { 0% { background: rgba(74, 222, 128, 0.15); } 100% { background: transparent; } }
+    @keyframes flashDown { 0% { background: rgba(244, 63, 94, 0.15); } 100% { background: transparent; } }
 
-    .empty-state { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 48px; color: var(--text-muted); font-size: 13px; }
+    .empty-state { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 48px; color: var(--text-muted); font-size: 12px; }
+
+    /* Light Mode */
+    :host-context([data-theme="light"]) .int-btn.active { background: #9a5129; color: #fff; }
+    :host-context([data-theme="light"]) .col-config-panel { background: #faf8f6; border-color: rgba(0,0,0,0.06); box-shadow: 0 12px 40px rgba(0,0,0,0.08); }
+    :host-context([data-theme="light"]) .cfg-panel-header { border-bottom-color: rgba(0,0,0,0.05); }
+    :host-context([data-theme="light"]) .cfg-item:hover { background: rgba(0,0,0,0.015); }
+    :host-context([data-theme="light"]) .summary-strip { border-bottom-color: rgba(0,0,0,0.06); }
+    :host-context([data-theme="light"]) .summary-pill { border-right-color: rgba(0,0,0,0.05); }
+    :host-context([data-theme="light"]) .dot-ok { box-shadow: none; }
+    :host-context([data-theme="light"]) .dot-bad { box-shadow: none; }
+    :host-context([data-theme="light"]) .table-container { border-top-color: rgba(0,0,0,0.05); }
+    :host-context([data-theme="light"]) .gw-table th { background: #faf8f6; border-bottom-color: rgba(0,0,0,0.06); }
+    :host-context([data-theme="light"]) .gw-table td { border-bottom-color: rgba(0,0,0,0.03); }
+    :host-context([data-theme="light"]) .gw-table tr:hover td { background: rgba(0,0,0,0.015); }
+    :host-context([data-theme="light"]) .sticky-col { background: #faf8f6; }
+    :host-context([data-theme="light"]) tr:hover .sticky-col { background: rgba(0,0,0,0.015); }
+    :host-context([data-theme="light"]) .version-tag { border-color: rgba(0,0,0,0.06); }
+    :host-context([data-theme="light"]) .not-ready-badge { background: rgba(220,38,38,0.04); border-color: rgba(220,38,38,0.1); }
+    :host-context([data-theme="light"]) .interval-btns { border-color: rgba(0,0,0,0.08); }
+    :host-context([data-theme="light"]) .int-btn { border-right-color: rgba(0,0,0,0.05); }
+    :host-context([data-theme="light"]) .ratio-bar { background: rgba(0,0,0,0.04); }
   `]
 })
 export class GatewayMonitorComponent implements OnInit, OnDestroy {

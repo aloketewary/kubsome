@@ -1,15 +1,7 @@
-<div class="intel-header"><div class="intel-title-block"><h1 class="intel-title">Service Mesh</h1></div></div>
-
-    <app-spotlight id="mesh" title="Service Mesh" icon="pi pi-share-alt"
-      description="Istio/Linkerd visibility — traffic routing, mTLS, circuit breakers."
-      [capabilities]="['mTLS status', 'VirtualService routing', 'Circuit breakers', 'Sidecar injection']" [compact]="true" />
-
-    <app-page-header title="Service Mesh" [subtitle]="data?.mesh ? (data.mesh | titlecase) + ' mesh · ' + lastUpdated : 'Detecting mesh...'">
-        <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="refresh()" [loading]="loading"></button>
-        <app-page-info title="Service Mesh" description="Deep visibility into Istio or Linkerd service mesh — mTLS enforcement, traffic routing, circuit breakers, and sidecar injection."
-          [tips]="['Green lock = mTLS STRICT', 'Yellow = PERMISSIVE (accepts plaintext)', 'Check injection coverage for gaps']"
-          [commands]="['mesh-detail', 'vs', 'dr', 'mtls', 'mesh']" />
-    </app-page-header>
+<app-intel-header title="Service Mesh" icon="pi pi-share-alt"
+  [subtitle]="data?.mesh ? (data.mesh | titlecase) + ' mesh · ' + lastUpdated : 'Detecting mesh...'">
+  <button class="ctrl-btn" (click)="refresh()" pTooltip="Refresh"><i class="pi pi-refresh" [class.spinning]="loading"></i></button>
+</app-intel-header>
 
     @if (data && !data.mesh) {
       <div class="empty-state">

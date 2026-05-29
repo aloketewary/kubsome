@@ -25,7 +25,7 @@ import { Component, Input } from '@angular/core';
       border: none;
       border-radius: 0;
       padding: 18px 20px;
-      overflow: hidden;
+      overflow: visible;
       transition: box-shadow 0.25s, transform 0.25s;
     }
 

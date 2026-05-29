@@ -32,7 +32,7 @@ import { Component, Input } from '@angular/core';
       font-size: 11px; color: var(--text-muted); margin: 3px 0 0;
       font-family: 'JetBrains Mono', monospace; letter-spacing: 0.01em;
     }
-    .intel-controls { display: flex; align-items: center; gap: 6px; }
+    .intel-controls { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 
     :host-context([data-theme="light"]) .intel-title { color: var(--text); }
     :host-context([data-theme="light"]) .title-icon { color: #9a5129; opacity: 0.7; }

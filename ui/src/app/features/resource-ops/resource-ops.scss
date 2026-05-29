@@ -1,0 +1,30 @@
+@use '../../styles/futuristic';
+:host { display: block; width: 100%; }
+.disabled { opacity: 0.3; pointer-events: none; }
+
+/* ─── Forms ──────────────────────────────────────────────────────── */
+.ops-form { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+.ops-form input, .ops-form select { flex: 1; min-width: 120px; }
+.input-wide { flex: 2 !important; }
+.ops-actions { margin-top: 4px; }
+.patch-textarea { width: 100%; font-family: 'JetBrains Mono', monospace; font-size: 11px; resize: vertical; margin-bottom: 4px; background: transparent; border: 1px solid rgba(94, 84, 75, 0.15); color: var(--text); padding: 8px; }
+.action-msg { display: block; margin-top: 6px; font-size: 10px; }
+.msg-ok { color: var(--success); }
+.msg-err { color: var(--danger); }
+
+/* ─── History ────────────────────────────────────────────────────── */
+.history-row { display: flex; align-items: center; gap: 8px; padding: 5px 0; border-bottom: 1px solid rgba(94, 84, 75, 0.04); font-size: 11px; font-family: 'JetBrains Mono', monospace; }
+.history-row:last-child { border-bottom: none; }
+.history-icon { font-size: 12px; }
+.h-ok { color: var(--success); }
+.h-err { color: var(--danger); }
+.history-action { color: var(--accent); font-weight: 600; }
+.history-target { color: var(--text-secondary); flex: 1; }
+.history-time { color: var(--text-muted); font-size: 9px; }
+
+/* ─── Light Mode ─────────────────────────────────────────────────── */
+:host-context([data-theme="light"]) {
+  .patch-textarea { border-color: rgba(0, 0, 0, 0.08); }
+  .history-row { border-bottom-color: rgba(0, 0, 0, 0.03); }
+  .history-action { color: #9a5129; }
+}

@@ -4,11 +4,12 @@ import { TagModule } from 'primeng/tag';
 import { HoloCardComponent } from '../../shared/components/futuristic/holo-card.component';
 import { MetricTileComponent } from '../../shared/components/futuristic/metric-tile.component';
 import { StatusBeaconComponent } from '../../shared/components/futuristic/status-beacon.component';
+import { IntelHeaderComponent } from '../../shared/components/futuristic/intel-header.component';
 
 @Component({
   selector: 'app-policy',
   standalone: true,
-  imports: [TagModule, HoloCardComponent, MetricTileComponent, StatusBeaconComponent],
+  imports: [IntelHeaderComponent, TagModule, HoloCardComponent, MetricTileComponent, StatusBeaconComponent],
   templateUrl: './policy.html',
   styleUrl: './policy.scss',
 })

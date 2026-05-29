@@ -1,18 +1,10 @@
 @use "../../styles/futuristic";
 :host { display: block; width: 100%; }
 
-    .page-header { margin-bottom: 16px; }
-    .page-header h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.03em; }
-    .subtitle { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
-
-    .controls {
-      display: flex; align-items: center; gap: 10px; margin-bottom: 16px;
-      padding: 12px 16px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm);
-    }
 
     .diff-summary {
       display: flex; align-items: center; gap: 12px; margin-bottom: 12px;
-      padding: 8px 16px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm);
+      padding: 8px 16px; background: transparent; border: none; border-bottom: 1px solid rgba(94, 84, 75, 0.06); border-radius: 0;
       font-size: 12px; font-family: 'JetBrains Mono', monospace;
     }
     .diff-add { color: var(--success); font-weight: 600; }
@@ -20,13 +12,13 @@
     .diff-total { color: var(--text-muted); margin-left: auto; }
 
     .diff-container {
-      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+      background: transparent; border: none; border-bottom: 1px solid rgba(94, 84, 75, 0.06); border-radius: 0;
       overflow: auto; max-height: calc(100vh - 320px);
       font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 1.6;
     }
     .diff-row {
       display: grid; grid-template-columns: 32px 1fr 32px 1fr;
-      border-bottom: 1px solid var(--border);
+      border-bottom: 1px solid rgba(94, 84, 75, 0.06);
     }
     .diff-row:last-child { border-bottom: none; }
     .row-equal { }
@@ -45,3 +37,15 @@
     .loading { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 60px; color: var(--text-muted); }
     .spin { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
+
+/* ─── Light Mode ─────────────────────────────────────────────────── */
+:host-context([data-theme="light"]) {
+  .controls { border-bottom-color: rgba(0, 0, 0, 0.05); }
+  .diff-summary { border-bottom-color: rgba(0, 0, 0, 0.04); }
+  .diff-add { color: #16a34a; }
+  .diff-del { color: #dc2626; }
+  .diff-container { border-top-color: rgba(0, 0, 0, 0.05); }
+  .diff-row { border-bottom-color: rgba(0, 0, 0, 0.03); }
+  .line-add { background: rgba(22, 163, 74, 0.04); }
+  .line-del { background: rgba(220, 38, 38, 0.04); }
+}

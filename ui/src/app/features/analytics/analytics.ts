@@ -7,17 +7,15 @@ import { TagModule } from 'primeng/tag';
 import { TabsModule } from 'primeng/tabs';
 import { ChartModule } from 'primeng/chart';
 import { TooltipModule } from 'primeng/tooltip';
-import { PageInfoComponent } from '../../shared/components/page-info.component';
-import { SpotlightComponent } from '../../shared/components/spotlight.component';
+import { IntelHeaderComponent } from '../../shared/components/futuristic/intel-header.component';
 import { RelatedPagesComponent } from '../../shared/components/related-pages.component';
 import { SkeletonComponent } from '../../shared/components/skeleton.component';
-import { PageHeaderComponent } from '../../shared/components/page-header.component';
 
 
 @Component({
   selector: 'app-analytics',
   standalone: true,
-  imports: [ButtonModule, TagModule, TabsModule, ChartModule, TooltipModule, FormsModule, DecimalPipe, PageInfoComponent, SpotlightComponent, RelatedPagesComponent, SkeletonComponent, PageHeaderComponent],
+  imports: [ButtonModule, TagModule, TabsModule, ChartModule, TooltipModule, FormsModule, DecimalPipe, IntelHeaderComponent, RelatedPagesComponent, SkeletonComponent],
   templateUrl: './analytics.html',
   styleUrl: './analytics.scss',
 })

@@ -440,8 +440,7 @@ app-contexts {
 /* Select / Dropdown */
 .p-select, .p-dropdown {
   background: transparent !important;
-  border: none !important;
-  border-bottom: 1px solid rgba(94, 84, 75, 0.12) !important;
+  border: 1px solid rgba(94, 84, 75, 0.15) !important;
   border-radius: 0 !important;
   color: var(--text) !important;
   min-height: 32px !important;
@@ -461,10 +460,10 @@ app-contexts {
   font-size: 10px !important;
 }
 .p-select:hover, .p-dropdown:hover {
-  border-bottom-color: rgba(208, 156, 96, 0.25) !important;
+  border-color: rgba(208, 156, 96, 0.25) !important;
 }
 .p-select:focus-within, .p-dropdown:focus-within {
-  border-bottom-color: var(--accent) !important;
+  border-color: var(--accent) !important;
   box-shadow: none !important;
 }
 .p-select-panel, .p-dropdown-panel, .p-select-overlay, .p-dropdown-items-wrapper {
@@ -535,15 +534,52 @@ app-contexts {
 
 /* Input */
 .p-inputtext {
-  background: var(--bg-elevated) !important;
-  border: 1px solid var(--border) !important;
-  border-radius: var(--radius-sm) !important;
+  background: transparent !important;
+  border: none !important;
+  border-bottom: 1px solid rgba(94, 84, 75, 0.15) !important;
+  border-radius: 0 !important;
   color: var(--text) !important;
+  font-family: 'JetBrains Mono', monospace !important;
+  font-size: 12px !important;
 }
 .p-inputtext:focus {
-  border-color: var(--accent) !important;
-  box-shadow: 0 0 0 2px var(--accent-subtle) !important;
+  border-bottom-color: var(--accent) !important;
+  box-shadow: none !important;
 }
+
+/* Native select — SaaS Noir */
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(94, 84, 75, 0.15);
+  border-radius: 0;
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  padding: 6px 24px 6px 8px;
+  outline: none;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%236b6058'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  transition: border-color 0.15s;
+}
+select:hover { border-bottom-color: rgba(208, 156, 96, 0.3); }
+select:focus { border-bottom-color: var(--accent); }
+select option {
+  background: var(--bg);
+  color: var(--text);
+  padding: 6px 10px;
+}
+[data-theme="light"] select {
+  border-bottom-color: rgba(0, 0, 0, 0.08);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%239a8e84'/%3E%3C/svg%3E");
+}
+[data-theme="light"] select:hover { border-bottom-color: rgba(154, 81, 41, 0.25); }
+[data-theme="light"] select:focus { border-bottom-color: #9a5129; }
+[data-theme="light"] select option { background: #faf8f6; }
 
 /* Dialog */
 .p-dialog-mask {
@@ -687,15 +723,15 @@ app-contexts {
 /* Light Mode — PrimeNG Select/Dropdown */
 [data-theme="light"] .p-select,
 [data-theme="light"] .p-dropdown {
-  border-bottom-color: rgba(0, 0, 0, 0.08) !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
 }
 [data-theme="light"] .p-select:hover,
 [data-theme="light"] .p-dropdown:hover {
-  border-bottom-color: rgba(154, 81, 41, 0.2) !important;
+  border-color: rgba(154, 81, 41, 0.25) !important;
 }
 [data-theme="light"] .p-select:focus-within,
 [data-theme="light"] .p-dropdown:focus-within {
-  border-bottom-color: #9a5129 !important;
+  border-color: #9a5129 !important;
 }
 [data-theme="light"] .p-select-panel,
 [data-theme="light"] .p-dropdown-panel,

@@ -1,0 +1,75 @@
+<app-intel-header title="Node Operations" icon="pi pi-cog"
+  [subtitle]="'cordon · drain · wait · ' + (lastUpdated || '...')">
+  <button class="ctrl-btn" (click)="load()" pTooltip="Refresh"><i class="pi pi-refresh" [class.spinning]="loading"></i></button>
+  <button class="ctrl-btn" (click)="loadApiResources()" pTooltip="API Resources"><i class="pi pi-list"></i></button>
+</app-intel-header>
+
+<div class="metrics-strip">
+  <app-metric-tile label="Nodes" [value]="'' + nodes.length" accent="cyan" />
+  <app-metric-tile label="Schedulable" [value]="'' + schedulableCount" accent="green" />
+  @if (cordonedCount > 0) { <app-metric-tile label="Cordoned" [value]="'' + cordonedCount" accent="amber" /> }
+</div>
+
+@if (actionMessage) {
+  <div class="action-banner" [class.banner-ok]="actionSuccess" [class.banner-err]="!actionSuccess">{{ actionMessage }}</div>
+}
+
+<!-- Node List -->
+<app-holo-card title="Nodes" icon="pi pi-server" glow="cyan">
+  <div class="node-list">
+    @for (node of nodes; track node.name) {
+      <div class="node-row">
+        <app-status-beacon [status]="nodeStatus(node) === 'success' ? 'ok' : nodeStatus(node) === 'warning' ? 'warning' : 'critical'" size="sm" />
+        <code class="node-name">{{ node.name }}</code>
+        <p-tag [value]="node.schedulable ? 'schedulable' : 'cordoned'" [severity]="node.schedulable ? 'success' : 'warn'" [rounded]="true" />
+        <span class="node-pods">{{ node.pods_count }} pods</span>
+        <div class="node-actions">
+          @if (node.schedulable) {
+            <app-action-icon icon="pi pi-ban" tooltip="Cordon" accent="amber" (clicked)="cordon(node.name)" />
+            <app-action-icon icon="pi pi-sign-out" tooltip="Drain" accent="red" (clicked)="drain(node.name)" />
+          } @else {
+            <app-action-icon icon="pi pi-check" tooltip="Uncordon" accent="green" (clicked)="uncordon(node.name)" />
+          }
+        </div>
+      </div>
+    }
+    @if (nodes.length === 0 && !loading) {
+      <div class="empty-state"><div class="empty-icon"><i class="pi pi-server"></i></div><span>No nodes found</span></div>
+    }
+  </div>
+</app-holo-card>
+
+<!-- Wait -->
+<app-holo-card title="Wait for Condition" icon="pi pi-clock" [compact]="true">
+  <div class="wait-form">
+    <input [(ngModel)]="waitResource" placeholder="resource (e.g. deployment)" class="wait-input" />
+    <input [(ngModel)]="waitName" placeholder="name" class="wait-input" />
+    <input [(ngModel)]="waitCondition" placeholder="condition=Available" class="wait-input wait-input-wide" />
+    <input [(ngModel)]="waitTimeout" type="number" placeholder="timeout (s)" class="wait-input wait-input-sm" />
+    <button class="ctrl-btn ctrl-btn-wide" (click)="runWait()" [class.disabled]="!waitResource || !waitName">Wait</button>
+  </div>
+  @if (waitResult) {
+    <span class="action-msg" [class.msg-ok]="waitSuccess" [class.msg-err]="!waitSuccess">{{ waitResult }}</span>
+  }
+</app-holo-card>
+
+<!-- API Resources -->
+@if (showResources) {
+  <app-holo-card title="API Resources" icon="pi pi-list" glow="purple">
+    <input [(ngModel)]="resourceFilter" placeholder="Filter resources..." class="resource-filter" />
+    <div class="resource-table">
+      <div class="resource-header">
+        <span>Name</span><span>Short</span><span>API Version</span><span>Namespaced</span><span>Kind</span>
+      </div>
+      @for (r of filteredResources; track r.name) {
+        <div class="resource-row">
+          <code>{{ r.name }}</code>
+          <span class="dim">{{ r.shortnames }}</span>
+          <span class="dim">{{ r.apiversion }}</span>
+          <span>{{ r.namespaced }}</span>
+          <span class="kind">{{ r.kind }}</span>
+        </div>
+      }
+    </div>
+  </app-holo-card>
+}

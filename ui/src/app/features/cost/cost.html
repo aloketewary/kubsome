@@ -1,13 +1,8 @@
 <!-- ─── Header ─────────────────────────────────────────────────────── -->
-<div class="intel-header">
-  <div class="intel-title-block">
-    <h1 class="intel-title"><span class="title-icon">⚡</span> Optimization</h1>
-    <p class="intel-subtitle">resource efficiency · {{ lastScanned || 'scanning...' }}</p>
-  </div>
-  <div class="intel-controls">
-    <button class="ctrl-btn" (click)="load()" pTooltip="Scan"><i class="pi pi-refresh" [class.spinning]="loading"></i></button>
-  </div>
-</div>
+<app-intel-header title="Optimization" icon="pi pi-bolt"
+  [subtitle]="'resource efficiency · ' + (lastScanned || 'scanning...')">
+  <button class="ctrl-btn" (click)="load()" pTooltip="Scan"><i class="pi pi-refresh" [class.spinning]="loading"></i></button>
+</app-intel-header>
 
 <!-- ─── Score Hero ─────────────────────────────────────────────────── -->
 <app-holo-card [glow]="scoreGlow" [compact]="true">

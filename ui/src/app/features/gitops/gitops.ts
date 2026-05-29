@@ -6,11 +6,12 @@ import { HoloCardComponent } from '../../shared/components/futuristic/holo-card.
 import { MetricTileComponent } from '../../shared/components/futuristic/metric-tile.component';
 import { StatusBeaconComponent } from '../../shared/components/futuristic/status-beacon.component';
 import { LiveIndicatorComponent } from '../../shared/components/futuristic/live-indicator.component';
+import { IntelHeaderComponent } from '../../shared/components/futuristic/intel-header.component';
 
 @Component({
   selector: 'app-gitops',
   standalone: true,
-  imports: [JsonPipe, TagModule, HoloCardComponent, MetricTileComponent, StatusBeaconComponent, LiveIndicatorComponent],
+  imports: [JsonPipe, TagModule, HoloCardComponent, MetricTileComponent, StatusBeaconComponent, LiveIndicatorComponent, IntelHeaderComponent],
   templateUrl: './gitops.html',
   styleUrl: './gitops.scss',
 })

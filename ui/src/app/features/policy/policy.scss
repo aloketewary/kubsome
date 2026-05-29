@@ -1,31 +1,39 @@
 @use '../../styles/futuristic';
 :host { display: block; width: 100%; }
-.title-icon { color: #10b981; }
 
 .score-row { display: flex; align-items: center; gap: 14px; }
 .score-info { display: flex; flex-direction: column; gap: 2px; }
-.score-title { font-size: 14px; font-weight: 700; color: rgba(255,255,255,0.9); }
-.score-sub { font-size: 11px; color: rgba(255,255,255,0.35); }
+.score-title { font-size: 16px; font-weight: 300; font-family: 'JetBrains Mono', monospace; color: var(--text); }
+.score-sub { font-size: 11px; color: var(--text-muted); }
 
-.policy-list { display: flex; flex-direction: column; gap: 4px; margin: 14px 0; }
+.policy-list { display: flex; flex-direction: column; gap: 0; margin: 14px 0; }
 .policy-row {
   display: flex; align-items: flex-start; gap: 10px;
-  padding: 10px 14px; border-radius: 10px;
-  background: linear-gradient(180deg, rgba(13,17,28,0.75) 0%, rgba(8,11,20,0.8) 100%);
-  border: 1px solid rgba(255,255,255,0.04); transition: all 0.15s;
+  padding: 10px 14px; background: transparent; border: none;
+  border-bottom: 1px solid rgba(94, 84, 75, 0.06); transition: background 0.12s;
 }
-.policy-row:hover { border-color: rgba(255,255,255,0.07); }
-.policy-fail { border-left: 2px solid rgba(244,63,94,0.5); }
+.policy-row:hover { background: rgba(208, 156, 96, 0.02); }
+.policy-fail { border-left: 2px solid rgba(244, 63, 94, 0.4); }
 
 .policy-body { flex: 1; display: flex; flex-direction: column; gap: 3px; }
 .policy-top { display: flex; align-items: center; gap: 8px; }
-.policy-name { font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.8); }
-.policy-desc { font-size: 10px; color: rgba(255,255,255,0.35); }
-.policy-rule { font-size: 9px; color: rgba(0,212,255,0.5); font-family: 'JetBrains Mono', monospace; }
+.policy-name { font-size: 12px; font-weight: 600; color: var(--text); }
+.policy-desc { font-size: 10px; color: var(--text-muted); }
+.policy-rule { font-size: 9px; color: var(--accent); font-family: 'JetBrains Mono', monospace; opacity: 0.7; }
 
-.viol-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.025); }
+.viol-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid rgba(94, 84, 75, 0.04); }
 .viol-row:last-child { border-bottom: none; }
 .viol-body { flex: 1; display: flex; flex-direction: column; gap: 2px; }
-.viol-policy { font-size: 11px; font-weight: 600; color: #f43f5e; }
-.viol-resource { font-size: 10px; color: rgba(255,255,255,0.4); font-family: 'JetBrains Mono', monospace; }
-.viol-detail { font-size: 10px; color: rgba(255,255,255,0.3); }
+.viol-policy { font-size: 11px; font-weight: 600; color: var(--danger); }
+.viol-resource { font-size: 10px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+.viol-detail { font-size: 10px; color: var(--text-muted); opacity: 0.7; }
+
+/* ─── Light Mode ─────────────────────────────────────────────────── */
+:host-context([data-theme="light"]) {
+  .policy-row { border-bottom-color: rgba(0, 0, 0, 0.04); }
+  .policy-row:hover { background: rgba(0, 0, 0, 0.015); }
+  .policy-fail { border-left-color: rgba(220, 38, 38, 0.3); }
+  .policy-rule { color: #9a5129; }
+  .viol-row { border-bottom-color: rgba(0, 0, 0, 0.03); }
+  .viol-policy { color: #dc2626; }
+}

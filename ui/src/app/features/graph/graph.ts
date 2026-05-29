@@ -6,13 +6,13 @@ import { TagModule } from 'primeng/tag';
 import { TooltipModule } from 'primeng/tooltip';
 import { Select } from 'primeng/select';
 import cytoscape from 'cytoscape';
-import { SpotlightComponent } from '../../shared/components/spotlight.component';
+import { IntelHeaderComponent } from '../../shared/components/futuristic/intel-header.component';
 
 
 @Component({
   selector: 'app-graph',
   standalone: true,
-  imports: [FormsModule, ButtonModule, TagModule, TooltipModule, Select, SpotlightComponent],
+  imports: [FormsModule, ButtonModule, TagModule, TooltipModule, Select, IntelHeaderComponent],
   templateUrl: './graph.html',
   styleUrl: './graph.scss',
 })

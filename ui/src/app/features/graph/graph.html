@@ -1,27 +1,16 @@
-<div class="intel-header"><div class="intel-title-block"><h1 class="intel-title">Service Map</h1></div></div>
-
-    <app-spotlight id="graph" title="Service Map" icon="pi pi-sitemap"
-      description="Visualize relationships between pods, services, and deployments with health-aware topology."
-      [capabilities]="['Interactive graph', 'Health-aware coloring', 'Click to inspect', 'Multiple layouts']" [compact]="true" />
-
-    <div class="page-header">
-      <div>
-        <h1>Service Map</h1>
-        <p class="subtitle">Interactive resource topology · {{ nodeCount }} nodes · {{ edgeCount }} edges</p>
-      </div>
-      <div class="controls">
-        <p-select [options]="deployments" [(ngModel)]="selectedDep" placeholder="Select deployment..." [style]="{ width: '220px' }" [filter]="true" />
-        <button pButton label="Trace" icon="pi pi-sitemap" class="p-button-sm" (click)="trace()" [disabled]="!selectedDep" [loading]="loading"></button>
-        <div class="layout-toggle">
-          @for (l of layouts; track l.id) {
-            <button class="layout-btn" [class.active]="currentLayout === l.id" (click)="changeLayout(l.id)" [pTooltip]="l.label">
-              <i [class]="l.icon"></i>
-            </button>
-          }
-        </div>
-        <button pButton icon="pi pi-expand" class="p-button-outlined p-button-sm p-button-rounded" (click)="fit()" pTooltip="Fit to Screen"></button>
-      </div>
-    </div>
+<app-intel-header title="Service Map" icon="pi pi-sitemap"
+  [subtitle]="'Interactive resource topology · ' + nodeCount + ' nodes · ' + edgeCount + ' edges'">
+  <p-select [options]="deployments" [(ngModel)]="selectedDep" placeholder="Select deployment..." [style]="{ width: '200px' }" [filter]="true" />
+  <button class="ctrl-btn ctrl-btn-wide" (click)="trace()" [class.disabled]="!selectedDep" pTooltip="Trace"><i class="pi pi-sitemap"></i> Trace</button>
+  <div class="layout-toggle">
+    @for (l of layouts; track l.id) {
+      <button class="layout-btn" [class.active]="currentLayout === l.id" (click)="changeLayout(l.id)" [pTooltip]="l.label">
+        <i [class]="l.icon"></i>
+      </button>
+    }
+  </div>
+  <button class="ctrl-btn" (click)="fit()" pTooltip="Fit to Screen"><i class="pi pi-expand"></i></button>
+</app-intel-header>
 
     <div class="graph-container">
       <!-- Graph Viewport -->

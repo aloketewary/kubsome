@@ -1,13 +1,8 @@
-<div class="intel-header">
-  <div class="intel-title-block">
-    <h1 class="intel-title"><span class="title-icon">🔌</span> Integrations</h1>
-    <p class="intel-subtitle">{{ integrations.length }} connected · {{ discovered.length }} discovered</p>
-  </div>
-  <div class="intel-controls">
-    <button class="ctrl-btn ctrl-btn-wide" (click)="discover()" [class.disabled]="discovering"><i class="pi pi-search"></i> Discover</button>
-    <button class="ctrl-btn" (click)="refresh()"><i class="pi pi-refresh" [class.spinning]="loading"></i></button>
-  </div>
-</div>
+<app-intel-header title="Integrations" icon="pi pi-link"
+  [subtitle]="integrations.length + ' connected · ' + discovered.length + ' discovered'">
+  <button class="ctrl-btn ctrl-btn-wide" (click)="discover()" [class.disabled]="discovering"><i class="pi pi-search"></i> Discover</button>
+  <button class="ctrl-btn" (click)="refresh()" pTooltip="Refresh"><i class="pi pi-refresh" [class.spinning]="loading"></i></button>
+</app-intel-header>
 
 <div class="metrics-strip">
   <app-metric-tile label="Connected" [value]="'' + integrations.length" accent="green" />
@@ -37,12 +32,13 @@
   <app-holo-card title="Available" icon="pi pi-search" glow="cyan" [compact]="true">
     @for (item of discovered; track item.name) {
       <div class="disc-row">
+        <app-status-beacon status="idle" size="sm" />
         <i [class]="iconFor(item.name)" class="int-icon"></i>
         <div class="int-body">
           <span class="int-name">{{ item.name }}</span>
           <span class="int-url">{{ item.url || 'Auto-detected' }}</span>
         </div>
-        <button pButton icon="pi pi-link" label="Connect" class="p-button-outlined p-button-sm" (click)="connect(item.name, item.url)"></button>
+        <button class="ctrl-btn ctrl-btn-wide" (click)="connect(item.name, item.url)"><i class="pi pi-link"></i> Connect</button>
       </div>
     }
   </app-holo-card>

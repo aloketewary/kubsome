@@ -533,6 +533,141 @@ def resolve_command(user_input: str):
             "node": tokens[1]
         }
 
+    # Cordon node
+    if cmd == "cordon" and len(tokens) > 1:
+        node_query = tokens[1]
+        matches = resolve_node_name(node_query)
+        if not matches:
+            return {"type": "cordon", "node": node_query}
+        from core.selector import choose_node
+        node = choose_node(matches)
+        if not node:
+            return None
+        return {"type": "cordon", "node": node}
+
+    # Uncordon node
+    if cmd == "uncordon" and len(tokens) > 1:
+        node_query = tokens[1]
+        matches = resolve_node_name(node_query)
+        if not matches:
+            return {"type": "uncordon", "node": node_query}
+        from core.selector import choose_node
+        node = choose_node(matches)
+        if not node:
+            return None
+        return {"type": "uncordon", "node": node}
+
+    # Drain node
+    if cmd == "drain" and len(tokens) > 1:
+        node_query = tokens[1]
+        matches = resolve_node_name(node_query)
+        if not matches:
+            return {"type": "drain", "node": node_query}
+        from core.selector import choose_node
+        node = choose_node(matches)
+        if not node:
+            return None
+        flags = tokens[2:]
+        return {
+            "type": "drain",
+            "node": node,
+            "force": "--force" in flags,
+            "delete_emptydir": "--delete-emptydir-data" in flags,
+        }
+
+    # Wait for condition
+    if cmd == "wait" and len(tokens) > 1:
+        # wait deployment/name --for=condition=available
+        target = tokens[1]
+        condition = "condition=Available"
+        timeout = 120
+        for i, t in enumerate(tokens[2:], 2):
+            if t.startswith("--for="):
+                condition = t[6:]
+            elif t.startswith("--timeout="):
+                try:
+                    timeout = int(t[10:].rstrip("s"))
+                except ValueError:
+                    pass
+        parts = target.split("/", 1)
+        resource = parts[0] if len(parts) == 2 else "pod"
+        name = parts[1] if len(parts) == 2 else parts[0]
+        return {
+            "type": "wait",
+            "resource": resource,
+            "name": name,
+            "condition": condition,
+            "timeout": timeout,
+        }
+
+    # Patch resource
+    if cmd == "patch" and len(tokens) > 2:
+        resource = tokens[1]
+        name = tokens[2]
+        patch_type = "strategic"
+        patch_data = None
+        for i, t in enumerate(tokens[3:], 3):
+            if t == "--type" and i + 1 < len(tokens):
+                patch_type = tokens[i + 1]
+            if t == "-p" and i + 1 < len(tokens):
+                patch_data = " ".join(tokens[i + 1:])
+                break
+        return {
+            "type": "patch",
+            "resource": resource,
+            "name": name,
+            "patch_type": patch_type,
+            "patch_data": patch_data,
+        }
+
+    # Annotate resource
+    if cmd == "annotate" and len(tokens) > 2:
+        resource = tokens[1]
+        name = tokens[2]
+        annotations = {}
+        remove = False
+        for kv in tokens[3:]:
+            if kv.endswith("-"):
+                remove = True
+                annotations[kv[:-1]] = ""
+            elif "=" in kv:
+                k, v = kv.split("=", 1)
+                annotations[k] = v
+        return {
+            "type": "annotate",
+            "resource": resource,
+            "name": name,
+            "annotations": annotations,
+            "remove": remove,
+        }
+
+    # Set image
+    if cmd == "set-image" and len(tokens) > 2:
+        deploy_query = tokens[1]
+        image = tokens[2]
+        container = tokens[3] if len(tokens) > 3 else None
+        matches = resolve_deployment_name(deploy_query)
+        if not matches:
+            return {
+                "type": "set_image",
+                "deployment": deploy_query,
+                "image": image,
+                "container": container,
+            }
+        dep = choose_deployment(matches)
+        if not dep:
+            return None
+        return {
+            "type": "set_image",
+            "deployment": dep,
+            "image": image,
+            "container": container,
+        }
+
+    # API resources
+    if cmd == "api-resources" or cmd == "resources":
+        return {"type": "api_resources"}
+
     # Bookmarks
     if cmd == "bookmark":
         if len(tokens) >= 4 and tokens[1] == "add":
@@ -1167,6 +1302,26 @@ def resolve_command(user_input: str):
     # Raw kubectl passthrough
     if cmd == "kubectl":
         return " ".join(tokens)
+
+    # set image (kubectl-style)
+    if cmd == "set" and len(tokens) > 2 and tokens[1] == "image":
+        # set image deployment/name container=image
+        parts = tokens[2:]
+        deploy = None
+        container = None
+        image = None
+        for p in parts:
+            if "/" in p and not deploy:
+                deploy = p.split("/", 1)[1]
+            elif "=" in p:
+                container, image = p.split("=", 1)
+        if deploy and container and image:
+            return {
+                "type": "set_image",
+                "deployment": deploy,
+                "image": image,
+                "container": container,
+            }
 
     return None
 
