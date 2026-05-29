@@ -1,0 +1,91 @@
+    <app-spotlight id="taints" title="Node Taints" icon="pi pi-ban"
+      description="View and manage Kubernetes node taints."
+      [capabilities]="['List taints', 'Apply taint', 'Remove taint']" [compact]="true" />
+
+    <app-page-header title="Node Taints" [subtitle]="'Manage scheduling constraints · ' + lastUpdated">
+        <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="load()" pTooltip="Refresh" [loading]="loading"></button>
+    </app-page-header>
+
+    <!-- Summary -->
+    <div class="summary-strip">
+      <div class="summary-pill">
+        <i class="pi pi-server"></i>
+        <span class="pill-val">{{ nodes.length }}</span>
+        <span class="pill-label">Nodes</span>
+      </div>
+      <div class="summary-pill">
+        <i class="pi pi-ban"></i>
+        <span class="pill-val">{{ totalTaints }}</span>
+        <span class="pill-label">Taints</span>
+      </div>
+      @if (noScheduleCount > 0) {
+        <div class="summary-pill pill-warn">
+          <span class="pill-dot dot-warn"></span>
+          <span class="pill-val">{{ noScheduleCount }}</span>
+          <span class="pill-label">NoSchedule</span>
+        </div>
+      }
+      @if (noExecuteCount > 0) {
+        <div class="summary-pill pill-danger">
+          <span class="pill-dot dot-danger"></span>
+          <span class="pill-val">{{ noExecuteCount }}</span>
+          <span class="pill-label">NoExecute</span>
+        </div>
+      }
+    </div>
+
+    <!-- Add Taint Form -->
+    <div class="add-form">
+      <div class="form-header">
+        <i class="pi pi-plus-circle"></i>
+        <span>Apply Taint</span>
+      </div>
+      <div class="form-row">
+        <select class="form-select" [(ngModel)]="newNode">
+          <option value="">Select node...</option>
+          @for (n of nodeNames; track n) {
+            <option [value]="n">{{ n }}</option>
+          }
+        </select>
+        <input pInputText [(ngModel)]="newSpec" placeholder="key=value:NoSchedule" class="form-input" />
+        <button pButton label="Apply" icon="pi pi-check" class="p-button-sm" (click)="applyTaint()" [disabled]="!newNode || !newSpec"></button>
+      </div>
+      @if (actionMessage) {
+        <div class="action-msg" [class.msg-success]="actionSuccess" [class.msg-error]="!actionSuccess">
+          {{ actionMessage }}
+        </div>
+      }
+    </div>
+
+    <!-- Taints Table -->
+    <div class="taint-list">
+      @for (node of nodes; track node.node) {
+        @if (node.taints.length > 0) {
+          <div class="node-card">
+            <div class="node-header">
+              <i class="pi pi-server"></i>
+              <code class="node-name">{{ node.node }}</code>
+              <p-tag [value]="node.taints.length + ' taint(s)'" severity="warn" [rounded]="true" />
+            </div>
+            <div class="taint-rows">
+              @for (t of node.taints; track $index) {
+                <div class="taint-row">
+                  <code class="taint-key">{{ t.key }}</code>
+                  <span class="taint-eq">=</span>
+                  <span class="taint-val">{{ t.value || '&lt;none&gt;' }}</span>
+                  <p-tag [value]="t.effect" [severity]="effectSeverity(t.effect)" [rounded]="true" />
+                  <button pButton icon="pi pi-trash" class="p-button-text p-button-sm p-button-danger" pTooltip="Remove taint" (click)="removeTaint(node.node, t)"></button>
+                </div>
+              }
+            </div>
+          </div>
+        }
+      }
+
+      @if (totalTaints === 0 && !loading) {
+        <div class="empty-state">
+          <i class="pi pi-check-circle"></i>
+          No taints on any node
+        </div>
+      }
+    </div>

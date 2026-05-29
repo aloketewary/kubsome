@@ -1,0 +1,63 @@
+@use "../../styles/futuristic";
+:host { display: block; width: 100%; }
+
+
+
+    /* Add Form */
+    .add-form {
+      padding: 16px 18px; margin-bottom: 16px;
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+    }
+    .form-row { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+    .form-field { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 160px; }
+    .form-field label { font-size: 10px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+    .form-input {
+      padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px;
+      background: var(--bg-elevated); color: var(--text); font-size: 13px; outline: none;
+    }
+    .form-input:focus { border-color: var(--accent); }
+    .condition-pills { display: flex; gap: 6px; }
+    .pill {
+      display: flex; align-items: center; gap: 5px;
+      padding: 7px 12px; border: 1px solid var(--border); border-radius: 6px;
+      background: var(--bg-elevated); color: var(--text-muted); font-size: 12px;
+      cursor: pointer; transition: all 0.12s;
+    }
+    .pill:hover { border-color: var(--border-hover); color: var(--text); }
+    .pill-active { border-color: var(--accent); background: var(--accent-subtle); color: var(--accent); font-weight: 600; }
+    .pill i { font-size: 12px; }
+    .form-submit { align-self: flex-end; }
+    .form-error { margin-top: 10px; font-size: 12px; color: var(--danger); display: flex; align-items: center; gap: 6px; }
+
+    .status-bar-info {
+      display: flex; align-items: center; gap: 8px; margin-bottom: 16px;
+      padding: 10px 16px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm);
+      font-size: 12px;
+    }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .dot-on { background: var(--success); box-shadow: 0 0 4px var(--success); }
+    .dot-off { background: var(--text-muted); }
+    .watch-count { margin-left: auto; color: var(--text-muted); }
+
+    .watch-list { display: flex; flex-direction: column; gap: 8px; }
+    .watch-card {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 16px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+      transition: border-color 0.12s;
+    }
+    .watch-card:hover { border-color: var(--border-hover); }
+    .watch-triggered { border-left: 3px solid var(--danger); }
+    .watch-icon { font-size: 18px; }
+    .icon-ok { color: var(--success); }
+    .icon-alert { color: var(--danger); }
+    .watch-body { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+    .watch-name { font-size: 13px; font-weight: 600; }
+    .watch-meta { font-size: 11px; color: var(--text-muted); display: flex; align-items: center; gap: 6px; }
+    .watch-time { font-size: 10px; color: var(--text-muted); }
+
+    .empty { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 60px; color: var(--text-muted); }
+    .empty i { font-size: 28px; opacity: 0.3; }
+    .empty-hint { font-size: 12px; }
+    .loading { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 60px; color: var(--text-muted); }
+    .spin { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }

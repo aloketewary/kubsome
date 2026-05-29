@@ -1,0 +1,137 @@
+    <app-spotlight id="graph" title="Service Map" icon="pi pi-sitemap"
+      description="Visualize relationships between pods, services, and deployments with health-aware topology."
+      [capabilities]="['Interactive graph', 'Health-aware coloring', 'Click to inspect', 'Multiple layouts']" [compact]="true" />
+
+    <div class="page-header">
+      <div>
+        <h1>Service Map</h1>
+        <p class="subtitle">Interactive resource topology · {{ nodeCount }} nodes · {{ edgeCount }} edges</p>
+      </div>
+      <div class="controls">
+        <p-select [options]="deployments" [(ngModel)]="selectedDep" placeholder="Select deployment..." [style]="{ width: '220px' }" [filter]="true" />
+        <button pButton label="Trace" icon="pi pi-sitemap" class="p-button-sm" (click)="trace()" [disabled]="!selectedDep" [loading]="loading"></button>
+        <div class="layout-toggle">
+          @for (l of layouts; track l.id) {
+            <button class="layout-btn" [class.active]="currentLayout === l.id" (click)="changeLayout(l.id)" [pTooltip]="l.label">
+              <i [class]="l.icon"></i>
+            </button>
+          }
+        </div>
+        <button pButton icon="pi pi-expand" class="p-button-outlined p-button-sm p-button-rounded" (click)="fit()" pTooltip="Fit to Screen"></button>
+      </div>
+    </div>
+
+    <div class="graph-container">
+      <!-- Graph Viewport -->
+      <div class="graph-viewport">
+        <div #cyContainer class="cy-container"></div>
+
+        @if (!traceData && !loading) {
+          <div class="viewport-overlay">
+            <div class="start-state">
+              <div class="start-icon"><i class="pi pi-sitemap"></i></div>
+              <h3>Trace Resource Topology</h3>
+              <p>Select a deployment to visualize its full resource chain: Ingress → Service → Deployment → ReplicaSet → Pods</p>
+              <div class="quick-actions">
+                @for (dep of deployments.slice(0, 4); track dep) {
+                  <button class="quick-btn" (click)="selectedDep = dep; trace()">{{ shortName(dep) }}</button>
+                }
+              </div>
+            </div>
+          </div>
+        }
+
+        @if (loading) {
+          <div class="viewport-overlay">
+            <div class="loading-state">
+              <div class="spin"></div>
+              <span>Tracing {{ selectedDep }}...</span>
+            </div>
+          </div>
+        }
+
+        <!-- Legend -->
+        @if (traceData) {
+          <div class="legend">
+            <div class="legend-item"><span class="legend-dot dot-ingress"></span> Ingress</div>
+            <div class="legend-item"><span class="legend-dot dot-service"></span> Service</div>
+            <div class="legend-item"><span class="legend-dot dot-deployment"></span> Deployment</div>
+            <div class="legend-item"><span class="legend-dot dot-replicaset"></span> ReplicaSet</div>
+            <div class="legend-item"><span class="legend-dot dot-pod"></span> Pod</div>
+            <div class="legend-item"><span class="legend-dot dot-unhealthy"></span> Unhealthy</div>
+          </div>
+        }
+
+        <!-- Stats Overlay -->
+        @if (traceData) {
+          <div class="stats-overlay">
+            <div class="stat-chip"><i class="pi pi-box"></i> {{ nodeCount }}</div>
+            <div class="stat-chip"><i class="pi pi-arrows-h"></i> {{ edgeCount }}</div>
+            @if (unhealthyCount > 0) {
+              <div class="stat-chip stat-danger"><i class="pi pi-exclamation-triangle"></i> {{ unhealthyCount }}</div>
+            }
+          </div>
+        }
+      </div>
+
+      <!-- Detail Panel -->
+      @if (selectedNode) {
+        <div class="detail-panel" [@panelAnim]>
+          <div class="dp-header">
+            <div class="dp-icon" [class]="'dp-' + selectedNode.kind.toLowerCase()">
+              <i [class]="kindIcon(selectedNode.kind)"></i>
+            </div>
+            <div class="dp-info">
+              <span class="dp-kind">{{ selectedNode.kind }}</span>
+              <span class="dp-name">{{ selectedNode.label }}</span>
+            </div>
+            <button class="dp-close" (click)="selectedNode = null"><i class="pi pi-times"></i></button>
+          </div>
+
+          <div class="dp-body">
+            @if (selectedNode.status) {
+              <div class="dp-row">
+                <span class="dp-label">Status</span>
+                <span class="dp-value" [class.val-healthy]="selectedNode.status === 'Running'" [class.val-unhealthy]="selectedNode.status !== 'Running'">
+                  {{ selectedNode.status }}
+                </span>
+              </div>
+            }
+            @if (selectedNode.restarts !== undefined) {
+              <div class="dp-row">
+                <span class="dp-label">Restarts</span>
+                <span class="dp-value" [class.val-unhealthy]="selectedNode.restarts >= 5">{{ selectedNode.restarts }}</span>
+              </div>
+            }
+            @if (selectedNode.replicas !== undefined) {
+              <div class="dp-row">
+                <span class="dp-label">Replicas</span>
+                <span class="dp-value">{{ selectedNode.replicas }}</span>
+              </div>
+            }
+            @if (selectedNode.image) {
+              <div class="dp-row">
+                <span class="dp-label">Image</span>
+                <code class="dp-value dp-code">{{ selectedNode.image }}</code>
+              </div>
+            }
+            @if (selectedNode.node) {
+              <div class="dp-row">
+                <span class="dp-label">Node</span>
+                <span class="dp-value">{{ selectedNode.node }}</span>
+              </div>
+            }
+          </div>
+
+          <div class="dp-actions">
+            @if (selectedNode.kind === 'Pod') {
+              <button pButton icon="pi pi-search" label="Inspect" class="p-button-sm p-button-outlined" (click)="navigateTo('/pods')"></button>
+              <button pButton icon="pi pi-align-left" label="Logs" class="p-button-sm p-button-outlined" (click)="navigateTo('/logs')"></button>
+            }
+            @if (selectedNode.kind === 'Deployment') {
+              <button pButton icon="pi pi-send" label="Rollout" class="p-button-sm p-button-outlined" (click)="navigateTo('/deployments')"></button>
+            }
+          </div>
+        </div>
+      }
+    </div>

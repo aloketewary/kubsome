@@ -1,0 +1,29 @@
+@use '../../styles/futuristic';
+:host { display: block; width: 100%; }
+.title-icon { color: #8b5cf6; }
+
+.checker { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; }
+.checker-select { flex: 1; padding: 7px 10px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 6px; color: var(--text); font-size: 11px; outline: none; }
+.checker-select:focus { border-color: rgba(0,212,255,0.3); }
+.disabled { opacity: 0.3; pointer-events: none; }
+
+.perm-grid { margin-top: 10px; font-size: 10px; }
+.pg-header, .pg-row { display: grid; grid-template-columns: 2fr repeat(5, 1fr); gap: 4px; padding: 4px 0; }
+.pg-header { color: rgba(255,255,255,0.3); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid rgba(255,255,255,0.03); }
+.pg-res { font-family: 'JetBrains Mono', monospace; color: rgba(255,255,255,0.5); }
+.pg-verb { text-align: center; }
+.pg-cell { text-align: center; }
+.pg-yes { color: #10b981; }
+.pg-no { color: rgba(255,255,255,0.15); }
+
+.binding-list { display: flex; flex-direction: column; gap: 3px; }
+.binding-row { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border-radius: 8px; background: linear-gradient(180deg, rgba(13,17,28,0.7) 0%, rgba(8,11,20,0.75) 100%); border: 1px solid rgba(255,255,255,0.04); transition: all 0.15s; }
+.binding-row:hover { border-color: rgba(255,255,255,0.07); }
+.binding-admin { border-left: 2px solid rgba(244,63,94,0.4); }
+.binding-body { flex: 1; display: flex; flex-direction: column; gap: 3px; }
+.binding-top { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.binding-name { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.8); }
+.binding-role { font-size: 10px; color: rgba(255,255,255,0.35); }
+.binding-level { color: rgba(0,212,255,0.6); font-weight: 600; }
+.binding-subjects { display: flex; gap: 3px; flex-wrap: wrap; margin-top: 2px; }
+.subject-chip { font-size: 9px; padding: 2px 6px; border-radius: 4px; background: rgba(255,255,255,0.03); color: rgba(255,255,255,0.4); font-family: 'JetBrains Mono', monospace; }

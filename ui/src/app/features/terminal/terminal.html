@@ -1,0 +1,111 @@
+    <app-spotlight id="terminal" title="Terminal" icon="pi pi-terminal"
+      description="Interactive shell into pods directly from the browser."
+      [capabilities]="['In-browser shell', 'Pod exec', 'Auto shell detection']" [compact]="true" />
+
+        <div class="terminal" (click)="focusInput()">
+      <!-- Terminal Toolbar -->
+      <div class="term-toolbar">
+        <div class="toolbar-left">
+          <div class="traffic-lights">
+            <span class="tl red"></span>
+            <span class="tl yellow"></span>
+            <span class="tl green"></span>
+          </div>
+          <span class="term-title">kubsome</span>
+          <span class="term-scope">{{ context }} / {{ namespace }}</span>
+        </div>
+        <div class="toolbar-right">
+          <span class="cmd-count">{{ history.length }} commands</span>
+          <button pButton icon="pi pi-copy" class="p-button-text p-button-sm p-button-rounded" pTooltip="Copy output" (click)="copyOutput($event)"></button>
+          <button pButton icon="pi pi-trash" class="p-button-text p-button-sm p-button-rounded" pTooltip="Clear" (click)="clear($event)"></button>
+        </div>
+      </div>
+
+      <!-- Quick Commands -->
+      <div class="quick-cmds">
+        @for (cmd of quickCommands; track cmd.label) {
+          <button class="qcmd" (click)="runQuick(cmd.command)" [title]="cmd.command">{{ cmd.label }}</button>
+        }
+      </div>
+
+      <!-- Terminal Body -->
+      <div class="term-body" #termBody>
+        @if (lines.length === 0) {
+          <div class="welcome-block">
+            <div class="welcome-header">
+              <span class="welcome-logo">◆</span>
+              <span class="welcome-title">Kubsome Terminal</span>
+            </div>
+            <div class="welcome-info">
+              <span>Connected to <strong>{{ context }}</strong> · namespace <strong>{{ namespace }}</strong></span>
+            </div>
+            <div class="welcome-cmds">
+              <span class="wc-label">Available commands:</span>
+              <div class="wc-grid">
+                <span>pods</span><span>events</span><span>overview</span><span>top pods</span>
+                <span>logs &lt;pod&gt;</span><span>diagnose &lt;pod&gt;</span><span>inspect &lt;pod&gt;</span><span>kubectl ...</span>
+              </div>
+            </div>
+            <span class="welcome-hint">↑↓ history · type "help" for all commands · "clear" to reset</span>
+          </div>
+        }
+
+        @for (line of lines; track $index) {
+          <div class="tl-row" [class]="'tl-' + line.type">
+            @if (line.type === 'input') {
+              <span class="tl-prompt">❯</span>
+            } @else if (line.type === 'error') {
+              <span class="tl-err-icon">✗</span>
+            }
+            <pre class="tl-text">{{ line.text }}</pre>
+          </div>
+        }
+
+        @if (loading) {
+          <div class="tl-row tl-loading">
+            <span class="loading-dots">
+              <span></span><span></span><span></span>
+            </span>
+            <span class="loading-label">executing...</span>
+          </div>
+        }
+
+        <!-- Selection UI -->
+        @if (selectionChoices.length > 0) {
+          <div class="selection-block">
+            <span class="sel-prompt">{{ selectionPrompt }}</span>
+            <div class="sel-choices">
+              @for (choice of selectionChoices; track choice) {
+                <button class="sel-btn" (click)="selectChoice(choice)">{{ choice }}</button>
+              }
+            </div>
+          </div>
+        }
+
+        <!-- Completions -->
+        @if (showCompletions && completions.length > 0) {
+          <div class="completions-popup">
+            @for (c of completions; track c; let i = $index) {
+              <div class="comp-item" [class.comp-active]="i === completionIndex" (click)="acceptCompletion(c)">{{ c }}</div>
+            }
+          </div>
+        }
+
+        <!-- Input Line -->
+        <div class="input-row">
+          <span class="tl-prompt">❯</span>
+          <input #cmdInput
+                 [(ngModel)]="currentCmd"
+                 (ngModelChange)="onInputChange($event)"
+                 (keydown.enter)="onEnter($event)"
+                 (keydown.arrowUp)="onArrowUp($event)"
+                 (keydown.arrowDown)="onArrowDown($event)"
+                 (keydown.tab)="onTab($event)"
+                 (keydown.escape)="showCompletions = false"
+                 class="term-input"
+                 spellcheck="false"
+                 autocomplete="off"
+                 placeholder="" />
+        </div>
+      </div>
+    </div>

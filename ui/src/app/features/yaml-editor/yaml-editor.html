@@ -1,0 +1,107 @@
+    <app-spotlight id="yaml-editor" title="YAML Editor" icon="pi pi-code"
+      description="Edit and apply Kubernetes manifests."
+      [capabilities]="['Syntax highlighting', 'Apply to cluster', 'Template generation']" [compact]="true" />
+
+    <app-page-header title="YAML Editor" subtitle="Create and apply Kubernetes manifests">
+    </app-page-header>
+
+    <!-- Quick Templates -->
+    @if (!yaml) {
+      <div class="templates-section">
+        <h3 class="section-label">Quick Start</h3>
+        <div class="template-grid">
+          @for (tpl of templates; track tpl.kind) {
+            <div class="template-card" (click)="useTemplate(tpl)">
+              <div class="tpl-icon" [style.background]="tpl.color + '15'" [style.color]="tpl.color">
+                <i [class]="tpl.icon"></i>
+              </div>
+              <div class="tpl-info">
+                <span class="tpl-name">{{ tpl.kind }}</span>
+                <span class="tpl-desc">{{ tpl.desc }}</span>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- Generator Bar -->
+    <div class="generator-bar">
+      <div class="gen-left">
+        <p-select [options]="kinds" [(ngModel)]="kind" placeholder="Kind" [style]="{ width: '140px' }" (ngModelChange)="onKindChange()" />
+        <input class="gen-input" [(ngModel)]="name" placeholder="Resource name..." (keyup.enter)="generate()" />
+        <button pButton label="Generate" icon="pi pi-sparkles" class="p-button-sm" (click)="generate()" [disabled]="!kind || !name" pTooltip="AI-generate manifest"></button>
+        <button pButton label="Load" icon="pi pi-download" class="p-button-sm p-button-outlined" (click)="loadResource()" [disabled]="!kind || !name" pTooltip="Fetch live resource YAML"></button>
+      </div>
+      <div class="gen-right">
+        @if (yaml) {
+          <button pButton icon="pi pi-trash" class="p-button-sm p-button-text p-button-danger" pTooltip="Clear" (click)="clear()"></button>
+        }
+      </div>
+    </div>
+
+    <!-- Resource Picker (when kind selected) -->
+    @if (resourceNames.length > 0 && !yaml) {
+      <div class="resource-picker">
+        <span class="picker-label">Existing {{ kind }}s:</span>
+        <div class="picker-list">
+          @for (r of resourceNames; track r) {
+            <button class="picker-item" (click)="name = r; loadResource()">{{ r }}</button>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- Editor -->
+    @if (yaml || showEditor) {
+      <div class="editor-wrap">
+        <!-- Tab Bar -->
+        <div class="editor-tabs">
+          <div class="tab active">
+            <i class="pi pi-file"></i>
+            <span>{{ fileName }}</span>
+            @if (isLiveEdit) {
+              <span class="live-badge">LIVE</span>
+            }
+          </div>
+          <div class="tab-spacer"></div>
+          <div class="editor-actions">
+            <button pButton icon="pi pi-copy" class="p-button-sm p-button-text p-button-rounded" pTooltip="Copy" (click)="copy()"></button>
+            <button pButton label="Dry Run" icon="pi pi-eye" class="p-button-sm p-button-outlined" (click)="dryRun()" [disabled]="!yaml.trim()" pTooltip="Validate without applying"></button>
+            <button pButton label="Apply" icon="pi pi-upload" class="p-button-sm p-button-success" (click)="apply()" [disabled]="!yaml.trim()"></button>
+          </div>
+        </div>
+
+        <!-- Editor Body -->
+        <div class="editor-body">
+          <div class="line-numbers">
+            @for (n of lineNumbers; track n) {
+              <span>{{ n }}</span>
+            }
+          </div>
+          <textarea class="code-area" [(ngModel)]="yaml" (ngModelChange)="updateLines()" placeholder="# Paste or generate YAML here..." spellcheck="false"></textarea>
+        </div>
+
+        <!-- Status Bar -->
+        <div class="editor-status">
+          <span>{{ lineCount }} lines</span>
+          <span>{{ yaml.length }} chars</span>
+          <span>YAML</span>
+          @if (copied) {
+            <span class="copied-badge"><i class="pi pi-check"></i> Copied</span>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- Result -->
+    @if (result) {
+      <div class="result-card" [class.result-ok]="resultSuccess" [class.result-err]="!resultSuccess">
+        <div class="result-header">
+          <i class="pi" [class.pi-check-circle]="resultSuccess" [class.pi-times-circle]="!resultSuccess"></i>
+          <span class="result-title">{{ resultSuccess ? (isDryRun ? 'Validation Passed' : 'Applied Successfully') : 'Failed' }}</span>
+          <button pButton icon="pi pi-times" class="p-button-sm p-button-text p-button-rounded" (click)="result = ''"></button>
+        </div>
+        <pre class="result-output">{{ result }}</pre>
+      </div>
+    }

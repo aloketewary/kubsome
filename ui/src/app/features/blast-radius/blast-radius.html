@@ -1,0 +1,85 @@
+    <app-spotlight id="blast-radius" title="Blast Radius" icon="pi pi-exclamation-circle"
+      description="Analyze impact before destructive operations — what breaks if you touch this?"
+      [capabilities]="['Service dependency mapping', 'PDB violation check', 'Risk scoring 1-10', 'Actionable recommendations']" [compact]="true" />
+
+    <app-page-header title="Blast Radius Analysis" subtitle="Understand impact before you act">
+    </app-page-header>
+
+    <!-- Input -->
+    <div class="input-section">
+      <input [(ngModel)]="target" placeholder="Deployment name" class="br-input" (keyup.enter)="analyze()" />
+      <select [(ngModel)]="action" class="br-select">
+        <option value="restart">Restart</option>
+        <option value="delete">Delete</option>
+        <option value="scale-down">Scale Down</option>
+      </select>
+      <button pButton icon="pi pi-search" label="Analyze" class="p-button-sm" (click)="analyze()" [loading]="loading" [disabled]="!target"></button>
+    </div>
+
+    @if (loading) {
+      <app-skeleton variant="card" />
+    }
+
+    @if (result?.error) {
+      <div class="error-state">
+        <i class="pi pi-exclamation-triangle"></i>
+        <span>{{ result.error }}</span>
+        <button pButton label="Retry" icon="pi pi-refresh" class="p-button-outlined p-button-sm" (click)="analyze()"></button>
+      </div>
+    }
+
+    @if (result && !result.error) {
+      <!-- Risk Score -->
+      <div class="risk-banner" [class]="'risk-' + result.risk_level">
+        <div class="risk-score">{{ result.risk_score }}/10</div>
+        <div class="risk-info">
+          <strong>{{ result.risk_level | uppercase }} RISK</strong>
+          <span>{{ result.affected_count }} resources affected · {{ result.pod_count }} pods</span>
+        </div>
+        <div class="risk-verdict">
+          @if (result.safe_to_proceed) {
+            <p-tag value="Safe to proceed" severity="success" [rounded]="true" />
+          } @else {
+            <p-tag value="Caution required" severity="danger" [rounded]="true" />
+          }
+        </div>
+      </div>
+
+      <!-- Warnings -->
+      @if (result.warnings?.length) {
+        <div class="warnings">
+          @for (w of result.warnings; track w) {
+            <div class="warning-item">{{ w }}</div>
+          }
+        </div>
+      }
+
+      <!-- Affected Resources -->
+      <div class="affected-section">
+        <h3>Affected Resources</h3>
+        @for (a of result.affected; track a.name) {
+          <div class="affected-row" [class]="'sev-' + a.severity">
+            <span class="aff-type">{{ a.type }}</span>
+            <strong class="aff-name">{{ a.name }}</strong>
+            <span class="aff-impact">{{ a.impact }}</span>
+            <p-tag [value]="a.severity" [severity]="sevTag(a.severity)" [rounded]="true" size="small" />
+          </div>
+        }
+      </div>
+
+      <!-- Recommendation -->
+      <div class="recommendation">
+        <i class="pi pi-lightbulb"></i>
+        <div>
+          <strong>Recommendation</strong>
+          <p>{{ result.recommendation }}</p>
+        </div>
+      </div>
+    }
+
+    @if (!result && !loading) {
+      <div class="empty-state">
+        <i class="pi pi-exclamation-circle"></i>
+        <p>Enter a deployment name and action to analyze blast radius.</p>
+      </div>
+    }

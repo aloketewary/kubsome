@@ -1,0 +1,16 @@
+@use '../../styles/futuristic';
+:host { display: block; width: 100%; }
+.title-icon { color: #f59e0b; }
+
+.add-form { display: flex; gap: 6px; }
+.add-form input { flex: 1; padding: 7px 10px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 6px; color: var(--text); font-size: 11px; outline: none; }
+.add-form input:focus { border-color: rgba(0,212,255,0.3); }
+.disabled { opacity: 0.3; pointer-events: none; }
+
+.pin-list { display: flex; flex-direction: column; gap: 4px; margin-top: 12px; }
+.pin-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; background: linear-gradient(180deg, rgba(13,17,28,0.7) 0%, rgba(8,11,20,0.75) 100%); border: 1px solid rgba(255,255,255,0.04); }
+.pin-body { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.pin-name { font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.8); }
+.pin-query { font-size: 10px; color: #00d4ff; }
+.pin-last { font-size: 9px; color: rgba(255,255,255,0.25); }
+.pin-result { font-size: 10px; font-family: 'JetBrains Mono', monospace; color: rgba(255,255,255,0.4); background: rgba(8,11,20,0.8); padding: 8px 12px; border-radius: 6px; margin: 4px 0 0 22px; white-space: pre-wrap; max-height: 80px; overflow-y: auto; }

@@ -1,0 +1,266 @@
+    <div class="page-header">
+      <div>
+        <div class="title-row">
+          @if (editingName) {
+            <input class="dash-name-input" [(ngModel)]="dashboardName" (keyup.enter)="editingName = false; saveDashboard()" (blur)="editingName = false; saveDashboard()" autofocus />
+          } @else {
+            <h1 (click)="editingName = true" (keydown.enter)="editingName = true" (keydown.space)="$event.preventDefault(); editingName = true" tabindex="0" role="button" aria-label="Rename dashboard">{{ dashboardName || 'My Dashboard' }}</h1>
+            <i class="pi pi-pencil edit-name-icon" (click)="editingName = true" (keydown.enter)="editingName = true" (keydown.space)="$event.preventDefault(); editingName = true" tabindex="0" role="button" aria-label="Rename" pTooltip="Rename"></i>
+          }
+        </div>
+        <p class="subtitle">{{ widgets.length }} widgets</p>
+      </div>
+      <div class="header-actions">
+        <button pButton icon="pi pi-plus" label="Add Widget" class="p-button-sm" (click)="catalogVisible = true"></button>
+        <button pButton icon="pi pi-save" label="Save" class="p-button-sm p-button-outlined" (click)="saveDashboard()" pTooltip="Save dashboard"></button>
+        <button pButton icon="pi pi-refresh" class="p-button-sm p-button-outlined p-button-rounded" (click)="refreshAll()" pTooltip="Refresh all"></button>
+        @if (widgets.length > 0) {
+          <button pButton icon="pi pi-trash" class="p-button-sm p-button-text p-button-danger" (click)="clearAll()" pTooltip="Clear all widgets"></button>
+        }
+      </div>
+    </div>
+
+    <!-- Saved Dashboards -->
+    @if (savedDashboards.length > 0) {
+      <div class="saved-bar">
+        @for (dash of savedDashboards; track dash.name) {
+          <button class="saved-chip" [class.active]="dash.name === dashboardName" (click)="loadDashboard(dash)">
+            <i class="pi pi-th-large"></i> {{ dash.name }}
+            <span class="chip-count">{{ dash.widgets.length }}</span>
+          </button>
+        }
+        <button class="saved-chip new-chip" (click)="newDashboard()">
+          <i class="pi pi-plus"></i> New
+        </button>
+      </div>
+    }
+
+    <!-- Empty State -->
+    @if (widgets.length === 0) {
+      <div class="empty-state">
+        <div class="empty-icon"><i class="pi pi-th-large"></i></div>
+        <h2>Build Your Dashboard</h2>
+        <p>Add widgets to create a personalized cluster overview.</p>
+        <button pButton icon="pi pi-plus" label="Add First Widget" class="p-button-sm" (click)="catalogVisible = true"></button>
+      </div>
+    }
+
+    <!-- Widget Grid -->
+    <div class="widget-grid">
+      @for (widget of widgets; track widget.id; let i = $index) {
+        <div class="widget-card" [class]="'widget-' + widget.size" [class.dragging]="dragIndex === i" [class.drag-over]="dropIndex === i"
+             draggable="true" (dragstart)="onDragStart(i)" (dragover)="onDragOver($event, i)" (dragend)="onDragEnd()" (drop)="onDrop(i)">
+          <div class="widget-header">
+            <i class="pi pi-bars drag-handle"></i>
+            <span class="widget-title">{{ widget.title }}</span>
+            <select class="widget-interval" [(ngModel)]="widget.refreshInterval" (ngModelChange)="saveWidgets()" pTooltip="Refresh interval">
+              <option [ngValue]="10">10s</option>
+              <option [ngValue]="30">30s</option>
+              <option [ngValue]="60">1m</option>
+              <option [ngValue]="300">5m</option>
+            </select>
+            <div class="widget-actions">
+              <i class="pi pi-refresh" pTooltip="Refresh" (click)="refreshWidget(widget); $event.stopPropagation()" (keydown.enter)="refreshWidget(widget); $event.stopPropagation()" (keydown.space)="$event.preventDefault(); refreshWidget(widget); $event.stopPropagation()" tabindex="0" role="button" aria-label="Refresh widget"></i>
+              <i class="pi pi-times" pTooltip="Remove" (click)="removeWidget(widget.id); $event.stopPropagation()" (keydown.enter)="removeWidget(widget.id); $event.stopPropagation()" (keydown.space)="$event.preventDefault(); removeWidget(widget.id); $event.stopPropagation()" tabindex="0" role="button" aria-label="Remove widget"></i>
+            </div>
+          </div>
+          <div class="widget-body">
+            @if (widget.loading) {
+              <div class="widget-loading"><div class="spin"></div></div>
+            } @else {
+              @switch (widget.type) {
+                @case ('pod_count') { @if (widget.data) {
+                  <div class="metric-widget">
+                    <span class="metric-value">{{ widget.data.healthy }}</span>
+                    <span class="metric-total">/ {{ widget.data.total }}</span>
+                    <span class="metric-label">healthy pods</span>
+                    <div class="metric-bar"><div class="mbar-fill" [style.width.%]="widget.data.total ? (widget.data.healthy / widget.data.total * 100) : 0"></div></div>
+                  </div>
+                }}
+                @case ('node_count') { @if (widget.data) {
+                  <div class="metric-widget">
+                    <span class="metric-value">{{ widget.data.healthy }}</span>
+                    <span class="metric-total">/ {{ widget.data.total }}</span>
+                    <span class="metric-label">nodes ready</span>
+                    <div class="metric-bar bar-green"><div class="mbar-fill" [style.width.%]="widget.data.total ? (widget.data.healthy / widget.data.total * 100) : 0"></div></div>
+                  </div>
+                }}
+                @case ('deployment_health') { @if (widget.data) {
+                  <div class="metric-widget">
+                    <span class="metric-value">{{ widget.data.healthy }}</span>
+                    <span class="metric-total">/ {{ widget.data.total }}</span>
+                    <span class="metric-label">deployments available</span>
+                    @if (widget.data.unavailable > 0) {
+                      <span class="metric-alert">{{ widget.data.unavailable }} degraded</span>
+                    }
+                  </div>
+                }}
+                @case ('health_score') { @if (widget.data) {
+                  <div class="score-widget">
+                    <div class="score-ring">
+                      <svg viewBox="0 0 36 36">
+                        <path class="ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                        <path class="ring-fill" [attr.stroke-dasharray]="widget.data.pct + ', 100'" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                      </svg>
+                      <span class="score-val">{{ widget.data.pct }}%</span>
+                    </div>
+                  </div>
+                }}
+                @case ('recent_events') { @if (widget.data) {
+                  <div class="events-widget">
+                    @for (ev of widget.data.slice(0, 5); track $index) {
+                      <div class="ev-row">
+                        <span class="ev-dot" [class.ev-warn]="ev.type === 'Warning'"></span>
+                        <span class="ev-reason">{{ ev.reason }}</span>
+                        <span class="ev-obj">{{ ev.object }}</span>
+                      </div>
+                    }
+                    @if (widget.data.length === 0) { <span class="widget-empty">No events</span> }
+                  </div>
+                }}
+                @case ('top_pods_cpu') { @if (widget.data) {
+                  <div class="top-widget">
+                    @for (pod of widget.data.slice(0, 5); track pod.name) {
+                      <div class="top-row">
+                        <span class="top-name">{{ shortName(pod.name) }}</span>
+                        <span class="top-val">{{ pod.cpu }}</span>
+                      </div>
+                    }
+                    @if (widget.data.length === 0) { <span class="widget-empty">No metrics</span> }
+                  </div>
+                }}
+                @case ('cost_summary') { @if (widget.data) {
+                  <div class="metric-widget">
+                    <span class="metric-value cost-val">\${{ widget.data.total }}</span>
+                    <span class="metric-label">estimated / month</span>
+                    <span class="metric-sub">{{ widget.data.count }} deployments</span>
+                  </div>
+                }}
+                @case ('anomalies') { @if (widget.data) {
+                  <div class="events-widget">
+                    @for (a of widget.data.slice(0, 5); track $index) {
+                      <div class="ev-row">
+                        <span class="ev-dot ev-warn"></span>
+                        <span class="ev-reason">{{ a.message || a.title }}</span>
+                      </div>
+                    }
+                    @if (widget.data.length === 0) { <span class="widget-empty">No anomalies ✓</span> }
+                  </div>
+                }}
+                @case ('namespace_pods') { @if (widget.data) {
+                  <div class="metric-widget">
+                    <span class="metric-value">{{ widget.data.total }}</span>
+                    <span class="metric-label">pods in namespace</span>
+                    <div class="ns-pills">
+                      <span class="ns-pill ns-ok">{{ widget.data.running }} running</span>
+                      @if (widget.data.other > 0) { <span class="ns-pill ns-bad">{{ widget.data.other }} other</span> }
+                    </div>
+                  </div>
+                }}
+                @case ('uptime') { @if (widget.data) {
+                  <div class="metric-widget">
+                    <span class="metric-value" [class.val-ok]="!widget.data.cluster_down" [class.val-bad]="widget.data.cluster_down">
+                      {{ widget.data.cluster_down ? 'DOWN' : 'UP' }}
+                    </span>
+                    <span class="metric-label">{{ widget.data.day || '' }}</span>
+                  </div>
+                }}
+                @case ('top_pods_memory') { @if (widget.data) {
+                  <div class="top-widget">
+                    @for (pod of widget.data.slice(0, 5); track pod.name) {
+                      <div class="top-row">
+                        <span class="top-name">{{ shortName(pod.name) }}</span>
+                        <span class="top-val">{{ pod.memory }}</span>
+                      </div>
+                    }
+                    @if (widget.data.length === 0) { <span class="widget-empty">No metrics</span> }
+                  </div>
+                }}
+                @case ('warning_events') { @if (widget.data) {
+                  <div class="events-widget">
+                    @for (ev of widget.data.slice(0, 5); track $index) {
+                      <div class="ev-row">
+                        <span class="ev-dot ev-warn"></span>
+                        <span class="ev-reason">{{ ev.reason }}</span>
+                        <span class="ev-obj">{{ ev.object }}</span>
+                      </div>
+                    }
+                    @if (widget.data.length === 0) { <span class="widget-empty">No warnings ✓</span> }
+                  </div>
+                }}
+                @case ('restart_pods') { @if (widget.data) {
+                  <div class="top-widget">
+                    @for (pod of widget.data.slice(0, 5); track pod.name) {
+                      <div class="top-row">
+                        <span class="top-name">{{ shortName(pod.name) }}</span>
+                        <span class="top-val restart-val">↻ {{ pod.restarts }}</span>
+                      </div>
+                    }
+                    @if (widget.data.length === 0) { <span class="widget-empty">No restarts ✓</span> }
+                  </div>
+                }}
+                @case ('ingress_count') { @if (widget.data) {
+                  <div class="metric-widget">
+                    <span class="metric-value">{{ widget.data.count }}</span>
+                    <span class="metric-label">ingress routes</span>
+                  </div>
+                }}
+                @case ('cronjob_count') { @if (widget.data) {
+                  <div class="metric-widget">
+                    <span class="metric-value">{{ widget.data.count }}</span>
+                    <span class="metric-label">cronjobs</span>
+                  </div>
+                }}
+                @case ('security_issues') { @if (widget.data) {
+                  <div class="metric-widget">
+                    <span class="metric-value" [class.val-ok]="widget.data.count === 0" [class.val-bad]="widget.data.count > 0">{{ widget.data.count }}</span>
+                    <span class="metric-label">findings</span>
+                  </div>
+                }}
+                @case ('context_info') { @if (widget.data) {
+                  <div class="metric-widget">
+                    <span class="metric-label">Context</span>
+                    <code class="ctx-val">{{ widget.data.context }}</code>
+                    <span class="metric-label">Namespace</span>
+                    <code class="ctx-val">{{ widget.data.namespace }}</code>
+                  </div>
+                }}
+                @case ('endpoint_health') { @if (widget.data) {
+                  <div class="metric-widget">
+                    <span class="metric-value">{{ widget.data.healthy }}</span>
+                    <span class="metric-total">/ {{ widget.data.total }}</span>
+                    <span class="metric-label">endpoints healthy</span>
+                    @if (widget.data.unhealthy > 0) {
+                      <span class="metric-alert">{{ widget.data.unhealthy }} degraded</span>
+                    }
+                  </div>
+                }}
+                @default {
+                  <span class="widget-empty">Unknown widget</span>
+                }
+              }
+            }
+          </div>
+        </div>
+      }
+    </div>
+
+    <!-- Widget Catalog Dialog -->
+    <p-dialog [(visible)]="catalogVisible" header="Add Widget" [modal]="true" [style]="{ width: '520px' }" [appendTo]="'body'">
+      <div class="catalog-grid">
+        @for (item of catalog; track item.type) {
+          <div class="catalog-card" (click)="addWidget(item)" [class.catalog-added]="hasWidget(item.type)">
+            <div class="cat-icon" [style.background]="item.color + '15'" [style.color]="item.color">
+              <i [class]="item.icon"></i>
+            </div>
+            <div class="cat-info">
+              <span class="cat-name">{{ item.title }}</span>
+              <span class="cat-desc">{{ item.desc }}</span>
+            </div>
+            @if (hasWidget(item.type)) {
+              <i class="pi pi-check cat-check"></i>
+            }
+          </div>
+        }
+      </div>
+    </p-dialog>

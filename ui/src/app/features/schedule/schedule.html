@@ -1,0 +1,42 @@
+<div class="intel-header">
+  <div class="intel-title-block">
+    <h1 class="intel-title"><span class="title-icon">⏰</span> Schedules</h1>
+    <p class="intel-subtitle">{{ schedules.length }} recurring workflows</p>
+  </div>
+  <div class="intel-controls">
+    <button class="ctrl-btn ctrl-btn-wide" (click)="showForm = !showForm"><i class="pi pi-plus"></i> Add</button>
+  </div>
+</div>
+
+<div class="metrics-strip">
+  <app-metric-tile label="Active" [value]="'' + schedules.length" accent="cyan" />
+</div>
+
+@if (showForm) {
+  <app-holo-card title="New Schedule" icon="pi pi-plus" glow="cyan" [compact]="true">
+    <div class="form-grid">
+      <input [(ngModel)]="newName" placeholder="Name" />
+      <input [(ngModel)]="newCron" placeholder="Cron (e.g. 0 8 * * *)" />
+      <input [(ngModel)]="newCommands" placeholder="Commands (comma-separated)" />
+    </div>
+    <div class="presets">
+      @for (p of presets; track p.cron) { <button class="preset-btn" (click)="newCron = p.cron">{{ p.label }}</button> }
+    </div>
+    <button class="ctrl-btn ctrl-btn-wide" style="margin-top: 8px;" (click)="addSchedule()" [class.disabled]="!newName || !newCron || !newCommands">Create</button>
+  </app-holo-card>
+}
+
+<div class="sched-list">
+  @for (s of schedules; track s.name) {
+    <div class="sched-row">
+      <div class="sched-body">
+        <span class="sched-name">{{ s.name }}</span>
+        <code class="sched-cron">{{ s.cron }}</code>
+        <span class="sched-cmds">{{ s.commands?.join(', ') }}</span>
+      </div>
+      <p-tag [value]="s.enabled !== false ? 'Active' : 'Paused'" [severity]="s.enabled !== false ? 'success' : 'warn'" [rounded]="true" />
+      <app-action-icon icon="pi pi-trash" tooltip="Remove" accent="red" (clicked)="removeSchedule(s.name)" />
+    </div>
+  }
+  @if (schedules.length === 0) { <div class="empty-state"><div class="empty-icon"><i class="pi pi-clock"></i></div><span>No schedules configured</span></div> }
+</div>

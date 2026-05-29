@@ -1,0 +1,52 @@
+<div class="intel-header">
+  <div class="intel-title-block">
+    <h1 class="intel-title"><span class="title-icon">⇄</span> Multi-Cluster Compare</h1>
+    <p class="intel-subtitle">drift detection between environments</p>
+  </div>
+</div>
+
+<app-holo-card title="Select Environments" icon="pi pi-sliders-h" glow="cyan" [compact]="true">
+  <div class="compare-form">
+    <div class="side">
+      <span class="side-label">Environment A</span>
+      <p-select [options]="contexts" [(ngModel)]="ctxA" placeholder="Cluster..." [filter]="true" [style]="{ width: '100%' }" (ngModelChange)="loadNamespaces('a')" />
+      @if (nsA.length > 0) { <p-select [options]="nsA" [(ngModel)]="selectedNsA" placeholder="Namespace..." [filter]="true" [style]="{ width: '100%' }" /> }
+    </div>
+    <div class="vs">VS</div>
+    <div class="side">
+      <span class="side-label">Environment B</span>
+      <p-select [options]="contexts" [(ngModel)]="ctxB" placeholder="Cluster..." [filter]="true" [style]="{ width: '100%' }" (ngModelChange)="loadNamespaces('b')" />
+      @if (nsB.length > 0) { <p-select [options]="nsB" [(ngModel)]="selectedNsB" placeholder="Namespace..." [filter]="true" [style]="{ width: '100%' }" /> }
+    </div>
+  </div>
+  <button class="ctrl-btn ctrl-btn-wide" style="margin-top: 10px; width: 100%;" (click)="compare()" [class.disabled]="!ctxA || !ctxB || !selectedNsA || !selectedNsB || loading">
+    {{ loading ? 'Comparing...' : 'Compare' }}
+  </button>
+</app-holo-card>
+
+@if (error) { <div class="error-msg">{{ error }}</div> }
+
+@if (result) {
+  <div class="metrics-strip">
+    <app-metric-tile label="Only in A" [value]="'' + (result.only_in_a?.length || 0)" accent="amber" />
+    <app-metric-tile label="Only in B" [value]="'' + (result.only_in_b?.length || 0)" accent="purple" />
+    <app-metric-tile label="Diffs" [value]="'' + (result.diffs?.length || 0)" accent="red" />
+    <app-metric-tile label="Same" [value]="'' + (result.same?.length || 0)" accent="green" />
+  </div>
+
+  @if (result.only_in_a?.length > 0) {
+    <app-holo-card title="Only in A" glow="amber" [compact]="true">
+      @for (r of result.only_in_a; track $index) { <div class="diff-row"><app-status-beacon status="warning" size="sm" /><code>{{ r }}</code></div> }
+    </app-holo-card>
+  }
+  @if (result.only_in_b?.length > 0) {
+    <app-holo-card title="Only in B" glow="purple" [compact]="true">
+      @for (r of result.only_in_b; track $index) { <div class="diff-row"><app-status-beacon status="info" size="sm" /><code>{{ r }}</code></div> }
+    </app-holo-card>
+  }
+  @if (result.diffs?.length > 0) {
+    <app-holo-card title="Differences" glow="red" [compact]="true">
+      @for (d of result.diffs; track $index) { <div class="diff-row"><app-status-beacon status="critical" size="sm" /><code>{{ d.resource }}</code><span class="diff-detail">{{ d.detail }}</span></div> }
+    </app-holo-card>
+  }
+}

@@ -1,0 +1,115 @@
+    <app-spotlight id="cost-estimate" title="Cost Estimation" icon="pi pi-dollar"
+      description="Estimated monthly spend per deployment based on resource requests."
+      [capabilities]="['Per-deployment cost', 'CPU/memory pricing', 'Right-sizing tips']" [compact]="true" />
+
+    <app-page-header title="Cost Estimation" [subtitle]="'Estimated monthly spend based on resource requests · ' + lastUpdated">
+        <div class="search-wrap">
+          <i class="pi pi-search"></i>
+          <input pInputText [(ngModel)]="searchQuery" placeholder="Filter deployments..." (ngModelChange)="applyFilter()" />
+        </div>
+        <button pButton icon="pi pi-download" label="Export" class="p-button-outlined p-button-sm" (click)="exportCsv()" [disabled]="!data?.deployments?.length" pTooltip="Export CSV"></button>
+        <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="refresh()" [loading]="loading"></button>
+        <app-page-info title="Cost Estimation" description="Estimated monthly spend per deployment based on CPU and memory resource requests."
+          [tips]="['Based on AWS on-demand pricing (~$30/vCPU, ~$4/GB)', 'Sorted by highest cost first', 'Reduce cost by right-sizing: optimize command']"
+          [commands]="['cost-estimate', 'optimize', 'top pods']" />
+    </app-page-header>
+
+    @if (data) {
+      <!-- Cost Trend Chart (auto-hides if no DuckDB data) -->
+      <app-trend-chart
+        endpoint="/api/analytics/series/cost?days=30"
+        title="Monthly Cost Trend"
+        chartType="bar"
+        height="150px"
+        labelField="day"
+        [labelSlice]="[5, 10]"
+        [datasets]="[{label: 'Daily Cost ($)', field: 'cost', color: '#22c55e', fill: false}]" />
+
+      <!-- Total Banner -->
+      <div class="total-banner">
+        <div class="total-amount">\${{ data.total.toFixed(2) }}</div>
+        <div class="total-label">estimated / month</div>
+        <div class="total-note">{{ filteredDeployments.length }} deployments · {{ data.pricing.note }}</div>
+      </div>
+
+      <!-- Cost Trend -->
+      @if (trend) {
+        <div class="trend-card">
+          <div class="trend-row">
+            <div class="trend-item">
+              <span class="trend-label">Current</span>
+              <span class="trend-val">\${{ trend.current_monthly.toFixed(0) }}/mo</span>
+            </div>
+            <div class="trend-arrow">
+              <i class="pi" [class.pi-arrow-up]="trend.trend === 'growing'" [class.pi-arrow-right]="trend.trend === 'stable'" [class.pi-arrow-down]="trend.trend === 'shrinking'"
+                [class.trend-up]="trend.trend === 'growing'" [class.trend-stable]="trend.trend === 'stable'" [class.trend-down]="trend.trend === 'shrinking'"></i>
+            </div>
+            <div class="trend-item">
+              <span class="trend-label">Projected</span>
+              <span class="trend-val">\${{ trend.projected_monthly.toFixed(0) }}/mo</span>
+            </div>
+            <div class="trend-item trend-savings">
+              <span class="trend-label">Savings Possible</span>
+              <span class="trend-val savings-green">\${{ trend.savings_opportunity.toFixed(0) }}/mo</span>
+            </div>
+          </div>
+          <div class="trend-note">{{ trend.note }}</div>
+        </div>
+      }
+
+      <!-- Cost Bar Chart -->
+      @if (filteredDeployments.length > 0) {
+        <div class="cost-chart-card">
+          <div class="cost-chart-header">
+            <span class="cost-chart-title">Cost Distribution</span>
+            <span class="cost-chart-badge">Top {{ Math.min(filteredDeployments.length, 10) }}</span>
+          </div>
+          <div class="cost-bars">
+            @for (dep of filteredDeployments.slice(0, 10); track dep.name) {
+              <div class="cost-bar-row">
+                <span class="cb-name" [pTooltip]="dep.name">{{ shortName(dep.name) }}</span>
+                <div class="cb-track">
+                  <div class="cb-fill" [style.width.%]="costPct(dep.cost_total)" [class.cb-high]="dep.cost_total > data.total * 0.3" [class.cb-med]="dep.cost_total > data.total * 0.15 && dep.cost_total <= data.total * 0.3"></div>
+                </div>
+                <span class="cb-value">\${{ dep.cost_total.toFixed(0) }}</span>
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- Table -->
+      <div class="cost-table">
+        <div class="table-header">
+          <span class="col-name">Deployment</span>
+          <span class="col-rep">Replicas</span>
+          <span class="col-cpu">CPU</span>
+          <span class="col-mem">Memory</span>
+          <span class="col-cost">$/pod</span>
+          <span class="col-total">$/month</span>
+        </div>
+        @for (dep of filteredDeployments; track dep.name) {
+          <div class="table-row">
+            <span class="col-name mono">{{ dep.name }}</span>
+            <span class="col-rep">{{ dep.replicas }}</span>
+            <span class="col-cpu">{{ dep.cpu_request }}</span>
+            <span class="col-mem">{{ dep.memory_request }}</span>
+            <span class="col-cost">\${{ dep.cost_per_pod.toFixed(2) }}</span>
+            <span class="col-total bold">\${{ dep.cost_total.toFixed(2) }}</span>
+          </div>
+        }
+        @if (filteredDeployments.length === 0) {
+          <div class="empty">{{ searchQuery ? 'No deployments matching "' + searchQuery + '"' : 'No deployments with resource requests' }}</div>
+        }
+      </div>
+    } @else if (loading) {
+      <app-skeleton variant="stats" />
+      <app-skeleton variant="table" [count]="6" />
+    } @else {
+      <div class="empty-state">
+        <i class="pi pi-dollar"></i>
+        <h3>No Cost Data</h3>
+        <p>Unable to calculate costs. Check cluster connectivity.</p>
+        <button pButton label="Retry" icon="pi pi-refresh" class="p-button-outlined p-button-sm" (click)="refresh()"></button>
+      </div>
+    }

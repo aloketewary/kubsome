@@ -1,0 +1,43 @@
+<div class="intel-header">
+  <div class="intel-title-block">
+    <h1 class="intel-title"><span class="title-icon">📊</span> Usage Analytics</h1>
+    <p class="intel-subtitle">command frequency · coverage · time saved</p>
+  </div>
+</div>
+
+@if (stats) {
+  <div class="metrics-strip">
+    <app-metric-tile label="Commands" [value]="'' + stats.total_commands" accent="cyan" />
+    <app-metric-tile label="Coverage" [value]="coveragePct + '%'" accent="green" />
+    <app-metric-tile label="Unresolved" [value]="'' + stats.unresolved_count" [accent]="stats.unresolved_count > 0 ? 'amber' : 'green'" />
+    <app-metric-tile label="Time Saved" [value]="timeSavedHuman" accent="purple" />
+    <app-metric-tile label="Auto-fixes" [value]="'' + stats.auto_remediations" accent="green" />
+    <app-metric-tile label="Days" [value]="'' + stats.days_tracked" accent="default" />
+  </div>
+
+  <div class="stats-grid">
+    <app-holo-card title="Top Commands" icon="pi pi-bolt" glow="cyan" [compact]="true">
+      @for (cmd of stats.top_commands; track cmd[0]) {
+        <div class="freq-row">
+          <span class="freq-label">{{ cmd[0] }}</span>
+          <div class="freq-bar-wrap"><div class="freq-bar" [style.width.%]="(cmd[1] / maxCmdCount) * 100"></div></div>
+          <span class="freq-val">{{ cmd[1] }}</span>
+        </div>
+      }
+      @if (stats.top_commands.length === 0) { <span class="empty-hint">No commands recorded</span> }
+    </app-holo-card>
+
+    <app-holo-card title="Unresolved Queries" icon="pi pi-question-circle" glow="amber" [compact]="true">
+      @for (un of stats.top_unresolved; track un[0]) {
+        <div class="freq-row">
+          <span class="freq-label freq-miss">"{{ un[0] }}"</span>
+          <div class="freq-bar-wrap"><div class="freq-bar bar-miss" [style.width.%]="(un[1] / maxUnresolvedCount) * 100"></div></div>
+          <span class="freq-val">{{ un[1] }}</span>
+        </div>
+      }
+      @if (stats.top_unresolved.length === 0) { <span class="empty-hint">All queries resolved!</span> }
+    </app-holo-card>
+  </div>
+} @else {
+  <div class="loading-state"><div class="loader-ring"></div><span>Loading stats...</span></div>
+}

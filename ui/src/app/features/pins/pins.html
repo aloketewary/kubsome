@@ -1,0 +1,39 @@
+<div class="intel-header">
+  <div class="intel-title-block">
+    <h1 class="intel-title"><span class="title-icon">📌</span> Saved Queries</h1>
+    <p class="intel-subtitle">{{ pins.length }} pinned queries</p>
+  </div>
+</div>
+
+<div class="metrics-strip">
+  <app-metric-tile label="Pins" [value]="'' + pins.length" accent="cyan" />
+</div>
+
+<!-- Add Form -->
+<app-holo-card title="Add Pin" icon="pi pi-plus" [compact]="true">
+  <div class="add-form">
+    <input [(ngModel)]="newName" placeholder="Name" />
+    <input [(ngModel)]="newQuery" placeholder="Query (e.g. scorecard)" />
+    <button class="ctrl-btn ctrl-btn-wide" (click)="addPin()" [class.disabled]="!newName || !newQuery">Add</button>
+  </div>
+</app-holo-card>
+
+<!-- Pins List -->
+@if (pins.length > 0) {
+  <div class="pin-list">
+    @for (pin of pins; track pin.name) {
+      <div class="pin-row">
+        <div class="pin-body">
+          <span class="pin-name">{{ pin.name }}</span>
+          <code class="pin-query">{{ pin.query }}</code>
+          @if (pin.last_run) { <span class="pin-last">Last: {{ formatTime(pin.last_run) }}</span> }
+        </div>
+        <app-action-icon icon="pi pi-play" tooltip="Run" accent="green" (clicked)="runPin(pin)" />
+        <app-action-icon icon="pi pi-trash" tooltip="Remove" accent="red" (clicked)="removePin(pin.name)" />
+      </div>
+      @if (pin.last_result) { <pre class="pin-result">{{ pin.last_result }}</pre> }
+    }
+  </div>
+} @else {
+  <div class="empty-state"><div class="empty-icon"><i class="pi pi-bookmark"></i></div><span>No saved queries yet</span></div>
+}

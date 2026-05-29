@@ -1,0 +1,39 @@
+    <app-spotlight id="yaml-diff" title="YAML Diff" icon="pi pi-file-edit"
+      description="Compare YAML revisions side-by-side."
+      [capabilities]="['Side-by-side diff', 'Revision history', 'Change highlighting']" [compact]="true" />
+
+    <app-page-header title="YAML Diff" subtitle="Side-by-side revision comparison">
+    </app-page-header>
+
+    <div class="controls">
+      <p-select [options]="deployments" [(ngModel)]="selected" placeholder="Select deployment..."
+                [filter]="true" [style]="{ width: '280px' }" />
+      <button pButton label="Compare" icon="pi pi-arrows-h" class="p-button-sm" (click)="compare()" [disabled]="!selected"></button>
+    </div>
+
+    @if (loading) {
+      <div class="loading"><div class="spin"></div> Comparing revisions...</div>
+    }
+
+    @if (data && data.available) {
+      <div class="diff-summary">
+        <span class="diff-add">+{{ data.additions }}</span>
+        <span class="diff-del">-{{ data.deletions }}</span>
+        <span class="diff-total">{{ data.total_changes }} changes</span>
+      </div>
+
+      <div class="diff-container">
+        @for (line of data.side_by_side; track $index) {
+          <div class="diff-row" [class]="'row-' + line.type">
+            <span class="line-num">{{ line.line_a || '' }}</span>
+            <span class="line-left">{{ line.left }}</span>
+            <span class="line-num">{{ line.line_b || '' }}</span>
+            <span class="line-right">{{ line.right }}</span>
+          </div>
+        }
+      </div>
+    } @else if (data && !data.available) {
+      <div class="empty"><i class="pi pi-info-circle"></i> {{ data.reason }}</div>
+    } @else if (!loading && !data) {
+      <div class="empty"><i class="pi pi-file-edit"></i> Select a deployment to compare revisions</div>
+    }

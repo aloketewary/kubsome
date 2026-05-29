@@ -1,0 +1,42 @@
+<div class="intel-header">
+  <div class="intel-title-block">
+    <h1 class="intel-title"><span class="title-icon">🔄</span> GitOps</h1>
+    <p class="intel-subtitle">{{ data?.provider || 'detecting...' }} · {{ data?.apps?.length || 0 }} apps · {{ lastUpdated || '...' }}</p>
+  </div>
+  <div class="intel-controls">
+    <button class="ctrl-btn" (click)="refresh()"><i class="pi pi-refresh" [class.spinning]="loading"></i></button>
+  </div>
+</div>
+
+@if (data) {
+  <div class="metrics-strip">
+    <app-metric-tile label="Provider" [value]="data.provider || 'None'" accent="cyan" />
+    <app-metric-tile label="Apps" [value]="'' + (data.apps?.length || 0)" accent="purple" />
+  </div>
+
+  @if (data.apps?.length > 0) {
+    <div class="app-list">
+      @for (app of data.apps; track app.name) {
+        <div class="app-row" (click)="selectApp(app.name)">
+          <app-status-beacon [status]="syncBeacon(app.sync_status || app.health)" size="md" />
+          <div class="app-body">
+            <span class="app-name">{{ app.name }}</span>
+            <span class="app-repo">{{ app.repo || '' }}</span>
+          </div>
+          <p-tag [value]="app.sync_status || 'Unknown'" [severity]="syncSev(app.sync_status)" [rounded]="true" />
+          <span class="app-time">{{ formatTime(app.last_synced) }}</span>
+        </div>
+      }
+    </div>
+  } @else {
+    <div class="empty-state"><div class="empty-icon"><i class="pi pi-git-commit"></i></div><span>No GitOps apps detected</span></div>
+  }
+
+  @if (detail) {
+    <app-holo-card [title]="detail.name" glow="cyan" [compact]="true">
+      <pre class="detail-pre">{{ detail | json }}</pre>
+    </app-holo-card>
+  }
+} @else {
+  <div class="loading-state"><div class="loader-ring"></div><span>Detecting GitOps provider...</span></div>
+}

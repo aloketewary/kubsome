@@ -1,0 +1,23 @@
+@use '../../styles/futuristic';
+:host { display: block; width: 100%; }
+.title-icon { color: #10b981; }
+
+.ing-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.025); font-size: 11px; }
+.ing-row:last-child { border-bottom: none; }
+.ing-name { color: rgba(255,255,255,0.7); font-weight: 600; }
+.ing-host { color: #00d4ff; }
+.ing-path { color: rgba(255,255,255,0.35); }
+.ing-backend { color: rgba(255,255,255,0.4); margin-left: auto; }
+
+.dns-bar { display: flex; gap: 6px; margin-bottom: 8px; }
+.dns-bar input { flex: 1; padding: 7px 10px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 6px; color: var(--text); font-size: 11px; font-family: 'JetBrains Mono', monospace; outline: none; }
+.dns-bar input:focus { border-color: rgba(0,212,255,0.3); }
+.dns-result { font-size: 10px; font-family: 'JetBrains Mono', monospace; color: rgba(255,255,255,0.5); background: rgba(8,11,20,0.8); padding: 8px; border-radius: 6px; white-space: pre-wrap; max-height: 120px; overflow-y: auto; margin: 0; }
+
+.ep-list { display: flex; flex-direction: column; gap: 3px; }
+.ep-row { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 8px; background: linear-gradient(180deg, rgba(13,17,28,0.7) 0%, rgba(8,11,20,0.75) 100%); border: 1px solid rgba(255,255,255,0.04); transition: all 0.15s; }
+.ep-row:hover { border-color: rgba(255,255,255,0.07); }
+.ep-unhealthy { border-left: 2px solid rgba(244,63,94,0.4); }
+.ep-name { font-size: 11px; color: rgba(255,255,255,0.7); }
+.ep-type { font-size: 9px; color: rgba(255,255,255,0.3); padding: 1px 5px; background: rgba(255,255,255,0.03); border-radius: 3px; }
+.ep-ports { font-size: 9px; color: rgba(255,255,255,0.25); font-family: 'JetBrains Mono', monospace; margin-left: auto; }

@@ -1,0 +1,187 @@
+    <app-spotlight id="mesh" title="Service Mesh" icon="pi pi-share-alt"
+      description="Istio/Linkerd visibility — traffic routing, mTLS, circuit breakers."
+      [capabilities]="['mTLS status', 'VirtualService routing', 'Circuit breakers', 'Sidecar injection']" [compact]="true" />
+
+    <app-page-header title="Service Mesh" [subtitle]="data?.mesh ? (data.mesh | titlecase) + ' mesh · ' + lastUpdated : 'Detecting mesh...'">
+        <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="refresh()" [loading]="loading"></button>
+        <app-page-info title="Service Mesh" description="Deep visibility into Istio or Linkerd service mesh — mTLS enforcement, traffic routing, circuit breakers, and sidecar injection."
+          [tips]="['Green lock = mTLS STRICT', 'Yellow = PERMISSIVE (accepts plaintext)', 'Check injection coverage for gaps']"
+          [commands]="['mesh-detail', 'vs', 'dr', 'mtls', 'mesh']" />
+    </app-page-header>
+
+    @if (data && !data.mesh) {
+      <div class="empty-state">
+        <i class="pi pi-share-alt"></i>
+        <h3>No Service Mesh Detected</h3>
+        <p>Istio or Linkerd namespace not found in this cluster.</p>
+      </div>
+    }
+
+    @if (data?.mesh) {
+      <!-- Overview Cards -->
+      <div class="mesh-overview">
+        <div class="ov-card">
+          <div class="ov-icon"><i class="pi pi-share-alt"></i></div>
+          <div class="ov-info">
+            <span class="ov-value">{{ data.mesh | titlecase }}</span>
+            <span class="ov-label">Mesh Provider</span>
+          </div>
+        </div>
+        <div class="ov-card" [class.ov-ok]="data.mtls?.strict" [class.ov-warn]="!data.mtls?.strict">
+          <div class="ov-icon"><i class="pi" [class.pi-lock]="data.mtls?.strict" [class.pi-lock-open]="!data.mtls?.strict"></i></div>
+          <div class="ov-info">
+            <span class="ov-value">{{ data.mtls?.effective_mode || 'Unknown' }}</span>
+            <span class="ov-label">mTLS Mode</span>
+          </div>
+        </div>
+        <div class="ov-card" [class.ov-ok]="data.injection?.coverage_pct > 90" [class.ov-warn]="data.injection?.coverage_pct <= 90">
+          <div class="ov-icon"><i class="pi pi-box"></i></div>
+          <div class="ov-info">
+            <span class="ov-value">{{ data.injection?.coverage_pct }}%</span>
+            <span class="ov-label">Sidecar Coverage ({{ data.injection?.injected }}/{{ data.injection?.total }})</span>
+          </div>
+        </div>
+        <div class="ov-card">
+          <div class="ov-icon"><i class="pi pi-directions"></i></div>
+          <div class="ov-info">
+            <span class="ov-value">{{ data.virtual_services?.length || 0 }} VS / {{ data.destination_rules?.length || 0 }} DR</span>
+            <span class="ov-label">Traffic Rules</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <p-tabs [value]="activeTab" (valueChange)="activeTab = '' + $event">
+        <p-tablist>
+          <p-tab value="0">mTLS</p-tab>
+          <p-tab value="1">VirtualServices</p-tab>
+          <p-tab value="2">DestinationRules</p-tab>
+          <p-tab value="3">Injection</p-tab>
+        </p-tablist>
+
+        <p-tabpanels>
+          <!-- mTLS Tab -->
+          <p-tabpanel value="0">
+            <div class="mtls-section">
+              <div class="mtls-status" [class.strict]="data.mtls?.strict">
+                <i class="pi" [class.pi-lock]="data.mtls?.strict" [class.pi-lock-open]="!data.mtls?.strict"></i>
+                <div>
+                  <strong>{{ data.mtls?.effective_mode }}</strong>
+                  <p>{{ data.mtls?.strict ? 'All pod-to-pod traffic is encrypted' : 'Accepts both plaintext and mTLS connections' }}</p>
+                </div>
+              </div>
+              @if (data.mtls?.all_policies?.length) {
+                <h4>PeerAuthentication Policies</h4>
+                @for (p of data.mtls.all_policies; track p.name) {
+                  <div class="policy-row">
+                    <span class="policy-name">{{ p.name }}</span>
+                    <span class="policy-ns">{{ p.namespace }}</span>
+                    <p-tag [value]="p.mode" [severity]="p.mode === 'STRICT' ? 'success' : 'warn'" [rounded]="true" size="small" />
+                    <span class="policy-scope">{{ p.scope }}</span>
+                  </div>
+                }
+              }
+            </div>
+          </p-tabpanel>
+
+          <!-- VirtualServices Tab -->
+          <p-tabpanel value="1">
+            @if (!data.virtual_services?.length) {
+              <p class="empty-tab">No VirtualServices in this namespace</p>
+            }
+            @for (vs of data.virtual_services; track vs.name) {
+              <div class="vs-card">
+                <div class="vs-header">
+                  <strong>{{ vs.name }}</strong>
+                  <span class="vs-hosts">{{ vs.hosts?.join(', ') }}</span>
+                  @if (vs.gateways?.length) {
+                    <p-tag [value]="'gw: ' + vs.gateways.join(', ')" severity="info" [rounded]="true" size="small" />
+                  }
+                </div>
+                @for (route of vs.routes; track $index) {
+                  <div class="route-row">
+                    @for (dest of route.destinations; track dest.host) {
+                      <div class="dest-item">
+                        <span class="dest-arrow">→</span>
+                        <span class="dest-host">{{ dest.host }}</span>
+                        @if (dest.subset) { <span class="dest-subset">({{ dest.subset }})</span> }
+                        @if (dest.port) { <span class="dest-port">:{{ dest.port }}</span> }
+                        @if (route.destinations.length > 1) {
+                          <div class="weight-bar">
+                            <div class="weight-fill" [style.width.%]="dest.weight"></div>
+                            <span class="weight-label">{{ dest.weight }}%</span>
+                          </div>
+                        }
+                      </div>
+                    }
+                    @if (route.timeout) { <span class="route-meta">timeout: {{ route.timeout }}</span> }
+                    @if (route.retries?.attempts) { <span class="route-meta">retries: {{ route.retries.attempts }}x</span> }
+                  </div>
+                }
+              </div>
+            }
+          </p-tabpanel>
+
+          <!-- DestinationRules Tab -->
+          <p-tabpanel value="2">
+            @if (!data.destination_rules?.length) {
+              <p class="empty-tab">No DestinationRules in this namespace</p>
+            }
+            @for (dr of data.destination_rules; track dr.name) {
+              <div class="dr-card">
+                <div class="dr-header">
+                  <strong>{{ dr.name }}</strong>
+                  <span class="dr-host">→ {{ dr.host }}</span>
+                  @if (dr.tls_mode) { <p-tag [value]="dr.tls_mode" [severity]="dr.tls_mode === 'ISTIO_MUTUAL' ? 'success' : 'info'" [rounded]="true" size="small" /> }
+                  @if (dr.load_balancer) { <p-tag [value]="'LB: ' + dr.load_balancer" severity="secondary" [rounded]="true" size="small" /> }
+                </div>
+                @if (dr.outlier_detection?.consecutive_errors) {
+                  <div class="cb-info">
+                    <i class="pi pi-bolt"></i>
+                    Circuit Breaker: {{ dr.outlier_detection.consecutive_errors }} errors →
+                    eject {{ dr.outlier_detection.base_ejection_time }}
+                    @if (dr.outlier_detection.max_ejection_pct) { (max {{ dr.outlier_detection.max_ejection_pct }}%) }
+                  </div>
+                }
+                @if (dr.subsets?.length) {
+                  <div class="subsets">
+                    @for (s of dr.subsets; track s.name) {
+                      <p-tag [value]="s.name" severity="secondary" [rounded]="true" size="small" />
+                    }
+                  </div>
+                }
+              </div>
+            }
+          </p-tabpanel>
+
+          <!-- Injection Tab -->
+          <p-tabpanel value="3">
+            <div class="injection-section">
+              <div class="inj-bar-container">
+                <div class="inj-bar">
+                  <div class="inj-fill" [style.width.%]="data.injection?.coverage_pct"
+                    [class.ok]="data.injection?.coverage_pct > 90"
+                    [class.warn]="data.injection?.coverage_pct <= 90 && data.injection?.coverage_pct > 50"
+                    [class.err]="data.injection?.coverage_pct <= 50"></div>
+                </div>
+                <span class="inj-pct">{{ data.injection?.coverage_pct }}% ({{ data.injection?.injected }}/{{ data.injection?.total }} pods)</span>
+              </div>
+              @if (data.injection?.not_injected?.length) {
+                <h4>Pods Without Sidecar</h4>
+                <div class="not-injected-list">
+                  @for (pod of data.injection.not_injected; track pod) {
+                    <div class="ni-row"><i class="pi pi-exclamation-triangle status-warn"></i> {{ pod }}</div>
+                  }
+                </div>
+              } @else {
+                <p class="all-good"><i class="pi pi-check-circle"></i> All pods have sidecar injected</p>
+              }
+            </div>
+          </p-tabpanel>
+        </p-tabpanels>
+      </p-tabs>
+    }
+
+    @if (!data) {
+      <div class="loading"><div class="spin"></div> Scanning service mesh...</div>
+    }

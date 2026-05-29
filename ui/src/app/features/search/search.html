@@ -1,0 +1,36 @@
+<div class="intel-header">
+  <div class="intel-title-block">
+    <h1 class="intel-title"><span class="title-icon">⌕</span> Search</h1>
+    <p class="intel-subtitle">cross-resource fuzzy search</p>
+  </div>
+</div>
+
+<!-- Search Input -->
+<div class="search-bar">
+  <svg class="search-ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+  <input [(ngModel)]="query" placeholder="Search pods, deployments, services..." (keyup.enter)="doSearch()" />
+</div>
+
+<!-- Results -->
+@if (results.length > 0) {
+  <div class="metrics-strip">
+    <app-metric-tile label="Results" [value]="'' + results.length" accent="cyan" />
+  </div>
+
+  <app-holo-card glow="cyan" [compact]="true">
+    <div class="result-list">
+      @for (r of results; track r.name) {
+        <div class="result-row">
+          <app-status-beacon status="info" size="sm" />
+          <p-tag [value]="r.kind" severity="info" [rounded]="true" />
+          <code class="result-name">{{ r.name }}</code>
+        </div>
+      }
+    </div>
+  </app-holo-card>
+} @else if (searched) {
+  <div class="empty-state">
+    <div class="empty-icon"><i class="pi pi-search"></i></div>
+    <span>No results for "{{ lastQuery }}"</span>
+  </div>
+}

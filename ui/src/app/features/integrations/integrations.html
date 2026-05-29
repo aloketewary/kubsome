@@ -1,0 +1,72 @@
+    <app-spotlight id="integrations" title="Integrations" icon="pi pi-link"
+      description="Connect external tools like Prometheus, Grafana, and alerting systems."
+      [capabilities]="['Auto-discovery', 'Health checks', 'Connect/disconnect', 'Status monitoring']" [compact]="true" />
+
+    <app-page-header title="Integrations" [subtitle]="integrations.length + ' connected · ' + discovered.length + ' discovered'">
+        <button pButton icon="pi pi-search" label="Discover" class="p-button-outlined p-button-sm" (click)="discover()" [loading]="discovering"></button>
+        <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="refresh()" [loading]="loading"></button>
+        <app-page-info title="Integrations" description="Manage connections to external monitoring, alerting, and observability tools in your cluster."
+          [tips]="['Green = connected and healthy', 'Yellow = connected but degraded', 'Use Discover to auto-detect tools']"
+          [commands]="['connect', 'disconnect <name>', 'connect discover', 'integrations']" />
+    </app-page-header>
+
+    <!-- Connected Integrations -->
+    @if (integrations.length) {
+      <h2 class="section-title">Connected</h2>
+      <div class="integrations-grid">
+        @for (item of integrations; track item.name) {
+          <div class="integration-card" [class.healthy]="item.status === 'connected'" [class.degraded]="item.status === 'degraded'">
+            <div class="card-header">
+              <i [class]="iconFor(item.name)"></i>
+              <div class="card-info">
+                <strong>{{ item.name }}</strong>
+                <span class="card-url">{{ item.url || '—' }}</span>
+              </div>
+              <p-tag [value]="item.status" [severity]="statusSeverity(item.status)" [rounded]="true" size="small" />
+            </div>
+            @if (item.version) {
+              <div class="card-meta">v{{ item.version }}</div>
+            }
+            <div class="card-actions">
+              <button pButton icon="pi pi-times" label="Disconnect" class="p-button-text p-button-sm p-button-danger" (click)="disconnect(item.name)"></button>
+            </div>
+          </div>
+        }
+      </div>
+    }
+
+    <!-- Discovered (not yet connected) -->
+    @if (discovered.length) {
+      <h2 class="section-title">Discovered</h2>
+      <div class="integrations-grid">
+        @for (item of discovered; track item.name) {
+          <div class="integration-card discovered">
+            <div class="card-header">
+              <i [class]="iconFor(item.name)"></i>
+              <div class="card-info">
+                <strong>{{ item.name }}</strong>
+                <span class="card-url">{{ item.url || 'Auto-detected' }}</span>
+              </div>
+              <p-tag value="available" severity="info" [rounded]="true" size="small" />
+            </div>
+            <div class="card-actions">
+              <button pButton icon="pi pi-link" label="Connect" class="p-button-outlined p-button-sm" (click)="connect(item.name, item.url)"></button>
+            </div>
+          </div>
+        }
+      </div>
+    }
+
+    @if (!integrations.length && !discovered.length && !loading) {
+      <div class="empty-state">
+        <i class="pi pi-link"></i>
+        <h3>No Integrations</h3>
+        <p>Click <strong>Discover</strong> to auto-detect tools in your cluster, or connect manually via CLI.</p>
+      </div>
+    }
+
+    @if (loading && !integrations.length) {
+      <div class="loading"><div class="spin"></div> Loading integrations...</div>
+    }
+
+    <app-related-pages label="Related" [pages]="relatedPages" />

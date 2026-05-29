@@ -1,0 +1,70 @@
+<div class="intel-header">
+  <div class="intel-title-block">
+    <h1 class="intel-title"><span class="title-icon">🛡</span> Policy Check</h1>
+    <p class="intel-subtitle">cluster guardrails · {{ lastChecked || '...' }}</p>
+  </div>
+  <div class="intel-controls">
+    <button class="ctrl-btn" (click)="load()"><i class="pi pi-refresh" [class.spinning]="loading"></i></button>
+  </div>
+</div>
+
+@if (data) {
+  <!-- Metrics -->
+  <div class="metrics-strip">
+    <app-metric-tile label="Total" [value]="'' + data.total" accent="cyan" />
+    <app-metric-tile label="Passed" [value]="'' + data.passed" accent="green" />
+    <app-metric-tile label="Failed" [value]="'' + data.failed" [accent]="data.failed > 0 ? 'red' : 'green'" />
+  </div>
+
+  <!-- Score Banner -->
+  <app-holo-card [glow]="data.failed === 0 ? 'green' : 'red'" [compact]="true">
+    <div class="score-row">
+      <app-status-beacon [status]="data.failed === 0 ? 'ok' : 'critical'" size="lg" [pulse]="data.failed > 0" />
+      <div class="score-info">
+        <span class="score-title">{{ data.failed === 0 ? 'All Policies Pass' : data.failed + ' Violation(s)' }}</span>
+        <span class="score-sub">{{ data.passed }}/{{ data.total }} policies passing</span>
+      </div>
+    </div>
+  </app-holo-card>
+
+  <!-- Policies -->
+  <div class="policy-list">
+    @for (p of data.policies; track p.name) {
+      <div class="policy-row" [class.policy-fail]="isViolated(p.name)">
+        <app-status-beacon [status]="isViolated(p.name) ? 'critical' : 'ok'" size="sm" />
+        <div class="policy-body">
+          <div class="policy-top">
+            <span class="policy-name">{{ p.name }}</span>
+            <p-tag [value]="p.severity" [severity]="p.severity === 'high' ? 'danger' : p.severity === 'medium' ? 'warn' : 'info'" [rounded]="true" />
+          </div>
+          <span class="policy-desc">{{ p.description }}</span>
+          <code class="policy-rule">{{ p.rule }}</code>
+        </div>
+      </div>
+    }
+  </div>
+
+  <!-- Violations -->
+  @if (data.violations.length > 0) {
+    <app-holo-card title="Violations" icon="pi pi-times-circle" glow="red" [compact]="true">
+      @for (v of data.violations; track $index) {
+        <div class="viol-row">
+          <app-status-beacon status="critical" size="sm" />
+          <div class="viol-body">
+            <span class="viol-policy">{{ v.policy }}</span>
+            <code class="viol-resource">{{ v.resource }}</code>
+            <span class="viol-detail">{{ v.detail }}</span>
+          </div>
+          <p-tag [value]="v.severity" [severity]="v.severity === 'high' ? 'danger' : 'warn'" [rounded]="true" />
+        </div>
+      }
+    </app-holo-card>
+  }
+}
+
+@if (!data && !loading) {
+  <div class="empty-state"><div class="empty-icon"><i class="pi pi-shield"></i></div><span>No policies configured</span></div>
+}
+@if (loading && !data) {
+  <div class="loading-state"><div class="loader-ring"></div><span>Scanning policies...</span></div>
+}

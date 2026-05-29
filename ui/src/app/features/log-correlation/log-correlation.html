@@ -1,0 +1,42 @@
+    <app-spotlight id="log-correlation" title="Log Correlation" icon="pi pi-list"
+      description="Merge logs from multiple pods into a unified timeline."
+      [capabilities]="['Multi-pod merge', 'Timestamp sorting', 'Error highlighting']" [compact]="true" />
+
+    <app-page-header title="Log Correlation" subtitle="Merged timeline from multiple pods">
+    </app-page-header>
+
+    <!-- Pod Selection -->
+    <div class="controls">
+      <p-multiSelect [options]="podOptions" [(ngModel)]="selectedPods" placeholder="Select pods..."
+                [style]="{ width: '100%', maxWidth: '500px' }" [filter]="true"
+                optionLabel="label" optionValue="value" display="chip" />
+      <button pButton label="Correlate" icon="pi pi-link" class="p-button-sm" (click)="correlate()" [disabled]="selectedPods.length < 2"></button>
+    </div>
+
+    @if (selectedPods.length > 0 && selectedPods.length < 2) {
+      <div class="hint">Select at least 2 pods to correlate logs</div>
+    }
+
+    @if (loading) {
+      <div class="loading"><div class="spin"></div> Merging logs from {{ selectedPods.length }} pods...</div>
+    }
+
+    @if (data) {
+      <div class="result-header">
+        <span class="result-count">{{ data.total }} entries from {{ data.pods.length }} pods</span>
+        <button pButton icon="pi pi-copy" class="p-button-sm p-button-text p-button-rounded" pTooltip="Copy all" (click)="copyAll()"></button>
+      </div>
+
+      <div class="log-timeline">
+        @for (entry of data.entries; track $index) {
+          <div class="log-entry" [class]="'level-' + entry.level">
+            <span class="entry-time">{{ entry.timestamp?.slice(-12) || '' }}</span>
+            <span class="entry-pod" [style.color]="podColor(entry.pod)">{{ entry.pod }}</span>
+            <span class="entry-msg">{{ entry.message }}</span>
+          </div>
+        }
+        @if (data.entries.length === 0) {
+          <div class="empty-logs">No log entries found</div>
+        }
+      </div>
+    }

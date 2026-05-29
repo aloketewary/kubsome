@@ -1,0 +1,49 @@
+<div class="intel-header">
+  <div class="intel-title-block">
+    <h1 class="intel-title"><span class="title-icon">⎈</span> Helm Releases</h1>
+    <p class="intel-subtitle">{{ releases.length }} releases · {{ lastUpdated || '...' }}</p>
+  </div>
+  <div class="intel-controls">
+    <app-live-indicator [active]="autoRefresh" label="AUTO" offLabel="PAUSED" (click)="toggleAutoRefresh()" />
+    <button class="ctrl-btn" (click)="refresh()"><i class="pi pi-refresh" [class.spinning]="loading"></i></button>
+  </div>
+</div>
+
+<div class="metrics-strip">
+  <app-metric-tile label="Total" [value]="'' + releases.length" accent="cyan" />
+  <app-metric-tile label="Deployed" [value]="'' + deployedCount" accent="green" />
+  @if (failedCount > 0) { <app-metric-tile label="Failed" [value]="'' + failedCount" accent="red" /> }
+</div>
+
+<app-command-bar [pills]="filterPills" [activePill]="statusFilter" [search]="searchQuery" placeholder="Filter releases..." (pillChange)="onFilterChange($event)" (searchChange)="onSearchChange($event)" />
+
+<div class="helm-list">
+  @for (rel of filtered; track rel.name) {
+    <div class="helm-row" [class.helm-failed]="rel.status === 'failed'">
+      <app-status-beacon [status]="helmBeacon(rel.status)" size="md" [pulse]="rel.status === 'failed'" />
+      <div class="helm-body">
+        <div class="helm-top">
+          <code class="helm-name">{{ rel.name }}</code>
+          <p-tag [value]="rel.status" [severity]="statusSev(rel.status)" [rounded]="true" />
+          <span class="helm-rev">rev {{ rel.revision }}</span>
+        </div>
+        <span class="helm-chart">{{ rel.chart }} · {{ rel.app_version || '' }}</span>
+      </div>
+      <div class="helm-actions">
+        <app-action-icon icon="pi pi-history" tooltip="History" accent="cyan" (clicked)="loadHistory(rel)" />
+        <app-action-icon icon="pi pi-undo" tooltip="Rollback" accent="red" (clicked)="rollback(rel)" />
+        <app-action-icon icon="pi pi-sparkles" tooltip="AI Diagnose" accent="amber" (clicked)="aiDiagnose(rel)" />
+      </div>
+    </div>
+  }
+  @if (filtered.length === 0) { <div class="empty-state"><div class="empty-icon"><i class="pi pi-box"></i></div><span>No releases found</span></div> }
+</div>
+
+<app-ai-insight-drawer [visible]="aiDrawerVisible" [loading]="aiLoading" [resourceName]="aiReleaseName" [summary]="aiSummary" [findings]="aiFindings" [reasoning]="aiReasoning" (closed)="aiDrawerVisible = false" />
+
+<p-dialog [(visible)]="historyVisible" [header]="'History — ' + historyName" [modal]="true" styleClass="fullscreen-dialog" [appendTo]="'body'">
+  @for (rev of history; track rev.revision) {
+    <div class="hist-row"><span class="hist-rev">{{ rev.revision }}</span><p-tag [value]="rev.status" [severity]="statusSev(rev.status)" [rounded]="true" /><span class="hist-desc">{{ rev.description }}</span><span class="hist-date">{{ rev.updated }}</span></div>
+  }
+  @if (history.length === 0) { <div class="loading-state"><div class="loader-ring"></div></div> }
+</p-dialog>

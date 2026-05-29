@@ -1,0 +1,52 @@
+    <app-spotlight id="port-forwards" title="Port Forwards" icon="pi pi-link"
+      description="Manage background port-forwards — start, stop, and monitor."
+      [capabilities]="['Background forwarding', 'Health monitoring', 'Persistent across sessions']" [compact]="true" />
+
+    <app-page-header title="Port Forwards" [subtitle]="forwards.length + ' active'">
+        <button pButton icon="pi pi-stop" label="Stop All" class="p-button-outlined p-button-sm p-button-danger" (click)="stopAll()" [disabled]="!forwards.length"></button>
+        <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="refresh()"></button>
+    </app-page-header>
+
+    <!-- New Forward Form -->
+    <div class="new-forward">
+      <input [(ngModel)]="newTarget" placeholder="Pod or service name" class="pf-input" />
+      <input [(ngModel)]="newLocalPort" placeholder="Local port" type="number" class="pf-input port" />
+      <span class="pf-arrow">:</span>
+      <input [(ngModel)]="newRemotePort" placeholder="Remote port" type="number" class="pf-input port" />
+      <button pButton icon="pi pi-play" label="Start" class="p-button-sm" (click)="startForward()" [disabled]="!newTarget || !newLocalPort"></button>
+    </div>
+
+    <!-- Active Forwards -->
+    @if (forwards.length) {
+      <div class="forwards-list">
+        @for (fwd of forwards; track fwd.key) {
+          <div class="forward-row" [class.dead]="!fwd.alive">
+            <div class="fwd-status">
+              @if (fwd.alive) { <i class="pi pi-check-circle status-ok"></i> }
+              @else { <i class="pi pi-times-circle status-dead"></i> }
+            </div>
+            <div class="fwd-info">
+              <strong>{{ fwd.target }}</strong>
+              <span class="fwd-ports">localhost:{{ fwd.local_port }} → :{{ fwd.remote_port }}</span>
+            </div>
+            <div class="fwd-meta">
+              <span class="fwd-ns">{{ fwd.namespace }}</span>
+              <span class="fwd-pid">pid:{{ fwd.pid }}</span>
+              <span class="fwd-since">{{ fwd.started?.substring(11, 16) }}</span>
+            </div>
+            <div class="fwd-actions">
+              <a [href]="fwd.url" target="_blank" class="fwd-link" pTooltip="Open in browser">
+                <i class="pi pi-external-link"></i>
+              </a>
+              <button pButton icon="pi pi-stop" class="p-button-text p-button-sm p-button-danger" (click)="stopForward(fwd.target)" pTooltip="Stop"></button>
+            </div>
+          </div>
+        }
+      </div>
+    } @else {
+      <div class="empty-state">
+        <i class="pi pi-link"></i>
+        <h3>No Active Forwards</h3>
+        <p>Start a port-forward above or use: <code>pf &lt;pod&gt; &lt;port&gt;</code></p>
+      </div>
+    }

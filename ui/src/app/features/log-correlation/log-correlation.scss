@@ -1,0 +1,37 @@
+@use "../../styles/futuristic";
+:host { display: block; width: 100%; }
+
+    .page-header { margin-bottom: 16px; }
+    .page-header h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.03em; }
+    .subtitle { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+
+    .controls {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 16px;
+      padding: 12px 16px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm);
+    }
+    .hint { font-size: 12px; color: var(--text-muted); margin-bottom: 12px; }
+
+    .result-header {
+      display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;
+      padding: 8px 12px; background: var(--bg-elevated); border-radius: var(--radius-sm);
+    }
+    .result-count { font-size: 11px; color: var(--text-muted); }
+
+    .log-timeline {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+      overflow: auto; max-height: calc(100vh - 320px);
+      font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 1.7;
+    }
+    .log-entry { display: flex; gap: 0; padding: 2px 12px; border-bottom: 1px solid var(--border); }
+    .log-entry:last-child { border-bottom: none; }
+    .log-entry:hover { background: var(--bg-hover); }
+    .level-error { background: var(--danger-subtle); }
+    .level-warn .entry-msg { color: var(--warning); }
+    .entry-time { min-width: 90px; color: var(--text-muted); opacity: 0.6; padding-right: 8px; }
+    .entry-pod { min-width: 120px; font-weight: 500; padding-right: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .entry-msg { flex: 1; white-space: pre-wrap; word-break: break-all; }
+
+    .empty-logs { padding: 40px; text-align: center; color: var(--text-muted); }
+    .loading { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 60px; color: var(--text-muted); }
+    .spin { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }

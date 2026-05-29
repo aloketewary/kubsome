@@ -1,0 +1,38 @@
+<div class="intel-header">
+  <div class="intel-title-block">
+    <h1 class="intel-title"><span class="title-icon">📜</span> Audit Log</h1>
+    <p class="intel-subtitle">destructive operations · {{ entries.length }} entries</p>
+  </div>
+  <div class="intel-controls">
+    <button class="ctrl-btn" (click)="load()"><i class="pi pi-refresh" [class.spinning]="loading"></i></button>
+  </div>
+</div>
+
+@if (summaryEntries.length > 0) {
+  <div class="metrics-strip">
+    @for (e of summaryEntries; track e.action) {
+      <app-metric-tile [label]="e.action" [value]="'' + e.count" [accent]="e.action === 'delete' ? 'red' : e.action === 'rollback' ? 'amber' : 'cyan'" />
+    }
+  </div>
+}
+
+<app-command-bar [pills]="filterPills" [activePill]="filterAction" [showSearch]="false" (pillChange)="onFilterChange($event)" />
+
+@if (entries.length > 0) {
+  <div class="audit-list">
+    @for (entry of entries; track $index) {
+      <div class="audit-row">
+        <app-status-beacon [status]="actionBeacon(entry.action)" size="sm" />
+        <span class="audit-action">{{ entry.action }}</span>
+        <code class="audit-target">{{ entry.target }}</code>
+        @if (entry.details) { <span class="audit-details">{{ entry.details }}</span> }
+        <span class="audit-meta">{{ entry.context }}/{{ entry.namespace }}</span>
+        <span class="audit-time">{{ formatTime(entry.timestamp) }}</span>
+      </div>
+    }
+  </div>
+}
+
+@if (entries.length === 0 && !loading) {
+  <div class="empty-state"><div class="empty-icon"><i class="pi pi-shield"></i></div><span>No audit entries</span></div>
+}

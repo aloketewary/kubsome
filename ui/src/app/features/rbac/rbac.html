@@ -1,0 +1,62 @@
+<div class="intel-header">
+  <div class="intel-title-block">
+    <h1 class="intel-title"><span class="title-icon">🔐</span> RBAC</h1>
+    <p class="intel-subtitle">{{ bindings.length }} bindings · {{ uniqueRoles.length }} roles · {{ lastUpdated || '...' }}</p>
+  </div>
+  <div class="intel-controls">
+    <app-live-indicator [active]="autoRefresh" label="AUTO" offLabel="PAUSED" (click)="toggleAutoRefresh()" />
+    <button class="ctrl-btn" (click)="load()"><i class="pi pi-refresh" [class.spinning]="loading"></i></button>
+  </div>
+</div>
+
+<div class="metrics-strip">
+  <app-metric-tile label="Bindings" [value]="'' + bindings.length" accent="cyan" />
+  <app-metric-tile label="Roles" [value]="'' + uniqueRoles.length" accent="purple" />
+  <app-metric-tile label="Subjects" [value]="'' + uniqueSubjects" accent="green" />
+  @if (adminCount > 0) { <app-metric-tile label="Admin" [value]="'' + adminCount" accent="red" /> }
+</div>
+
+<!-- Permission Checker -->
+<app-holo-card title="Permission Check" icon="pi pi-question-circle" glow="cyan" [compact]="true">
+  <div class="checker">
+    <select class="checker-select" [(ngModel)]="checkSubject">
+      <option value="">Select service account...</option>
+      @for (sa of serviceAccounts; track sa) { <option [value]="sa">{{ sa }}</option> }
+    </select>
+    <button class="ctrl-btn ctrl-btn-wide" (click)="checkPermissions()" [class.disabled]="!checkSubject">Check</button>
+  </div>
+  @if (permMatrix) {
+    <div class="perm-grid">
+      <div class="pg-header"><span class="pg-res">Resource</span> @for (v of permVerbs; track v) { <span class="pg-verb">{{ v }}</span> }</div>
+      @for (row of permMatrix.resources; track row.resource) {
+        <div class="pg-row"><span class="pg-res">{{ row.resource }}</span> @for (v of permVerbs; track v) { <span class="pg-cell" [class.pg-yes]="row.permissions[v]" [class.pg-no]="!row.permissions[v]">{{ row.permissions[v] ? '✓' : '✗' }}</span> }</div>
+      }
+    </div>
+  }
+</app-holo-card>
+
+<!-- Filter -->
+<app-command-bar [pills]="filterPills" [activePill]="kindFilter" [search]="searchQuery" placeholder="Search bindings..." (pillChange)="onFilterChange($event)" (searchChange)="onSearchChange($event)" />
+
+<!-- Bindings -->
+<div class="binding-list">
+  @for (b of filtered; track $index) {
+    <div class="binding-row" [class.binding-admin]="isAdmin(b)">
+      <app-status-beacon [status]="isAdmin(b) ? 'critical' : 'ok'" size="sm" />
+      <div class="binding-body">
+        <div class="binding-top">
+          <code class="binding-name">{{ b.name }}</code>
+          <p-tag [value]="b.kind" [severity]="b.kind === 'ClusterRoleBinding' ? 'warn' : 'info'" [rounded]="true" />
+          @if (isAdmin(b)) { <p-tag value="ADMIN" severity="danger" [rounded]="true" /> }
+        </div>
+        <span class="binding-role">{{ b.role }} · <span class="binding-level">{{ permLevel(b) }}</span></span>
+        <div class="binding-subjects">
+          @for (s of parseSubjects(b.subjects); track $index) {
+            <span class="subject-chip">{{ s.name }}</span>
+          }
+        </div>
+      </div>
+    </div>
+  }
+  @if (filtered.length === 0) { <div class="empty-state"><div class="empty-icon"><i class="pi pi-shield"></i></div><span>No bindings found</span></div> }
+</div>

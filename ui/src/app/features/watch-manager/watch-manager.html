@@ -1,0 +1,85 @@
+    <app-spotlight id="watch-manager" title="Watch Manager" icon="pi pi-eye"
+      description="Manage background watchers that trigger alerts."
+      [capabilities]="['Condition monitoring', 'Crash detection', 'Alert notifications']" [compact]="true" />
+
+    <app-page-header title="Watch Manager" subtitle="Background condition monitors">
+        <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="refresh()" pTooltip="Refresh"></button>
+        <button pButton icon="pi pi-plus" label="Add Watch" class="p-button-sm" (click)="showForm = !showForm"></button>
+    </app-page-header>
+
+    <!-- Add Watch Form -->
+    @if (showForm) {
+      <div class="add-form">
+        <div class="form-row">
+          <div class="form-field">
+            <label>App / Pod pattern</label>
+            <input type="text" [(ngModel)]="newTarget" placeholder="e.g. payment, billing-api" class="form-input" />
+          </div>
+          <div class="form-field">
+            <label>Condition</label>
+            <div class="condition-pills">
+              <button class="pill" [class.pill-active]="newCondition === 'crash'" (click)="newCondition = 'crash'">
+                <i class="pi pi-times-circle"></i> Crash
+              </button>
+              <button class="pill" [class.pill-active]="newCondition === 'restart'" (click)="newCondition = 'restart'">
+                <i class="pi pi-replay"></i> Restart > 5
+              </button>
+              <button class="pill" [class.pill-active]="newCondition === 'count'" (click)="newCondition = 'count'">
+                <i class="pi pi-sort-amount-down"></i> Count < 1
+              </button>
+            </div>
+          </div>
+          <button pButton label="Create" icon="pi pi-check" class="p-button-sm form-submit"
+                  [disabled]="!newTarget.trim()" (click)="createWatch()"></button>
+        </div>
+        @if (formError) {
+          <div class="form-error"><i class="pi pi-exclamation-triangle"></i> {{ formError }}</div>
+        }
+      </div>
+    }
+
+    @if (status) {
+      <div class="status-bar-info">
+        <span class="status-dot" [class.dot-on]="status.running" [class.dot-off]="!status.running"></span>
+        <span>{{ status.running ? 'Monitoring active' : 'Monitoring stopped' }}</span>
+        <span class="watch-count">{{ status.watches.length }} watch(es)</span>
+      </div>
+
+      @if (status.watches.length > 0) {
+        <div class="watch-list">
+          @for (watch of status.watches; track watch.name) {
+            <div class="watch-card" [class.watch-triggered]="watch.triggered">
+              <div class="watch-left">
+                <span class="watch-icon" [class.icon-ok]="!watch.triggered" [class.icon-alert]="watch.triggered">
+                  <i class="pi" [class.pi-check-circle]="!watch.triggered" [class.pi-bell]="watch.triggered"></i>
+                </span>
+              </div>
+              <div class="watch-body">
+                <span class="watch-name">{{ watch.name }}</span>
+                <span class="watch-meta">
+                  @if (watch.triggered) {
+                    <p-tag value="TRIGGERED" severity="danger" [rounded]="true" />
+                  } @else {
+                    <p-tag value="OK" severity="success" [rounded]="true" />
+                  }
+                  · {{ watch.alert_count }} alert(s)
+                </span>
+              </div>
+              @if (watch.last_check) {
+                <span class="watch-time">{{ formatTime(watch.last_check) }}</span>
+              }
+              <button pButton icon="pi pi-trash" class="p-button-text p-button-sm p-button-rounded p-button-danger"
+                      pTooltip="Remove watch" (click)="removeWatch(watch.name)"></button>
+            </div>
+          }
+        </div>
+      } @else {
+        <div class="empty">
+          <i class="pi pi-eye"></i>
+          <p>No active watches</p>
+          <span class="empty-hint">Click "Add Watch" to create a background monitor</span>
+        </div>
+      }
+    } @else {
+      <div class="loading"><div class="spin"></div> Loading...</div>
+    }
