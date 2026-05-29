@@ -38,7 +38,7 @@ export class NamespaceComponent implements OnInit, OnDestroy {
   private refreshTimer: any;
 
   private colorMap: Record<string, string> = {
-    pods: '#00d4ff', deployments: '#8b5cf6', services: '#10b981',
+    pods: '#d09c60', deployments: '#a78bfa', services: '#4ade80',
     configmaps: '#f59e0b', secrets: '#f43f5e', ingress: '#ec4899',
     jobs: '#06b6d4', cronjobs: '#a78bfa', statefulsets: '#14b8a6', daemonsets: '#f97316',
   };

@@ -29,8 +29,8 @@ import { Component, Input, Output, EventEmitter } from '@angular/core';
   styles: [`
     .sg {
       position: relative;
-      background: linear-gradient(180deg, rgba(13, 17, 28, 0.85) 0%, rgba(8, 11, 20, 0.9) 100%);
-      border: 1px solid rgba(255, 255, 255, 0.04);
+      background: linear-gradient(180deg, transparent 0%, transparent 100%);
+      border: 1px solid rgba(94, 84, 75, 0.08);
       border-radius: 12px;
       margin-bottom: 6px;
       overflow: hidden;
@@ -41,7 +41,7 @@ import { Component, Input, Output, EventEmitter } from '@angular/core';
       position: absolute;
       top: 0; left: 16px; right: 16px;
       height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.06), transparent);
+      background: linear-gradient(90deg, transparent, rgba(94, 84, 75, 0.12), transparent);
       pointer-events: none;
     }
     .sg:hover {
@@ -64,29 +64,29 @@ import { Component, Input, Output, EventEmitter } from '@angular/core';
       outline: none;
       transition: background 0.12s;
     }
-    .sg-head:hover { background: rgba(255, 255, 255, 0.015); }
-    .sg-head:focus-visible { box-shadow: inset 0 0 0 1px rgba(0, 212, 255, 0.4); }
-    .sg-head > i { color: rgba(255, 255, 255, 0.3); font-size: 9px; width: 10px; }
+    .sg-head:hover { background: rgba(94, 84, 75, 0.03); }
+    .sg-head:focus-visible { box-shadow: inset 0 0 0 1px rgba(208, 156, 96, 0.4); }
+    .sg-head > i { color: rgba(168, 158, 148, 0.4); font-size: 9px; width: 10px; }
 
     .sg-name {
       font-size: 12px;
       font-weight: 600;
-      color: rgba(255, 255, 255, 0.85);
+      color: rgba(245, 240, 235, 0.85);
       letter-spacing: -0.01em;
     }
 
     .sg-bar {
       width: 40px; height: 2px; border-radius: 1px;
-      background: rgba(255, 255, 255, 0.05); overflow: hidden;
+      background: rgba(94, 84, 75, 0.1); overflow: hidden;
     }
     .sg-bar-fill { height: 100%; border-radius: 1px; transition: width 0.4s; }
-    .sg-bar-ok { background: #10b981; box-shadow: 0 0 3px rgba(16, 185, 129, 0.5); }
+    .sg-bar-ok { background: #4ade80; box-shadow: 0 0 3px rgba(74, 222, 128, 0.5); }
     .sg-bar-bad { background: #f43f5e; box-shadow: 0 0 3px rgba(244, 63, 94, 0.5); }
 
     .sg-ratio {
       font-size: 10px;
       font-family: 'JetBrains Mono', monospace;
-      color: rgba(255, 255, 255, 0.4);
+      color: rgba(168, 158, 148, 0.5);
     }
     .sg-sep { opacity: 0.3; margin: 0 1px; }
 

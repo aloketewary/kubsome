@@ -11,6 +11,6 @@
 .pin-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; background: linear-gradient(180deg, rgba(13,17,28,0.7) 0%, rgba(8,11,20,0.75) 100%); border: 1px solid rgba(255,255,255,0.04); }
 .pin-body { flex: 1; display: flex; flex-direction: column; gap: 2px; }
 .pin-name { font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.8); }
-.pin-query { font-size: 10px; color: #00d4ff; }
+.pin-query { font-size: 10px; color: #d09c60; }
 .pin-last { font-size: 9px; color: rgba(255,255,255,0.25); }
 .pin-result { font-size: 10px; font-family: 'JetBrains Mono', monospace; color: rgba(255,255,255,0.4); background: rgba(8,11,20,0.8); padding: 8px 12px; border-radius: 6px; margin: 4px 0 0 22px; white-space: pre-wrap; max-height: 80px; overflow-y: auto; }

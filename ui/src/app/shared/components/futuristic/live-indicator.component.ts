@@ -30,14 +30,14 @@ import { Component, Input } from '@angular/core';
       color: #f43f5e;
     }
     .li-off {
-      background: rgba(255, 255, 255, 0.02);
-      border-color: rgba(255, 255, 255, 0.06);
-      color: rgba(255, 255, 255, 0.35);
+      background: rgba(94, 84, 75, 0.04);
+      border-color: rgba(94, 84, 75, 0.12);
+      color: rgba(168, 158, 148, 0.45);
     }
     .li-off:hover {
-      border-color: rgba(0, 212, 255, 0.25);
-      color: #00d4ff;
-      background: rgba(0, 212, 255, 0.04);
+      border-color: rgba(208, 156, 96, 0.25);
+      color: #d09c60;
+      background: rgba(208, 156, 96, 0.04);
     }
     .li-dot {
       width: 5px; height: 5px;

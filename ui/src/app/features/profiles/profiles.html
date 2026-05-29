@@ -1,58 +1,48 @@
-    <app-spotlight id="profiles" title="Profiles" icon="pi pi-user"
-      description="Switch between configuration profiles for different environments or workflows."
-      [capabilities]="['Quick switch', 'Environment presets', 'Custom configs', 'Reset to default']" [compact]="true" />
+<div class="intel-header">
+  <div class="intel-title-block">
+    <h1 class="intel-title"><span class="title-icon">👤</span> Profiles</h1>
+    <p class="intel-subtitle">active: {{ active || 'default' }}</p>
+  </div>
+  <div class="intel-controls">
+    <button class="ctrl-btn ctrl-btn-wide" (click)="reset()" [class.disabled]="!active"><i class="pi pi-undo"></i> Reset</button>
+    <button class="ctrl-btn" (click)="refresh()"><i class="pi pi-refresh" [class.spinning]="loading"></i></button>
+  </div>
+</div>
 
-    <app-page-header title="Profiles" [subtitle]="'Active: ' + (active || 'default')">
-        <button pButton icon="pi pi-undo" label="Reset" class="p-button-outlined p-button-sm" (click)="reset()" [disabled]="!active"></button>
-        <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="refresh()" [loading]="loading"></button>
-        <app-page-info title="Profiles" description="Manage configuration profiles that bundle context, namespace, theme, and feature settings."
-          [tips]="['Active profile shown with green badge', 'Reset returns to default settings', 'Profiles stored in ~/.kubsome/profiles/']"
-          [commands]="['profiles', 'profile use <name>', 'profile reset']" />
-    </app-page-header>
+<div class="metrics-strip">
+  <app-metric-tile label="Profiles" [value]="'' + profiles.length" accent="cyan" />
+  <app-metric-tile label="Active" [value]="active || 'default'" accent="green" />
+</div>
 
-    @if (profiles.length) {
-      <div class="profiles-grid">
-        @for (p of profiles; track p.name) {
-          <div class="profile-card" [class.active]="p.name === active">
-            <div class="profile-header">
-              <div class="profile-icon">
-                <i class="pi pi-user"></i>
-              </div>
-              <div class="profile-info">
-                <strong>{{ p.name }}</strong>
-                @if (p.name === active) {
-                  <p-tag value="active" severity="success" [rounded]="true" size="small" />
-                }
-              </div>
-            </div>
-            <div class="profile-details">
-              @if (p.context) { <div class="detail-row"><span class="dl">Context</span><span class="dv">{{ p.context }}</span></div> }
-              @if (p.namespace) { <div class="detail-row"><span class="dl">Namespace</span><span class="dv">{{ p.namespace }}</span></div> }
-              @if (p.theme) { <div class="detail-row"><span class="dl">Theme</span><span class="dv">{{ p.theme }}</span></div> }
-              @if (p.description) { <div class="detail-row full"><span class="dl">Description</span><span class="dv">{{ p.description }}</span></div> }
-            </div>
-            <div class="profile-actions">
-              @if (p.name !== active) {
-                <button pButton icon="pi pi-check" label="Activate" class="p-button-outlined p-button-sm" (click)="activate(p.name)"></button>
-              } @else {
-                <button pButton icon="pi pi-times" label="Deactivate" class="p-button-text p-button-sm" (click)="reset()"></button>
-              }
-            </div>
+@if (profiles.length) {
+  <div class="profile-list">
+    @for (p of profiles; track p.name) {
+      <div class="profile-row" [class.profile-active]="p.name === active">
+        <app-status-beacon [status]="p.name === active ? 'ok' : 'idle'" size="md" />
+        <div class="profile-body">
+          <div class="profile-top">
+            <span class="profile-name">{{ p.name }}</span>
+            @if (p.name === active) { <p-tag value="active" severity="success" [rounded]="true" /> }
           </div>
+          <div class="profile-details">
+            @if (p.context) { <span class="pd">ctx: {{ p.context }}</span> }
+            @if (p.namespace) { <span class="pd">ns: {{ p.namespace }}</span> }
+            @if (p.theme) { <span class="pd">theme: {{ p.theme }}</span> }
+          </div>
+        </div>
+        @if (p.name !== active) {
+          <app-action-icon icon="pi pi-check" tooltip="Activate" accent="green" (clicked)="activate(p.name)" />
+        } @else {
+          <app-action-icon icon="pi pi-times" tooltip="Deactivate" accent="red" (clicked)="reset()" />
         }
       </div>
     }
+  </div>
+}
 
-    @if (!profiles.length && !loading) {
-      <div class="empty-state">
-        <i class="pi pi-user"></i>
-        <h3>No Profiles</h3>
-        <p>Create profiles in <code>~/.kubsome/profiles/</code> to switch between environments quickly.</p>
-      </div>
-    }
-
-    @if (loading && !profiles.length) {
-      <div class="loading"><div class="spin"></div> Loading profiles...</div>
-    }
-
-    <app-related-pages label="Related" [pages]="relatedPages" />
+@if (!profiles.length && !loading) {
+  <div class="empty-state"><div class="empty-icon"><i class="pi pi-user"></i></div><span>No profiles configured</span></div>
+}
+@if (loading && !profiles.length) {
+  <div class="loading-state"><div class="loader-ring"></div><span>Loading...</span></div>
+}

@@ -49,8 +49,8 @@ export interface CommandPill {
       justify-content: space-between;
       gap: 10px;
       padding: 8px 12px;
-      background: linear-gradient(180deg, rgba(13, 17, 28, 0.8) 0%, rgba(8, 11, 20, 0.85) 100%);
-      border: 1px solid rgba(255, 255, 255, 0.04);
+      background: linear-gradient(180deg, transparent 0%, transparent 100%);
+      border: 1px solid rgba(94, 84, 75, 0.08);
       border-radius: 10px;
       margin-bottom: 12px;
     }
@@ -62,8 +62,8 @@ export interface CommandPill {
       gap: 5px;
       padding: 5px 10px;
       border-radius: 6px;
-      border: 1px solid rgba(255, 255, 255, 0.06);
-      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(94, 84, 75, 0.12);
+      background: rgba(94, 84, 75, 0.04);
       color: rgba(255, 255, 255, 0.5);
       font-size: 11px;
       font-weight: 500;
@@ -71,27 +71,27 @@ export interface CommandPill {
       transition: all 0.12s;
     }
     /* Inactive tinted states — subtle color hint when not selected */
-    .cb-pill[data-color="cyan"] { border-color: rgba(0, 212, 255, 0.08); color: rgba(0, 212, 255, 0.5); }
-    .cb-pill[data-color="green"] { border-color: rgba(16, 185, 129, 0.08); color: rgba(16, 185, 129, 0.5); }
+    .cb-pill[data-color="cyan"] { border-color: rgba(208, 156, 96, 0.08); color: rgba(208, 156, 96, 0.5); }
+    .cb-pill[data-color="green"] { border-color: rgba(74, 222, 128, 0.08); color: rgba(74, 222, 128, 0.5); }
     .cb-pill[data-color="amber"] { border-color: rgba(245, 158, 11, 0.08); color: rgba(245, 158, 11, 0.5); }
     .cb-pill[data-color="red"] { border-color: rgba(244, 63, 94, 0.08); color: rgba(244, 63, 94, 0.5); }
-    .cb-pill[data-color="purple"] { border-color: rgba(139, 92, 246, 0.08); color: rgba(139, 92, 246, 0.5); }
+    .cb-pill[data-color="purple"] { border-color: rgba(167, 139, 250, 0.08); color: rgba(167, 139, 250, 0.5); }
 
     .cb-pill:hover {
-      background: rgba(255, 255, 255, 0.04);
-      color: rgba(255, 255, 255, 0.8);
+      background: rgba(94, 84, 75, 0.08);
+      color: rgba(245, 240, 235, 0.8);
     }
-    .cb-pill[data-color="cyan"]:hover { background: rgba(0, 212, 255, 0.04); color: rgba(0, 212, 255, 0.75); }
-    .cb-pill[data-color="green"]:hover { background: rgba(16, 185, 129, 0.04); color: rgba(16, 185, 129, 0.75); }
+    .cb-pill[data-color="cyan"]:hover { background: rgba(208, 156, 96, 0.04); color: rgba(208, 156, 96, 0.75); }
+    .cb-pill[data-color="green"]:hover { background: rgba(74, 222, 128, 0.04); color: rgba(74, 222, 128, 0.75); }
     .cb-pill[data-color="amber"]:hover { background: rgba(245, 158, 11, 0.04); color: rgba(245, 158, 11, 0.75); }
     .cb-pill[data-color="red"]:hover { background: rgba(244, 63, 94, 0.04); color: rgba(244, 63, 94, 0.75); }
-    .cb-pill[data-color="purple"]:hover { background: rgba(139, 92, 246, 0.04); color: rgba(139, 92, 246, 0.75); }
+    .cb-pill[data-color="purple"]:hover { background: rgba(167, 139, 250, 0.04); color: rgba(167, 139, 250, 0.75); }
 
     /* Active states by color */
     .cb-pill.cb-on {
-      background: rgba(0, 212, 255, 0.08);
-      border-color: rgba(0, 212, 255, 0.2);
-      color: #00d4ff;
+      background: rgba(208, 156, 96, 0.08);
+      border-color: rgba(208, 156, 96, 0.2);
+      color: #d09c60;
     }
     .cb-pill.cb-on[data-color="amber"] {
       background: rgba(245, 158, 11, 0.08);
@@ -104,14 +104,14 @@ export interface CommandPill {
       color: #f43f5e;
     }
     .cb-pill.cb-on[data-color="green"] {
-      background: rgba(16, 185, 129, 0.08);
-      border-color: rgba(16, 185, 129, 0.2);
-      color: #10b981;
+      background: rgba(74, 222, 128, 0.08);
+      border-color: rgba(74, 222, 128, 0.2);
+      color: #4ade80;
     }
     .cb-pill.cb-on[data-color="purple"] {
-      background: rgba(139, 92, 246, 0.08);
-      border-color: rgba(139, 92, 246, 0.2);
-      color: #8b5cf6;
+      background: rgba(167, 139, 250, 0.08);
+      border-color: rgba(167, 139, 250, 0.2);
+      color: #a78bfa;
     }
 
     .cb-pill-num {
@@ -124,11 +124,11 @@ export interface CommandPill {
       width: 5px; height: 5px; border-radius: 50%;
       flex-shrink: 0;
     }
-    .cb-dot[data-color="cyan"] { background: #00d4ff; box-shadow: 0 0 4px rgba(0, 212, 255, 0.4); }
-    .cb-dot[data-color="green"] { background: #10b981; box-shadow: 0 0 4px rgba(16, 185, 129, 0.4); }
+    .cb-dot[data-color="cyan"] { background: #d09c60; box-shadow: 0 0 4px rgba(208, 156, 96, 0.4); }
+    .cb-dot[data-color="green"] { background: #4ade80; box-shadow: 0 0 4px rgba(74, 222, 128, 0.4); }
     .cb-dot[data-color="amber"] { background: #f59e0b; box-shadow: 0 0 4px rgba(245, 158, 11, 0.4); }
     .cb-dot[data-color="red"] { background: #f43f5e; box-shadow: 0 0 4px rgba(244, 63, 94, 0.4); }
-    .cb-dot[data-color="purple"] { background: #8b5cf6; box-shadow: 0 0 4px rgba(139, 92, 246, 0.4); }
+    .cb-dot[data-color="purple"] { background: #a78bfa; box-shadow: 0 0 4px rgba(167, 139, 250, 0.4); }
 
     .cb-right { display: flex; align-items: center; gap: 6px; }
 
@@ -140,14 +140,14 @@ export interface CommandPill {
     .cb-search-ico {
       position: absolute;
       left: 9px;
-      color: rgba(255, 255, 255, 0.25);
+      color: rgba(168, 158, 148, 0.35);
       pointer-events: none;
     }
     .cb-search input {
       padding: 6px 10px 6px 28px;
       width: 160px;
-      background: rgba(255, 255, 255, 0.02);
-      border: 1px solid rgba(255, 255, 255, 0.05);
+      background: rgba(94, 84, 75, 0.04);
+      border: 1px solid rgba(94, 84, 75, 0.1);
       border-radius: 6px;
       color: var(--text);
       font-size: 11px;
@@ -155,11 +155,11 @@ export interface CommandPill {
       transition: all 0.15s;
       font-family: 'Inter', sans-serif;
     }
-    .cb-search input::placeholder { color: rgba(255, 255, 255, 0.2); }
+    .cb-search input::placeholder { color: rgba(94, 84, 75, 0.2); }
     .cb-search input:focus {
-      border-color: rgba(0, 212, 255, 0.3);
-      background: rgba(0, 212, 255, 0.02);
-      box-shadow: 0 0 8px -2px rgba(0, 212, 255, 0.15);
+      border-color: rgba(208, 156, 96, 0.3);
+      background: rgba(208, 156, 96, 0.02);
+      box-shadow: 0 0 8px -2px rgba(208, 156, 96, 0.15);
     }
 
     @media (max-width: 768px) {

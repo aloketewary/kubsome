@@ -21,21 +21,29 @@ import { Component, Input } from '@angular/core';
   styles: [`
     .holo {
       position: relative;
-      background: linear-gradient(180deg, rgba(13, 17, 28, 0.92) 0%, rgba(8, 11, 20, 0.96) 100%);
-      border: 1px solid rgba(255, 255, 255, 0.05);
-      border-radius: 14px;
+      background: transparent;
+      border: none;
+      border-radius: 0;
       padding: 18px 20px;
       overflow: hidden;
-      transition: border-color 0.25s, box-shadow 0.25s, transform 0.25s;
+      transition: box-shadow 0.25s, transform 0.25s;
     }
 
-    /* Top-edge gradient shine */
+    /* Hairline rules — shared grid dividers */
     .holo::after {
       content: '';
       position: absolute;
-      top: 0; left: 20px; right: 20px;
+      top: 0; left: 0; right: 0;
       height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(0, 212, 255, 0.3), transparent);
+      background: rgba(94, 84, 75, 0.25);
+      pointer-events: none;
+    }
+    .holo::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; bottom: 0;
+      width: 1px;
+      background: rgba(94, 84, 75, 0.15);
       pointer-events: none;
     }
 
@@ -50,25 +58,24 @@ import { Component, Input } from '@angular/core';
     }
 
     .holo-interactive:hover {
-      border-color: rgba(0, 212, 255, 0.15);
       transform: translateY(-1px);
-      box-shadow: 0 8px 32px -8px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(0, 212, 255, 0.05);
+      box-shadow: 0 8px 32px -12px rgba(0, 0, 0, 0.5);
     }
 
-    .holo-compact { padding: 12px 14px; }
-    .holo-flat { background: rgba(10, 14, 26, 0.6); padding: 10px 12px; border-radius: 10px; }
+    .holo-compact { padding: 14px 16px; }
+    .holo-flat { background: transparent; padding: 10px 12px; }
 
-    /* Glow variants — colored top-edge */
-    [data-glow="cyan"]::after { background: linear-gradient(90deg, transparent, rgba(0, 212, 255, 0.5), transparent); }
-    [data-glow="cyan"] { border-color: rgba(0, 212, 255, 0.12); }
-    [data-glow="amber"]::after { background: linear-gradient(90deg, transparent, rgba(245, 158, 11, 0.5), transparent); }
-    [data-glow="amber"] { border-color: rgba(245, 158, 11, 0.12); }
-    [data-glow="red"]::after { background: linear-gradient(90deg, transparent, rgba(244, 63, 94, 0.5), transparent); }
-    [data-glow="red"] { border-color: rgba(244, 63, 94, 0.12); }
-    [data-glow="green"]::after { background: linear-gradient(90deg, transparent, rgba(16, 185, 129, 0.5), transparent); }
-    [data-glow="green"] { border-color: rgba(16, 185, 129, 0.12); }
-    [data-glow="purple"]::after { background: linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.5), transparent); }
-    [data-glow="purple"] { border-color: rgba(139, 92, 246, 0.12); }
+    /* Glow variants — accent the top hairline */
+    [data-glow="cyan"]::after { background: rgba(208, 156, 96, 0.35); }
+    [data-glow="cyan"] { }
+    [data-glow="amber"]::after { background: rgba(245, 158, 11, 0.4); }
+    [data-glow="amber"] { }
+    [data-glow="red"]::after { background: rgba(244, 63, 94, 0.4); }
+    [data-glow="red"] { }
+    [data-glow="green"]::after { background: rgba(74, 222, 128, 0.35); }
+    [data-glow="green"] { }
+    [data-glow="purple"]::after { background: rgba(167, 139, 250, 0.35); }
+    [data-glow="purple"] { }
 
     /* Header */
     .holo-head {
@@ -77,25 +84,44 @@ import { Component, Input } from '@angular/core';
       gap: 8px;
       margin-bottom: 12px;
     }
-    .holo-ico { font-size: 12px; color: #00d4ff; opacity: 0.7; }
+    .holo-ico { font-size: 12px; color: #d09c60; opacity: 0.7; }
     .holo-lbl {
       font-size: 10px;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.1em;
-      color: rgba(255, 255, 255, 0.4);
+      color: rgba(168, 158, 148, 0.5);
     }
     .holo-bdg {
       font-size: 9px;
       font-weight: 700;
       padding: 2px 7px;
       border-radius: 8px;
-      background: rgba(0, 212, 255, 0.1);
-      color: #00d4ff;
+      background: rgba(208, 156, 96, 0.1);
+      color: #d09c60;
       font-family: 'JetBrains Mono', monospace;
     }
     .holo-head-slot { margin-left: auto; display: flex; gap: 4px; }
     .holo-content { position: relative; z-index: 1; }
+
+    /* ─── Light Mode ─────────────────────────────────────────────── */
+    :host-context([data-theme="light"]) .holo::after {
+      background: rgba(0, 0, 0, 0.06);
+    }
+    :host-context([data-theme="light"]) .holo::before {
+      background: rgba(0, 0, 0, 0.04);
+    }
+    :host-context([data-theme="light"]) .holo-interactive:hover {
+      box-shadow: 0 4px 20px -8px rgba(0, 0, 0, 0.08);
+    }
+    :host-context([data-theme="light"]) [data-glow="cyan"]::after { background: rgba(180, 120, 60, 0.3); }
+    :host-context([data-theme="light"]) [data-glow="amber"]::after { background: rgba(202, 138, 4, 0.35); }
+    :host-context([data-theme="light"]) [data-glow="red"]::after { background: rgba(220, 38, 38, 0.35); }
+    :host-context([data-theme="light"]) [data-glow="green"]::after { background: rgba(22, 163, 74, 0.3); }
+    :host-context([data-theme="light"]) [data-glow="purple"]::after { background: rgba(124, 58, 237, 0.3); }
+    :host-context([data-theme="light"]) .holo-ico { color: #9a5129; }
+    :host-context([data-theme="light"]) .holo-lbl { color: rgba(0, 0, 0, 0.45); }
+    :host-context([data-theme="light"]) .holo-bdg { background: rgba(154, 81, 41, 0.08); color: #9a5129; }
   `],
 })
 export class HoloCardComponent {

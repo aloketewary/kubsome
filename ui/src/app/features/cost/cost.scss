@@ -8,13 +8,13 @@
 .score-hero { display: flex; align-items: center; gap: 16px; }
 .score-ring { position: relative; width: 64px; height: 64px; flex-shrink: 0; }
 .score-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
-.ring-bg { fill: none; stroke: rgba(255, 255, 255, 0.04); stroke-width: 3; }
+.ring-bg { fill: none; stroke: rgba(94, 84, 75, 0.1); stroke-width: 3; }
 .ring-fill { fill: none; stroke-width: 3.5; stroke-linecap: round; transition: stroke-dasharray 0.6s; filter: drop-shadow(0 0 3px currentColor); }
-.ring-grade { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 800; font-family: 'JetBrains Mono', monospace; color: rgba(255, 255, 255, 0.9); }
+.ring-grade { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 800; font-family: 'JetBrains Mono', monospace; color: var(--text); }
 
 .score-info { flex: 1; display: flex; flex-direction: column; gap: 2px; }
-.score-title { font-size: 15px; font-weight: 700; color: rgba(255, 255, 255, 0.9); }
-.score-desc { font-size: 11px; color: rgba(255, 255, 255, 0.35); }
+.score-title { font-size: 15px; font-weight: 700; color: var(--text); }
+.score-desc { font-size: 11px; color: var(--text-muted); }
 .score-metrics { display: flex; gap: 6px; }
 
 /* ─── Optimization Cards ─────────────────────────────────────────── */
@@ -22,9 +22,9 @@
 
 .opt-card {
   display: flex; align-items: center; gap: 10px;
-  padding: 10px 14px; border-radius: 10px;
-  background: linear-gradient(180deg, rgba(13, 17, 28, 0.75) 0%, rgba(8, 11, 20, 0.8) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.04);
+  padding: 10px 14px; border-radius: 0;
+  background: linear-gradient(180deg, transparent 0%, transparent 100%);
+  border: 1px solid rgba(94, 84, 75, 0.1);
   position: relative; overflow: hidden;
   transition: all 0.2s;
 }
@@ -35,22 +35,22 @@
 .opt-bar { position: absolute; left: 0; top: 0; bottom: 0; width: 3px; }
 .impact-high { background: #f43f5e; box-shadow: 0 0 4px rgba(244, 63, 94, 0.3); }
 .impact-med { background: #f59e0b; box-shadow: 0 0 4px rgba(245, 158, 11, 0.3); }
-.impact-low { background: #00d4ff; box-shadow: 0 0 4px rgba(0, 212, 255, 0.3); }
+.impact-low { background: #d09c60; box-shadow: 0 0 4px rgba(208, 156, 96, 0.3); }
 .impact-unused { background: #f59e0b; }
 
 .opt-body { flex: 1; min-width: 0; }
 .opt-top { display: flex; align-items: center; gap: 8px; margin-bottom: 3px; }
-.opt-name { font-size: 12px; font-weight: 600; color: rgba(255, 255, 255, 0.8); font-family: 'JetBrains Mono', monospace; }
-.opt-kind { font-size: 8px; color: rgba(255, 255, 255, 0.3); background: rgba(255, 255, 255, 0.03); padding: 1px 5px; border-radius: 3px; text-transform: uppercase; letter-spacing: 0.04em; }
-.opt-detail { font-size: 10px; color: rgba(255, 255, 255, 0.4); margin: 0; line-height: 1.4; }
+.opt-name { font-size: 12px; font-weight: 600; color: var(--text); font-family: 'JetBrains Mono', monospace; }
+.opt-kind { font-size: 8px; color: var(--text-muted); background: rgba(94, 84, 75, 0.08); padding: 1px 5px; border-radius: 3px; text-transform: uppercase; letter-spacing: 0.04em; }
+.opt-detail { font-size: 10px; color: var(--text-muted); margin: 0; line-height: 1.4; }
 
 .opt-compare {
   display: flex; align-items: center; gap: 6px; margin-top: 4px;
   font-size: 10px; font-family: 'JetBrains Mono', monospace;
 }
-.oc-from { color: rgba(255, 255, 255, 0.3); }
-.oc-arrow { color: rgba(255, 255, 255, 0.15); }
-.oc-to { color: #10b981; font-weight: 600; }
+.oc-from { color: var(--text-muted); }
+.oc-arrow { color: rgba(94, 84, 75, 0.15); }
+.oc-to { color: #4ade80; font-weight: 600; }
 
 .opt-savings {
   display: flex; flex-direction: column; align-items: center;
@@ -58,7 +58,7 @@
   background: rgba(16, 185, 129, 0.06); border: 1px solid rgba(16, 185, 129, 0.12);
   flex-shrink: 0;
 }
-.sv-val { font-size: 12px; font-weight: 800; color: #10b981; font-family: 'JetBrains Mono', monospace; }
+.sv-val { font-size: 12px; font-weight: 800; color: #4ade80; font-family: 'JetBrains Mono', monospace; }
 .sv-lbl { font-size: 7px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: rgba(16, 185, 129, 0.6); }
 
 /* ─── Responsive ─────────────────────────────────────────────────── */

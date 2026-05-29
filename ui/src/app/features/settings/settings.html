@@ -1,204 +1,69 @@
-    <app-spotlight id="settings" title="Settings" icon="pi pi-cog"
-      description="Configure theme, refresh intervals, and preferences."
-      [capabilities]="['Theme selection', 'Refresh intervals', 'Shortcuts reference', 'Data management']" [compact]="true" />
+<div class="intel-header">
+  <div class="intel-title-block">
+    <h1 class="intel-title"><span class="title-icon">⚙</span> Settings</h1>
+    <p class="intel-subtitle">v{{ appVersion }}</p>
+  </div>
+</div>
 
-    <app-page-header title="Settings" subtitle="Customize your workspace">
-    </app-page-header>
+<!-- Cluster Info -->
+<app-holo-card title="Cluster" icon="pi pi-server" [glow]="clusterInfo.connected ? 'green' : 'red'" [compact]="true">
+  <div class="info-grid">
+    <div class="info-row"><span class="info-key">Context</span><code class="info-val">{{ clusterInfo.context || '—' }}</code></div>
+    <div class="info-row"><span class="info-key">Namespace</span><code class="info-val">{{ clusterInfo.namespace || '—' }}</code></div>
+    <div class="info-row"><span class="info-key">Server</span><code class="info-val">{{ clusterInfo.server || '—' }}</code></div>
+    <div class="info-row"><span class="info-key">Status</span><app-status-beacon [status]="clusterInfo.connected ? 'ok' : 'critical'" size="sm" /></div>
+  </div>
+</app-holo-card>
 
-    <div class="settings-grid">
-      <!-- Left: Settings -->
-      <div class="settings-main">
-        <!-- Cluster Info -->
-        <div class="settings-section">
-          <div class="section-header">
-            <div class="section-icon icon-cluster"><i class="pi pi-server"></i></div>
-            <div><h3>Cluster Connection</h3><p class="section-desc">Current active connection</p></div>
-          </div>
-          <div class="cluster-info-grid">
-            <div class="ci-item">
-              <span class="ci-label">Context</span>
-              <code class="ci-value">{{ clusterInfo.context || '—' }}</code>
-            </div>
-            <div class="ci-item">
-              <span class="ci-label">Namespace</span>
-              <code class="ci-value">{{ clusterInfo.namespace || '—' }}</code>
-            </div>
-            <div class="ci-item">
-              <span class="ci-label">Server</span>
-              <code class="ci-value">{{ clusterInfo.server || '—' }}</code>
-            </div>
-            <div class="ci-item">
-              <span class="ci-label">Status</span>
-              <span class="ci-status" [class.ci-ok]="clusterInfo.connected" [class.ci-err]="!clusterInfo.connected">
-                <span class="ci-dot"></span> {{ clusterInfo.connected ? 'Connected' : 'Disconnected' }}
-              </span>
-            </div>
-          </div>
-        </div>
+<!-- Theme -->
+<app-holo-card title="Appearance" icon="pi pi-palette" [compact]="true">
+  <div class="theme-row">
+    @for (t of themes; track t.id) {
+      <button class="theme-btn" [class.theme-active]="prefs.get('theme') === t.id" (click)="setTheme(t.id)">{{ t.label }}</button>
+    }
+  </div>
+</app-holo-card>
 
-        <!-- Appearance -->
-        <div class="settings-section">
-          <div class="section-header">
-            <div class="section-icon icon-theme"><i class="pi pi-palette"></i></div>
-            <div><h3>Appearance</h3><p class="section-desc">Visual theme and display</p></div>
-          </div>
-          <div class="setting-row">
-            <div class="setting-info">
-              <span class="setting-name">Theme</span>
-              <span class="setting-hint">Interface color scheme</span>
-            </div>
-            <div class="theme-switcher">
-              @for (t of themes; track t.id) {
-                <button class="theme-card" [class.active]="prefs.get('theme') === t.id" (click)="setTheme(t.id)">
-                  <div class="tc-preview" [class]="'tc-' + t.id"></div>
-                  <span class="tc-label">{{ t.label }}</span>
-                </button>
-              }
-            </div>
-          </div>
-        </div>
+<!-- Notifications -->
+<app-holo-card title="Notifications" icon="pi pi-bell" [compact]="true">
+  <div class="toggle-row">
+    <span>Desktop notifications</span>
+    <button class="toggle-btn" [class.toggle-on]="prefs.get('notifications')" (click)="toggleNotifications()">{{ prefs.get('notifications') ? 'On' : 'Off' }}</button>
+  </div>
+</app-holo-card>
 
-        <!-- Data & Refresh -->
-        <div class="settings-section">
-          <div class="section-header">
-            <div class="section-icon icon-data"><i class="pi pi-sync"></i></div>
-            <div><h3>Data & Refresh</h3><p class="section-desc">Auto-update intervals</p></div>
-          </div>
-          <div class="setting-row">
-            <div class="setting-info">
-              <span class="setting-name">Auto-refresh</span>
-              <span class="setting-hint">Dashboard and pod data refresh rate</span>
-            </div>
-            <div class="interval-options">
-              @for (opt of refreshOptions; track opt.value) {
-                <button class="opt-btn" [class.active]="prefs.get('refreshInterval') === opt.value" (click)="prefs.set('refreshInterval', opt.value)">
-                  {{ opt.label }}
-                </button>
-              }
-            </div>
-          </div>
-          <div class="setting-row">
-            <div class="setting-info">
-              <span class="setting-name">Notifications</span>
-              <span class="setting-hint">Browser alerts for pod crashes and recoveries</span>
-            </div>
-            <div class="toggle-switch" [class.on]="prefs.get('notifications')" (click)="toggleNotifications()">
-              <div class="toggle-thumb"></div>
-            </div>
-          </div>
-        </div>
+<!-- Webhooks -->
+<app-holo-card title="Webhooks" icon="pi pi-send" [compact]="true">
+  @for (wh of webhooks; track $index; let i = $index) {
+    <div class="wh-row">
+      <select [(ngModel)]="wh.type"><option value="slack">Slack</option><option value="teams">Teams</option><option value="generic">Generic</option></select>
+      <input [(ngModel)]="wh.url" placeholder="Webhook URL" />
+      <app-action-icon icon="pi pi-trash" tooltip="Remove" accent="red" (clicked)="removeWebhook(i)" />
+    </div>
+  }
+  <div class="wh-actions">
+    <button class="ctrl-btn ctrl-btn-wide" (click)="addWebhook()"><i class="pi pi-plus"></i> Add</button>
+    <button class="ctrl-btn ctrl-btn-wide" (click)="saveWebhooks()" [class.disabled]="webhookSaving">Save</button>
+    <button class="ctrl-btn ctrl-btn-wide" (click)="testWebhook()">Test</button>
+    @if (webhookMsg) { <span class="wh-msg">{{ webhookMsg }}</span> }
+  </div>
+</app-holo-card>
 
-        <!-- Webhooks -->
-        <div class="settings-section">
-          <div class="section-header">
-            <div class="section-icon icon-webhook"><i class="pi pi-bell"></i></div>
-            <div><h3>Webhook Notifications</h3><p class="section-desc">Send alerts to Slack, Teams, Webex, or custom endpoints</p></div>
-          </div>
-
-          @for (hook of webhooks; track $index; let i = $index) {
-            <div class="webhook-row">
-              <select class="wh-type" [(ngModel)]="hook.type">
-                <option value="slack">Slack</option>
-                <option value="teams">Teams</option>
-                <option value="webex">Webex</option>
-                <option value="generic">Generic</option>
-              </select>
-              <input class="wh-url" [(ngModel)]="hook.url" [placeholder]="webhookPlaceholder(hook.type)" />
-              <button class="wh-remove" (click)="removeWebhook(i)" pTooltip="Remove"><i class="pi pi-trash"></i></button>
-            </div>
-          }
-
-          <div class="webhook-actions">
-            <button pButton icon="pi pi-plus" label="Add Webhook" class="p-button-sm p-button-outlined" (click)="addWebhook()"></button>
-            @if (webhooks.length > 0) {
-              <button pButton icon="pi pi-save" label="Save" class="p-button-sm" (click)="saveWebhooks()" [disabled]="webhookSaving"></button>
-              <button pButton icon="pi pi-send" label="Test" class="p-button-sm p-button-outlined p-button-success" (click)="testWebhook()" [disabled]="webhookSaving"></button>
-            }
-            @if (webhookMsg) {
-              <span class="wh-msg" [class.wh-ok]="webhookMsg.includes('✓')">{{ webhookMsg }}</span>
-            }
-          </div>
-        </div>
-
-        <!-- Keyboard Shortcuts -->
-        <div class="settings-section">
-          <div class="section-header">
-            <div class="section-icon icon-keys"><i class="pi pi-key"></i></div>
-            <div><h3>Keyboard Shortcuts</h3><p class="section-desc">Navigate faster</p></div>
-          </div>
-          <div class="shortcuts-grid">
-            @for (group of shortcutGroups; track group.label) {
-              <div class="sc-group">
-                <span class="sc-group-label">{{ group.label }}</span>
-                @for (sc of group.items; track sc.key) {
-                  <div class="sc-row">
-                    <kbd>{{ sc.key }}</kbd>
-                    <span>{{ sc.action }}</span>
-                  </div>
-                }
-              </div>
-            }
-          </div>
-        </div>
-
-        <!-- Data Management -->
-        <div class="settings-section section-danger">
-          <div class="section-header">
-            <div class="section-icon icon-danger"><i class="pi pi-shield"></i></div>
-            <div><h3>Data Management</h3><p class="section-desc">Reset and clear stored data</p></div>
-          </div>
-          <div class="danger-actions">
-            <div class="danger-row">
-              <div class="setting-info">
-                <span class="setting-name">Reset onboarding</span>
-                <span class="setting-hint">Show all feature spotlights again</span>
-              </div>
-              <button pButton label="Reset" icon="pi pi-refresh" class="p-button-sm p-button-outlined" (click)="resetSpotlights()"></button>
-            </div>
-            <div class="danger-row">
-              <div class="setting-info">
-                <span class="setting-name">Clear monitor cards</span>
-                <span class="setting-hint">Remove all saved monitor configurations</span>
-              </div>
-              <button pButton label="Clear" icon="pi pi-trash" class="p-button-sm p-button-outlined p-button-warning" (click)="clearMonitorCards()"></button>
-            </div>
-            <div class="danger-row">
-              <div class="setting-info">
-                <span class="setting-name">Reset all preferences</span>
-                <span class="setting-hint">Restore all settings to defaults</span>
-              </div>
-              <button pButton label="Reset All" icon="pi pi-exclamation-triangle" class="p-button-sm p-button-outlined p-button-danger" (click)="resetAll()"></button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Right: About -->
-      <div class="settings-aside">
-        <div class="about-card">
-          <div class="about-logo"><i class="pi pi-box"></i></div>
-          <div class="about-name">Kubsome</div>
-          <p-tag [value]="'v' + appVersion" severity="info" [rounded]="true" />
-          <p class="about-tagline">AI-native Kubernetes Operations</p>
-
-          <div class="about-stats">
-            <div class="as-item"><span class="as-val">72</span><span class="as-label">APIs</span></div>
-            <div class="as-item"><span class="as-val">30+</span><span class="as-label">Pages</span></div>
-            <div class="as-item"><span class="as-val">85+</span><span class="as-label">Commands</span></div>
-          </div>
-
-          <div class="about-author">
-            <div class="author-avatar">A</div>
-            <div class="author-info">
-              <span class="author-name">Aloke Tewary</span>
-              <a href="https://github.com/aloketewary" target="_blank" class="author-link">&#64;aloketewary</a>
-            </div>
-          </div>
-
-          <div class="about-links">
-            <a href="https://github.com/aloketewary/kubsome" target="_blank" class="alink"><i class="pi pi-github"></i> GitHub</a>
-            <a href="/docs" target="_blank" class="alink"><i class="pi pi-book"></i> Docs</a>
-          </div>
-        </div>
+<!-- Shortcuts -->
+<app-holo-card title="Keyboard Shortcuts" icon="pi pi-key" [compact]="true">
+  @for (group of shortcutGroups; track group.label) {
+    <div class="shortcut-group">
+      <span class="sg-label">{{ group.label }}</span>
+      <div class="sg-items">
+        @for (s of group.items; track s.key) {
+          <div class="shortcut-row"><kbd>{{ s.key }}</kbd><span>{{ s.action }}</span></div>
+        }
       </div>
     </div>
+  }
+</app-holo-card>
+
+<!-- Danger Zone -->
+<app-holo-card title="Danger Zone" icon="pi pi-exclamation-triangle" glow="red" [compact]="true">
+  <button class="ctrl-btn ctrl-btn-wide danger-btn" (click)="resetAll()"><i class="pi pi-trash"></i> Reset All Settings</button>
+</app-holo-card>

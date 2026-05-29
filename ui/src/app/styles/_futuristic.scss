@@ -19,17 +19,18 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  color: rgba(255, 255, 255, 0.92);
+  color: rgba(245, 240, 235, 0.92);
 }
 
 .title-icon {
   font-size: 14px;
   text-shadow: 0 0 6px currentColor;
+  color: #d09c60;
 }
 
 .intel-subtitle {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.3);
+  color: rgba(168, 158, 148, 0.6);
   margin: 3px 0 0;
   font-family: 'JetBrains Mono', monospace;
   letter-spacing: 0.01em;
@@ -46,9 +47,9 @@
   width: 28px;
   height: 28px;
   border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  background: rgba(255, 255, 255, 0.02);
-  color: rgba(255, 255, 255, 0.3);
+  border: 1px solid rgba(94, 84, 75, 0.2);
+  background: transparent;
+  color: rgba(168, 158, 148, 0.5);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -58,16 +59,16 @@
 }
 
 .ctrl-btn:hover {
-  border-color: rgba(0, 212, 255, 0.25);
-  color: #00d4ff;
-  background: rgba(0, 212, 255, 0.04);
-  box-shadow: 0 0 8px -3px rgba(0, 212, 255, 0.25);
+  border-color: rgba(208, 156, 96, 0.3);
+  color: #d09c60;
+  background: rgba(208, 156, 96, 0.04);
+  box-shadow: 0 0 8px -3px rgba(208, 156, 96, 0.15);
 }
 
 .ctrl-btn-active {
-  border-color: rgba(16, 185, 129, 0.25);
-  color: #10b981;
-  background: rgba(16, 185, 129, 0.04);
+  border-color: rgba(74, 222, 128, 0.25);
+  color: #4ade80;
+  background: rgba(74, 222, 128, 0.04);
 }
 
 .ctrl-btn-sm {
@@ -95,8 +96,10 @@
 /* ─── Metrics Strip ──────────────────────────────────────────────── */
 .metrics-strip {
   display: flex;
-  gap: 6px;
-  margin-bottom: 12px;
+  gap: 0;
+  margin-bottom: 16px;
+  border-bottom: 1px solid rgba(94, 84, 75, 0.15);
+  padding-bottom: 16px;
 }
 
 /* ─── Empty / Loading States ─────────────────────────────────────── */
@@ -108,16 +111,16 @@
   align-items: center;
   gap: 10px;
   padding: 48px 20px;
-  color: rgba(255, 255, 255, 0.3);
+  color: rgba(168, 158, 148, 0.5);
   font-size: 12px;
 }
 
 .empty-icon {
   width: 48px;
   height: 48px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 50%;
+  background: transparent;
+  border: 1px solid rgba(94, 84, 75, 0.2);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -132,8 +135,8 @@
 .loader-ring {
   width: 24px;
   height: 24px;
-  border: 2px solid rgba(0, 212, 255, 0.1);
-  border-top-color: #00d4ff;
+  border: 2px solid rgba(94, 84, 75, 0.2);
+  border-top-color: #d09c60;
   border-radius: 50%;
   animation: futuristic-spin 0.7s linear infinite;
 }
@@ -148,4 +151,44 @@
 @media (max-width: 768px) {
   .intel-header { flex-direction: column; gap: 10px; }
   .metrics-strip { flex-wrap: wrap; }
+}
+
+/* ─── Light Mode ─────────────────────────────────────────────────── */
+:host-context([data-theme="light"]) {
+  .intel-title { color: rgba(0, 0, 0, 0.85); }
+  .intel-subtitle { color: rgba(0, 0, 0, 0.4); }
+  .title-icon { color: #9a5129; text-shadow: none; }
+
+  .ctrl-btn {
+    border-color: rgba(0, 0, 0, 0.08);
+    background: rgba(0, 0, 0, 0.02);
+    color: rgba(0, 0, 0, 0.4);
+  }
+  .ctrl-btn:hover {
+    border-color: rgba(154, 81, 41, 0.25);
+    color: #9a5129;
+    background: rgba(154, 81, 41, 0.04);
+    box-shadow: none;
+  }
+  .ctrl-btn-active {
+    border-color: rgba(22, 163, 74, 0.25);
+    color: #16a34a;
+    background: rgba(22, 163, 74, 0.04);
+  }
+
+  .metrics-strip {
+    border-bottom-color: rgba(0, 0, 0, 0.06);
+  }
+
+  .empty-state, .loading-state, .error-state {
+    color: rgba(0, 0, 0, 0.35);
+  }
+  .empty-icon {
+    border-color: rgba(0, 0, 0, 0.08);
+    color: rgba(0, 0, 0, 0.3);
+  }
+  .loader-ring {
+    border-color: rgba(0, 0, 0, 0.06);
+    border-top-color: #9a5129;
+  }
 }

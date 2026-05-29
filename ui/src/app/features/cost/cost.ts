@@ -34,7 +34,7 @@ export class CostComponent implements OnInit {
   get score() { if (this.totalIssues === 0) return 95; if (this.totalIssues <= 2) return 80; if (this.totalIssues <= 5) return 60; return 40; }
   get grade() { if (this.score >= 90) return 'A'; if (this.score >= 75) return 'B'; if (this.score >= 55) return 'C'; return 'D'; }
   get scoreGlow(): 'green' | 'cyan' | 'amber' | 'red' { if (this.score >= 90) return 'green'; if (this.score >= 75) return 'cyan'; if (this.score >= 55) return 'amber'; return 'red'; }
-  get scoreStroke(): string { if (this.score >= 90) return '#10b981'; if (this.score >= 75) return '#00d4ff'; if (this.score >= 55) return '#f59e0b'; return '#f43f5e'; }
+  get scoreStroke(): string { if (this.score >= 90) return '#4ade80'; if (this.score >= 75) return '#d09c60'; if (this.score >= 55) return '#f59e0b'; return '#f43f5e'; }
   get scoreTitle() { if (this.score >= 90) return 'Excellent Efficiency'; if (this.score >= 75) return 'Good Efficiency'; if (this.score >= 55) return 'Room for Improvement'; return 'Needs Attention'; }
 
   get filterPills(): CommandPill[] {

@@ -1,11 +1,11 @@
 @use '../../styles/futuristic';
 :host { display: block; width: 100%; }
-.title-icon { color: #10b981; }
+.title-icon { color: #4ade80; }
 
 .ing-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.025); font-size: 11px; }
 .ing-row:last-child { border-bottom: none; }
 .ing-name { color: rgba(255,255,255,0.7); font-weight: 600; }
-.ing-host { color: #00d4ff; }
+.ing-host { color: #d09c60; }
 .ing-path { color: rgba(255,255,255,0.35); }
 .ing-backend { color: rgba(255,255,255,0.4); margin-left: auto; }
 

@@ -216,7 +216,7 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
     .dot-bad { background: #f43f5e; box-shadow: 0 0 6px rgba(244, 63, 94, 0.5); animation: ctxPulse 2s ease-in-out infinite; }
     @keyframes ctxPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
     .ctx-name {
-      font-size: 11px; font-weight: 600; color: rgba(255, 255, 255, 0.7);
+      font-size: 11px; font-weight: 600; color: rgba(245, 240, 235, 0.75);
       font-family: 'JetBrains Mono', monospace;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
@@ -238,15 +238,14 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
       gap: 4px;
       font-size: 9px;
       font-weight: 700;
-      color: rgba(255, 255, 255, 0.25);
-      text-transform: uppercase;
+      color: rgba(168, 158, 148, 0.6);
       letter-spacing: 0.08em;
       padding: 4px 10px 4px;
       user-select: none;
       cursor: pointer;
       outline: none;
     }
-    .nav-label:focus-visible { color: #00d4ff; }
+    .nav-label:focus-visible { color: #d09c60; }
     .collapse-icon {
       font-size: 9px;
     }
@@ -259,7 +258,7 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
       border-radius: 8px;
       font-size: 12px;
       font-weight: 500;
-      color: rgba(255, 255, 255, 0.4);
+      color: rgba(168, 158, 148, 0.5);
       cursor: pointer;
       transition: all 0.15s;
       text-decoration: none;
@@ -268,31 +267,31 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
       border: 1px solid transparent;
     }
     .nav-item:hover {
-      background: rgba(255, 255, 255, 0.02);
-      color: rgba(255, 255, 255, 0.8);
-      border-color: rgba(255, 255, 255, 0.04);
+      background: rgba(245, 240, 235, 0.03);
+      color: rgba(245, 240, 235, 0.85);
+      border-color: rgba(245, 240, 235, 0.04);
       transform: translateX(2px);
     }
     .nav-item.active {
-      background: rgba(0, 212, 255, 0.04);
-      color: #00d4ff;
-      border-color: rgba(0, 212, 255, 0.1);
-      box-shadow: inset 2px 0 0 #00d4ff;
+      background: rgba(208, 156, 96, 0.04);
+      color: #d09c60;
+      border-color: rgba(208, 156, 96, 0.1);
+      box-shadow: inset 2px 0 0 #d09c60;
     }
     .nav-item:focus-visible {
       outline: none;
-      box-shadow: inset 0 0 0 1px rgba(0, 212, 255, 0.3);
+      box-shadow: inset 0 0 0 1px rgba(208, 156, 96, 0.3);
     }
     .nav-badge {
       font-size: 7px; font-weight: 800; padding: 1px 4px; border-radius: 4px;
-      background: rgba(0, 212, 255, 0.12); color: #00d4ff; margin-left: 6px;
+      background: rgba(208, 156, 96, 0.12); color: #d09c60; margin-left: 6px;
       text-transform: uppercase; letter-spacing: 0.06em;
     }
     .nav-item i {
       font-size: 12px;
       width: 16px;
       text-align: center;
-      opacity: 0.6;
+      opacity: 0.5;
     }
     .nav-item.active i { opacity: 1; }
     .nav-item kbd {
@@ -300,9 +299,9 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
       font-size: 9px;
       padding: 1px 4px;
       border-radius: 3px;
-      background: rgba(255, 255, 255, 0.02);
-      border: 1px solid rgba(255, 255, 255, 0.05);
-      color: rgba(255, 255, 255, 0.2);
+      background: rgba(245, 240, 235, 0.03);
+      border: 1px solid rgba(94, 84, 75, 0.15);
+      color: rgba(168, 158, 148, 0.4);
       font-family: 'JetBrains Mono', monospace;
     }
     .fav-row, .nav-row {
@@ -313,7 +312,7 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
     .fav-remove, .star-btn {
       background: none;
       border: none;
-      color: rgba(255, 255, 255, 0.25);
+      color: rgba(168, 158, 148, 0.4);
       cursor: pointer;
       padding: 4px;
       border-radius: 4px;
@@ -331,7 +330,7 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
     .nav-footer {
       margin-top: auto;
       padding-top: 6px;
-      border-top: 1px solid rgba(255, 255, 255, 0.03);
+      border-top: 1px solid rgba(94, 84, 75, 0.12);
     }
     .help-overlay {
       position: fixed; inset: 0; background: rgba(0,0,0,0.6);
@@ -341,7 +340,7 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
     .help-modal {
       width: min(650px, 90vw); max-height: 80vh;
       background: linear-gradient(180deg, rgba(13, 17, 28, 0.98) 0%, rgba(8, 11, 20, 1) 100%);
-      border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 14px;
+      border: 1px solid rgba(94, 84, 75, 0.2); border-radius: 14px;
       box-shadow: 0 20px 60px rgba(0,0,0,0.7); display: flex; flex-direction: column;
       overflow: hidden;
       animation: helpIn 0.25s cubic-bezier(0.34,1.56,0.64,1);
@@ -352,16 +351,65 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
     }
     .help-header {
       display: flex; align-items: center; justify-content: space-between;
-      padding: 14px 20px; border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      padding: 14px 20px; border-bottom: 1px solid rgba(94, 84, 75, 0.12);
       font-size: 15px; font-weight: 600;
     }
     .help-close {
-      background: none; border: none; color: rgba(255, 255, 255, 0.3);
+      background: none; border: none; color: rgba(168, 158, 148, 0.5);
       cursor: pointer; padding: 4px; border-radius: 4px;
     }
-    .help-close:hover { background: rgba(255, 255, 255, 0.04); color: rgba(255, 255, 255, 0.8); }
-    .help-close:focus-visible { outline: none; background: rgba(0, 212, 255, 0.04); color: #00d4ff; box-shadow: 0 0 0 2px rgba(0, 212, 255, 0.3); }
+    .help-close:hover { background: rgba(245, 240, 235, 0.04); color: rgba(245, 240, 235, 0.85); }
+    .help-close:focus-visible { outline: none; background: rgba(208, 156, 96, 0.04); color: #d09c60; box-shadow: 0 0 0 2px rgba(208, 156, 96, 0.3); }
     .help-body { padding: 20px; overflow-y: auto; }
+
+    /* ─── Light Mode ──────────────────────────────────────────────── */
+    :host-context([data-theme="light"]) .ctx-block {
+      background: rgba(0, 0, 0, 0.03);
+      border-color: rgba(0, 0, 0, 0.08);
+    }
+    :host-context([data-theme="light"]) .ctx-name { color: rgba(0, 0, 0, 0.7); }
+    :host-context([data-theme="light"]) .nav-label { color: rgba(0, 0, 0, 0.35); }
+    :host-context([data-theme="light"]) .nav-label:focus-visible { color: #9a5129; }
+    :host-context([data-theme="light"]) .nav-item { color: rgba(0, 0, 0, 0.45); }
+    :host-context([data-theme="light"]) .nav-item:hover {
+      background: rgba(0, 0, 0, 0.02);
+      color: rgba(0, 0, 0, 0.8);
+      border-color: rgba(0, 0, 0, 0.04);
+    }
+    :host-context([data-theme="light"]) .nav-item.active {
+      background: rgba(154, 81, 41, 0.05);
+      color: #9a5129;
+      border-color: rgba(154, 81, 41, 0.1);
+      box-shadow: inset 2px 0 0 #9a5129;
+    }
+    :host-context([data-theme="light"]) .nav-item:focus-visible {
+      box-shadow: inset 0 0 0 1px rgba(154, 81, 41, 0.25);
+    }
+    :host-context([data-theme="light"]) .nav-badge {
+      background: rgba(154, 81, 41, 0.08); color: #9a5129;
+    }
+    :host-context([data-theme="light"]) .nav-item i { opacity: 0.5; }
+    :host-context([data-theme="light"]) .nav-item.active i { opacity: 1; }
+    :host-context([data-theme="light"]) .nav-item kbd {
+      background: rgba(0, 0, 0, 0.02);
+      border-color: rgba(0, 0, 0, 0.06);
+      color: rgba(0, 0, 0, 0.25);
+    }
+    :host-context([data-theme="light"]) .fav-remove, :host-context([data-theme="light"]) .star-btn {
+      color: rgba(0, 0, 0, 0.3);
+    }
+    :host-context([data-theme="light"]) .nav-footer {
+      border-top-color: rgba(0, 0, 0, 0.06);
+    }
+    :host-context([data-theme="light"]) .help-modal {
+      background: #ffffff;
+      border-color: rgba(0, 0, 0, 0.1);
+    }
+    :host-context([data-theme="light"]) .help-header {
+      border-bottom-color: rgba(0, 0, 0, 0.06);
+    }
+    :host-context([data-theme="light"]) .help-close { color: rgba(0, 0, 0, 0.4); }
+    :host-context([data-theme="light"]) .help-close:hover { background: rgba(0, 0, 0, 0.04); color: rgba(0, 0, 0, 0.8); }
   `],
 })
 export class ShellComponent implements OnInit {

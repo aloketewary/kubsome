@@ -1,9 +1,9 @@
 @use '../../styles/futuristic';
 :host { display: block; width: 100%; }
-.title-icon { color: #00d4ff; }
+.title-icon { color: #d09c60; }
 
 .helm-list { display: flex; flex-direction: column; gap: 4px; }
-.helm-row { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 10px; background: linear-gradient(180deg, rgba(13,17,28,0.75) 0%, rgba(8,11,20,0.8) 100%); border: 1px solid rgba(255,255,255,0.04); transition: all 0.15s; }
+.helm-row { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 0; background: linear-gradient(180deg, rgba(13,17,28,0.75) 0%, rgba(8,11,20,0.8) 100%); border: 1px solid rgba(255,255,255,0.04); transition: all 0.15s; }
 .helm-row:hover { border-color: rgba(255,255,255,0.07); }
 .helm-row:hover .helm-actions { opacity: 1; }
 .helm-failed { border-left: 2px solid rgba(244,63,94,0.5); }

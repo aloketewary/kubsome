@@ -31,16 +31,16 @@ import { StatusBeaconComponent } from './status-beacon.component';
       border: 1px solid transparent;
     }
     .dr:hover {
-      background: rgba(255, 255, 255, 0.02);
-      border-color: rgba(255, 255, 255, 0.04);
+      background: rgba(94, 84, 75, 0.04);
+      border-color: rgba(94, 84, 75, 0.08);
       transform: translateX(2px);
     }
     .dr:hover .dr-actions { opacity: 1; }
-    .dr:focus-visible { box-shadow: inset 0 0 0 1px rgba(0, 212, 255, 0.3); }
+    .dr:focus-visible { box-shadow: inset 0 0 0 1px rgba(208, 156, 96, 0.3); }
 
     .dr-sel {
-      background: rgba(0, 212, 255, 0.03);
-      border-color: rgba(0, 212, 255, 0.1);
+      background: rgba(208, 156, 96, 0.03);
+      border-color: rgba(208, 156, 96, 0.1);
     }
     .dr-alert {
       background: rgba(244, 63, 94, 0.02);
@@ -52,12 +52,12 @@ import { StatusBeaconComponent } from './status-beacon.component';
       font-family: 'JetBrains Mono', monospace;
       font-size: 11px;
       font-weight: 500;
-      color: rgba(255, 255, 255, 0.8);
+      color: rgba(245, 240, 235, 0.8);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
-    .dr-secondary { font-size: 9px; color: rgba(255, 255, 255, 0.25); }
+    .dr-secondary { font-size: 9px; color: rgba(168, 158, 148, 0.35); }
     .dr-meta { display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
     .dr-actions {
       display: flex; align-items: center; gap: 1px;

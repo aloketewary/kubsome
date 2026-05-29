@@ -32,12 +32,18 @@ import { ConfirmDialogComponent } from './shared/components/confirm-dialog.compo
     <app-command-palette />
 
     <!-- Topbar -->
-    <header class="topbar glass" [class.topbar-env-prod]="clusterEnv === 'prod'" [class.topbar-env-sit]="clusterEnv === 'sit'" [class.topbar-env-dev]="clusterEnv === 'dev'">
+    <header class="topbar">
+      @if (clusterEnv !== 'default') {
+        <div class="env-bar" [class.env-prod]="clusterEnv === 'prod'" [class.env-sit]="clusterEnv === 'sit'" [class.env-dev]="clusterEnv === 'dev'"></div>
+      }
       <div class="topbar-left">
         <a class="topbar-brand" routerLink="/dashboard">
           <i class="pi pi-box"></i>
           <span class="brand-text">Kubsome</span>
         </a>
+        @if (clusterEnv !== 'default') {
+          <span class="env-pill" [class.env-pill-prod]="clusterEnv === 'prod'" [class.env-pill-sit]="clusterEnv === 'sit'" [class.env-pill-dev]="clusterEnv === 'dev'">{{ clusterEnv }}</span>
+        }
         <div class="topbar-divider"></div>
         <div class="workspace-label" (click)="dashMenuOpen = !dashMenuOpen"
              (keydown.enter)="dashMenuOpen = !dashMenuOpen" (keydown.space)="$event.preventDefault(); dashMenuOpen = !dashMenuOpen"
@@ -154,7 +160,10 @@ import { ConfirmDialogComponent } from './shared/components/confirm-dialog.compo
 
     <!-- Layout -->
     <div class="layout" [class.sidebar-collapsed]="sidebarCollapsed">
-      <aside class="sidebar" [class.rail]="sidebarCollapsed" [class.sidebar-env-prod]="clusterEnv === 'prod'" [class.sidebar-env-sit]="clusterEnv === 'sit'" [class.sidebar-env-dev]="clusterEnv === 'dev'">
+      <aside class="sidebar" [class.rail]="sidebarCollapsed">
+        @if (clusterEnv !== 'default') {
+          <div class="sidebar-env-strip" [class.strip-prod]="clusterEnv === 'prod'" [class.strip-sit]="clusterEnv === 'sit'" [class.strip-dev]="clusterEnv === 'dev'"></div>
+        }
         <app-shell [collapsed]="sidebarCollapsed" />
         <button class="collapse-toggle" (click)="toggleSidebar()">
           <i class="pi" [class.pi-chevron-left]="!sidebarCollapsed" [class.pi-chevron-right]="sidebarCollapsed"></i>
@@ -214,8 +223,8 @@ import { ConfirmDialogComponent } from './shared/components/confirm-dialog.compo
       display: flex;
       align-items: center;
       padding: 0 24px;
-      background: linear-gradient(180deg, rgba(13, 17, 28, 0.95) 0%, rgba(8, 11, 20, 0.98) 100%);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      background: rgba(11, 9, 8, 0.92);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.03);
       z-index: 1002;
       gap: 16px;
       box-sizing: border-box;
@@ -228,33 +237,44 @@ import { ConfirmDialogComponent } from './shared/components/confirm-dialog.compo
       position: absolute;
       bottom: 0; left: 40px; right: 40px;
       height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(0, 212, 255, 0.12), transparent);
+      background: linear-gradient(90deg, transparent, rgba(208, 156, 96, 0.08), transparent);
       pointer-events: none;
     }
-    .topbar-env-prod {
-      background: linear-gradient(66deg, rgba(123, 3, 3, 0.53) 2.52%, #0f0f11 92.44%) !important;
-      border-bottom-color: #f9464630;
+    .topbar-env-prod, .topbar-env-sit, .topbar-env-dev { }
+
+    /* ─── Environment Indicator Bar ────────────────────────────────── */
+    .env-bar {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      z-index: 1;
     }
-    .topbar-env-sit {
-      background: linear-gradient(to top, rgba(245, 158, 11, 0.08) 70.17%, #0f0f11) !important;
-      border-bottom-color: #f59e0bff;
+    .env-bar.env-prod {
+      background: linear-gradient(90deg, #f43f5e, #dc2626, #f43f5e);
+      box-shadow: 0 0 8px rgba(244, 63, 94, 0.4), 0 1px 4px rgba(244, 63, 94, 0.2);
     }
-    .topbar-env-dev {
-      background: linear-gradient(to top, rgba(34,197,94,0.08) 70.17%, #0f0f11) !important;
-      border-bottom-color: rgb(34, 197, 94);
+    .env-bar.env-sit {
+      background: linear-gradient(90deg, #f59e0b, #d97706, #f59e0b);
+      box-shadow: 0 0 8px rgba(245, 158, 11, 0.3), 0 1px 4px rgba(245, 158, 11, 0.15);
     }
-    :host-context([data-theme="light"]) .topbar-env-prod {
-      background: linear-gradient(66deg, rgba(220, 38, 38, 0.12) 2.52%, #ffffff 92.44%) !important;
-      border-bottom-color: rgba(220, 38, 38, 0.3);
+    .env-bar.env-dev {
+      background: linear-gradient(90deg, #10b981, #059669, #10b981);
+      box-shadow: 0 0 8px rgba(16, 185, 129, 0.3), 0 1px 4px rgba(16, 185, 129, 0.15);
     }
-    :host-context([data-theme="light"]) .topbar-env-sit {
-      background: linear-gradient(to top, rgba(202, 138, 4, 0.1) 70.17%, #ffffff) !important;
-      border-bottom-color: rgba(202, 138, 4, 0.4);
+
+    /* ─── Environment Pill ─────────────────────────────────────────── */
+    .env-pill {
+      font-size: 8px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin-left: 4px;
     }
-    :host-context([data-theme="light"]) .topbar-env-dev {
-      background: linear-gradient(to top, rgba(22, 163, 74, 0.08) 70.17%, #ffffff) !important;
-      border-bottom-color: rgba(22, 163, 74, 0.4);
-    }
+    .env-pill-prod { background: rgba(244, 63, 94, 0.12); color: #f43f5e; border: 1px solid rgba(244, 63, 94, 0.2); }
+    .env-pill-sit { background: rgba(245, 158, 11, 0.1); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.2); }
+    .env-pill-dev { background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.2); }
     .topbar-left {
       display: flex;
       align-items: center;
@@ -263,16 +283,16 @@ import { ConfirmDialogComponent } from './shared/components/confirm-dialog.compo
     }
     .topbar-brand {
       display: flex; align-items: center; gap: 8px;
-      text-decoration: none; color: rgba(255, 255, 255, 0.9);
+      text-decoration: none; color: rgba(245, 240, 235, 0.9);
       font-size: 14px; font-weight: 700; letter-spacing: -0.02em;
-      padding: 6px 10px; border-radius: 6px;
+      padding: 6px 10px;
       transition: all 0.15s;
     }
-    .topbar-brand:hover { background: rgba(0, 212, 255, 0.04); }
-    .topbar-brand i { font-size: 16px; color: #00d4ff; text-shadow: 0 0 8px rgba(0, 212, 255, 0.4); }
+    .topbar-brand:hover { color: #d09c60; }
+    .topbar-brand i { font-size: 16px; color: #d09c60; text-shadow: 0 0 8px rgba(208, 156, 96, 0.3); }
     .brand-text { }
     .topbar-divider {
-      width: 1px; height: 20px; background: rgba(255, 255, 255, 0.06); margin: 0 10px;
+      width: 1px; height: 20px; background: rgba(94, 84, 75, 0.2); margin: 0 10px;
     }
     .workspace-label {
       display: flex;
@@ -401,19 +421,19 @@ import { ConfirmDialogComponent } from './shared/components/confirm-dialog.compo
       gap: 8px;
       width: 100%;
       padding: 7px 12px;
-      background: rgba(255, 255, 255, 0.02);
-      border: 1px solid rgba(255, 255, 255, 0.05);
+      background: rgba(245, 240, 235, 0.02);
+      border: 1px solid rgba(94, 84, 75, 0.15);
       border-radius: 8px;
-      color: rgba(255, 255, 255, 0.3);
+      color: rgba(168, 158, 148, 0.5);
       font-size: 12px;
       cursor: pointer;
       transition: all 0.15s;
     }
     .cmd-k-btn:hover {
-      border-color: rgba(0, 212, 255, 0.2);
-      color: rgba(255, 255, 255, 0.6);
-      background: rgba(0, 212, 255, 0.03);
-      box-shadow: 0 0 12px -4px rgba(0, 212, 255, 0.15);
+      border-color: rgba(208, 156, 96, 0.15);
+      color: rgba(245, 240, 235, 0.7);
+      background: rgba(208, 156, 96, 0.03);
+      box-shadow: 0 0 12px -4px rgba(208, 156, 96, 0.1);
     }
     .cmd-k-btn i { font-size: 12px; }
     .cmd-k-btn span { flex: 1; text-align: left; }
@@ -421,9 +441,9 @@ import { ConfirmDialogComponent } from './shared/components/confirm-dialog.compo
       font-size: 9px;
       padding: 2px 5px;
       border-radius: 4px;
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid rgba(255, 255, 255, 0.06);
-      color: rgba(255, 255, 255, 0.25);
+      background: rgba(245, 240, 235, 0.03);
+      border: 1px solid rgba(94, 84, 75, 0.15);
+      color: rgba(168, 158, 148, 0.4);
       font-family: 'JetBrains Mono', monospace;
     }
 
@@ -525,10 +545,10 @@ import { ConfirmDialogComponent } from './shared/components/confirm-dialog.compo
     .sidebar {
       width: 240px;
       flex-shrink: 0;
-      border-right: 1px solid rgba(255, 255, 255, 0.04);
+      border-right: 1px solid rgba(94, 84, 75, 0.12);
       overflow-y: auto;
       overflow-x: hidden;
-      background: linear-gradient(180deg, rgba(10, 12, 22, 0.98) 0%, rgba(6, 8, 16, 1) 100%);
+      background: rgba(11, 9, 8, 0.98);
       padding: 0;
       z-index: 1001;
       height: calc(100vh - 56px);
@@ -538,23 +558,27 @@ import { ConfirmDialogComponent } from './shared/components/confirm-dialog.compo
       padding: 8px 6px;
       transition: width 0.2s ease, background 0.3s, border-color 0.3s;
     }
-    .sidebar-env-prod {
-      background: linear-gradient(66deg, rgba(123, 3, 3, 0.53) 2.52%, #0f0f11 92.44%) !important;
+    .sidebar-env-prod, .sidebar-env-sit, .sidebar-env-dev { }
+
+    /* ─── Sidebar Environment Strip ───────────────────────────────── */
+    .sidebar-env-strip {
+      position: absolute;
+      top: 0; left: 0; bottom: 0;
+      width: 2px;
+      z-index: 2;
+      pointer-events: none;
     }
-    .sidebar-env-sit {
-      background: linear-gradient(to right, rgba(245, 158, 11, 0.08) 70.17%, #0f0f11) !important;
+    .strip-prod {
+      background: linear-gradient(180deg, #f43f5e, rgba(244, 63, 94, 0.1));
+      box-shadow: 1px 0 6px rgba(244, 63, 94, 0.2);
     }
-    .sidebar-env-dev {
-      background: linear-gradient(to right, rgba(34,197,94,0.08) 70.17%, #0f0f11) !important;
+    .strip-sit {
+      background: linear-gradient(180deg, #f59e0b, rgba(245, 158, 11, 0.1));
+      box-shadow: 1px 0 6px rgba(245, 158, 11, 0.15);
     }
-    :host-context([data-theme="light"]) .sidebar-env-prod {
-      background: linear-gradient(66deg, rgba(220, 38, 38, 0.1) 2.52%, #ffffff 92.44%) !important;
-    }
-    :host-context([data-theme="light"]) .sidebar-env-sit {
-      background: linear-gradient(to right, rgba(202, 138, 4, 0.08) 70.17%, #ffffff) !important;
-    }
-    :host-context([data-theme="light"]) .sidebar-env-dev {
-      background: linear-gradient(to right, rgba(22, 163, 74, 0.06) 70.17%, #ffffff) !important;
+    .strip-dev {
+      background: linear-gradient(180deg, #10b981, rgba(16, 185, 129, 0.1));
+      box-shadow: 1px 0 6px rgba(16, 185, 129, 0.15);
     }
     .sidebar.rail {
       width: 48px;
@@ -567,9 +591,9 @@ import { ConfirmDialogComponent } from './shared/components/confirm-dialog.compo
       width: 24px;
       height: 24px;
       border-radius: 50%;
-      border: 1px solid rgba(255, 255, 255, 0.05);
-      background: rgba(255, 255, 255, 0.02);
-      color: rgba(255, 255, 255, 0.3);
+      border: 1px solid rgba(94, 84, 75, 0.15);
+      background: rgba(245, 240, 235, 0.02);
+      color: rgba(168, 158, 148, 0.5);
       cursor: pointer;
       display: flex;
       align-items: center;
@@ -578,7 +602,7 @@ import { ConfirmDialogComponent } from './shared/components/confirm-dialog.compo
       transition: all 0.12s;
       z-index: 10;
     }
-    .collapse-toggle:hover { border-color: rgba(0, 212, 255, 0.25); color: #00d4ff; background: rgba(0, 212, 255, 0.04); }
+    .collapse-toggle:hover { border-color: rgba(208, 156, 96, 0.2); color: #d09c60; background: rgba(208, 156, 96, 0.04); }
     .sidebar-collapsed .status-bar { left: 48px; }
     .sidebar-collapsed .content { margin-left: 48px; }
 
@@ -592,10 +616,10 @@ import { ConfirmDialogComponent } from './shared/components/confirm-dialog.compo
       align-items: center;
       justify-content: space-between;
       padding: 0 12px;
-      background: rgba(8, 11, 20, 0.95);
-      border-top: 1px solid rgba(255, 255, 255, 0.04);
+      background: rgba(11, 9, 8, 0.95);
+      border-top: 1px solid rgba(94, 84, 75, 0.1);
       font-size: 10px;
-      color: rgba(255, 255, 255, 0.25);
+      color: rgba(168, 158, 148, 0.45);
       z-index: 100;
       box-sizing: border-box;
       font-family: 'JetBrains Mono', monospace;
@@ -624,6 +648,86 @@ import { ConfirmDialogComponent } from './shared/components/confirm-dialog.compo
       font-family: 'JetBrains Mono', monospace;
       font-size: 10px;
     }
+
+    /* ─── Light Mode ──────────────────────────────────────────────────── */
+    :host-context([data-theme="light"]) .topbar {
+      background: rgba(255, 255, 255, 0.88);
+      border-bottom-color: rgba(0, 0, 0, 0.05);
+      backdrop-filter: blur(16px) saturate(180%);
+    }
+    :host-context([data-theme="light"]) .topbar::after {
+      background: linear-gradient(90deg, transparent, rgba(154, 81, 41, 0.08), transparent);
+    }
+    :host-context([data-theme="light"]) .topbar-brand { color: rgba(0, 0, 0, 0.85); }
+    :host-context([data-theme="light"]) .topbar-brand i { color: #9a5129; text-shadow: none; }
+    :host-context([data-theme="light"]) .topbar-divider { background: rgba(0, 0, 0, 0.08); }
+    :host-context([data-theme="light"]) .cmd-k-btn {
+      background: rgba(0, 0, 0, 0.02);
+      border-color: rgba(0, 0, 0, 0.06);
+      color: rgba(0, 0, 0, 0.35);
+    }
+    :host-context([data-theme="light"]) .cmd-k-btn:hover {
+      border-color: rgba(154, 81, 41, 0.15);
+      color: rgba(0, 0, 0, 0.6);
+      background: rgba(154, 81, 41, 0.03);
+      box-shadow: none;
+    }
+    :host-context([data-theme="light"]) .cmd-k-btn kbd {
+      background: rgba(0, 0, 0, 0.03);
+      border-color: rgba(0, 0, 0, 0.06);
+      color: rgba(0, 0, 0, 0.3);
+    }
+    :host-context([data-theme="light"]) .sidebar {
+      background: rgba(252, 250, 248, 0.95);
+      border-right-color: rgba(0, 0, 0, 0.05);
+    }
+    :host-context([data-theme="light"]) .collapse-toggle {
+      border-color: rgba(0, 0, 0, 0.06);
+      background: rgba(0, 0, 0, 0.02);
+      color: rgba(0, 0, 0, 0.35);
+    }
+    :host-context([data-theme="light"]) .collapse-toggle:hover {
+      border-color: rgba(154, 81, 41, 0.2);
+      color: #9a5129;
+      background: rgba(154, 81, 41, 0.04);
+    }
+    :host-context([data-theme="light"]) .status-bar {
+      background: rgba(252, 250, 248, 0.92);
+      border-top-color: rgba(0, 0, 0, 0.05);
+      color: rgba(0, 0, 0, 0.35);
+    }
+    :host-context([data-theme="light"]) .env-pill-prod { background: rgba(220, 38, 38, 0.06); color: #dc2626; border-color: rgba(220, 38, 38, 0.12); }
+    :host-context([data-theme="light"]) .env-pill-sit { background: rgba(180, 83, 9, 0.06); color: #b45309; border-color: rgba(180, 83, 9, 0.12); }
+    :host-context([data-theme="light"]) .env-pill-dev { background: rgba(22, 163, 74, 0.06); color: #16a34a; border-color: rgba(22, 163, 74, 0.12); }
+    :host-context([data-theme="light"]) .strip-prod {
+      background: linear-gradient(180deg, #dc2626, rgba(220, 38, 38, 0.03));
+      box-shadow: 1px 0 4px rgba(220, 38, 38, 0.06);
+    }
+    :host-context([data-theme="light"]) .strip-sit {
+      background: linear-gradient(180deg, #b45309, rgba(180, 83, 9, 0.03));
+      box-shadow: 1px 0 4px rgba(180, 83, 9, 0.05);
+    }
+    :host-context([data-theme="light"]) .strip-dev {
+      background: linear-gradient(180deg, #16a34a, rgba(22, 163, 74, 0.03));
+      box-shadow: 1px 0 4px rgba(22, 163, 74, 0.05);
+    }
+    :host-context([data-theme="light"]) .workspace-label { color: rgba(0, 0, 0, 0.45); }
+    :host-context([data-theme="light"]) .workspace-label:hover { background: rgba(0, 0, 0, 0.03); color: rgba(0, 0, 0, 0.75); }
+    :host-context([data-theme="light"]) .workspace-label i { color: #9a5129; }
+    :host-context([data-theme="light"]) .dash-menu {
+      background: #fff; border-color: rgba(0, 0, 0, 0.06);
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+    }
+    :host-context([data-theme="light"]) .dash-menu-item { color: rgba(0, 0, 0, 0.55); }
+    :host-context([data-theme="light"]) .dash-menu-item:hover { background: rgba(0, 0, 0, 0.02); color: rgba(0, 0, 0, 0.8); }
+    :host-context([data-theme="light"]) .dash-menu-divider { background: rgba(0, 0, 0, 0.05); }
+    :host-context([data-theme="light"]) .notif-panel {
+      background: #fff; border-color: rgba(0, 0, 0, 0.06);
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+    }
+    :host-context([data-theme="light"]) .notif-header { border-bottom-color: rgba(0, 0, 0, 0.05); }
+    :host-context([data-theme="light"]) .notif-item { border-bottom-color: rgba(0, 0, 0, 0.03); }
+    :host-context([data-theme="light"]) .notif-item:hover { background: rgba(0, 0, 0, 0.015); }
   `],
 })
 export class AppComponent implements OnInit, OnDestroy {

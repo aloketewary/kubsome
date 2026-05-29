@@ -1,132 +1,70 @@
-    <app-spotlight id="resources" title="Resources" icon="pi pi-database"
-      description="Browse all Kubernetes resource types with describe views."
-      [capabilities]="['Multi-resource browser', 'Describe view', 'YAML output']" [compact]="true" />
+<div class="intel-header">
+  <div class="intel-title-block">
+    <h1 class="intel-title"><span class="title-icon">📦</span> Resources</h1>
+    <p class="intel-subtitle">browse and describe Kubernetes resources</p>
+  </div>
+  <div class="intel-controls">
+    <button class="ctrl-btn" (click)="listResources()"><i class="pi pi-refresh" [class.spinning]="loading"></i></button>
+  </div>
+</div>
 
-        <!-- Header -->
-    <app-page-header title="Resources" subtitle="Browse & describe Kubernetes resources">
-        <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="listResources()" pTooltip="Refresh"></button>
-    </app-page-header>
+<!-- Controls -->
+<app-holo-card [compact]="true" glow="cyan">
+  <div class="res-controls">
+    <p-select [options]="resourceTypes" [(ngModel)]="selectedType" placeholder="Resource type..." [style]="{ width: '180px' }" (ngModelChange)="listResources()" />
+    <input [(ngModel)]="searchName" placeholder="Filter by name..." (ngModelChange)="filterList()" (keyup.enter)="describeByName()" />
+    <button class="ctrl-btn ctrl-btn-wide" (click)="listResources()" [class.disabled]="!selectedType">List</button>
+  </div>
+</app-holo-card>
 
-    <!-- Controls -->
-    <div class="summary-strip">
-      <div class="control-group">
-        <p-select [options]="resourceTypes" [(ngModel)]="selectedType" placeholder="Resource type..."
-                  [style]="{ width: '180px' }" [filter]="true" (ngModelChange)="listResources()" />
+@if (error) { <div class="error-msg">{{ error }}</div> }
+
+<!-- List -->
+@if (filteredList.length > 0 && !describeData) {
+  <div class="metrics-strip">
+    <app-metric-tile label="Found" [value]="'' + filteredList.length" accent="cyan" />
+  </div>
+  <div class="res-list">
+    @for (item of filteredList; track item.name) {
+      <div class="res-row" (click)="describeItem(item.name)">
+        <app-status-beacon [status]="beaconStatus(item.status)" size="sm" />
+        <code class="res-name">{{ item.name }}</code>
+        @if (item.ready) { <span class="res-ready">{{ item.ready }}</span> }
+        @if (item.status) { <p-tag [value]="item.status" [severity]="tagSeverity(item.status)" [rounded]="true" /> }
+        <span class="res-age">{{ item.age }}</span>
       </div>
-      <div class="search-wrap">
-        <i class="pi pi-search"></i>
-        <input pInputText [(ngModel)]="searchName" placeholder="Fuzzy search name..." (ngModelChange)="filterList()" (keydown.enter)="describeByName()" />
-      </div>
-      @if (listData.length > 0) {
-        <div class="summary-pill">
-          <span class="pill-value">{{ filteredList.length }}</span>
-          <span class="pill-label">{{ selectedType }}</span>
-        </div>
-      }
-    </div>
+    }
+  </div>
+}
 
-    <!-- List View -->
-    @if (filteredList.length > 0 && !describeData) {
-      <div class="resource-list">
-        @for (item of filteredList; track item.name) {
-          <div class="res-row" (click)="describeItem(item.name)">
-            <div class="res-dot" [class]="'dot-' + normalizeStatus(item.status)"></div>
-            <span class="res-name mono">{{ item.name }}</span>
-            @if (item.status) {
-              <p-tag [value]="item.status" [severity]="tagSeverity(item.status)" />
-            }
-            @if (item.ready) {
-              <span class="res-ready">{{ item.ready }}</span>
-            }
-            @if (item.age) {
-              <span class="res-age">{{ item.age }}</span>
-            }
-            <div class="res-actions">
-              <i class="pi pi-search" pTooltip="Describe"></i>
-            </div>
-          </div>
+<!-- Describe View -->
+@if (describeData) {
+  <app-holo-card [title]="describeData.name || 'Details'" glow="cyan" [compact]="true">
+    <app-action-icon header-actions icon="pi pi-copy" tooltip="Copy raw" accent="cyan" (clicked)="copyRaw()" />
+    <app-action-icon header-actions icon="pi pi-arrow-left" tooltip="Back to list" accent="cyan" (clicked)="describeData = null" />
+
+    @if (infoFields.length) {
+      <div class="desc-section">
+        @for (f of infoFields; track f.key) {
+          <div class="desc-row"><span class="desc-key">{{ f.key }}</span><span class="desc-val">{{ f.value }}</span></div>
         }
       </div>
     }
-
-    <!-- Describe Panel (fullscreen overlay) -->
-    @if (describeData) {
-      <div class="describe-overlay">
-        <div class="describe-container">
-          <!-- Header -->
-          <div class="desc-header">
-            <div class="desc-title-row">
-              <span class="desc-badge">{{ describeData.resource }}</span>
-              <h2>{{ describeData.name }}</h2>
-            </div>
-            <div class="desc-header-actions">
-              <button pButton icon="pi pi-copy" class="p-button-sm p-button-text p-button-rounded" pTooltip="Copy raw" (click)="copyRaw()"></button>
-              <button pButton icon="pi pi-window-minimize" class="p-button-sm p-button-text p-button-rounded" pTooltip="Close" (click)="describeData = null"></button>
-            </div>
-          </div>
-
-          <!-- Body -->
-          <div class="desc-body">
-            <!-- Info Panel -->
-            <div class="desc-panel">
-              <div class="panel-title"><i class="pi pi-info-circle"></i> Overview</div>
-              <div class="kv-grid">
-                @for (item of infoFields; track item.key) {
-                  <div class="kv-row">
-                    <span class="kv-key">{{ item.key }}</span>
-                    <span class="kv-val" [class.kv-status]="isHighlight(item.key, item.value)">{{ item.value }}</span>
-                  </div>
-                }
-              </div>
-            </div>
-
-            <!-- Labels -->
-            @if (labelFields.length > 0) {
-              <div class="desc-panel">
-                <div class="panel-title"><i class="pi pi-tag"></i> Labels & Annotations</div>
-                <div class="tag-list">
-                  @for (lbl of labelFields; track lbl) {
-                    <span class="label-chip">{{ lbl }}</span>
-                  }
-                </div>
-              </div>
-            }
-
-            <!-- Remaining Sections -->
-            @if (detailFields.length > 0) {
-              <div class="desc-panel">
-                <div class="panel-title"><i class="pi pi-list"></i> Details</div>
-                <div class="kv-grid">
-                  @for (item of detailFields; track item.key) {
-                    <div class="kv-row">
-                      <span class="kv-key">{{ item.key }}</span>
-                      <span class="kv-val mono-sm">{{ item.value }}</span>
-                    </div>
-                  }
-                </div>
-              </div>
-            }
-          </div>
-        </div>
+    @if (labelFields.length) {
+      <div class="desc-labels">
+        @for (l of labelFields; track l) { <span class="desc-label">{{ l }}</span> }
       </div>
     }
+    @if (detailFields.length) {
+      <div class="desc-section">
+        @for (f of detailFields; track f.key) {
+          <div class="desc-row"><span class="desc-key">{{ f.key }}</span><pre class="desc-pre">{{ f.value }}</pre></div>
+        }
+      </div>
+    }
+  </app-holo-card>
+}
 
-    <!-- Empty -->
-    @if (filteredList.length === 0 && !describeData && !loading && selectedType) {
-      <div class="empty-state">
-        <i class="pi pi-inbox"></i>
-        <span>No {{ selectedType }} found</span>
-      </div>
-    }
-    @if (!selectedType && !loading) {
-      <div class="empty-state">
-        <i class="pi pi-database"></i>
-        <span>Select a resource type to browse</span>
-      </div>
-    }
-    @if (loading) {
-      <div class="empty-state"><div class="spin"></div> Loading...</div>
-    }
-    @if (error) {
-      <div class="error-banner"><i class="pi pi-exclamation-triangle"></i> {{ error }}</div>
-    }
+@if (filteredList.length === 0 && !describeData && !loading && selectedType) {
+  <div class="empty-state"><div class="empty-icon"><i class="pi pi-database"></i></div><span>No {{ selectedType }} found</span></div>
+}

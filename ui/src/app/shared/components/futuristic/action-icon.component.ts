@@ -17,7 +17,7 @@ import { TooltipModule } from 'primeng/tooltip';
       border-radius: 6px;
       border: none;
       background: transparent;
-      color: rgba(255, 255, 255, 0.3);
+      color: rgba(168, 158, 148, 0.4);
       cursor: pointer;
       display: inline-flex;
       align-items: center;
@@ -26,9 +26,9 @@ import { TooltipModule } from 'primeng/tooltip';
       font-size: 11px;
     }
     .ai:hover {
-      color: #00d4ff;
-      background: rgba(0, 212, 255, 0.08);
-      box-shadow: 0 0 6px -2px rgba(0, 212, 255, 0.3);
+      color: #d09c60;
+      background: rgba(208, 156, 96, 0.08);
+      box-shadow: 0 0 6px -2px rgba(208, 156, 96, 0.3);
       transform: scale(1.1);
     }
     [data-accent="amber"]:hover {
@@ -42,14 +42,14 @@ import { TooltipModule } from 'primeng/tooltip';
       box-shadow: 0 0 6px -2px rgba(244, 63, 94, 0.3);
     }
     [data-accent="green"]:hover {
-      color: #10b981;
-      background: rgba(16, 185, 129, 0.08);
-      box-shadow: 0 0 6px -2px rgba(16, 185, 129, 0.3);
+      color: #4ade80;
+      background: rgba(74, 222, 128, 0.08);
+      box-shadow: 0 0 6px -2px rgba(74, 222, 128, 0.3);
     }
     [data-accent="purple"]:hover {
-      color: #8b5cf6;
-      background: rgba(139, 92, 246, 0.08);
-      box-shadow: 0 0 6px -2px rgba(139, 92, 246, 0.3);
+      color: #a78bfa;
+      background: rgba(167, 139, 250, 0.08);
+      box-shadow: 0 0 6px -2px rgba(167, 139, 250, 0.3);
     }
   `],
 })
