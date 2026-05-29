@@ -9,13 +9,15 @@ Examples:
 
 import subprocess
 import shlex
+import os
 from io import StringIO
 from rich.console import Console
 
-# Allowed commands for piping to prevent arbitrary command execution
+# Allowed commands for piping to prevent arbitrary command execution.
+# Commands like awk and sed are excluded as they allow arbitrary command execution via system() or 'e'.
 ALLOWED_COMMANDS = {
     "grep", "head", "tail", "sort", "wc", "uniq",
-    "awk", "sed", "cut", "tr", "cat"
+    "cut", "tr", "cat"
 }
 
 def split_pipe(user_input):
@@ -91,6 +93,24 @@ def apply_pipe(output_text, pipe_chain):
             cmd = args[0]
             if cmd not in ALLOWED_COMMANDS:
                 return f"Error: Command '{cmd}' is not allowed in pipe chain."
+
+            # Prevent reading local files by checking if any argument is an existing file path.
+            # We check both the whole argument and parts of flags (e.g., --file=/path/to/secret).
+            for arg in args[1:]:
+                to_check = []
+                if arg.startswith("-") and "=" in arg:
+                    _, val = arg.split("=", 1)
+                    to_check.append(val)
+                else:
+                    to_check.append(arg)
+
+                for path in to_check:
+                    # We block absolute paths and path traversal to prevent LFD,
+                    # but avoid blocking simple strings that might exist locally as files
+                    # unless they are explicitly targeted as paths.
+                    if path.startswith("/") or ".." in path:
+                        if os.path.exists(path) and os.path.isfile(path):
+                            return f"Error: Access to system file '{path}' is not allowed in pipe commands."
 
             # Execute each segment sequentially, feeding output of previous as input to next
             result = subprocess.run(

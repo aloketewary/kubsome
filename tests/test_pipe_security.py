@@ -20,6 +20,14 @@ def test_apply_pipe_blocked_commands():
     result = apply_pipe(output, "ls /")
     assert "Error: Command 'ls' is not allowed" in result
 
+    # Test awk blocked
+    result = apply_pipe(output, "awk '{print $1}'")
+    assert "Error: Command 'awk' is not allowed" in result
+
+    # Test sed blocked
+    result = apply_pipe(output, "sed 's/foo/bar/'")
+    assert "Error: Command 'sed' is not allowed" in result
+
     # Test command injection attempt
     result = apply_pipe(output, "grep foo; touch /tmp/jules_pwned")
     # shlex.split will treat 'grep foo; touch /tmp/jules_pwned' as ['grep', 'foo;', 'touch', '/tmp/jules_pwned']
@@ -27,6 +35,32 @@ def test_apply_pipe_blocked_commands():
     # Actually, shlex.split treats ; as a literal character unless it's a shell-like split.
     # Our implementation uses shlex.split(segment) where segment is the whole chain if no | is present.
     assert "Error" not in result # grep will just fail to find anything
+
+def test_apply_pipe_file_access_blocked(tmp_path):
+    output = "some data"
+    # Create a dummy sensitive file
+    sensitive = tmp_path / "secret.txt"
+    sensitive.write_text("top secret data")
+
+    # Test blocked access via absolute path
+    result = apply_pipe(output, f"grep secret {sensitive.absolute()}")
+    assert "Error: Access to system file" in result
+    assert str(sensitive.absolute()) in result
+
+    # Test blocked access via path traversal
+    import os
+    rel_path = os.path.relpath(sensitive, os.getcwd())
+    if ".." not in rel_path:
+        # Force a traversal if they happen to be in same tree
+        rel_path = f"./../{os.path.basename(os.getcwd())}/{rel_path}"
+
+    result = apply_pipe(output, f"cat {rel_path}")
+    assert "Error: Access to system file" in result
+    assert rel_path in result
+
+    # Test blocked access via flag
+    result = apply_pipe(output, f"grep --file={sensitive.absolute()} pattern")
+    assert "Error: Access to system file" in result
 
 def test_apply_pipe_chain_injection():
     output = "some data"

@@ -52,3 +52,8 @@
 **Vulnerability:** The `apply_pipe` function in `core/pipe.py` used `subprocess.run(..., shell=True)` to execute user-provided pipe chains (e.g., `grep foo`), allowing for arbitrary command execution via shell metacharacters (e.g., `grep foo; rm -rf /`).
 **Learning:** Even "utility" functions that provide convenience features like piping can be dangerous if they rely on the shell for execution. Whitelisting allowed commands and manually chaining processes with `shell=False` is the only secure way to implement this.
 **Prevention:** Implement a strict whitelist of allowed binaries for piping. Use list-based `subprocess.run` or `Popen` with `shell=False`. Ensure the splitter correctly handles quotes to prevent bypassing the whitelist (e.g., `grep 'pattern | touch /tmp/pwned'`).
+
+## 2026-06-10 - [CRITICAL] Interpreter Breakout and LFD in Pipe Implementation
+**Vulnerability:** The pipe implementation allowed `awk` and `sed`, which can execute arbitrary shell commands even with `shell=False`. It also lacked validation for file arguments, allowing users to read local system files via whitelisted commands (e.g., `grep pattern /etc/passwd`).
+**Learning:** Even with `shell=False` and a command whitelist, certain utilities (like `awk`, `sed`, `find`, `perl`) are essentially interpreters and can be used for breakout. Additionally, any command that accepts file paths as arguments is a potential LFD vector if those paths aren't restricted.
+**Prevention:** Remove interpreter-like utilities from whitelists. Explicitly block absolute paths and directory traversal (`..`) in command arguments to prevent unauthorized access to host filesystem resources.
