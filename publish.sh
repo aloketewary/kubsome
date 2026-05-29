@@ -112,11 +112,11 @@ echo -e "${DIM}  Local install updated to v${NEW_VERSION}${NC}"
 # ── 7. Git commit, tag, push ──────────────────────────────────────────────────
 if [ "$DO_COMMIT" = true ]; then
     echo -e "${CYAN}  Committing and tagging v${NEW_VERSION}...${NC}"
-    git add pyproject.toml api/ui_dist
-    git commit -m "release: v${NEW_VERSION}"
-    git tag "v${NEW_VERSION}"
+    git add -A
+    git commit -m "release: v${NEW_VERSION}" || echo -e "${DIM}  Nothing new to commit${NC}"
+    git tag -f "v${NEW_VERSION}"
     git push origin HEAD
-    git push origin "v${NEW_VERSION}"
+    git push origin "v${NEW_VERSION}" --force
     echo -e "${DIM}  Pushed commit and tag v${NEW_VERSION}${NC}"
 else
     echo -e "${YELLOW}  Skipping git commit/tag/push${NC}"
