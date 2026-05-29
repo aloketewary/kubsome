@@ -1,0 +1,70 @@
+<div class="intel-header">
+  <div class="intel-title-block">
+    <h1 class="intel-title"><span class="title-icon">▤</span> Logs</h1>
+    <p class="intel-subtitle">{{ selectedPod || 'select a pod' }} · {{ lines.length }} lines</p>
+  </div>
+  <div class="intel-controls">
+    <app-live-indicator [active]="streaming" label="LIVE" offLabel="STREAM" (click)="toggleLive()" />
+  </div>
+</div>
+
+<!-- Controls -->
+<div class="log-controls">
+  <p-select [options]="podOptions" [(ngModel)]="selectedPod" placeholder="Select pod..." [style]="{ width: '220px' }" [filter]="true" optionLabel="label" optionValue="value" (ngModelChange)="onPodChange()" />
+  @if (containerOptions.length > 1) {
+    <p-select [options]="containerOptions" [(ngModel)]="selectedContainer" placeholder="All containers" [style]="{ width: '160px' }" optionLabel="label" optionValue="value" [showClear]="true" />
+  }
+  <div class="tail-group">
+    @for (t of tailOptions; track t) {
+      <button class="tail-btn" [class.tail-active]="tailSize === t" (click)="tailSize = t">{{ t }}</button>
+    }
+  </div>
+  <button class="ctrl-btn ctrl-btn-wide" (click)="fetchLogs()" [class.disabled]="!selectedPod"><i class="pi pi-download"></i> Fetch</button>
+  <button class="ctrl-btn ctrl-btn-wide" [class.ctrl-btn-warn]="watching" (click)="toggleWatch()" [class.disabled]="!selectedPod"><i class="pi" [class.pi-sync]="!watching" [class.pi-stop-circle]="watching"></i> {{ watching ? 'Unwatch' : 'Watch' }}</button>
+</div>
+
+<!-- Toolbar -->
+@if (lines.length > 0 || streaming) {
+  <div class="log-toolbar">
+    <div class="tb-left">
+      <app-metric-tile label="Lines" [value]="'' + lines.length" accent="cyan" />
+      @if (errorCount > 0) { <app-metric-tile label="Errors" [value]="'' + errorCount" accent="red" /> }
+      @if (streaming) { <app-status-beacon status="ok" size="sm" [pulse]="true" /> <span class="tb-streaming">Streaming</span> }
+    </div>
+    <div class="tb-right">
+      <app-command-bar [pills]="filterPills" [activePill]="levelFilter" [search]="searchQuery" placeholder="Search logs..." [showSearch]="true" (pillChange)="onLevelChange($event)" (searchChange)="searchQuery = $event; filterLines()" />
+    </div>
+  </div>
+}
+
+<!-- Log Viewer -->
+<div class="log-container" [class.log-fs]="fullscreen" #logEl>
+  @if (filteredLines.length > 0) {
+    <div class="log-viewer">
+      @for (line of filteredLines; track $index) {
+        <div class="log-line" [class]="lineClass(line)">
+          <span class="ln">{{ $index + 1 }}</span>
+          <span class="ll">{{ lineLevel(line) }}</span>
+          <span class="lt">{{ line }}</span>
+        </div>
+      }
+    </div>
+  } @else if (lines.length > 0 && searchQuery) {
+    <div class="empty-state"><div class="empty-icon"><i class="pi pi-search"></i></div><span>No lines matching "{{ searchQuery }}"</span></div>
+  } @else if (fetched && lines.length === 0) {
+    <div class="empty-state"><div class="empty-icon"><i class="pi pi-inbox"></i></div><span>No log output</span></div>
+  } @else if (!fetched && !streaming) {
+    <div class="empty-state"><div class="empty-icon"><i class="pi pi-terminal"></i></div><span>Select a pod and fetch or stream logs</span></div>
+  }
+</div>
+
+<!-- Bottom actions -->
+@if (lines.length > 0) {
+  <div class="log-actions">
+    <button class="ctrl-btn ctrl-btn-wide" (click)="scrollBottom()"><i class="pi pi-arrow-down"></i> Bottom</button>
+    <button class="ctrl-btn ctrl-btn-wide" (click)="copyLogs()"><i class="pi pi-copy"></i> Copy</button>
+    <button class="ctrl-btn ctrl-btn-wide" (click)="downloadLogs()"><i class="pi pi-download"></i> .log</button>
+    <button class="ctrl-btn ctrl-btn-wide" (click)="wordWrap = !wordWrap"><i class="pi" [class.pi-align-justify]="wordWrap" [class.pi-arrows-h]="!wordWrap"></i> Wrap</button>
+    <button class="ctrl-btn ctrl-btn-wide" (click)="fullscreen = !fullscreen"><i class="pi" [class.pi-window-maximize]="!fullscreen" [class.pi-window-minimize]="fullscreen"></i></button>
+  </div>
+}

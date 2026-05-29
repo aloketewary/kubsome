@@ -1,0 +1,93 @@
+<!-- ─── Header ─────────────────────────────────────────────────────── -->
+<div class="intel-header">
+  <div class="intel-title-block">
+    <h1 class="intel-title"><span class="title-icon">⏱</span> Jobs & CronJobs</h1>
+    <p class="intel-subtitle">{{ cronjobs.length }} cronjobs · {{ jobs.length }} jobs · {{ lastUpdated || 'loading...' }}</p>
+  </div>
+  <div class="intel-controls">
+    <app-live-indicator [active]="autoRefresh" label="AUTO" offLabel="PAUSED" (click)="toggleAutoRefresh()" />
+    <button class="ctrl-btn" (click)="load()" pTooltip="Refresh"><i class="pi pi-refresh" [class.spinning]="loading"></i></button>
+  </div>
+</div>
+
+<!-- ─── Metrics ────────────────────────────────────────────────────── -->
+<div class="metrics-strip">
+  <app-metric-tile label="CronJobs" [value]="'' + cronjobs.length" accent="purple" />
+  <app-metric-tile label="Jobs" [value]="'' + jobs.length" accent="cyan" />
+  @if (runningCount > 0) { <app-metric-tile label="Running" [value]="'' + runningCount" accent="cyan" /> }
+  @if (completedCount > 0) { <app-metric-tile label="Complete" [value]="'' + completedCount" accent="green" /> }
+  @if (failedCount > 0) { <app-metric-tile label="Failed" [value]="'' + failedCount" accent="red" /> }
+</div>
+
+<!-- ─── CronJobs Section ───────────────────────────────────────────── -->
+@if (cronjobs.length > 0) {
+  <app-holo-card title="CronJobs" icon="pi pi-history" [badge]="'' + cronjobs.length" glow="purple" [compact]="true">
+    <div class="cj-grid">
+      @for (cj of cronjobs; track cj.name) {
+        <div class="cj-card">
+          <div class="cj-top">
+            <code class="cj-name">{{ cj.name }}</code>
+            <app-action-icon icon="pi pi-play" tooltip="Trigger now" accent="green" (clicked)="trigger(cj)" />
+          </div>
+          <div class="cj-schedule">
+            <code class="cj-cron">{{ cj.schedule }}</code>
+            @if (humanSchedule(cj.schedule)) {
+              <span class="cj-human">{{ humanSchedule(cj.schedule) }}</span>
+            }
+          </div>
+          @if (cj.last_schedule) {
+            <span class="cj-last">Last: {{ cj.last_schedule }}</span>
+          }
+          @if (cj.triggered) {
+            <span class="cj-triggered">✓ Triggered</span>
+          }
+        </div>
+      }
+    </div>
+  </app-holo-card>
+}
+
+<!-- ─── Jobs Filter ────────────────────────────────────────────────── -->
+<app-command-bar
+  [pills]="filterPills"
+  [activePill]="statusFilter"
+  [search]="searchQuery"
+  placeholder="Filter jobs..."
+  (pillChange)="onFilterChange($event)"
+  (searchChange)="onSearchChange($event)" />
+
+<!-- ─── Jobs List ──────────────────────────────────────────────────── -->
+<div class="job-list">
+  @for (j of sortedJobs; track j.name) {
+    <div class="job-card" [class.job-failed]="jobStatus(j) === 'failed'">
+      <app-status-beacon [status]="jobBeacon(j)" size="md" [pulse]="jobStatus(j) === 'running'" />
+      <div class="job-body">
+        <div class="job-top">
+          <code class="job-name">{{ j.name }}</code>
+          <p-tag [value]="j.state || j.status || 'Unknown'" [severity]="jobSeverity(j)" [rounded]="true" />
+        </div>
+        @if (j.duration) {
+          <span class="job-duration">⏱ {{ j.duration }}</span>
+        }
+        @if (j.reason || j.message) {
+          <div class="job-failure">
+            @if (j.reason) { <span class="jf-reason">{{ j.reason }}</span> }
+            @if (j.message) { <span class="jf-msg">{{ j.message }}</span> }
+          </div>
+        }
+      </div>
+      <!-- Progress steps -->
+      <div class="job-progress">
+        <span class="jp-dot jp-done"></span>
+        <span class="jp-line" [class.jp-line-done]="jobStatus(j) !== 'pending'"></span>
+        <span class="jp-dot" [class.jp-done]="jobStatus(j) !== 'pending'"></span>
+        <span class="jp-line" [class.jp-line-done]="jobStatus(j) === 'complete' || jobStatus(j) === 'failed'"></span>
+        <span class="jp-dot" [class.jp-done]="jobStatus(j) === 'complete'" [class.jp-fail]="jobStatus(j) === 'failed'"></span>
+      </div>
+    </div>
+  }
+
+  @if (sortedJobs.length === 0 && !loading) {
+    <div class="empty-state"><div class="empty-icon"><i class="pi pi-clock"></i></div><span>No jobs found</span></div>
+  }
+</div>

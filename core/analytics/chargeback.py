@@ -47,6 +47,10 @@ def _get_chargeback_config():
         "env_labels": cfg.get("env_labels", [
             "app.kubernetes.io/env", "environment", "env",
         ]),
+        "billing_labels": cfg.get("billing_labels", [
+            "billingTag", "billing-tag", "cost-center",
+            "costCenter", "billing",
+        ]),
         "cost_model": cfg.get("cost_model", "default"),
         "opencost_url": cfg.get("opencost_url", ""),
     }
@@ -232,6 +236,51 @@ def cost_by_environment(days=7):
     ]
 
 
+def cost_by_billing_tag(days=7):
+    """Cost attribution grouped by billing tag label (e.g. billingTag, cost-center)."""
+    conn = get_conn()
+    _ensure_tables(conn)
+    _refresh_label_mapping(conn)
+
+    ctx = k8s_context.current_context
+    cfg = _get_chargeback_config()
+
+    rows = execute(f"""
+        SELECT
+            COALESCE(lm.billing_tag, 'untagged') AS billing_tag,
+            COUNT(DISTINCT h.deployment) AS deployments,
+            AVG(h.pod_count)::INTEGER AS avg_pods,
+            AVG(h.cpu_avg)::INTEGER AS cpu_avg_m,
+            AVG(h.mem_avg)::INTEGER AS mem_avg_mb,
+            ROUND(
+                (AVG(h.cpu_avg) / 1000.0 * c.cpu_per_core_hour
+                + AVG(h.mem_avg) / 1024.0 * c.mem_per_gb_hour)
+                * 24 * {days}, 2
+            ) AS cost_usd
+        FROM hourly_pod_metrics h
+        LEFT JOIN label_mapping lm
+            ON h.deployment = lm.deployment
+            AND h.namespace = lm.namespace
+            AND h.context = lm.context
+        CROSS JOIN cost_model c
+        WHERE c.name = '{cfg["cost_model"]}'
+          AND h.context = '{ctx}'
+          AND h.hour >= NOW() - INTERVAL '{days} days'
+          AND h.deployment != ''
+        GROUP BY billing_tag, c.cpu_per_core_hour, c.mem_per_gb_hour
+        ORDER BY cost_usd DESC
+    """)
+
+    return [
+        {
+            "billing_tag": r[0], "deployments": r[1],
+            "avg_pods": r[2], "cpu_avg_m": r[3],
+            "mem_avg_mb": r[4], "cost_usd": r[5],
+        }
+        for r in rows
+    ]
+
+
 # --- OpenCost Integration ---
 
 def import_opencost(url=None):
@@ -339,6 +388,8 @@ def chargeback_report(days=30, group_by="team", format="json"):
         data = cost_by_namespace(days)
     elif group_by == "environment":
         data = cost_by_environment(days)
+    elif group_by == "billing_tag":
+        data = cost_by_billing_tag(days)
     else:
         data = cost_by_team(days)
 
@@ -487,14 +538,16 @@ def _refresh_label_mapping(conn):
         team = _extract_label(labels, cfg["team_labels"])
         app = _extract_label(labels, cfg["app_labels"])
         env = _extract_label(labels, cfg["env_labels"])
+        billing_tag = _extract_label(labels, cfg["billing_labels"])
 
         mappings.append((
-            context_val, namespace, deployment, team, app, env
+            context_val, namespace, deployment, team, app, env,
+            billing_tag
         ))
 
     if mappings:
         conn.executemany(
-            "INSERT INTO label_mapping VALUES (?,?,?,?,?,?)",
+            "INSERT INTO label_mapping VALUES (?,?,?,?,?,?,?)",
             mappings
         )
 
@@ -534,7 +587,8 @@ def _ensure_tables(conn):
             deployment VARCHAR,
             team VARCHAR,
             app VARCHAR,
-            env VARCHAR
+            env VARCHAR,
+            billing_tag VARCHAR
         )
     """)
 

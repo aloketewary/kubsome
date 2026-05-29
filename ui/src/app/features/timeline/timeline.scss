@@ -1,0 +1,42 @@
+@use '../../styles/futuristic';
+:host { display: block; width: 100%; }
+.title-icon { color: #00d4ff; }
+
+/* Range buttons */
+.range-group { display: flex; gap: 2px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04); border-radius: 6px; padding: 2px; }
+.range-btn { padding: 4px 10px; border: none; border-radius: 4px; font-size: 10px; font-weight: 600; cursor: pointer; background: transparent; color: rgba(255,255,255,0.35); transition: all 0.12s; }
+.range-btn:hover { color: rgba(255,255,255,0.7); }
+.range-active { background: #00d4ff; color: #fff !important; }
+
+/* Heatmap */
+.heatmap { display: flex; align-items: flex-end; gap: 2px; height: 28px; }
+.heat-bar { flex: 1; min-height: 3px; border-radius: 2px 2px 0 0; background: rgba(0,212,255,0.4); transition: all 0.15s; }
+.heat-bar:hover { opacity: 1; transform: scaleY(1.2); transform-origin: bottom; }
+.heat-warn { background: rgba(245,158,11,0.5); }
+
+/* Timeline */
+.timeline { margin-top: 4px; }
+.now-marker { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; padding-left: 4px; }
+.now-label { font-size: 10px; font-weight: 700; color: #10b981; }
+.now-line { flex: 1; height: 1px; background: linear-gradient(to right, rgba(16,185,129,0.4), transparent); }
+
+.tl-item { display: flex; gap: 0; margin-bottom: 2px; }
+.tl-rail { display: flex; flex-direction: column; align-items: center; width: 28px; flex-shrink: 0; padding-top: 10px; }
+.tl-line { width: 1px; flex: 1; min-height: 8px; background: rgba(255,255,255,0.04); }
+
+.tl-card {
+  flex: 1; padding: 9px 12px; margin: 2px 0;
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(13,17,28,0.7) 0%, rgba(8,11,20,0.75) 100%);
+  border: 1px solid rgba(255,255,255,0.04);
+  transition: all 0.2s;
+}
+.tl-card:hover { border-color: rgba(255,255,255,0.07); transform: translateY(-1px); box-shadow: 0 4px 16px -4px rgba(0,0,0,0.4); }
+.tl-warning .tl-card { border-left: 2px solid rgba(245,158,11,0.4); }
+
+.tl-top { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
+.tl-reason { font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.8); }
+.tl-time { font-size: 9px; color: rgba(255,255,255,0.25); font-family: 'JetBrains Mono', monospace; margin-left: auto; }
+.tl-object { font-size: 10px; color: rgba(255,255,255,0.4); display: block; margin-bottom: 2px; }
+.tl-message { font-size: 10px; color: rgba(255,255,255,0.3); margin: 0; line-height: 1.4; }
+.tl-repeat { font-size: 9px; color: #f59e0b; margin-top: 3px; display: inline-block; }

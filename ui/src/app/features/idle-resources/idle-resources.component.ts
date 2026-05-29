@@ -1,21 +1,33 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
+import { TooltipModule } from 'primeng/tooltip';
+import { InputTextModule } from 'primeng/inputtext';
 import { PageInfoComponent } from '../../shared/components/page-info.component';
 import { SpotlightComponent } from '../../shared/components/spotlight.component';
 import { PageHeaderComponent } from '../../shared/components/page-header.component';
+import { SkeletonComponent } from '../../shared/components/skeleton.component';
+import { ConfirmService } from '../../shared/services/confirm.service';
 
 @Component({
   selector: 'app-idle-resources',
   standalone: true,
-  imports: [ButtonModule, TagModule, PageInfoComponent, SpotlightComponent, PageHeaderComponent],
+  imports: [ButtonModule, TagModule, TooltipModule, FormsModule, InputTextModule, PageInfoComponent, SpotlightComponent, PageHeaderComponent, SkeletonComponent],
   template: `
     <app-spotlight id="idle-resources" title="Idle & Orphaned Resources" icon="pi pi-trash"
       description="Detect wasted resources — idle deployments, orphaned configs, unbound PVCs, stale jobs."
       [capabilities]="['Usage-based idle detection', 'Orphan detection', 'Safe cleanup commands', 'Savings estimation']" [compact]="true" />
 
-    <app-page-header title="Idle Resources" [subtitle]="summary ? summary.total + ' found · $' + summary.total_savings_monthly?.toFixed(2) + '/mo savings' : ''">
+    <app-page-header title="Idle Resources" [subtitle]="summary ? summary.total + ' found · $' + summary.total_savings_monthly?.toFixed(2) + '/mo savings · ' + lastUpdated : ''">
+        <button class="ar-btn" [class.ar-active]="autoRefresh" (click)="toggleAutoRefresh()" [pTooltip]="autoRefresh ? 'Auto-refresh on (60s)' : 'Auto-refresh off'">
+          <i class="pi" [class.pi-sync]="autoRefresh" [class.pi-pause]="!autoRefresh"></i>
+        </button>
+        <div class="search-wrap">
+          <i class="pi pi-search"></i>
+          <input pInputText [(ngModel)]="searchQuery" placeholder="Filter resources..." (ngModelChange)="applySearch()" />
+        </div>
         <button pButton icon="pi pi-list" label="Dry Run" class="p-button-outlined p-button-sm" (click)="dryRun()" [disabled]="!items.length" [loading]="dryRunning"></button>
         <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="refresh()" [loading]="loading"></button>
         <app-page-info title="Idle Resources" description="Scans for resources consuming cost without providing value."
@@ -78,13 +90,24 @@ import { PageHeaderComponent } from '../../shared/components/page-header.compone
     }
 
     @if (loading && !items.length) {
-      <div class="loading"><div class="spin"></div> Scanning cluster...</div>
+      <app-skeleton variant="list" [count]="5" />
+    }
+
+    @if (loadError) {
+      <div class="error-state">
+        <i class="pi pi-exclamation-triangle"></i>
+        <span>Failed to scan idle resources</span>
+        <button pButton label="Retry" icon="pi pi-refresh" class="p-button-outlined p-button-sm" (click)="refresh()"></button>
+      </div>
     }
 
     <!-- Dry Run Results -->
     @if (dryRunResults.length) {
       <div class="dryrun-section">
-        <h3>Cleanup Commands (dry-run)</h3>
+        <div class="dryrun-header">
+          <h3>Cleanup Commands (dry-run)</h3>
+          <button pButton icon="pi pi-copy" label="Copy All" class="p-button-outlined p-button-sm" (click)="copyAllCommands()"></button>
+        </div>
         <p class="dryrun-hint">Copy and run these manually after review:</p>
         <div class="dryrun-list">
           @for (cmd of dryRunResults; track cmd.command) {
@@ -96,9 +119,51 @@ import { PageHeaderComponent } from '../../shared/components/page-header.compone
         </div>
       </div>
     }
+
+    <!-- Inline Toast -->
+    @if (toast) {
+      <div class="inline-toast" [class]="'toast-' + toast.severity">
+        <i class="pi" [class.pi-check-circle]="toast.severity === 'success'" [class.pi-info-circle]="toast.severity === 'info'"></i>
+        <span>{{ toast.message }}</span>
+        <button class="toast-close" (click)="toast = null"><i class="pi pi-times"></i></button>
+      </div>
+    }
   `,
   styles: [`
+    .ar-btn {
+      width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--border);
+      background: var(--bg-card); color: var(--text-muted); cursor: pointer; transition: all 0.15s;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .ar-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .ar-btn.ar-active { border-color: var(--success); color: var(--success); background: var(--success-subtle); }
+    .ar-btn.ar-active i { animation: spin 2s linear infinite; }
+    .search-wrap { position: relative; }
+    .search-wrap i { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 12px; }
+    .search-wrap input { padding-left: 30px !important; width: 180px; }
 
+    .inline-toast {
+      position: fixed; bottom: 24px; right: 24px; z-index: 9000;
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 16px; border-radius: 10px;
+      background: var(--bg-card); border: 1px solid var(--border);
+      box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+      animation: slideIn 0.2s ease-out; font-size: 13px;
+    }
+    @keyframes slideIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    .toast-success { border-left: 3px solid var(--success); }
+    .toast-success i { color: var(--success); }
+    .toast-info { border-left: 3px solid var(--accent); }
+    .toast-info i { color: var(--accent); }
+    .toast-close { background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 2px; }
+    .toast-close:hover { color: var(--text); }
+
+    .error-state {
+      display: flex; flex-direction: column; align-items: center; gap: 12px;
+      padding: 48px; color: var(--text-muted); font-size: 13px;
+      background: var(--bg-card); border: 1px solid var(--danger); border-radius: var(--radius);
+    }
+    .error-state i { font-size: 24px; color: var(--danger); }
 
     .summary-row { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
     .cat-card {
@@ -136,7 +201,8 @@ import { PageHeaderComponent } from '../../shared/components/page-header.compone
     .empty-state h3 { font-size: 18px; margin: 0 0 8px; color: var(--text-primary); }
 
     .dryrun-section { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border); }
-    .dryrun-section h3 { font-size: 14px; font-weight: 600; margin: 0 0 4px; }
+    .dryrun-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+    .dryrun-section h3 { font-size: 14px; font-weight: 600; margin: 0; }
     .dryrun-hint { font-size: 11px; color: var(--text-muted); margin: 0 0 12px; }
     .dryrun-list { display: flex; flex-direction: column; gap: 6px; }
     .dryrun-row { padding: 8px 12px; background: var(--bg-elevated); border-radius: var(--radius); }
@@ -144,32 +210,64 @@ import { PageHeaderComponent } from '../../shared/components/page-header.compone
     .dryrun-reason { font-size: 10px; color: var(--text-muted); }
 
     .loading { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 60px; color: var(--text-muted); }
-    .spin { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
     @media (max-width: 768px) {
       .summary-cards { grid-template-columns: repeat(2, 1fr); }
     }
   `],
 })
-export class IdleResourcesComponent implements OnInit {
+export class IdleResourcesComponent implements OnInit, OnDestroy {
   private http = inject(HttpClient);
+  private confirmService = inject(ConfirmService);
+
   items: any[] = [];
   summary: any = null;
   loading = false;
+  loadError = false;
   dryRunning = false;
   filter = '';
+  searchQuery = '';
   dryRunResults: any[] = [];
   categoryList: { name: string; count: number; savings: number }[] = [];
+  autoRefresh = true;
+  lastUpdated = '';
+  toast: { message: string; severity: 'success' | 'info' } | null = null;
+  private timer: any;
 
   get filteredItems() {
-    if (!this.filter) return this.items;
-    return this.items.filter(i => i.category === this.filter);
+    let result = this.items;
+    if (this.filter) result = result.filter(i => i.category === this.filter);
+    if (this.searchQuery) {
+      const q = this.searchQuery.toLowerCase();
+      result = result.filter(i => i.name.toLowerCase().includes(q) || i.kind?.toLowerCase().includes(q));
+    }
+    return result;
   }
 
-  ngOnInit() { this.refresh(); }
+  ngOnInit() { this.refresh(); this.startAutoRefresh(); }
+  ngOnDestroy() { clearInterval(this.timer); }
+
+  toggleAutoRefresh() {
+    this.autoRefresh = !this.autoRefresh;
+    if (this.autoRefresh) this.startAutoRefresh();
+    else clearInterval(this.timer);
+  }
+
+  private startAutoRefresh() {
+    clearInterval(this.timer);
+    this.timer = setInterval(() => this.refresh(), 60000);
+  }
+
+  applySearch() { /* filteredItems getter handles it */ }
+
+  private showToast(message: string, severity: 'success' | 'info') {
+    this.toast = { message, severity };
+    setTimeout(() => { if (this.toast?.message === message) this.toast = null; }, 4000);
+  }
 
   refresh() {
     this.loading = true;
+    this.loadError = false;
     this.dryRunResults = [];
     this.http.get<any>('/api/idle-resources').subscribe({
       next: (res) => {
@@ -178,8 +276,9 @@ export class IdleResourcesComponent implements OnInit {
         this.categoryList = Object.entries(this.summary.categories || {})
           .map(([name, stats]: [string, any]) => ({ name, count: stats.count, savings: stats.savings }));
         this.loading = false;
+        this.lastUpdated = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
       },
-      error: () => { this.items = []; this.loading = false; },
+      error: () => { this.items = []; this.loading = false; this.loadError = true; },
     });
   }
 
@@ -193,6 +292,11 @@ export class IdleResourcesComponent implements OnInit {
       next: (res) => { this.dryRunResults = res.commands || []; this.dryRunning = false; },
       error: () => { this.dryRunning = false; },
     });
+  }
+
+  copyAllCommands() {
+    const text = this.dryRunResults.map(c => c.command).join('\n');
+    navigator.clipboard.writeText(text).then(() => this.showToast('Commands copied to clipboard', 'success'));
   }
 
   catSeverity(cat: string): "success" | "warn" | "danger" | "info" | "secondary" | "contrast" | undefined {

@@ -8,6 +8,7 @@ import {
   EventsResponse,
   PodMetrics,
   NodeMetrics,
+  NodeWorkloadsResponse,
   NamespacesResponse,
   DeploymentsResponse,
   LogsResponse,
@@ -66,6 +67,10 @@ export class ApiService {
 
   getTopNodes(): Observable<{ nodes: NodeMetrics[] }> {
     return this.http.get<{ nodes: NodeMetrics[] }>(`${this.base}/top/nodes`);
+  }
+
+  getNodeWorkloads(): Observable<NodeWorkloadsResponse> {
+    return this.http.get<NodeWorkloadsResponse>(`${this.base}/nodes/workloads`);
   }
 
   // Deployments

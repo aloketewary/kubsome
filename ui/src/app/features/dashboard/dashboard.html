@@ -1,0 +1,157 @@
+@if (data) {
+  <!-- ─── Header ─────────────────────────────────────────────────────── -->
+  <div class="intel-header">
+    <div class="intel-title-block">
+      <h1 class="intel-title">
+        <span class="title-icon">◈</span>
+        Cluster Intelligence
+      </h1>
+      <p class="intel-subtitle">{{ lastUpdated }} · {{ uptime?.day || '' }}</p>
+    </div>
+    <div class="intel-controls">
+      <app-live-indicator [active]="!refreshing" label="SYNC" offLabel="..." />
+      <button class="ctrl-btn" (click)="refresh()" pTooltip="Refresh">
+        <i class="pi pi-refresh" [class.spinning]="refreshing"></i>
+      </button>
+      <button class="ctrl-btn" (click)="router.navigate(['/my-dashboard'])" pTooltip="Customize">
+        <i class="pi pi-sliders-h"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- ─── Health Ring + Status ─────────────────────────────────────── -->
+  <app-holo-card [glow]="healthColor" [compact]="true">
+    <div class="health-hero">
+      <div class="health-ring">
+        <svg viewBox="0 0 36 36" class="ring-svg">
+          <path class="ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+          <path class="ring-fill" [class.ring-ok]="overallHealth === 'healthy'" [class.ring-warn]="overallHealth === 'degraded'" [class.ring-crit]="overallHealth === 'critical'"
+                [attr.stroke-dasharray]="healthPct + ', 100'" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+        </svg>
+        <span class="ring-val">{{ healthPct }}%</span>
+      </div>
+      <div class="health-info">
+        <span class="health-title">{{ overallHealth === 'healthy' ? 'All Systems Operational' : overallHealth === 'degraded' ? 'Degraded Performance' : 'Critical Issues Detected' }}</span>
+        <span class="health-sub">{{ (data.pods.healthy || 0) + (data.nodes.healthy || 0) + (data.deployments.healthy || 0) }} / {{ podTotal + nodeTotal + depTotal }} resources healthy</span>
+      </div>
+      <div class="health-metrics">
+        <app-metric-tile label="Pods" [value]="'' + podTotal" accent="cyan" />
+        <app-metric-tile label="Nodes" [value]="'' + nodeTotal" accent="green" />
+        <app-metric-tile label="Deploys" [value]="'' + depTotal" accent="purple" />
+      </div>
+    </div>
+  </app-holo-card>
+
+  <!-- ─── Alert Banner ─────────────────────────────────────────────── -->
+  @if (data.pods.critical > 0 || data.nodes.warning > 0) {
+    <div class="alert-banner">
+      <app-status-beacon status="critical" size="md" [pulse]="true" />
+      <span class="alert-text">
+        @if (data.pods.critical > 0) { {{ data.pods.critical }} pod(s) critical. }
+        @if (data.nodes.warning > 0) { {{ data.nodes.warning }} node(s) not ready. }
+      </span>
+      <button class="alert-btn" (click)="goToPods()">Investigate</button>
+      <button class="alert-btn alert-btn-ai" (click)="router.navigate(['/ai'], { queryParams: { q: 'why are pods failing' } })">AI Diagnose</button>
+    </div>
+  }
+
+  <!-- ─── Bento Grid ───────────────────────────────────────────────── -->
+  <div class="bento-grid">
+    <app-holo-card [glow]="data.pods.critical > 0 ? 'red' : 'cyan'" [interactive]="true" [compact]="true">
+      <div class="bento-inner" (click)="goToPods()">
+        <div class="bento-head">
+          <app-status-beacon [status]="data.pods.critical > 0 ? 'critical' : data.pods.warning > 0 ? 'warning' : 'ok'" size="md" />
+          <span class="bento-lbl">Pods</span>
+        </div>
+        <div class="bento-val-row">
+          <span class="bento-val">{{ data.pods.healthy }}</span>
+          <span class="bento-of">/ {{ podTotal }}</span>
+        </div>
+        <div class="bento-bar">
+          <div class="bb-ok" [style.width.%]="pct(data.pods.healthy, podTotal)"></div>
+          <div class="bb-warn" [style.width.%]="pct(data.pods.warning, podTotal)"></div>
+          <div class="bb-crit" [style.width.%]="pct(data.pods.critical, podTotal)"></div>
+        </div>
+        <div class="bento-tags">
+          @if (data.pods.warning > 0) { <span class="bt bt-warn">{{ data.pods.warning }} warn</span> }
+          @if (data.pods.critical > 0) { <span class="bt bt-crit">{{ data.pods.critical }} crit</span> }
+          @if (data.pods.warning === 0 && data.pods.critical === 0) { <span class="bt bt-ok">Healthy</span> }
+        </div>
+      </div>
+    </app-holo-card>
+
+    <app-holo-card [glow]="data.nodes.warning > 0 ? 'amber' : 'none'" [interactive]="true" [compact]="true">
+      <div class="bento-inner" (click)="router.navigate(['/metrics'])">
+        <div class="bento-head">
+          <app-status-beacon [status]="data.nodes.warning > 0 ? 'warning' : 'ok'" size="md" />
+          <span class="bento-lbl">Nodes</span>
+        </div>
+        <div class="bento-val-row">
+          <span class="bento-val">{{ data.nodes.healthy }}</span>
+          <span class="bento-of">/ {{ nodeTotal }}</span>
+        </div>
+        <div class="bento-bar">
+          <div class="bb-ok" [style.width.%]="pct(data.nodes.healthy, nodeTotal)"></div>
+          <div class="bb-warn" [style.width.%]="pct(data.nodes.warning, nodeTotal)"></div>
+        </div>
+        <div class="bento-tags">
+          @if (data.nodes.warning > 0) { <span class="bt bt-warn">{{ data.nodes.warning }} not ready</span> }
+          @else { <span class="bt bt-ok">All ready</span> }
+        </div>
+      </div>
+    </app-holo-card>
+
+    <app-holo-card [glow]="(data.deployments.unavailable || 0) > 0 ? 'red' : 'none'" [interactive]="true" [compact]="true">
+      <div class="bento-inner" (click)="router.navigate(['/deployments'])">
+        <div class="bento-head">
+          <app-status-beacon [status]="(data.deployments.unavailable || 0) > 0 ? 'critical' : 'ok'" size="md" />
+          <span class="bento-lbl">Deployments</span>
+        </div>
+        <div class="bento-val-row">
+          <span class="bento-val">{{ data.deployments.healthy }}</span>
+          <span class="bento-of">/ {{ depTotal }}</span>
+        </div>
+        <div class="bento-bar">
+          <div class="bb-ok" [style.width.%]="pct(data.deployments.healthy, depTotal)"></div>
+          <div class="bb-crit" [style.width.%]="pct(data.deployments.unavailable || 0, depTotal)"></div>
+        </div>
+        <div class="bento-tags">
+          @if ((data.deployments.unavailable || 0) > 0) { <span class="bt bt-crit">{{ data.deployments.unavailable }} down</span> }
+          @else { <span class="bt bt-ok">All available</span> }
+        </div>
+      </div>
+    </app-holo-card>
+  </div>
+
+  <!-- ─── Recent Events ────────────────────────────────────────────── -->
+  <app-holo-card title="Recent Events" icon="pi pi-bolt" glow="none" [compact]="true">
+    <button header-actions class="ctrl-btn" (click)="router.navigate(['/events'])" pTooltip="View all">
+      <i class="pi pi-arrow-right"></i>
+    </button>
+    @for (event of recentEvents; track $index) {
+      <div class="ev-row">
+        <app-status-beacon [status]="event.type === 'Warning' ? 'warning' : 'info'" size="sm" />
+        <span class="ev-reason">{{ event.reason }}</span>
+        <span class="ev-msg">{{ event.message }}</span>
+        <code class="ev-obj">{{ event.object }}</code>
+      </div>
+    }
+    @if (recentEvents.length === 0) {
+      <div class="ev-empty"><i class="pi pi-check-circle"></i> No recent events</div>
+    }
+  </app-holo-card>
+
+  <!-- ─── Quick Actions ────────────────────────────────────────────── -->
+  <div class="actions-grid">
+    <button class="action-card" (click)="router.navigate(['/ai'], { queryParams: { q: 'summarize cluster health' } })"><i class="pi pi-sparkles"></i><span>AI Summary</span></button>
+    <button class="action-card" (click)="router.navigate(['/terminal'])"><i class="pi pi-code"></i><span>Terminal</span></button>
+    <button class="action-card" (click)="router.navigate(['/runbooks'])"><i class="pi pi-book"></i><span>Runbooks</span></button>
+    <button class="action-card" (click)="router.navigate(['/incident'])"><i class="pi pi-exclamation-circle"></i><span>Incident</span></button>
+    <button class="action-card" (click)="router.navigate(['/scorecard'])"><i class="pi pi-trophy"></i><span>Scorecard</span></button>
+    <button class="action-card" (click)="router.navigate(['/cost'])"><i class="pi pi-dollar"></i><span>Optimize</span></button>
+  </div>
+} @else {
+  <!-- Skeleton -->
+  <div class="sk-hero"></div>
+  <div class="sk-grid"><div class="sk-card"></div><div class="sk-card"></div><div class="sk-card"></div></div>
+}

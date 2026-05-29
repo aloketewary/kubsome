@@ -179,6 +179,9 @@ import { PageHeaderComponent } from '../../shared/components/page-header.compone
 
           <!-- Export Tab -->
           <p-tabpanel value="4">
+            @if (exportMsg) {
+              <div class="export-feedback" [class.export-ok]="exportMsg.startsWith('✓')" [class.export-err]="exportMsg.startsWith('✗')">{{ exportMsg }}</div>
+            }
             <div class="export-grid">
               @for (q of exportQueries; track q.name) {
                 <div class="export-card">
@@ -250,6 +253,10 @@ import { PageHeaderComponent } from '../../shared/components/page-header.compone
     .export-card:hover { border-color: var(--border-hover); box-shadow: 0 4px 12px -4px rgba(0,0,0,0.08); }
     .export-desc { font-size: 11px; color: var(--text-muted); }
     .export-actions { display: flex; gap: 6px; }
+    .export-feedback { padding: 10px 14px; border-radius: var(--radius); font-size: 13px; margin-bottom: 12px; animation: fadeIn 0.2s ease; }
+    .export-ok { background: var(--success-subtle); color: var(--success); border: 1px solid var(--success); }
+    .export-err { background: var(--danger-subtle); color: var(--danger); border: 1px solid var(--danger); }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
     .empty-tab { color: var(--text-muted); font-size: 13px; padding: 20px 0; }
     .loading { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 40px; }
@@ -279,6 +286,7 @@ export class AnalyticsComponent implements OnInit {
   sqlQuery = '';
   queryResult: any = null;
   queryError = '';
+  exportMsg = '';
 
   // Charts
   cpuMemChart: any = null;
@@ -426,8 +434,8 @@ export class AnalyticsComponent implements OnInit {
 
   exportData(query: string, fmt: string) {
     this.http.get<any>(`/api/analytics/export/${query}?fmt=${fmt}`).subscribe({
-      next: (res) => { alert(`Exported: ${res.path}`); },
-      error: () => { alert('Export failed'); },
+      next: (res) => { this.exportMsg = `✓ Exported: ${res.path}`; setTimeout(() => this.exportMsg = '', 5000); },
+      error: () => { this.exportMsg = '✗ Export failed'; setTimeout(() => this.exportMsg = '', 5000); },
     });
   }
 }

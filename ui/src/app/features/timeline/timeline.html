@@ -1,0 +1,63 @@
+<div class="intel-header">
+  <div class="intel-title-block">
+    <h1 class="intel-title"><span class="title-icon">◷</span> Timeline</h1>
+    <p class="intel-subtitle">{{ events.length }} events · last {{ selectedRange }}m · {{ lastUpdated || '...' }}</p>
+  </div>
+  <div class="intel-controls">
+    <div class="range-group">
+      @for (r of ranges; track r.value) {
+        <button class="range-btn" [class.range-active]="selectedRange === r.value" (click)="setRange(r.value)">{{ r.label }}</button>
+      }
+    </div>
+    <button class="ctrl-btn" (click)="load()" pTooltip="Refresh"><i class="pi pi-refresh" [class.spinning]="loading"></i></button>
+  </div>
+</div>
+
+<div class="metrics-strip">
+  <app-metric-tile label="Events" [value]="'' + events.length" accent="cyan" />
+  <app-metric-tile label="Warnings" [value]="'' + warningCount" accent="amber" />
+</div>
+
+<!-- Heatmap -->
+<app-holo-card title="Activity" icon="pi pi-chart-bar" glow="cyan" [compact]="true">
+  <div class="heatmap">
+    @for (bar of heatmapBars; track $index) {
+      <div class="heat-bar" [style.height.%]="bar.height" [class.heat-warn]="bar.hasWarning" [pTooltip]="bar.tooltip"></div>
+    }
+  </div>
+</app-holo-card>
+
+<!-- Filter -->
+<app-command-bar [pills]="filterPills" [activePill]="severityFilter" [showSearch]="false" (pillChange)="onFilterChange($event)" />
+
+<!-- Timeline -->
+<div class="timeline">
+  <div class="now-marker">
+    <app-status-beacon status="ok" size="md" [pulse]="true" />
+    <span class="now-label">Now</span>
+    <div class="now-line"></div>
+  </div>
+
+  @for (event of filteredEvents; track $index) {
+    <div class="tl-item" [class.tl-warning]="event.type === 'Warning'">
+      <div class="tl-rail">
+        <app-status-beacon [status]="beaconStatus(event)" size="sm" />
+        @if ($index < filteredEvents.length - 1) { <div class="tl-line"></div> }
+      </div>
+      <div class="tl-card">
+        <div class="tl-top">
+          <span class="tl-reason">{{ event.reason || 'Event' }}</span>
+          <p-tag [value]="event.type || 'Normal'" [severity]="tagSeverity(event)" [rounded]="true" />
+          <span class="tl-time">{{ formatTime(event.time || event.last_seen) }}</span>
+        </div>
+        <code class="tl-object">{{ event.object || event.name || '' }}</code>
+        <p class="tl-message">{{ event.message || '' }}</p>
+        @if (event.count > 1) { <span class="tl-repeat">{{ event.count }}×</span> }
+      </div>
+    </div>
+  }
+
+  @if (filteredEvents.length === 0) {
+    <div class="empty-state"><div class="empty-icon"><i class="pi pi-clock"></i></div><span>No activity in the last {{ selectedRange }}m</span></div>
+  }
+</div>

@@ -1,0 +1,83 @@
+    <app-spotlight id="scorecard" title="Cluster Scorecard" icon="pi pi-star"
+      description="A-F health grade across reliability, performance, security."
+      [capabilities]="['4-dimension scoring', 'A-F grades', 'Improvement suggestions']" [compact]="true" />
+
+    <app-page-header title="Cluster Scorecard" [subtitle]="'Health grade across availability, stability, resources & operations · ' + lastUpdated">
+        <button class="ar-btn" [class.ar-active]="autoRefresh" (click)="toggleAutoRefresh()">
+          <i class="pi" [class.pi-sync]="autoRefresh" [class.pi-pause]="!autoRefresh"></i>
+        </button>
+        <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="refresh()" [loading]="loading"></button>
+        <app-page-info title="Scorecard" description="Cluster health graded A-F across availability, stability, resources, and operations. Refreshes on demand."
+          [tips]="['Grade A-B = healthy, C = fair, D-F = needs attention', 'Click Refresh to re-evaluate', 'Recommendations link to CLI commands']"
+          [commands]="['scorecard', 'check', 'security']" />
+    </app-page-header>
+
+    @if (data) {
+      <!-- Overall Grade -->
+      <div class="grade-hero" [class]="'grade-' + data.overall_grade">
+        <div class="grade-ring">
+          <svg viewBox="0 0 36 36">
+            <path class="ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+            <path class="ring-fill" [attr.stroke-dasharray]="data.overall_score + ', 100'" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+          </svg>
+          <span class="grade-letter">{{ data.overall_grade }}</span>
+        </div>
+        <div class="grade-info">
+          <h2>{{ gradeLabel(data.overall_grade) }}</h2>
+          <p>{{ data.overall_score }}/100 · {{ data.summary }}</p>
+        </div>
+      </div>
+
+      <!-- Category Cards -->
+      <div class="cat-grid">
+        @for (cat of categories; track cat.key) {
+          <div class="cat-card" [class]="'cat-' + cat.data.grade">
+            <div class="cat-header">
+              <span class="cat-grade">{{ cat.data.grade }}</span>
+              <span class="cat-name">{{ cat.key }}</span>
+              <span class="cat-score">{{ cat.data.score }}/100</span>
+            </div>
+            <div class="cat-bar">
+              <div class="cat-fill" [style.width.%]="cat.data.score"></div>
+            </div>
+            @if (cat.data.issues.length > 0) {
+              <div class="cat-issues">
+                @for (issue of cat.data.issues; track issue) {
+                  <span class="cat-issue">• {{ issue }}</span>
+                }
+              </div>
+            } @else {
+              <span class="cat-ok">✓ No issues</span>
+            }
+          </div>
+        }
+      </div>
+
+      <!-- Recommendations -->
+      @if (data.recommendations.length > 0) {
+        <div class="recs-section">
+          <h3>Recommendations</h3>
+          @for (rec of data.recommendations; track $index) {
+            <div class="rec-card">
+              <p-tag [value]="rec.category" severity="warn" [rounded]="true" />
+              <span class="rec-issue">{{ rec.issue }}</span>
+              <span class="rec-action">→ {{ rec.action }}</span>
+              <button pButton icon="pi pi-sparkles" label="Run with AI" class="p-button-text p-button-sm ai-btn" (click)="runWithAi(rec.action)"></button>
+            </div>
+          }
+        </div>
+      }
+
+      <!-- Cost trend chart (auto-hides if no data) -->
+      <app-trend-chart
+        endpoint="/api/analytics/series/cost?days=14"
+        title="Cost Trend (14d)"
+        chartType="bar"
+        height="140px"
+        labelField="day"
+        [labelSlice]="[5, 10]"
+        [datasets]="[{label: 'Daily Cost', field: 'cost', color: '#22c55e', fill: false}]" />
+    } @else {
+      <app-skeleton variant="card" />
+      <app-skeleton variant="stats" />
+    }

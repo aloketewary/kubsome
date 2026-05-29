@@ -196,8 +196,14 @@ def get_namespace_growth(days: int = 14):
 
 @router.get("/analytics/blast-radius/{name}")
 def get_blast_radius(name: str, action: str = "restart"):
-    from core.analytics.blast_radius import analyze_blast_radius
-    return analyze_blast_radius(name, action)
+    try:
+        from core.analytics.blast_radius import analyze_blast_radius
+        result = analyze_blast_radius(name, action)
+        if result and "error" in result:
+            return result
+        return result
+    except Exception as e:
+        return {"error": f"Blast radius analysis failed: {str(e)}"}
 
 
 @router.get("/analytics/correlate-change/{name}")
@@ -730,6 +736,15 @@ def get_cost_by_env(days: int = 7):
     try:
         from core.analytics.chargeback import cost_by_environment
         return {"items": cost_by_environment(days)}
+    except Exception as e:
+        return {"items": [], "error": str(e)}
+
+
+@router.get("/chargeback/by-billing-tag")
+def get_cost_by_billing_tag(days: int = 7):
+    try:
+        from core.analytics.chargeback import cost_by_billing_tag
+        return {"items": cost_by_billing_tag(days)}
     except Exception as e:
         return {"items": [], "error": str(e)}
 

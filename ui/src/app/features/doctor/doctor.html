@@ -1,0 +1,52 @@
+<div class="intel-header">
+  <div class="intel-title-block">
+    <h1 class="intel-title"><span class="title-icon">♥</span> System Health</h1>
+    <p class="intel-subtitle">{{ checks.length ? passCount + '/' + checks.length + ' passed' : 'pre-flight diagnostics' }} · {{ lastChecked || '...' }}</p>
+  </div>
+  <div class="intel-controls">
+    <button class="ctrl-btn" (click)="load()"><i class="pi pi-refresh" [class.spinning]="loading"></i></button>
+  </div>
+</div>
+
+<div class="metrics-strip">
+  <app-metric-tile label="Checks" [value]="'' + checks.length" accent="cyan" />
+  <app-metric-tile label="Passed" [value]="'' + passCount" accent="green" />
+  @if (warnCount > 0) { <app-metric-tile label="Warnings" [value]="'' + warnCount" accent="amber" /> }
+  @if (failCount > 0) { <app-metric-tile label="Failed" [value]="'' + failCount" accent="red" /> }
+</div>
+
+@if (loading && !checks.length) {
+  <div class="loading-state"><div class="loader-ring"></div><span>Running diagnostics...</span></div>
+}
+
+@if (loadError) {
+  <div class="empty-state"><div class="empty-icon"><i class="pi pi-exclamation-triangle"></i></div><span>Failed to run diagnostics</span><button class="ctrl-btn ctrl-btn-wide" (click)="load()">Retry</button></div>
+}
+
+@if (checks.length > 0) {
+  <div class="checks-list">
+    @for (check of checks; track check.name) {
+      <div class="check-row" [class.check-ok]="check.status === 'ok'" [class.check-warn]="check.status === 'warn'" [class.check-fail]="check.status === 'fail'">
+        <app-status-beacon [status]="checkBeacon(check.status)" size="md" />
+        <div class="check-info">
+          <span class="check-name">{{ check.name }}</span>
+          <span class="check-detail">{{ check.detail }}</span>
+        </div>
+        <span class="check-badge" [attr.data-status]="check.status">
+          {{ check.status === 'ok' ? 'Pass' : check.status === 'warn' ? 'Warning' : 'Fail' }}
+        </span>
+      </div>
+    }
+  </div>
+
+  <app-holo-card [glow]="allOk ? 'green' : 'amber'" [compact]="true">
+    <div class="summary-row">
+      <app-status-beacon [status]="allOk ? 'ok' : 'warning'" size="md" />
+      <span class="summary-text">{{ allOk ? 'All checks passed — system is ready' : 'Some checks need attention' }}</span>
+    </div>
+  </app-holo-card>
+}
+
+@if (checks.length === 0 && !loading && !loadError) {
+  <div class="empty-state"><div class="empty-icon"><i class="pi pi-heart"></i></div><span>Click refresh to run diagnostics</span></div>
+}

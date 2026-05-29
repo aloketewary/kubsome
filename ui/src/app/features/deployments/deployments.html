@@ -1,0 +1,103 @@
+<!-- ─── Header ─────────────────────────────────────────────────────── -->
+<div class="intel-header">
+  <div class="intel-title-block">
+    <h1 class="intel-title"><span class="title-icon">▶</span> Deployments</h1>
+    <p class="intel-subtitle">{{ deployments.length }} deployments · {{ lastUpdated || 'loading...' }}</p>
+  </div>
+  <div class="intel-controls">
+    <app-live-indicator [active]="autoRefresh" label="AUTO" offLabel="PAUSED" (click)="toggleAutoRefresh()" />
+    <button class="ctrl-btn" (click)="refresh()" pTooltip="Refresh"><i class="pi pi-refresh" [class.spinning]="loading"></i></button>
+  </div>
+</div>
+
+<!-- ─── Metrics ────────────────────────────────────────────────────── -->
+<div class="metrics-strip">
+  <app-metric-tile label="Total" [value]="'' + deployments.length" accent="cyan" />
+  <app-metric-tile label="Healthy" [value]="'' + healthyCount" accent="green" />
+  @if (degradedCount > 0) {
+    <app-metric-tile label="Degraded" [value]="'' + degradedCount" accent="red" />
+  }
+</div>
+
+<!-- ─── Filter Bar ─────────────────────────────────────────────────── -->
+<app-command-bar
+  [pills]="filterPills"
+  [activePill]="statusFilter"
+  [search]="searchQuery"
+  placeholder="Filter deployments..."
+  (pillChange)="onFilterChange($event)"
+  (searchChange)="onSearchChange($event)" />
+
+<!-- ─── Deployment List ────────────────────────────────────────────── -->
+<div class="dep-list">
+  @for (dep of filtered; track dep.name) {
+    <div class="dep-card" [class.dep-degraded]="dep.available < dep.desired">
+      <app-status-beacon [status]="depStatus(dep)" size="md" [pulse]="dep.available < dep.desired" />
+      <div class="dep-body">
+        <div class="dep-top">
+          <code class="dep-name">{{ dep.name }}</code>
+          <p-tag [value]="dep.available === dep.desired ? 'Healthy' : 'Degraded'" [severity]="dep.available === dep.desired ? 'success' : 'danger'" [rounded]="true" />
+        </div>
+        <div class="replica-row">
+          <div class="replica-dots">
+            @for (i of replicaArray(dep.desired); track i) {
+              <span class="replica-dot" [class.filled]="i < dep.available" [class.missing]="i >= dep.available"></span>
+            }
+          </div>
+          <span class="replica-label">{{ dep.available }}/{{ dep.desired }}</span>
+        </div>
+      </div>
+      <div class="dep-actions">
+        <app-action-icon icon="pi pi-sparkles" tooltip="AI Diagnose" accent="amber" (clicked)="aiDiagnose(dep)" />
+        <app-action-icon icon="pi pi-replay" tooltip="Restart" accent="cyan" (clicked)="onRestart(dep)" />
+        <app-action-icon icon="pi pi-undo" tooltip="Rollback" accent="red" (clicked)="onRollback(dep)" />
+        <app-action-icon icon="pi pi-arrows-v" tooltip="Scale" accent="green" (clicked)="onScale(dep)" />
+        <app-action-icon icon="pi pi-history" tooltip="History" accent="cyan" (clicked)="viewRollout(dep)" />
+        <app-action-icon icon="pi pi-box" tooltip="Pods" accent="purple" (clicked)="viewPods(dep)" />
+      </div>
+    </div>
+  }
+
+  @if (filtered.length === 0 && searchQuery) {
+    <div class="empty-state"><div class="empty-icon"><i class="pi pi-search"></i></div><span>No deployments matching "{{ searchQuery }}"</span></div>
+  }
+  @if (filtered.length === 0 && !searchQuery && !loadError) {
+    <div class="empty-state"><div class="empty-icon"><i class="pi pi-send"></i></div><span>No deployments in this namespace</span></div>
+  }
+  @if (loadError) {
+    <div class="empty-state"><div class="empty-icon"><i class="pi pi-exclamation-triangle"></i></div><span>Failed to load</span><button class="ctrl-btn ctrl-btn-wide" (click)="refresh()">Retry</button></div>
+  }
+</div>
+
+<!-- ─── AI Drawer ──────────────────────────────────────────────────── -->
+<app-ai-insight-drawer [visible]="aiDrawerVisible" [loading]="aiLoading" [resourceName]="selectedDepName" [summary]="aiSummary" [findings]="aiFindings" [reasoning]="aiReasoning" (closed)="aiDrawerVisible = false" />
+
+<!-- ─── Rollout Dialog ─────────────────────────────────────────────── -->
+<p-dialog [(visible)]="rolloutVisible" [header]="'Rollout — ' + rolloutName" [modal]="true" [maximizable]="true" styleClass="fullscreen-dialog" [appendTo]="'body'">
+  @if (rolloutData) {
+    <div class="rollout-section"><h4>Status</h4><pre class="rollout-pre">{{ rolloutData.status }}</pre></div>
+    <div class="rollout-section"><h4>History</h4><pre class="rollout-pre">{{ rolloutData.history }}</pre></div>
+  } @else {
+    <div class="dialog-loading"><div class="loader-ring"></div></div>
+  }
+</p-dialog>
+
+<!-- ─── Scale Dialog ───────────────────────────────────────────────── -->
+<p-dialog [(visible)]="scaleVisible" header="Scale Deployment" [modal]="true" [style]="{ width: '400px' }" [appendTo]="'body'">
+  <div class="scale-form">
+    <div class="scale-header"><code>{{ scaleName }}</code><span class="scale-current">Current: {{ scaleCurrentReplicas }}</span></div>
+    <div class="scale-visual">
+      <button class="scale-btn" (click)="scaleReplicas = Math.max(0, scaleReplicas - 1)">−</button>
+      <span class="scale-number">{{ scaleReplicas }}</span>
+      <button class="scale-btn" (click)="scaleReplicas = scaleReplicas + 1">+</button>
+    </div>
+    <div class="scale-dots">
+      @for (i of replicaArray(scaleReplicas); track i) { <span class="replica-dot filled"></span> }
+      @if (scaleReplicas === 0) { <span class="scale-zero">⚠ Scale to zero</span> }
+    </div>
+    <div class="scale-actions">
+      <button class="ctrl-btn ctrl-btn-wide" (click)="scaleVisible = false">Cancel</button>
+      <button class="ctrl-btn ctrl-btn-wide scale-apply" (click)="confirmScale()" [disabled]="scaleReplicas === scaleCurrentReplicas">Apply</button>
+    </div>
+  </div>
+</p-dialog>

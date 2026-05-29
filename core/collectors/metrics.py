@@ -45,6 +45,48 @@ def top_pods():
     )
 
 
+@cached(ttl=10)
+def node_workloads():
+    """Return pods grouped by node for the current namespace."""
+    command = [
+        "kubectl",
+        "--context", str(context.current_context or ""),
+        "get", "pods",
+        "-n", str(context.namespace),
+        "-o", "json"
+    ]
+    result = subprocess.run(
+        command, capture_output=True, text=True
+    )
+    if result.returncode != 0:
+        return {}
+
+    data = json.loads(result.stdout)
+    nodes = {}
+    # Pre-populate with all known nodes so empty ones still appear
+    for item in data.get("items", []):
+        node = item.get("spec", {}).get("nodeName", "unscheduled")
+        if not node:
+            continue
+        name = item["metadata"]["name"]
+        phase = item.get("status", {}).get("phase", "Unknown")
+        labels = item.get("metadata", {}).get("labels", {})
+        deploy = labels.get(
+            "app",
+            labels.get("app.kubernetes.io/name", "")
+        )
+
+        if node not in nodes:
+            nodes[node] = []
+        nodes[node].append({
+            "name": name,
+            "namespace": str(context.namespace),
+            "status": phase,
+            "deployment": deploy,
+        })
+    return nodes
+
+
 @cached(ttl=5)
 def top_nodes():
     command = [

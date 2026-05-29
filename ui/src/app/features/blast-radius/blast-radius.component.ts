@@ -4,13 +4,15 @@ import { UpperCasePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
+import { TooltipModule } from 'primeng/tooltip';
 import { SpotlightComponent } from '../../shared/components/spotlight.component';
 import { PageHeaderComponent } from '../../shared/components/page-header.component';
+import { SkeletonComponent } from '../../shared/components/skeleton.component';
 
 @Component({
   selector: 'app-blast-radius',
   standalone: true,
-  imports: [ButtonModule, TagModule, FormsModule, UpperCasePipe, SpotlightComponent, PageHeaderComponent],
+  imports: [ButtonModule, TagModule, TooltipModule, FormsModule, UpperCasePipe, SpotlightComponent, PageHeaderComponent, SkeletonComponent],
   template: `
     <app-spotlight id="blast-radius" title="Blast Radius" icon="pi pi-exclamation-circle"
       description="Analyze impact before destructive operations — what breaks if you touch this?"
@@ -30,7 +32,19 @@ import { PageHeaderComponent } from '../../shared/components/page-header.compone
       <button pButton icon="pi pi-search" label="Analyze" class="p-button-sm" (click)="analyze()" [loading]="loading" [disabled]="!target"></button>
     </div>
 
-    @if (result) {
+    @if (loading) {
+      <app-skeleton variant="card" />
+    }
+
+    @if (result?.error) {
+      <div class="error-state">
+        <i class="pi pi-exclamation-triangle"></i>
+        <span>{{ result.error }}</span>
+        <button pButton label="Retry" icon="pi pi-refresh" class="p-button-outlined p-button-sm" (click)="analyze()"></button>
+      </div>
+    }
+
+    @if (result && !result.error) {
       <!-- Risk Score -->
       <div class="risk-banner" [class]="'risk-' + result.risk_level">
         <div class="risk-score">{{ result.risk_score }}/10</div>
@@ -71,7 +85,11 @@ import { PageHeaderComponent } from '../../shared/components/page-header.compone
 
       <!-- Recommendation -->
       <div class="recommendation">
-        <strong>Recommendation:</strong> {{ result.recommendation }}
+        <i class="pi pi-lightbulb"></i>
+        <div>
+          <strong>Recommendation</strong>
+          <p>{{ result.recommendation }}</p>
+        </div>
       </div>
     }
 
@@ -111,7 +129,16 @@ import { PageHeaderComponent } from '../../shared/components/page-header.compone
     .aff-type { font-size: 11px; color: var(--text-muted); min-width: 80px; }
     .aff-name { min-width: 120px; }
     .aff-impact { flex: 1; font-size: 12px; color: var(--text-muted); }
-    .recommendation { padding: 12px 16px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); font-size: 13px; }
+    .recommendation { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; background: var(--bg-card); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: var(--radius); font-size: 13px; }
+    .recommendation i { color: var(--accent); font-size: 16px; margin-top: 2px; }
+    .recommendation strong { display: block; font-size: 11px; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.04em; margin-bottom: 4px; }
+    .recommendation p { margin: 0; line-height: 1.4; }
+    .error-state {
+      display: flex; flex-direction: column; align-items: center; gap: 12px;
+      padding: 48px; color: var(--text-muted); font-size: 13px;
+      background: var(--bg-card); border: 1px solid var(--danger); border-radius: var(--radius);
+    }
+    .error-state i { font-size: 24px; color: var(--danger); }
     .empty-state { text-align: center; padding: 60px; color: var(--text-muted); }
     .empty-state i { font-size: 48px; opacity: 0.3; margin-bottom: 16px; }
     @media (max-width: 768px) {
@@ -141,7 +168,7 @@ export class BlastRadiusComponent {
     this.result = null;
     this.http.get<any>(`/api/analytics/blast-radius/${this.target}?action=${this.action}`).subscribe({
       next: (res) => { this.result = res; this.loading = false; },
-      error: (err) => { this.result = { error: err.error?.detail || 'Analysis failed' }; this.loading = false; },
+      error: (err) => { this.result = { error: err.error?.detail || 'Analysis failed. Check deployment name.' }; this.loading = false; },
     });
   }
 

@@ -1,0 +1,187 @@
+<!-- ═══════════════════════════════════════════════════════════════════
+     PODS — Live Intelligence Interface
+     Futuristic dark UI with glassmorphism, glowing beacons, data-dense layout
+     ═══════════════════════════════════════════════════════════════════ -->
+
+<!-- ─── Header ─────────────────────────────────────────────────────── -->
+<div class="intel-header">
+  <div class="intel-title-block">
+    <h1 class="intel-title">
+      <span class="title-icon">◆</span>
+      Pod Intelligence
+    </h1>
+    <p class="intel-subtitle">
+      {{ pods.length }} pods · {{ filteredGroups.length }} deployments · {{ statusFilter !== 'all' ? statusFilter : 'all states' }}
+    </p>
+  </div>
+  <div class="intel-controls">
+    <app-live-indicator [active]="watching" (click)="toggleWatch()" />
+    <button class="ctrl-btn" (click)="toggleAllGroups()" [pTooltip]="allExpanded ? 'Collapse all' : 'Expand all'">
+      <i class="pi" [class.pi-minus]="allExpanded" [class.pi-plus]="!allExpanded"></i>
+    </button>
+    <button class="ctrl-btn" (click)="refresh()" pTooltip="Refresh">
+      <i class="pi pi-refresh" [class.spinning]="loading"></i>
+    </button>
+  </div>
+</div>
+
+<!-- ─── Metrics Strip ──────────────────────────────────────────────── -->
+<div class="metrics-strip">
+  <app-metric-tile label="Total" [value]="'' + pods.length" accent="cyan" />
+  <app-metric-tile label="Healthy" [value]="'' + healthyCount" accent="green" />
+  @if (warningCount > 0) {
+    <app-metric-tile label="Warning" [value]="'' + warningCount" accent="amber" />
+  }
+  @if (criticalCount > 0) {
+    <app-metric-tile label="Critical" [value]="'' + criticalCount" accent="red" />
+  }
+  @if (pendingCount > 0) {
+    <app-metric-tile label="Pending" [value]="'' + pendingCount" accent="amber" />
+  }
+</div>
+
+<!-- ─── Command Bar (Filter + Search) ──────────────────────────────── -->
+<app-command-bar
+  [pills]="filterPills"
+  [activePill]="statusFilter"
+  [search]="searchQuery"
+  placeholder="Filter pods..."
+  (pillChange)="onFilterChange($event)"
+  (searchChange)="onSearchChange($event)" />
+
+<!-- ─── Selection Action Bar ───────────────────────────────────────── -->
+@if (selected.length > 0) {
+  <div class="selection-bar">
+    <span class="sel-count">{{ selected.length }} selected in <strong>{{ selectedGroup }}</strong></span>
+    <div class="sel-actions">
+      @if (selected.length === 1) {
+        <button class="sel-btn" (click)="viewLogs()"><i class="pi pi-align-left"></i> Logs</button>
+        <button class="sel-btn sel-btn-green" (click)="viewLiveLogs()"><i class="pi pi-play"></i> Live</button>
+        <button class="sel-btn sel-btn-purple" (click)="openShell()"><i class="pi pi-code"></i> Shell</button>
+        <button class="sel-btn" (click)="inspectPod()"><i class="pi pi-search"></i> Inspect</button>
+        <button class="sel-btn sel-btn-amber" (click)="diagnosePod()"><i class="pi pi-sparkles"></i> AI</button>
+      }
+      @if (selected.length > 1) {
+        <button class="sel-btn" (click)="viewLogcat()"><i class="pi pi-list"></i> Logcat ({{ selected.length }})</button>
+      }
+      <button class="sel-btn sel-btn-dim" (click)="clearSelection()"><i class="pi pi-times"></i></button>
+    </div>
+  </div>
+}
+
+<!-- ─── Pod Groups ─────────────────────────────────────────────────── -->
+@for (group of filteredGroups; track group.deployment) {
+  <app-section-group
+    [title]="group.deployment"
+    [healthPct]="group.healthPct"
+    [total]="group.pods.length"
+    [unhealthy]="group.unhealthyCount"
+    [expanded]="group.expanded"
+    (toggle)="group.expanded = !group.expanded">
+
+    <button group-actions class="ctrl-btn ctrl-btn-sm" pTooltip="Select all" (click)="selectGroup(group, $event)">
+      <i class="pi pi-check-square"></i>
+    </button>
+
+    @for (pod of group.pods; track pod.name) {
+      <div class="pod-row" [class.pod-row-selected]="isSelected(pod)" [class.pod-row-alert]="!isHealthy(pod)"
+           (click)="togglePod(pod, group)" tabindex="0" role="button"
+           (keydown.enter)="togglePod(pod, group)" (keydown.space)="$event.preventDefault(); togglePod(pod, group)">
+        <app-status-beacon [status]="podBeaconStatus(pod)" size="sm" />
+        <div class="pod-info">
+          <span class="pod-name" (click)="openDrawer(pod, $event)">{{ pod.name }}</span>
+          <span class="pod-meta">{{ podSecondary(pod) }}</span>
+        </div>
+        <div class="pod-tags">
+          <p-tag [value]="pod.status" [severity]="statusSeverity(pod.status)" [rounded]="true" />
+          @if (pod.restarts > 0) {
+            <span class="restart-badge" [class.restart-high]="pod.restarts > 5">↻ {{ pod.restarts }}</span>
+          }
+        </div>
+        <div class="pod-actions">
+          <app-action-icon icon="pi pi-sparkles" tooltip="AI Diagnose" accent="amber" (clicked)="quickAiDiagnose(pod)" />
+          <app-action-icon icon="pi pi-align-left" tooltip="Logs" accent="cyan" (clicked)="quickLogs(pod)" />
+          <app-action-icon icon="pi pi-code" tooltip="Shell" accent="purple" (clicked)="quickShell(pod)" />
+          <app-action-icon icon="pi pi-ellipsis-h" tooltip="Details" accent="cyan" (clicked)="openDrawer(pod)" />
+        </div>
+      </div>
+    }
+  </app-section-group>
+}
+
+<!-- ─── Empty / Loading / Error States ─────────────────────────────── -->
+@if (filteredGroups.length === 0 && searchQuery) {
+  <div class="empty-state">
+    <div class="empty-icon"><i class="pi pi-search"></i></div>
+    <span>No pods matching "{{ searchQuery }}"</span>
+  </div>
+}
+@if (filteredGroups.length === 0 && !searchQuery && pods.length === 0 && !loading) {
+  <div class="empty-state">
+    <div class="empty-icon"><i class="pi pi-box"></i></div>
+    <span>No pods in this namespace</span>
+  </div>
+}
+@if (loading && pods.length === 0) {
+  <div class="loading-state">
+    <div class="loader-ring"></div>
+    <span>Scanning cluster...</span>
+  </div>
+}
+@if (loadError && pods.length === 0) {
+  <div class="error-state">
+    <i class="pi pi-exclamation-triangle"></i>
+    <span>Failed to load pods. Check cluster connectivity.</span>
+    <button class="ctrl-btn" (click)="refresh()">Retry</button>
+  </div>
+}
+@if (hasMore) {
+  <div class="load-more">
+    <button class="ctrl-btn ctrl-btn-wide" (click)="loadMore()">
+      Load more ({{ pods.length }}/{{ totalPods }})
+    </button>
+  </div>
+}
+
+<!-- ─── Drawers & Dialogs ──────────────────────────────────────────── -->
+<app-pod-drawer [podName]="drawerPod" [podStatus]="drawerStatus" (closed)="drawerPod = ''" />
+
+<app-ai-insight-drawer
+  [visible]="aiDrawerVisible"
+  [loading]="aiLoading"
+  [resourceName]="activePodName"
+  [summary]="aiSummary"
+  [findings]="aiFindings"
+  [reasoning]="aiReasoning"
+  (closed)="aiDrawerVisible = false" />
+
+<p-dialog [(visible)]="logsVisible" [header]="logsTitle" [modal]="true" [maximizable]="true" (onHide)="onLogsHide()" styleClass="fullscreen-dialog" [appendTo]="'body'">
+  <div class="log-viewer-container">
+    @if (isLiveMode) {
+      <app-log-terminal [podName]="activePodName" />
+    } @else {
+      <div class="log-viewer">
+        @for (line of logLines; track $index) {
+          <div class="log-line" [class.error-line]="isError(line)">
+            <span class="line-num">{{ $index + 1 }}</span>
+            <span class="line-text">{{ line }}</span>
+          </div>
+        }
+        @if (logLines.length === 0 && !logsLoading) { <div class="log-empty">No log lines</div> }
+        @if (logsLoading) { <div class="log-empty"><i class="pi pi-spin pi-spinner"></i> Loading...</div> }
+      </div>
+    }
+  </div>
+</p-dialog>
+
+<p-dialog [(visible)]="inspectVisible" header="Pod Inspection" [modal]="true" [maximizable]="true" styleClass="fullscreen-dialog" [appendTo]="'body'">
+  <pre class="inspect-output">{{ inspectData | json }}</pre>
+</p-dialog>
+
+<p-dialog [(visible)]="shellVisible" [header]="'Shell — ' + shellPodName" [modal]="true" [maximizable]="true" styleClass="fullscreen-dialog" (onHide)="onShellHide()" [appendTo]="'body'">
+  @if (shellVisible && shellPodName) {
+    <div class="shell-viewer-container">
+      <app-shell-terminal [podName]="shellPodName" />
+    </div>
+  }
+</p-dialog>

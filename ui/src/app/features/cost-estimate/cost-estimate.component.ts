@@ -1,22 +1,30 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { TooltipModule } from 'primeng/tooltip';
+import { InputTextModule } from 'primeng/inputtext';
 import { PageInfoComponent } from '../../shared/components/page-info.component';
 import { SpotlightComponent } from '../../shared/components/spotlight.component';
 import { PageHeaderComponent } from '../../shared/components/page-header.component';
 import { TrendChartComponent } from '../../shared/components/trend-chart.component';
+import { SkeletonComponent } from '../../shared/components/skeleton.component';
 
 @Component({
   selector: 'app-cost-estimate',
   standalone: true,
-  imports: [ButtonModule, TooltipModule, PageInfoComponent, SpotlightComponent, TrendChartComponent, PageHeaderComponent],
+  imports: [ButtonModule, TooltipModule, FormsModule, InputTextModule, PageInfoComponent, SpotlightComponent, TrendChartComponent, PageHeaderComponent, SkeletonComponent],
   template: `
     <app-spotlight id="cost-estimate" title="Cost Estimation" icon="pi pi-dollar"
       description="Estimated monthly spend per deployment based on resource requests."
       [capabilities]="['Per-deployment cost', 'CPU/memory pricing', 'Right-sizing tips']" [compact]="true" />
 
     <app-page-header title="Cost Estimation" [subtitle]="'Estimated monthly spend based on resource requests · ' + lastUpdated">
+        <div class="search-wrap">
+          <i class="pi pi-search"></i>
+          <input pInputText [(ngModel)]="searchQuery" placeholder="Filter deployments..." (ngModelChange)="applyFilter()" />
+        </div>
+        <button pButton icon="pi pi-download" label="Export" class="p-button-outlined p-button-sm" (click)="exportCsv()" [disabled]="!data?.deployments?.length" pTooltip="Export CSV"></button>
         <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="refresh()" [loading]="loading"></button>
         <app-page-info title="Cost Estimation" description="Estimated monthly spend per deployment based on CPU and memory resource requests."
           [tips]="['Based on AWS on-demand pricing (~$30/vCPU, ~$4/GB)', 'Sorted by highest cost first', 'Reduce cost by right-sizing: optimize command']"
@@ -38,7 +46,7 @@ import { TrendChartComponent } from '../../shared/components/trend-chart.compone
       <div class="total-banner">
         <div class="total-amount">\${{ data.total.toFixed(2) }}</div>
         <div class="total-label">estimated / month</div>
-        <div class="total-note">{{ data.deployments.length }} deployments · {{ data.pricing.note }}</div>
+        <div class="total-note">{{ filteredDeployments.length }} deployments · {{ data.pricing.note }}</div>
       </div>
 
       <!-- Cost Trend -->
@@ -67,14 +75,14 @@ import { TrendChartComponent } from '../../shared/components/trend-chart.compone
       }
 
       <!-- Cost Bar Chart -->
-      @if (data.deployments.length > 0) {
+      @if (filteredDeployments.length > 0) {
         <div class="cost-chart-card">
           <div class="cost-chart-header">
             <span class="cost-chart-title">Cost Distribution</span>
-            <span class="cost-chart-badge">Top {{ Math.min(data.deployments.length, 10) }}</span>
+            <span class="cost-chart-badge">Top {{ Math.min(filteredDeployments.length, 10) }}</span>
           </div>
           <div class="cost-bars">
-            @for (dep of data.deployments.slice(0, 10); track dep.name) {
+            @for (dep of filteredDeployments.slice(0, 10); track dep.name) {
               <div class="cost-bar-row">
                 <span class="cb-name" [pTooltip]="dep.name">{{ shortName(dep.name) }}</span>
                 <div class="cb-track">
@@ -97,7 +105,7 @@ import { TrendChartComponent } from '../../shared/components/trend-chart.compone
           <span class="col-cost">$/pod</span>
           <span class="col-total">$/month</span>
         </div>
-        @for (dep of data.deployments; track dep.name) {
+        @for (dep of filteredDeployments; track dep.name) {
           <div class="table-row">
             <span class="col-name mono">{{ dep.name }}</span>
             <span class="col-rep">{{ dep.replicas }}</span>
@@ -107,15 +115,30 @@ import { TrendChartComponent } from '../../shared/components/trend-chart.compone
             <span class="col-total bold">\${{ dep.cost_total.toFixed(2) }}</span>
           </div>
         }
-        @if (data.deployments.length === 0) {
-          <div class="empty">No deployments with resource requests</div>
+        @if (filteredDeployments.length === 0) {
+          <div class="empty">{{ searchQuery ? 'No deployments matching "' + searchQuery + '"' : 'No deployments with resource requests' }}</div>
         }
       </div>
+    } @else if (loading) {
+      <app-skeleton variant="stats" />
+      <app-skeleton variant="table" [count]="6" />
     } @else {
-      <div class="loading"><div class="spin"></div> Calculating costs...</div>
+      <div class="empty-state">
+        <i class="pi pi-dollar"></i>
+        <h3>No Cost Data</h3>
+        <p>Unable to calculate costs. Check cluster connectivity.</p>
+        <button pButton label="Retry" icon="pi pi-refresh" class="p-button-outlined p-button-sm" (click)="refresh()"></button>
+      </div>
     }
   `,
   styles: [`
+    .search-wrap { position: relative; }
+    .search-wrap i { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 12px; }
+    .search-wrap input { padding-left: 30px !important; width: 180px; }
+    .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+    .empty-state i { font-size: 48px; opacity: 0.3; margin-bottom: 16px; }
+    .empty-state h3 { margin: 8px 0 0; }
+    .empty-state p { margin: 4px 0 16px; font-size: 13px; }
     .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px; }
     .page-header h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.03em; }
     .subtitle { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
@@ -191,26 +214,55 @@ import { TrendChartComponent } from '../../shared/components/trend-chart.compone
     }
   `],
 })
-export class CostEstimateComponent implements OnInit {
+export class CostEstimateComponent implements OnInit, OnDestroy {
   private http = inject(HttpClient);
   data: any = null;
   trend: any = null;
   Math = Math;
   loading = false;
   lastUpdated = '';
+  searchQuery = '';
+  filteredDeployments: any[] = [];
+  private timer: any;
 
-  ngOnInit() { this.refresh(); }
+  ngOnInit() { this.refresh(); this.timer = setInterval(() => this.refresh(), 60000); }
+  ngOnDestroy() { clearInterval(this.timer); }
+
+  applyFilter() {
+    const deps = this.data?.deployments || [];
+    if (!this.searchQuery) { this.filteredDeployments = deps; return; }
+    const q = this.searchQuery.toLowerCase();
+    this.filteredDeployments = deps.filter((d: any) => d.name.toLowerCase().includes(q));
+  }
 
   refresh() {
     this.loading = true;
     this.http.get<any>('/api/cost-estimate').subscribe({
-      next: (res) => { this.data = res; this.loading = false; this.lastUpdated = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }); },
-      error: () => { this.data = { deployments: [], total: 0, pricing: { note: 'Error' } }; this.loading = false; },
+      next: (res) => {
+        this.data = res;
+        this.loading = false;
+        this.lastUpdated = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        this.applyFilter();
+      },
+      error: () => { this.data = null; this.loading = false; },
     });
     this.http.get<any>('/api/cost-trend').subscribe({
       next: (res) => { this.trend = res; },
       error: () => {},
     });
+  }
+
+  exportCsv() {
+    if (!this.data?.deployments?.length) return;
+    const header = 'Deployment,Replicas,CPU,Memory,Cost/Pod,Cost/Month';
+    const rows = this.data.deployments.map((d: any) =>
+      `${d.name},${d.replicas},${d.cpu_request},${d.memory_request},${d.cost_per_pod.toFixed(2)},${d.cost_total.toFixed(2)}`);
+    const csv = [header, ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'cost-estimate.csv'; a.click();
+    URL.revokeObjectURL(url);
   }
 
   costPct(cost: number): number {

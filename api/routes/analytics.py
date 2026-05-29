@@ -92,6 +92,52 @@ def get_cpu_memory_series(
         return {"series": [], "error": str(e)}
 
 
+@router.get("/analytics/debug")
+def get_debug_info():
+    """Debug: show row counts and recent data for troubleshooting."""
+    try:
+        from core.analytics.engine import get_conn
+        from core.context import context
+        conn = get_conn()
+        ctx = context.current_context
+
+        raw_count = conn.execute(
+            "SELECT COUNT(*) FROM raw_pod_metrics"
+        ).fetchone()[0]
+        raw_ctx_count = conn.execute(
+            "SELECT COUNT(*) FROM raw_pod_metrics WHERE context = ?",
+            [ctx]
+        ).fetchone()[0] if ctx else raw_count
+        hourly_count = conn.execute(
+            "SELECT COUNT(*) FROM hourly_pod_metrics"
+        ).fetchone()[0]
+        event_count = conn.execute(
+            "SELECT COUNT(*) FROM event_log"
+        ).fetchone()[0]
+
+        recent_raw = conn.execute(
+            "SELECT ts, context, namespace, pod, deployment, "
+            "cpu_millicores, memory_mb FROM raw_pod_metrics "
+            "ORDER BY ts DESC LIMIT 5"
+        ).fetchall()
+
+        return {
+            "context": ctx,
+            "raw_total": raw_count,
+            "raw_for_context": raw_ctx_count,
+            "hourly_total": hourly_count,
+            "event_log_total": event_count,
+            "recent_raw": [
+                {"ts": str(r[0]), "ctx": r[1], "ns": r[2],
+                 "pod": r[3], "deploy": r[4],
+                 "cpu": r[5], "mem": r[6]}
+                for r in recent_raw
+            ],
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+
 @router.get("/analytics/series/cost")
 def get_cost_series(days: int = Query(30, ge=1, le=365)):
     """Daily cost trend for bar chart."""

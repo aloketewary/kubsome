@@ -214,12 +214,22 @@ import { ConfirmDialogComponent } from './shared/components/confirm-dialog.compo
       display: flex;
       align-items: center;
       padding: 0 24px;
-      background: var(--bg-card);
-      border-bottom: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(13, 17, 28, 0.95) 0%, rgba(8, 11, 20, 0.98) 100%);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
       z-index: 1002;
       gap: 16px;
       box-sizing: border-box;
       transition: background 0.3s, border-color 0.3s;
+      backdrop-filter: blur(16px) saturate(180%);
+      -webkit-backdrop-filter: blur(16px) saturate(180%);
+    }
+    .topbar::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 40px; right: 40px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(0, 212, 255, 0.12), transparent);
+      pointer-events: none;
     }
     .topbar-env-prod {
       background: linear-gradient(66deg, rgba(123, 3, 3, 0.53) 2.52%, #0f0f11 92.44%) !important;
@@ -253,16 +263,16 @@ import { ConfirmDialogComponent } from './shared/components/confirm-dialog.compo
     }
     .topbar-brand {
       display: flex; align-items: center; gap: 8px;
-      text-decoration: none; color: var(--text);
+      text-decoration: none; color: rgba(255, 255, 255, 0.9);
       font-size: 14px; font-weight: 700; letter-spacing: -0.02em;
       padding: 6px 10px; border-radius: 6px;
       transition: all 0.15s;
     }
-    .topbar-brand:hover { background: var(--bg-elevated); }
-    .topbar-brand i { font-size: 16px; color: var(--accent); }
+    .topbar-brand:hover { background: rgba(0, 212, 255, 0.04); }
+    .topbar-brand i { font-size: 16px; color: #00d4ff; text-shadow: 0 0 8px rgba(0, 212, 255, 0.4); }
     .brand-text { }
     .topbar-divider {
-      width: 1px; height: 20px; background: var(--border); margin: 0 10px;
+      width: 1px; height: 20px; background: rgba(255, 255, 255, 0.06); margin: 0 10px;
     }
     .workspace-label {
       display: flex;
@@ -391,28 +401,30 @@ import { ConfirmDialogComponent } from './shared/components/confirm-dialog.compo
       gap: 8px;
       width: 100%;
       padding: 7px 12px;
-      background: var(--bg-elevated);
-      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.05);
       border-radius: 8px;
-      color: var(--text-muted);
-      font-size: 13px;
+      color: rgba(255, 255, 255, 0.3);
+      font-size: 12px;
       cursor: pointer;
-      transition: border-color 0.15s;
+      transition: all 0.15s;
     }
     .cmd-k-btn:hover {
-      border-color: var(--border-hover);
-      color: var(--text-secondary);
+      border-color: rgba(0, 212, 255, 0.2);
+      color: rgba(255, 255, 255, 0.6);
+      background: rgba(0, 212, 255, 0.03);
+      box-shadow: 0 0 12px -4px rgba(0, 212, 255, 0.15);
     }
-    .cmd-k-btn i { font-size: 13px; }
+    .cmd-k-btn i { font-size: 12px; }
     .cmd-k-btn span { flex: 1; text-align: left; }
     .cmd-k-btn kbd {
-      font-size: 10px;
+      font-size: 9px;
       padding: 2px 5px;
       border-radius: 4px;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      color: var(--text-muted);
-      font-family: inherit;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      color: rgba(255, 255, 255, 0.25);
+      font-family: 'JetBrains Mono', monospace;
     }
 
     /* Notification bell */
@@ -513,10 +525,10 @@ import { ConfirmDialogComponent } from './shared/components/confirm-dialog.compo
     .sidebar {
       width: 240px;
       flex-shrink: 0;
-      border-right: 1px solid var(--border);
+      border-right: 1px solid rgba(255, 255, 255, 0.04);
       overflow-y: auto;
       overflow-x: hidden;
-      background: var(--bg-card);
+      background: linear-gradient(180deg, rgba(10, 12, 22, 0.98) 0%, rgba(6, 8, 16, 1) 100%);
       padding: 0;
       z-index: 1001;
       height: calc(100vh - 56px);
@@ -555,9 +567,9 @@ import { ConfirmDialogComponent } from './shared/components/confirm-dialog.compo
       width: 24px;
       height: 24px;
       border-radius: 50%;
-      border: 1px solid var(--border);
-      background: var(--bg-elevated);
-      color: var(--text-muted);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      background: rgba(255, 255, 255, 0.02);
+      color: rgba(255, 255, 255, 0.3);
       cursor: pointer;
       display: flex;
       align-items: center;
@@ -566,7 +578,7 @@ import { ConfirmDialogComponent } from './shared/components/confirm-dialog.compo
       transition: all 0.12s;
       z-index: 10;
     }
-    .collapse-toggle:hover { border-color: var(--accent); color: var(--accent); }
+    .collapse-toggle:hover { border-color: rgba(0, 212, 255, 0.25); color: #00d4ff; background: rgba(0, 212, 255, 0.04); }
     .sidebar-collapsed .status-bar { left: 48px; }
     .sidebar-collapsed .content { margin-left: 48px; }
 
@@ -580,12 +592,14 @@ import { ConfirmDialogComponent } from './shared/components/confirm-dialog.compo
       align-items: center;
       justify-content: space-between;
       padding: 0 12px;
-      background: var(--bg-card);
-      border-top: 1px solid var(--border);
-      font-size: 11px;
-      color: var(--text-muted);
+      background: rgba(8, 11, 20, 0.95);
+      border-top: 1px solid rgba(255, 255, 255, 0.04);
+      font-size: 10px;
+      color: rgba(255, 255, 255, 0.25);
       z-index: 100;
       box-sizing: border-box;
+      font-family: 'JetBrains Mono', monospace;
+      backdrop-filter: blur(8px);
     }
     .status-left, .status-right {
       display: flex;

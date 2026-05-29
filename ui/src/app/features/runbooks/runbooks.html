@@ -1,0 +1,160 @@
+<!-- ─── Header ─────────────────────────────────────────────────────── -->
+<div class="intel-header">
+  <div class="intel-title-block">
+    <h1 class="intel-title"><span class="title-icon">📋</span> Runbooks</h1>
+    <p class="intel-subtitle">{{ runbooks.length }} playbooks · guided incident response</p>
+  </div>
+  <div class="intel-controls">
+    @if (activeRunbook) {
+      <button class="ctrl-btn" (click)="activeRunbook = null" pTooltip="Back"><i class="pi pi-arrow-left"></i></button>
+    }
+  </div>
+</div>
+
+<!-- ═══ SELECTION VIEW ═══════════════════════════════════════════════ -->
+@if (!activeRunbook) {
+  <!-- Metrics -->
+  <div class="metrics-strip">
+    <app-metric-tile label="Playbooks" [value]="'' + runbooks.length" accent="cyan" />
+    <app-metric-tile label="Critical" [value]="'' + criticalCount" accent="red" />
+    <app-metric-tile label="High" [value]="'' + highCount" accent="amber" />
+    @if (recommended.length > 0) { <app-metric-tile label="Suggested" [value]="'' + recommended.length" accent="purple" /> }
+  </div>
+
+  <!-- Recommended -->
+  @if (recommended.length > 0 && filterSeverity === 'all' && !searchQuery) {
+    <app-holo-card title="Recommended" icon="pi pi-sparkles" glow="amber" [compact]="true">
+      <div class="rec-grid">
+        @for (rb of recommended; track rb.id) {
+          <div class="rb-card rb-suggested" (click)="selectRunbook(rb)">
+            <div class="rb-icon" [style.color]="rb.color"><i [class]="rb.icon"></i></div>
+            <div class="rb-info">
+              <span class="rb-name">{{ rb.name }}</span>
+              <span class="rb-meta">{{ rb.steps.length }} steps · {{ rb.estimatedTime }}</span>
+            </div>
+            <p-tag value="Suggested" severity="warn" [rounded]="true" />
+          </div>
+        }
+      </div>
+    </app-holo-card>
+  }
+
+  <!-- Filter -->
+  <app-command-bar [pills]="filterPills" [activePill]="filterSeverity" [search]="searchQuery" placeholder="Search runbooks..." (pillChange)="onFilterChange($event)" (searchChange)="onSearchChange($event)" />
+
+  <!-- Grid -->
+  <div class="rb-grid">
+    @for (rb of filteredRunbooks; track rb.id) {
+      <div class="rb-card" (click)="selectRunbook(rb)">
+        <div class="rb-icon" [style.color]="rb.color"><i [class]="rb.icon"></i></div>
+        <div class="rb-info">
+          <span class="rb-name">{{ rb.name }}</span>
+          <span class="rb-desc">{{ rb.description }}</span>
+          <span class="rb-meta">{{ rb.steps.length }} steps · {{ rb.estimatedTime }}</span>
+        </div>
+        <p-tag [value]="rb.severity" [severity]="rb.severity === 'Critical' ? 'danger' : rb.severity === 'High' ? 'warn' : 'info'" [rounded]="true" />
+      </div>
+    }
+    @if (filteredRunbooks.length === 0) {
+      <div class="empty-state"><div class="empty-icon"><i class="pi pi-search"></i></div><span>No runbooks match filter</span></div>
+    }
+  </div>
+}
+
+<!-- ═══ ACTIVE RUNBOOK VIEW ══════════════════════════════════════════ -->
+@if (activeRunbook) {
+  <!-- Active Header -->
+  <app-holo-card [glow]="progressPct === 100 ? 'green' : 'cyan'" [compact]="true">
+    <div class="active-hero">
+      <div class="active-icon" [style.color]="activeRunbook.color"><i [class]="activeRunbook.icon"></i></div>
+      <div class="active-info">
+        <span class="active-name">{{ activeRunbook.name }}</span>
+        <span class="active-desc">{{ activeRunbook.description }}</span>
+      </div>
+      <div class="active-stats">
+        <span class="elapsed">⏱ {{ runbookElapsed }}</span>
+        <div class="progress-ring">
+          <svg viewBox="0 0 36 36">
+            <path class="pr-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+            <path class="pr-fill" [attr.stroke-dasharray]="progressPct + ', 100'" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+          </svg>
+          <span class="pr-val">{{ completedSteps }}/{{ activeRunbook.steps.length }}</span>
+        </div>
+      </div>
+    </div>
+  </app-holo-card>
+
+  <!-- Steps Timeline -->
+  <div class="steps-timeline">
+    @for (step of activeRunbook.steps; track $index; let i = $index) {
+      <div class="step" [class.step-done]="step.done" [class.step-active]="i === currentStepIndex" [class.step-info]="step.isInfo">
+        <div class="step-rail">
+          <div class="step-dot" [class.dot-done]="step.done" [class.dot-active]="i === currentStepIndex" [class.dot-info]="step.isInfo && !step.done">
+            @if (step.done) { <i class="pi pi-check"></i> }
+            @else if (step.isInfo) { <i class="pi pi-info"></i> }
+            @else { <span>{{ i + 1 }}</span> }
+          </div>
+          @if (i < activeRunbook.steps.length - 1) { <div class="step-line" [class.line-done]="step.done"></div> }
+        </div>
+        <div class="step-content">
+          <span class="step-title">{{ step.title }}</span>
+
+          @if (step.command || step.commandTemplate) {
+            <div class="step-cmd">
+              <code>{{ step.commandTemplate || step.command }}</code>
+              <app-action-icon [icon]="step.copied ? 'pi pi-check' : 'pi pi-copy'" [tooltip]="step.copied ? 'Copied!' : 'Copy'" accent="cyan" (clicked)="copyCmd(step, step.command || step.commandTemplate!)" />
+            </div>
+          }
+
+          @if (step.paramName && !step.done && i === currentStepIndex) {
+            <div class="step-param">
+              <label>{{ step.paramName }}:</label>
+              <input [(ngModel)]="step.paramValue" [placeholder]="'Enter ' + step.paramName" (keyup.enter)="runStep(i)" />
+            </div>
+          }
+
+          @if (!step.done && i === currentStepIndex) {
+            <div class="step-actions">
+              @if (step.command || step.commandTemplate) {
+                <button pButton label="Run" icon="pi pi-play" class="p-button-sm" (click)="runStep(i)" [disabled]="step.loading || (!!step.paramName && !step.paramValue)"></button>
+              }
+              <button pButton label="Done" icon="pi pi-check" class="p-button-sm p-button-outlined" (click)="markDone(i)"></button>
+            </div>
+          }
+
+          @if (step.loading) { <span class="step-loading"><i class="pi pi-spin pi-spinner"></i> Running...</span> }
+
+          @if (step.output) {
+            <div class="step-output" [class.out-expanded]="step.outputExpanded">
+              <div class="out-head">
+                <span>Output</span>
+                <app-action-icon [icon]="step.outputExpanded ? 'pi pi-chevron-up' : 'pi pi-chevron-down'" tooltip="Toggle" accent="cyan" (clicked)="step.outputExpanded = !step.outputExpanded" />
+              </div>
+              <pre>{{ step.output }}</pre>
+            </div>
+          }
+
+          @if (step.done && !step.isInfo && !step.note) {
+            <input class="note-input" [(ngModel)]="stepNoteInput" placeholder="Add note..." (keyup.enter)="saveStepNote(i)" (blur)="saveStepNote(i)" />
+          }
+          @if (step.note) { <span class="note-text">📝 {{ step.note }}</span> }
+        </div>
+      </div>
+    }
+  </div>
+
+  <!-- Completion -->
+  @if (completedSteps === activeRunbook.steps.length) {
+    <app-holo-card glow="green" [compact]="true">
+      <div class="completion">
+        <app-status-beacon status="ok" size="lg" />
+        <div class="comp-info">
+          <span class="comp-title">Runbook Complete</span>
+          <span class="comp-sub">{{ activeRunbook.steps.length }} steps · {{ runbookElapsed }}</span>
+        </div>
+        <button pButton label="Link to Incident" icon="pi pi-link" class="p-button-sm p-button-warning" (click)="linkToIncident()"></button>
+        <button class="ctrl-btn ctrl-btn-wide" (click)="activeRunbook = null">Back</button>
+      </div>
+    </app-holo-card>
+  }
+}

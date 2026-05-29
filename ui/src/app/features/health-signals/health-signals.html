@@ -1,0 +1,166 @@
+    <app-spotlight id="health-signals" title="Health Signals" icon="pi pi-wave-pulse"
+      description="Cluster-wide health signals — OOMKills, HPA pressure, quota usage, and rollout state."
+      [capabilities]="['OOMKill detection', 'HPA scaling pressure', 'Quota saturation', 'Stalled rollouts']" [compact]="true" />
+
+    <app-page-header title="Health Signals" [subtitle]="lastUpdated || 'Loading...'">
+        <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="refresh()" [loading]="loading"></button>
+        <app-page-info title="Health Signals" description="Aggregated health signals from enriched monitoring — OOMKills, HPA scaling limits, resource quota pressure, and deployment rollout issues."
+          [tips]="['Red = immediate attention needed', 'Yellow = trending toward issue', 'Data collected every 5 min']"
+          [commands]="['signals', 'oomkills', 'hpa', 'quotas']" />
+    </app-page-header>
+
+    <!-- Summary Cards -->
+    @if (signals) {
+      <div class="signal-cards">
+        <div class="signal-card" [class.danger]="signals.oomkills_24h > 0" (click)="scrollTo('oom')">
+          <div class="sc-icon danger-icon"><i class="pi pi-exclamation-circle"></i></div>
+          <div class="sc-body">
+            <span class="sc-value">{{ signals.oomkills_24h }}</span>
+            <span class="sc-label">OOMKills (24h)</span>
+          </div>
+        </div>
+        <div class="signal-card" [class.warn]="signals.hpa_at_max > 0" (click)="scrollTo('hpa')">
+          <div class="sc-icon warn-icon"><i class="pi pi-arrows-v"></i></div>
+          <div class="sc-body">
+            <span class="sc-value">{{ signals.hpa_at_max }}</span>
+            <span class="sc-label">HPA at Max</span>
+          </div>
+        </div>
+        <div class="signal-card" [class.warn]="signals.quota_pressure > 0" (click)="scrollTo('quota')">
+          <div class="sc-icon warn-icon"><i class="pi pi-gauge"></i></div>
+          <div class="sc-body">
+            <span class="sc-value">{{ signals.quota_pressure }}</span>
+            <span class="sc-label">Quota &gt;80%</span>
+          </div>
+        </div>
+        <div class="signal-card" [class.danger]="signals.stalled_rollouts > 0" (click)="scrollTo('rollout')">
+          <div class="sc-icon danger-icon"><i class="pi pi-pause-circle"></i></div>
+          <div class="sc-body">
+            <span class="sc-value">{{ signals.stalled_rollouts }}</span>
+            <span class="sc-label">Stalled Rollouts</span>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- OOMKills Section -->
+    <div class="section" id="oom">
+      <div class="section-header">
+        <h2><i class="pi pi-exclamation-circle"></i> OOMKills</h2>
+        <span class="section-hint">Last 48 hours</span>
+      </div>
+      @if (oomkills.length) {
+        <div class="table-wrap">
+          <div class="table-header">
+            <span class="col-time">Time</span>
+            <span class="col-pod">Pod</span>
+            <span class="col-container">Container</span>
+            <span class="col-limit">Memory Limit</span>
+          </div>
+          @for (item of oomkills; track $index) {
+            <div class="table-row">
+              <span class="col-time">{{ formatTime(item.ts) }}</span>
+              <span class="col-pod mono">{{ item.pod }}</span>
+              <span class="col-container">{{ item.container }}</span>
+              <span class="col-limit"><p-tag [value]="item.mem_limit_mb + 'Mi'" severity="danger" [rounded]="true" size="small" /></span>
+            </div>
+          }
+        </div>
+      } @else {
+        <div class="empty-section"><i class="pi pi-check-circle"></i> No OOMKills in the last 48h</div>
+      }
+    </div>
+
+    <!-- HPA Section -->
+    <div class="section" id="hpa">
+      <div class="section-header">
+        <h2><i class="pi pi-arrows-v"></i> HPA Scaling Pressure</h2>
+        <span class="section-hint">Current state</span>
+      </div>
+      @if (hpa.length) {
+        <div class="hpa-grid">
+          @for (item of hpa; track item.name) {
+            <div class="hpa-card" [class.at-max]="item.at_max" [class.scaling]="item.scaling_up">
+              <div class="hpa-header">
+                <strong>{{ item.target }}</strong>
+                @if (item.at_max) { <p-tag value="AT MAX" severity="danger" [rounded]="true" size="small" /> }
+                @if (item.scaling_up && !item.at_max) { <p-tag value="SCALING" severity="info" [rounded]="true" size="small" /> }
+              </div>
+              <div class="hpa-body">
+                <div class="hpa-replicas">
+                  <div class="replica-bar">
+                    <div class="replica-fill" [style.width.%]="(item.current / item.max) * 100"></div>
+                  </div>
+                  <span class="replica-text">{{ item.current }}/{{ item.max }} replicas</span>
+                </div>
+                <div class="hpa-cpu">
+                  <span class="cpu-label">CPU</span>
+                  <div class="cpu-bar">
+                    <div class="cpu-fill" [style.width.%]="item.cpu_current" [class.cpu-hot]="item.cpu_current > item.cpu_target"></div>
+                  </div>
+                  <span class="cpu-text">{{ item.cpu_current }}% / {{ item.cpu_target }}% target</span>
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+      } @else {
+        <div class="empty-section"><i class="pi pi-check-circle"></i> No HPAs under pressure</div>
+      }
+    </div>
+
+    <!-- Quota Section -->
+    <div class="section" id="quota">
+      <div class="section-header">
+        <h2><i class="pi pi-gauge"></i> Resource Quotas</h2>
+        <span class="section-hint">Current namespace</span>
+      </div>
+      @if (quotas.length) {
+        <div class="quota-grid">
+          @for (item of quotas; track item.resource) {
+            <div class="quota-card" [class.pressure]="item.pct > 80" [class.critical]="item.pct > 95">
+              <div class="quota-header">
+                <span class="quota-resource">{{ item.resource }}</span>
+                <span class="quota-pct" [class.pct-warn]="item.pct > 80" [class.pct-crit]="item.pct > 95">{{ item.pct }}%</span>
+              </div>
+              <div class="quota-bar">
+                <div class="quota-fill" [style.width.%]="item.pct" [class.fill-warn]="item.pct > 80" [class.fill-crit]="item.pct > 95"></div>
+              </div>
+              <div class="quota-detail">{{ item.used }} / {{ item.hard }}</div>
+            </div>
+          }
+        </div>
+      } @else {
+        <div class="empty-section"><i class="pi pi-check-circle"></i> No quota pressure</div>
+      }
+    </div>
+
+    <!-- Rollouts Section -->
+    <div class="section" id="rollout">
+      <div class="section-header">
+        <h2><i class="pi pi-pause-circle"></i> Rollout State</h2>
+        <span class="section-hint">Current namespace</span>
+      </div>
+      @if (rollouts.length) {
+        <div class="table-wrap">
+          <div class="table-header">
+            <span class="col-deploy">Deployment</span>
+            <span class="col-replicas">Replicas</span>
+            <span class="col-state">State</span>
+          </div>
+          @for (item of rollouts; track item.deployment) {
+            <div class="table-row">
+              <span class="col-deploy mono">{{ item.deployment }}</span>
+              <span class="col-replicas">{{ item.available }}/{{ item.desired }} ready · {{ item.unavailable }} unavailable</span>
+              <span class="col-state">
+                <p-tag [value]="item.state" [severity]="stateSeverity(item.state)" [rounded]="true" size="small" />
+              </span>
+            </div>
+          }
+        </div>
+      } @else {
+        <div class="empty-section"><i class="pi pi-check-circle"></i> All rollouts healthy</div>
+      }
+    </div>
+
+    <app-related-pages label="Related" [pages]="relatedPages" />

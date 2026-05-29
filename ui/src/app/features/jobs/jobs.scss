@@ -1,0 +1,68 @@
+@use '../../styles/futuristic';
+
+:host { display: block; width: 100%; }
+
+.title-icon { color: #8b5cf6; }
+
+/* ─── CronJob Grid ───────────────────────────────────────────────── */
+.cj-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 6px; }
+
+.cj-card {
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  transition: all 0.15s;
+}
+.cj-card:hover { border-color: rgba(255, 255, 255, 0.08); background: rgba(255, 255, 255, 0.025); }
+
+.cj-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.cj-name { font-size: 11px; font-weight: 600; color: rgba(255, 255, 255, 0.8); }
+
+.cj-schedule { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.cj-cron { font-size: 11px; color: #8b5cf6; }
+.cj-human { font-size: 9px; color: rgba(255, 255, 255, 0.3); }
+
+.cj-last { font-size: 9px; color: rgba(255, 255, 255, 0.25); font-family: 'JetBrains Mono', monospace; }
+.cj-triggered { font-size: 9px; color: #10b981; margin-top: 4px; display: block; animation: fadeIn 0.2s; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* ─── Job Cards ──────────────────────────────────────────────────── */
+.job-list { display: flex; flex-direction: column; gap: 4px; }
+
+.job-card {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 14px; border-radius: 10px;
+  background: linear-gradient(180deg, rgba(13, 17, 28, 0.75) 0%, rgba(8, 11, 20, 0.8) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  transition: all 0.2s;
+}
+.job-card:hover { border-color: rgba(255, 255, 255, 0.07); transform: translateY(-1px); box-shadow: 0 4px 16px -4px rgba(0, 0, 0, 0.4); }
+.job-failed { border-left: 2px solid rgba(244, 63, 94, 0.5); }
+
+.job-body { flex: 1; min-width: 0; }
+.job-top { display: flex; align-items: center; gap: 8px; margin-bottom: 2px; }
+.job-name { font-size: 11px; font-weight: 500; font-family: 'JetBrains Mono', monospace; color: rgba(255, 255, 255, 0.7); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.job-duration { font-size: 9px; color: rgba(255, 255, 255, 0.3); }
+
+.job-failure {
+  margin-top: 4px; padding: 5px 8px;
+  background: rgba(244, 63, 94, 0.04);
+  border: 1px solid rgba(244, 63, 94, 0.08);
+  border-radius: 6px; font-size: 10px;
+}
+.jf-reason { font-weight: 600; color: #f43f5e; display: block; }
+.jf-msg { color: rgba(255, 255, 255, 0.4); display: block; margin-top: 2px; }
+
+/* ─── Progress Steps ─────────────────────────────────────────────── */
+.job-progress { display: flex; align-items: center; gap: 0; flex-shrink: 0; }
+.jp-dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(255, 255, 255, 0.1); }
+.jp-done { background: #10b981; box-shadow: 0 0 3px rgba(16, 185, 129, 0.4); }
+.jp-fail { background: #f43f5e; box-shadow: 0 0 3px rgba(244, 63, 94, 0.4); }
+.jp-line { width: 14px; height: 2px; background: rgba(255, 255, 255, 0.05); }
+.jp-line-done { background: rgba(16, 185, 129, 0.4); }
+
+/* ─── Responsive ─────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .cj-grid { grid-template-columns: 1fr; }
+}

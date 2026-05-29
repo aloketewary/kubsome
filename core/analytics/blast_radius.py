@@ -36,7 +36,7 @@ def analyze_blast_radius(target, action="restart"):
     # Get the deployment
     dep = _get_deployment(ctx, ns, target)
     if not dep:
-        return {"error": f"Deployment '{target}' not found"}
+        return {"error": f"Deployment '{target}' not found in {ns}"}
 
     # Gather all connections
     services = _find_services(ctx, ns, dep)
@@ -47,7 +47,11 @@ def analyze_blast_radius(target, action="restart"):
     secrets = _find_secrets(dep)
     co_dependents = _find_co_dependents(ctx, ns, configmaps, target)
     downstream = _find_downstream_refs(ctx, ns, target)
-    pod_count = dep["spec"].get("replicas", 1)
+    pod_count = (
+        dep.get("spec", {}).get("replicas")
+        or dep.get("status", {}).get("replicas")
+        or 1
+    )
 
     # Build impact list
     affected = []
@@ -254,7 +258,8 @@ def _get_deployment(ctx, ns, name):
 def _find_services(ctx, ns, dep):
     """Find services that select this deployment's pods."""
     dep_labels = (
-        dep["spec"].get("selector", {}).get("matchLabels", {})
+        dep.get("spec", {}).get("selector", {})
+        .get("matchLabels", {})
     )
     if not dep_labels:
         return []
@@ -347,7 +352,8 @@ def _find_hpa(ctx, ns, deployment_name):
 def _find_pdb(ctx, ns, dep):
     """Find PDB protecting this deployment's pods."""
     dep_labels = (
-        dep["spec"].get("selector", {}).get("matchLabels", {})
+        dep.get("spec", {}).get("selector", {})
+        .get("matchLabels", {})
     )
 
     cmd = [
@@ -378,39 +384,39 @@ def _find_pdb(ctx, ns, dep):
 def _find_configmaps(dep):
     """Find ConfigMaps mounted by this deployment."""
     volumes = (
-        dep["spec"].get("template", {})
+        dep.get("spec", {}).get("template", {})
         .get("spec", {})
         .get("volumes", [])
-    )
+    ) or []
     cms = []
     for v in volumes:
         if "configMap" in v:
-            cms.append(v["configMap"]["name"])
+            cms.append(v["configMap"].get("name", ""))
     # Also check envFrom
     containers = (
-        dep["spec"].get("template", {})
+        dep.get("spec", {}).get("template", {})
         .get("spec", {})
         .get("containers", [])
-    )
+    ) or []
     for c in containers:
-        for ef in c.get("envFrom", []):
+        for ef in c.get("envFrom", []) or []:
             if "configMapRef" in ef:
-                cms.append(ef["configMapRef"]["name"])
-    return list(set(cms))
+                cms.append(ef["configMapRef"].get("name", ""))
+    return list(set(filter(None, cms)))
 
 
 def _find_secrets(dep):
     """Find Secrets mounted by this deployment."""
     volumes = (
-        dep["spec"].get("template", {})
+        dep.get("spec", {}).get("template", {})
         .get("spec", {})
         .get("volumes", [])
-    )
+    ) or []
     secrets = []
     for v in volumes:
         if "secret" in v:
-            secrets.append(v["secret"]["secretName"])
-    return list(set(secrets))
+            secrets.append(v["secret"].get("secretName", ""))
+    return list(set(filter(None, secrets)))
 
 
 def _find_co_dependents(ctx, ns, configmaps, exclude):
@@ -435,12 +441,12 @@ def _find_co_dependents(ctx, ns, configmaps, exclude):
             continue
 
         volumes = (
-            item["spec"].get("template", {})
+            item.get("spec", {}).get("template", {})
             .get("spec", {})
             .get("volumes", [])
-        )
+        ) or []
         for v in volumes:
-            if "configMap" in v and v["configMap"]["name"] in configmaps:
+            if "configMap" in v and v["configMap"].get("name") in configmaps:
                 co_deps.add(name)
 
     return list(co_deps)
@@ -465,10 +471,10 @@ def _find_downstream_refs(ctx, ns, target):
             continue
 
         containers = (
-            item["spec"].get("template", {})
+            item.get("spec", {}).get("template", {})
             .get("spec", {})
             .get("containers", [])
-        )
+        ) or []
         for c in containers:
             for env in c.get("env", []):
                 val = env.get("value", "")

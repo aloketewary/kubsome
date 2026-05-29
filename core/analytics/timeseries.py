@@ -64,7 +64,7 @@ def cpu_memory_series(deployment=None, hours=24, interval="1 hour"):
         for r in rows
     ]
 
-    # Include current incomplete hour from raw data
+    # Include raw data for periods not yet aggregated
     raw_params = []
     if deployment:
         raw_params.append(deployment)
@@ -72,23 +72,28 @@ def cpu_memory_series(deployment=None, hours=24, interval="1 hour"):
 
     raw_rows = _execute(conn, f"""
         SELECT
-            DATE_TRUNC('hour', ts) AS bucket,
+            DATE_TRUNC('{interval}', ts) AS bucket,
             AVG(cpu_millicores)::INTEGER AS cpu,
             AVG(memory_mb)::INTEGER AS mem,
             COUNT(DISTINCT pod)::INTEGER AS pods
         FROM raw_pod_metrics
-        WHERE ts >= DATE_TRUNC('hour', NOW())
+        WHERE ts >= NOW() - INTERVAL '{hours} hours'
           AND deployment != ''
           {deploy_sql}
           {ctx_sql}
         GROUP BY bucket
+        ORDER BY bucket
     """, raw_params)
 
+    # Merge: raw fills gaps where hourly doesn't have data
+    hourly_buckets = {r["ts"] for r in result}
     for r in raw_rows:
-        result.append(
-            {"ts": str(r[0]), "cpu": r[1], "mem": r[2], "pods": r[3]}
-        )
+        if str(r[0]) not in hourly_buckets:
+            result.append(
+                {"ts": str(r[0]), "cpu": r[1], "mem": r[2], "pods": r[3]}
+            )
 
+    result.sort(key=lambda x: x["ts"])
     return result
 
 

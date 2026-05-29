@@ -1,0 +1,85 @@
+@use '../../styles/futuristic';
+
+:host { display: block; width: 100%; }
+
+/* ─── Title icon color override ──────────────────────────────────── */
+.title-icon { color: #00d4ff; }
+
+/* ─── Selection Bar ──────────────────────────────────────────────── */
+.selection-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 14px; margin-bottom: 10px;
+  background: rgba(0, 212, 255, 0.03);
+  border: 1px solid rgba(0, 212, 255, 0.12);
+  border-radius: 8px;
+  animation: slideDown 0.2s ease-out;
+  position: sticky; top: 0; z-index: 100;
+}
+.sel-count { font-size: 11px; color: #00d4ff; }
+.sel-count strong { font-weight: 700; }
+.sel-actions { display: flex; gap: 3px; }
+
+.sel-btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 10px; border-radius: 6px;
+  border: 1px solid rgba(0, 212, 255, 0.15);
+  background: rgba(0, 212, 255, 0.04);
+  color: #00d4ff; font-size: 10px; font-weight: 600;
+  cursor: pointer; transition: all 0.12s;
+}
+.sel-btn:hover { background: rgba(0, 212, 255, 0.08); border-color: rgba(0, 212, 255, 0.3); }
+.sel-btn i { font-size: 10px; }
+.sel-btn-green { border-color: rgba(16, 185, 129, 0.15); background: rgba(16, 185, 129, 0.04); color: #10b981; }
+.sel-btn-green:hover { background: rgba(16, 185, 129, 0.08); border-color: rgba(16, 185, 129, 0.3); }
+.sel-btn-purple { border-color: rgba(139, 92, 246, 0.15); background: rgba(139, 92, 246, 0.04); color: #8b5cf6; }
+.sel-btn-purple:hover { background: rgba(139, 92, 246, 0.08); border-color: rgba(139, 92, 246, 0.3); }
+.sel-btn-amber { border-color: rgba(245, 158, 11, 0.15); background: rgba(245, 158, 11, 0.04); color: #f59e0b; }
+.sel-btn-amber:hover { background: rgba(245, 158, 11, 0.08); border-color: rgba(245, 158, 11, 0.3); }
+.sel-btn-dim { border-color: rgba(255, 255, 255, 0.05); background: transparent; color: rgba(255, 255, 255, 0.3); }
+.sel-btn-dim:hover { color: rgba(255, 255, 255, 0.7); border-color: rgba(255, 255, 255, 0.1); }
+
+/* ─── Pod Rows ───────────────────────────────────────────────────── */
+.pod-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 10px; border-radius: 8px; cursor: pointer;
+  transition: all 0.15s; outline: none; border: 1px solid transparent;
+}
+.pod-row:hover { background: rgba(255, 255, 255, 0.02); border-color: rgba(255, 255, 255, 0.04); transform: translateX(2px); }
+.pod-row:hover .pod-actions { opacity: 1; }
+.pod-row:focus-visible { box-shadow: inset 0 0 0 1px rgba(0, 212, 255, 0.3); }
+.pod-row-selected { background: rgba(0, 212, 255, 0.03); border-color: rgba(0, 212, 255, 0.1); }
+.pod-row-alert { background: rgba(244, 63, 94, 0.02); border-color: rgba(244, 63, 94, 0.08); }
+
+.pod-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.pod-name {
+  font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 500;
+  color: rgba(255, 255, 255, 0.8); white-space: nowrap; overflow: hidden;
+  text-overflow: ellipsis; cursor: pointer; transition: color 0.1s;
+}
+.pod-name:hover { color: #00d4ff; }
+.pod-meta { font-size: 9px; color: rgba(255, 255, 255, 0.25); }
+
+.pod-tags { display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
+.restart-badge { font-size: 9px; font-family: 'JetBrains Mono', monospace; color: rgba(255, 255, 255, 0.3); padding: 1px 5px; border-radius: 4px; background: rgba(255, 255, 255, 0.02); }
+.restart-high { color: #f43f5e; background: rgba(244, 63, 94, 0.06); }
+
+.pod-actions { display: flex; align-items: center; gap: 1px; opacity: 0; transition: opacity 0.12s; }
+@media (hover: none) { .pod-actions { opacity: 1; } }
+
+/* ─── Dialogs ────────────────────────────────────────────────────── */
+.log-viewer-container { height: 100%; display: flex; flex-direction: column; overflow: hidden; background: rgba(8, 11, 20, 0.95); border-radius: 6px; }
+.shell-viewer-container { height: 100%; min-height: 400px; display: flex; flex-direction: column; overflow: hidden; }
+.log-viewer { height: 100%; overflow-y: auto; font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 1.7; }
+.log-line { display: flex; gap: 10px; padding: 1px 10px; }
+.log-line:hover { background: rgba(255, 255, 255, 0.015); }
+.error-line { background: rgba(244, 63, 94, 0.04); border-left: 2px solid rgba(244, 63, 94, 0.3); }
+.line-num { color: rgba(255, 255, 255, 0.15); min-width: 28px; text-align: right; user-select: none; }
+.line-text { white-space: pre-wrap; word-break: break-all; color: rgba(255, 255, 255, 0.7); }
+.log-empty { text-align: center; padding: 32px; color: rgba(255, 255, 255, 0.25); }
+.inspect-output { font-family: 'JetBrains Mono', monospace; font-size: 11px; white-space: pre-wrap; max-height: 500px; overflow-y: auto; background: rgba(8, 11, 20, 0.9); padding: 14px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.03); color: rgba(255, 255, 255, 0.7); }
+.load-more { display: flex; justify-content: center; padding: 12px; }
+
+@media (max-width: 768px) {
+  .selection-bar { flex-direction: column; gap: 6px; align-items: stretch; }
+  .sel-actions { flex-wrap: wrap; }
+}

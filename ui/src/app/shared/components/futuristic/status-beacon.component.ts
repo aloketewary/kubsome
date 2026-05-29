@@ -1,0 +1,41 @@
+import { Component, Input } from '@angular/core';
+
+@Component({
+  selector: 'app-status-beacon',
+  standalone: true,
+  template: `
+    <span class="bk" [attr.data-status]="status" [attr.data-size]="size" [class.bk-pulse]="pulse || status === 'critical'"></span>
+  `,
+  styles: [`
+    .bk {
+      position: relative;
+      display: inline-block;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* Sizes */
+    [data-size="sm"] { width: 6px; height: 6px; }
+    [data-size="md"] { width: 8px; height: 8px; }
+    [data-size="lg"] { width: 12px; height: 12px; }
+
+    /* Colors with glow */
+    [data-status="ok"] { background: #10b981; box-shadow: 0 0 4px #10b981, 0 0 8px rgba(16, 185, 129, 0.3); }
+    [data-status="warning"] { background: #f59e0b; box-shadow: 0 0 4px #f59e0b, 0 0 8px rgba(245, 158, 11, 0.3); }
+    [data-status="critical"] { background: #f43f5e; box-shadow: 0 0 4px #f43f5e, 0 0 8px rgba(244, 63, 94, 0.3); }
+    [data-status="idle"] { background: rgba(255, 255, 255, 0.2); box-shadow: none; }
+    [data-status="info"] { background: #00d4ff; box-shadow: 0 0 4px #00d4ff, 0 0 8px rgba(0, 212, 255, 0.3); }
+
+    /* Pulse */
+    .bk-pulse { animation: bkPulse 2s ease-in-out infinite; }
+    @keyframes bkPulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.35; }
+    }
+  `],
+})
+export class StatusBeaconComponent {
+  @Input() status: 'ok' | 'warning' | 'critical' | 'idle' | 'info' = 'idle';
+  @Input() size: 'sm' | 'md' | 'lg' = 'md';
+  @Input() pulse = false;
+}

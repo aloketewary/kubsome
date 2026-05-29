@@ -205,34 +205,20 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
       align-items: center;
       gap: 8px;
       padding: 8px 12px;
-      border-radius: var(--radius);
-      background: var(--bg-elevated);
-      border: 1px solid var(--border);
-    }
-    .context-card {
-      background: var(--bg-elevated);
-      border: 1px solid var(--border);
       border-radius: 8px;
-      padding: 8px 12px;
-      margin: 0 8px;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.04);
     }
-    .cc-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 11px;
-      font-weight: 600;
-      color: var(--text-secondary);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+    .ctx-dot {
+      width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
     }
-    .cc-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: var(--success);
-      box-shadow: 0 0 4px var(--success);
+    .dot-ok { background: #10b981; box-shadow: 0 0 6px rgba(16, 185, 129, 0.5); }
+    .dot-bad { background: #f43f5e; box-shadow: 0 0 6px rgba(244, 63, 94, 0.5); animation: ctxPulse 2s ease-in-out infinite; }
+    @keyframes ctxPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+    .ctx-name {
+      font-size: 11px; font-weight: 600; color: rgba(255, 255, 255, 0.7);
+      font-family: 'JetBrains Mono', monospace;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
     .logo-icon {
       font-size: 20px;
@@ -251,16 +237,16 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
       align-items: center;
       gap: 4px;
       font-size: 9px;
-      font-weight: 600;
-      color: var(--text-muted);
+      font-weight: 700;
+      color: rgba(255, 255, 255, 0.25);
       text-transform: uppercase;
-      letter-spacing: 0.06em;
+      letter-spacing: 0.08em;
       padding: 4px 10px 4px;
       user-select: none;
       cursor: pointer;
       outline: none;
     }
-    .nav-label:focus-visible { color: var(--accent); }
+    .nav-label:focus-visible { color: #00d4ff; }
     .collapse-icon {
       font-size: 9px;
     }
@@ -268,50 +254,56 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
       display: flex;
       align-items: center;
       gap: 10px;
-      padding: 8px 12px;
+      padding: 7px 12px;
       margin: 1px 8px;
-      border-radius: var(--radius);
-      font-size: 13px;
+      border-radius: 8px;
+      font-size: 12px;
       font-weight: 500;
-      color: var(--text-secondary);
+      color: rgba(255, 255, 255, 0.4);
       cursor: pointer;
-      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      transition: all 0.15s;
       text-decoration: none;
       overflow: hidden;
       white-space: nowrap;
+      border: 1px solid transparent;
     }
     .nav-item:hover {
-      background: var(--bg-hover);
-      color: var(--text);
+      background: rgba(255, 255, 255, 0.02);
+      color: rgba(255, 255, 255, 0.8);
+      border-color: rgba(255, 255, 255, 0.04);
       transform: translateX(2px);
     }
     .nav-item.active {
-      background: var(--accent-subtle);
-      color: var(--accent);
-      box-shadow: inset 2px 0 0 var(--accent);
+      background: rgba(0, 212, 255, 0.04);
+      color: #00d4ff;
+      border-color: rgba(0, 212, 255, 0.1);
+      box-shadow: inset 2px 0 0 #00d4ff;
     }
     .nav-item:focus-visible {
       outline: none;
-      background: var(--bg-hover);
-      box-shadow: inset 2px 0 0 var(--accent);
+      box-shadow: inset 0 0 0 1px rgba(0, 212, 255, 0.3);
     }
     .nav-badge {
-      font-size: 8px; font-weight: 800; padding: 1px 4px; border-radius: 4px;
-      background: var(--accent); color: #fff; margin-left: 6px; text-transform: uppercase;
+      font-size: 7px; font-weight: 800; padding: 1px 4px; border-radius: 4px;
+      background: rgba(0, 212, 255, 0.12); color: #00d4ff; margin-left: 6px;
+      text-transform: uppercase; letter-spacing: 0.06em;
     }
     .nav-item i {
-      font-size: 13px;
+      font-size: 12px;
       width: 16px;
       text-align: center;
+      opacity: 0.6;
     }
+    .nav-item.active i { opacity: 1; }
     .nav-item kbd {
       margin-left: auto;
       font-size: 9px;
       padding: 1px 4px;
       border-radius: 3px;
-      background: var(--bg-elevated);
-      border: 1px solid var(--border);
-      color: var(--text-muted);
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      color: rgba(255, 255, 255, 0.2);
+      font-family: 'JetBrains Mono', monospace;
     }
     .fav-row, .nav-row {
       display: flex;
@@ -321,7 +313,7 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
     .fav-remove, .star-btn {
       background: none;
       border: none;
-      color: var(--text-muted);
+      color: rgba(255, 255, 255, 0.25);
       cursor: pointer;
       padding: 4px;
       border-radius: 4px;
@@ -331,15 +323,15 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
       outline: none;
     }
     .fav-row:hover .fav-remove, .nav-row:hover .star-btn { opacity: 0.6; }
-    .fav-row .fav-remove:focus-visible, .nav-row .star-btn:focus-visible { opacity: 1; color: var(--warning); box-shadow: 0 0 0 1px var(--warning); }
-    .fav-remove:hover { opacity: 1 !important; color: var(--danger); }
-    .star-btn:hover { opacity: 1 !important; color: var(--warning); }
-    .star-btn.starred { opacity: 0.8; color: var(--warning); }
+    .fav-row .fav-remove:focus-visible, .nav-row .star-btn:focus-visible { opacity: 1; color: #f59e0b; box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.4); }
+    .fav-remove:hover { opacity: 1 !important; color: #f43f5e; }
+    .star-btn:hover { opacity: 1 !important; color: #f59e0b; }
+    .star-btn.starred { opacity: 0.8; color: #f59e0b; }
     .star-btn.starred:hover { opacity: 1; }
     .nav-footer {
       margin-top: auto;
       padding-top: 6px;
-      border-top: 1px solid var(--border);
+      border-top: 1px solid rgba(255, 255, 255, 0.03);
     }
     .help-overlay {
       position: fixed; inset: 0; background: rgba(0,0,0,0.6);
@@ -347,9 +339,10 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
       display: flex; align-items: center; justify-content: center;
     }
     .help-modal {
-      width: min(650px, 90vw); max-height: 80vh; background: var(--bg-card);
-      border: 1px solid var(--border); border-radius: var(--radius);
-      box-shadow: 0 20px 60px rgba(0,0,0,0.5); display: flex; flex-direction: column;
+      width: min(650px, 90vw); max-height: 80vh;
+      background: linear-gradient(180deg, rgba(13, 17, 28, 0.98) 0%, rgba(8, 11, 20, 1) 100%);
+      border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 14px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.7); display: flex; flex-direction: column;
       overflow: hidden;
       animation: helpIn 0.25s cubic-bezier(0.34,1.56,0.64,1);
     }
@@ -359,15 +352,15 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
     }
     .help-header {
       display: flex; align-items: center; justify-content: space-between;
-      padding: 14px 20px; border-bottom: 1px solid var(--border);
+      padding: 14px 20px; border-bottom: 1px solid rgba(255, 255, 255, 0.04);
       font-size: 15px; font-weight: 600;
     }
     .help-close {
-      background: none; border: none; color: var(--text-muted);
+      background: none; border: none; color: rgba(255, 255, 255, 0.3);
       cursor: pointer; padding: 4px; border-radius: 4px;
     }
-    .help-close:hover { background: var(--bg-hover); color: var(--text); }
-    .help-close:focus-visible { outline: none; background: var(--bg-hover); color: var(--text); box-shadow: 0 0 0 2px var(--accent); }
+    .help-close:hover { background: rgba(255, 255, 255, 0.04); color: rgba(255, 255, 255, 0.8); }
+    .help-close:focus-visible { outline: none; background: rgba(0, 212, 255, 0.04); color: #00d4ff; box-shadow: 0 0 0 2px rgba(0, 212, 255, 0.3); }
     .help-body { padding: 20px; overflow-y: auto; }
   `],
 })

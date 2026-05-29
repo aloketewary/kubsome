@@ -1,0 +1,95 @@
+<!-- ─── Header ─────────────────────────────────────────────────────── -->
+<div class="intel-header">
+  <div class="intel-title-block">
+    <h1 class="intel-title"><span class="title-icon">⚡</span> Optimization</h1>
+    <p class="intel-subtitle">resource efficiency · {{ lastScanned || 'scanning...' }}</p>
+  </div>
+  <div class="intel-controls">
+    <button class="ctrl-btn" (click)="load()" pTooltip="Scan"><i class="pi pi-refresh" [class.spinning]="loading"></i></button>
+  </div>
+</div>
+
+<!-- ─── Score Hero ─────────────────────────────────────────────────── -->
+<app-holo-card [glow]="scoreGlow" [compact]="true">
+  <div class="score-hero">
+    <div class="score-ring">
+      <svg viewBox="0 0 36 36">
+        <path class="ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+        <path class="ring-fill" [style.stroke]="scoreStroke" [attr.stroke-dasharray]="score + ', 100'" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+      </svg>
+      <span class="ring-grade">{{ grade }}</span>
+    </div>
+    <div class="score-info">
+      <span class="score-title">{{ scoreTitle }}</span>
+      <span class="score-desc">{{ totalIssues === 0 ? 'No waste detected' : totalIssues + ' optimization opportunities' }}</span>
+    </div>
+    <div class="score-metrics">
+      <app-metric-tile label="Issues" [value]="'' + totalIssues" [accent]="totalIssues > 5 ? 'red' : totalIssues > 0 ? 'amber' : 'green'" />
+      <app-metric-tile label="Right-size" [value]="'' + recommendations.length" accent="cyan" />
+      <app-metric-tile label="Unused" [value]="'' + unused.length" accent="amber" />
+    </div>
+  </div>
+</app-holo-card>
+
+<!-- ─── Filter ─────────────────────────────────────────────────────── -->
+<app-command-bar [pills]="filterPills" [activePill]="viewFilter" [search]="searchQuery" placeholder="Filter resources..." (pillChange)="onFilterChange($event)" (searchChange)="onSearchChange($event)" />
+
+<!-- ─── Recommendations ────────────────────────────────────────────── -->
+@if (filteredRecs.length > 0) {
+  <div class="opt-section">
+    @for (rec of filteredRecs; track $index; let i = $index) {
+      <div class="opt-card">
+        <div class="opt-bar" [class]="impactClass(i)"></div>
+        <app-status-beacon [status]="i < 2 ? 'critical' : i < 5 ? 'warning' : 'info'" size="sm" />
+        <div class="opt-body">
+          <div class="opt-top">
+            <span class="opt-name">{{ rec.name || rec.pod || 'Resource' }}</span>
+            <p-tag [value]="impactLabel(i)" [severity]="impactSeverity(i)" [rounded]="true" />
+          </div>
+          <p class="opt-detail">{{ rec.recommendation || rec.message || 'Consider right-sizing' }}</p>
+          @if (rec.current && rec.suggested) {
+            <div class="opt-compare">
+              <span class="oc-from">{{ rec.current }}</span>
+              <span class="oc-arrow">→</span>
+              <span class="oc-to">{{ rec.suggested }}</span>
+            </div>
+          }
+        </div>
+        @if (rec.savings) {
+          <div class="opt-savings">
+            <span class="sv-val">{{ rec.savings }}</span>
+            <span class="sv-lbl">savings</span>
+          </div>
+        }
+      </div>
+    }
+  </div>
+}
+
+<!-- ─── Unused Resources ───────────────────────────────────────────── -->
+@if (filteredUnused.length > 0) {
+  <div class="opt-section">
+    @for (res of filteredUnused; track $index) {
+      <div class="opt-card opt-unused">
+        <div class="opt-bar impact-unused"></div>
+        <i class="pi" [class]="unusedIcon(res)" style="color: #f59e0b; font-size: 14px;"></i>
+        <div class="opt-body">
+          <div class="opt-top">
+            <code class="opt-name">{{ res.name || res }}</code>
+            @if (res.kind) { <span class="opt-kind">{{ res.kind }}</span> }
+          </div>
+          <p class="opt-detail">{{ res.reason || 'No traffic or references — safe to remove' }}</p>
+        </div>
+        <app-action-icon icon="pi pi-trash" tooltip="Remove" accent="red" />
+      </div>
+    }
+  </div>
+}
+
+<!-- ─── All Good ───────────────────────────────────────────────────── -->
+@if (recommendations.length === 0 && unused.length === 0 && loaded) {
+  <div class="empty-state">
+    <div class="empty-icon" style="color: #10b981;"><i class="pi pi-check-circle"></i></div>
+    <span>Cluster is well-optimized — no waste detected</span>
+  </div>
+}

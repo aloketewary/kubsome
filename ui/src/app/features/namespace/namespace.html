@@ -1,0 +1,94 @@
+<!-- ─── Header ─────────────────────────────────────────────────────── -->
+<div class="intel-header">
+  <div class="intel-title-block">
+    <h1 class="intel-title"><span class="title-icon">⬡</span> Namespace</h1>
+    <p class="intel-subtitle">{{ data?.namespace || '...' }} · {{ totalResources }} resources · {{ lastUpdated || 'loading...' }}</p>
+  </div>
+  <div class="intel-controls">
+    <app-live-indicator [active]="autoRefresh" label="AUTO" offLabel="PAUSED" (click)="toggleAutoRefresh()" />
+    <button class="ctrl-btn" (click)="load()" pTooltip="Refresh"><i class="pi pi-refresh" [class.spinning]="loading"></i></button>
+  </div>
+</div>
+
+@if (data) {
+  <!-- ─── Hero Stats + Pod Ring ──────────────────────────────────────── -->
+  <app-holo-card glow="cyan" [compact]="true">
+    <div class="ns-hero">
+      <div class="hero-stats">
+        <app-metric-tile label="Resources" [value]="'' + totalResources" accent="cyan" />
+        <app-metric-tile label="Types" [value]="'' + resourceList.length" accent="purple" />
+        <app-metric-tile label="Pods" [value]="'' + totalPods" accent="green" />
+      </div>
+      @if (totalPods > 0) {
+        <div class="pod-gauge">
+          <svg viewBox="0 0 36 36" class="gauge-svg">
+            <path class="gauge-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+            <path class="gauge-fill" [attr.stroke-dasharray]="runningPct + ', 100'" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+          </svg>
+          <div class="gauge-center">
+            <span class="gauge-val">{{ runningPct }}%</span>
+            <span class="gauge-lbl">running</span>
+          </div>
+        </div>
+      }
+    </div>
+  </app-holo-card>
+
+  <!-- ─── Pod Status Breakdown ─────────────────────────────────────── -->
+  @if (podStatuses.length > 0) {
+    <div class="pod-status-row">
+      @for (s of podStatuses; track s.status) {
+        <div class="ps-card" [attr.data-status]="statusBeacon(s.status)">
+          <app-status-beacon [status]="statusBeacon(s.status)" size="md" [pulse]="statusBeacon(s.status) === 'critical'" />
+          <span class="ps-count">{{ s.count }}</span>
+          <span class="ps-label">{{ s.status }}</span>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- ─── Composition Bar ──────────────────────────────────────────── -->
+  <app-holo-card title="Composition" icon="pi pi-chart-bar" [compact]="true">
+    <div class="comp-bar">
+      @for (item of resourceList; track item.type) {
+        <div class="comp-seg" [style.flex]="item.count" [style.background]="item.color" [pTooltip]="item.type + ': ' + item.count"></div>
+      }
+    </div>
+    <div class="comp-legend">
+      @for (item of resourceList; track item.type) {
+        <span class="comp-item">
+          <span class="comp-dot" [style.background]="item.color"></span>
+          {{ item.type }} <strong>{{ item.count }}</strong>
+        </span>
+      }
+    </div>
+  </app-holo-card>
+
+  <!-- ─── Resource Grid ────────────────────────────────────────────── -->
+  <app-command-bar
+    [pills]="filterPills"
+    [activePill]="statusFilter"
+    [search]="resourceSearch"
+    placeholder="Filter resources..."
+    (pillChange)="onFilterChange($event)"
+    (searchChange)="onSearchChange($event)" />
+
+  <div class="resource-grid">
+    @for (item of filteredResources; track item.type) {
+      <div class="res-card" [class.res-clickable]="!!item.route" (click)="item.route && router.navigate([item.route])">
+        <div class="res-bar" [style.background]="item.color"></div>
+        <div class="res-icon" [style.color]="item.color"><i [class]="item.icon"></i></div>
+        <div class="res-info">
+          <span class="res-count">{{ item.count }}</span>
+          <span class="res-type">{{ item.type }}</span>
+        </div>
+        @if (item.route) {
+          <i class="pi pi-arrow-right res-arrow"></i>
+        }
+      </div>
+    }
+  </div>
+} @else {
+  <!-- Loading -->
+  <div class="loading-state"><div class="loader-ring"></div><span>Loading namespace...</span></div>
+}

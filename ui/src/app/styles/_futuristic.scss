@@ -1,0 +1,151 @@
+/* ═══════════════════════════════════════════════════════════════════
+   _futuristic.scss — Shared Intelligence Panel Styles
+   Import in any feature page: @use '../../styles/futuristic' as *;
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ─── Page Header (all pages) ────────────────────────────────────── */
+.intel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.intel-title {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.title-icon {
+  font-size: 14px;
+  text-shadow: 0 0 6px currentColor;
+}
+
+.intel-subtitle {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.3);
+  margin: 3px 0 0;
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.01em;
+}
+
+.intel-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ─── Control Buttons ────────────────────────────────────────────── */
+.ctrl-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.02);
+  color: rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+  font-size: 11px;
+}
+
+.ctrl-btn:hover {
+  border-color: rgba(0, 212, 255, 0.25);
+  color: #00d4ff;
+  background: rgba(0, 212, 255, 0.04);
+  box-shadow: 0 0 8px -3px rgba(0, 212, 255, 0.25);
+}
+
+.ctrl-btn-active {
+  border-color: rgba(16, 185, 129, 0.25);
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.04);
+}
+
+.ctrl-btn-sm {
+  width: 24px;
+  height: 24px;
+  font-size: 10px;
+}
+
+.ctrl-btn-wide {
+  width: auto;
+  padding: 6px 16px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+/* ─── Spin Animation ─────────────────────────────────────────────── */
+.spinning {
+  animation: futuristic-spin 1s linear infinite;
+}
+
+@keyframes futuristic-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ─── Metrics Strip ──────────────────────────────────────────────── */
+.metrics-strip {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+/* ─── Empty / Loading States ─────────────────────────────────────── */
+.empty-state,
+.loading-state,
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 48px 20px;
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 12px;
+}
+
+.empty-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+
+.empty-hint {
+  font-size: 10px;
+  opacity: 0.5;
+}
+
+.loader-ring {
+  width: 24px;
+  height: 24px;
+  border: 2px solid rgba(0, 212, 255, 0.1);
+  border-top-color: #00d4ff;
+  border-radius: 50%;
+  animation: futuristic-spin 0.7s linear infinite;
+}
+
+/* ─── Slide Down Animation ───────────────────────────────────────── */
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Responsive Base ────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .intel-header { flex-direction: column; gap: 10px; }
+  .metrics-strip { flex-wrap: wrap; }
+}

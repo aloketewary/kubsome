@@ -79,6 +79,19 @@ export interface NodeMetrics {
   mem_pct_val: number;
 }
 
+export interface NodePod {
+  name: string;
+  namespace: string;
+  status: string;
+  deployment: string;
+}
+
+export interface NodeWorkloadsResponse {
+  context: string;
+  namespace: string;
+  nodes: { [nodeName: string]: NodePod[] };
+}
+
 export interface NamespacesResponse {
   namespaces: string[];
   current: string;

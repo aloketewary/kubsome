@@ -1,0 +1,130 @@
+<!-- ═══════════════════════════════════════════════════════════════════
+     EVENTS — Live Intelligence Interface
+     Futuristic dark UI with heatmap, glowing indicators, timeline cards
+     ═══════════════════════════════════════════════════════════════════ -->
+
+<!-- ─── Header ─────────────────────────────────────────────────────── -->
+<div class="intel-header">
+  <div class="intel-title-block">
+    <h1 class="intel-title">
+      <span class="title-icon">⚡</span>
+      Event Stream
+    </h1>
+    <p class="intel-subtitle">
+      {{ filteredEvents.length }} events · {{ warningCount }} warnings · {{ autoRefresh ? '30s refresh' : 'paused' }}
+    </p>
+  </div>
+  <div class="intel-controls">
+    <button class="ctrl-btn" [class.ctrl-btn-active]="autoRefresh" (click)="toggleAutoRefresh()"
+            [pTooltip]="autoRefresh ? 'Auto-refresh on' : 'Auto-refresh off'">
+      <i class="pi" [class.pi-sync]="autoRefresh" [class.pi-pause]="!autoRefresh"
+         [class.spinning]="autoRefresh"></i>
+    </button>
+    <app-live-indicator [active]="watching" (click)="toggleWatch()" />
+    <button class="ctrl-btn" (click)="refresh()" pTooltip="Refresh">
+      <i class="pi pi-refresh" [class.spinning]="loading"></i>
+    </button>
+  </div>
+</div>
+
+<!-- ─── Metrics Strip ──────────────────────────────────────────────── -->
+<div class="metrics-strip">
+  <app-metric-tile label="Total" [value]="'' + events.length" accent="cyan" />
+  <app-metric-tile label="Warnings" [value]="'' + warningCount" accent="amber" />
+  <app-metric-tile label="Normal" [value]="'' + normalCount" accent="green" />
+  <app-metric-tile label="Reasons" [value]="'' + topReasons.length" accent="purple" />
+</div>
+
+<!-- ─── Heatmap ────────────────────────────────────────────────────── -->
+@if (events.length > 0) {
+  <app-holo-card title="Activity Heatmap" icon="pi pi-chart-bar" glow="cyan" [compact]="true">
+    <div class="heatmap-grid">
+      @for (cell of heatmapCells; track $index) {
+        <div class="hm-cell"
+             [class.hm-l1]="cell.level === 1" [class.hm-l2]="cell.level === 2" [class.hm-l3]="cell.level === 3"
+             [class.hm-warn]="cell.hasWarning" [class.hm-selected]="selectedBucket === $index"
+             [pTooltip]="cell.label"
+             (click)="selectBucket($index)"
+             tabindex="0" role="button" [attr.aria-label]="cell.label"
+             (keydown.enter)="selectBucket($index)" (keydown.space)="$event.preventDefault(); selectBucket($index)">
+        </div>
+      }
+    </div>
+    <div class="heatmap-axis">
+      <span>older</span>
+      <span>recent</span>
+    </div>
+  </app-holo-card>
+}
+
+<!-- ─── Command Bar ────────────────────────────────────────────────── -->
+<app-command-bar
+  [pills]="filterPills"
+  [activePill]="filter"
+  [search]="searchQuery"
+  placeholder="Filter events..."
+  (pillChange)="onFilterChange($event)"
+  (searchChange)="onSearchChange($event)">
+  <!-- Reason chips injected as extra content -->
+</app-command-bar>
+
+<!-- ─── Reason Chips ───────────────────────────────────────────────── -->
+@if (topReasons.length > 0) {
+  <div class="reason-strip">
+    @for (r of topReasons; track r) {
+      <button class="reason-chip" [class.reason-active]="reasonFilter === r" (click)="toggleReasonFilter(r)">
+        {{ r }}
+      </button>
+    }
+  </div>
+}
+
+<!-- ─── Loading ────────────────────────────────────────────────────── -->
+@if (loading && events.length === 0) {
+  <div class="loading-state">
+    <div class="loader-ring"></div>
+    <span>Scanning events...</span>
+  </div>
+}
+
+<!-- ─── Events List ────────────────────────────────────────────────── -->
+<div class="events-list">
+  @for (event of filteredEvents; track $index) {
+    <div class="event-card" [class.event-warn]="event.type === 'Warning'" (click)="toggleExpand($index)">
+      <div class="ev-beacon">
+        <app-status-beacon [status]="event.type === 'Warning' ? 'warning' : 'info'" size="md" [pulse]="event.type === 'Warning'" />
+      </div>
+      <div class="ev-body">
+        <div class="ev-top">
+          <span class="ev-reason">{{ event.reason }}</span>
+          <span class="ev-kind">{{ event.kind }}</span>
+          <code class="ev-object">{{ event.object }}</code>
+          @if (event.count > 1) {
+            <span class="ev-repeat">{{ event.count }}×</span>
+          }
+        </div>
+        <p class="ev-message" [class.ev-expanded]="expandedIndex === $index">{{ event.message }}</p>
+        @if (event.last_seen) {
+          <span class="ev-time">{{ relativeTime(event.last_seen) }}</span>
+        }
+      </div>
+      <div class="ev-type">
+        <p-tag [value]="event.type" [severity]="event.type === 'Warning' ? 'warn' : 'info'" [rounded]="true" />
+      </div>
+    </div>
+  }
+</div>
+
+<!-- ─── Empty State ────────────────────────────────────────────────── -->
+@if (filteredEvents.length === 0 && !loading) {
+  <div class="empty-state">
+    @if (searchQuery || filter !== 'all' || reasonFilter) {
+      <div class="empty-icon"><i class="pi pi-filter-slash"></i></div>
+      <span>No events match your filter</span>
+      <button class="ctrl-btn ctrl-btn-wide" (click)="clearFilters()">Clear filters</button>
+    } @else {
+      <div class="empty-icon"><i class="pi pi-check-circle"></i></div>
+      <span>No events — cluster is quiet</span>
+    }
+  </div>
+}
