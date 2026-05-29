@@ -1,14 +1,12 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { HoloCardComponent } from '../../shared/components/futuristic/holo-card.component';
-import { MetricTileComponent } from '../../shared/components/futuristic/metric-tile.component';
-import { StatusBeaconComponent } from '../../shared/components/futuristic/status-beacon.component';
-import { LiveIndicatorComponent } from '../../shared/components/futuristic/live-indicator.component';
+import { TooltipModule } from 'primeng/tooltip';
+import { IntelHeaderComponent, HoloCardComponent, MetricTileComponent, StatusBeaconComponent } from '../../shared/components/futuristic';
 
 @Component({
   selector: 'app-doctor',
   standalone: true,
-  imports: [HoloCardComponent, MetricTileComponent, StatusBeaconComponent, LiveIndicatorComponent],
+  imports: [TooltipModule, IntelHeaderComponent, HoloCardComponent, MetricTileComponent, StatusBeaconComponent],
   templateUrl: './doctor.html',
   styleUrl: './doctor.scss',
 })
