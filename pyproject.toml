@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "kubsome"
-version = "1.13.23"
+version = "1.13.24"
 description = "AI-native Kubernetes Operational Workspace"
 readme = "README.md"
 license = {text = "MIT"}
