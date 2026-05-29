@@ -125,6 +125,7 @@ def version():
 # Serve Angular build in production
 # Priority: 1) dev build (ui/dist/ui/browser) — always freshest
 #           2) bundled in package (api/ui_dist)
+#           3) bundled via importlib (pip install from wheel)
 _api_dir = Path(__file__).parent
 _project_dir = _api_dir.parent
 
@@ -141,7 +142,22 @@ if _dev_build.exists() and (_dev_build / "index.html").exists():
             shutil.rmtree(_bundled)
         shutil.copytree(_dev_build, _bundled)
 
-ui_dist = _bundled if _bundled.exists() else _dev_build
+# Resolve final ui_dist path
+if _bundled.exists() and (_bundled / "index.html").exists():
+    ui_dist = _bundled
+elif _dev_build.exists() and (_dev_build / "index.html").exists():
+    ui_dist = _dev_build
+else:
+    # Fallback: try to find via importlib (installed wheel)
+    try:
+        import importlib.resources as _res
+        _pkg_path = Path(str(_res.files("api"))) / "ui_dist"
+        if _pkg_path.exists() and (_pkg_path / "index.html").exists():
+            ui_dist = _pkg_path
+        else:
+            ui_dist = _bundled  # will fail exists() check below
+    except Exception:
+        ui_dist = _bundled
 
 if ui_dist.exists():
     from fastapi.responses import FileResponse
