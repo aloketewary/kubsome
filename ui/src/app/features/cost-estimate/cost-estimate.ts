@@ -4,9 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { TooltipModule } from 'primeng/tooltip';
 import { InputTextModule } from 'primeng/inputtext';
-import { PageInfoComponent } from '../../shared/components/page-info.component';
-import { SpotlightComponent } from '../../shared/components/spotlight.component';
-import { PageHeaderComponent } from '../../shared/components/page-header.component';
+import { IntelHeaderComponent } from '../../shared/components/futuristic/intel-header.component';
 import { TrendChartComponent } from '../../shared/components/trend-chart.component';
 import { SkeletonComponent } from '../../shared/components/skeleton.component';
 
@@ -14,7 +12,7 @@ import { SkeletonComponent } from '../../shared/components/skeleton.component';
 @Component({
   selector: 'app-cost-estimate',
   standalone: true,
-  imports: [ButtonModule, TooltipModule, FormsModule, InputTextModule, PageInfoComponent, SpotlightComponent, TrendChartComponent, PageHeaderComponent, SkeletonComponent],
+  imports: [ButtonModule, TooltipModule, FormsModule, InputTextModule, IntelHeaderComponent, TrendChartComponent, SkeletonComponent],
   templateUrl: './cost-estimate.html',
   styleUrl: './cost-estimate.scss',
 })

@@ -1,31 +1,19 @@
-<div class="intel-header"><div class="intel-title-block"><h1 class="intel-title">Right-Sizing</h1></div></div>
-
-    <app-spotlight id="rightsizing" title="Right-Sizing" icon="pi pi-sliders-h"
-      description="Data-driven CPU/memory recommendations based on actual P95 usage."
-      [capabilities]="['P95-based requests', 'P99-based limits', 'Safe rollout phases', 'YAML patch export']" [compact]="true" />
-
-    <!-- Header -->
-    <div class="intel-header">
-      <div class="intel-title-block">
-        <h1 class="intel-title"><span class="title-icon">⚙</span> Right-Sizing</h1>
-        <p class="intel-subtitle">{{ (filteredRecs.length || 0) }} recommendations · {{ lastUpdated || 'loading...' }}</p>
-      </div>
-      <div class="intel-controls">
-        <app-live-indicator [active]="autoRefresh" label="AUTO" offLabel="PAUSED" (click)="toggleAutoRefresh()" />
-        <button class="ctrl-btn" (click)="dryRun()" pTooltip="Dry Run" [disabled]="!data?.recommendations?.length || dryRunning">
-          <i class="pi pi-check-circle" [class.spinning]="dryRunning"></i>
-        </button>
-        <button class="ctrl-btn" (click)="exportGitops()" pTooltip="GitOps" [disabled]="!data?.recommendations?.length">
-          <i class="pi pi-code"></i>
-        </button>
-        <button class="ctrl-btn" (click)="exportYaml()" pTooltip="Export YAML" [disabled]="!data?.recommendations?.length">
-          <i class="pi pi-download"></i>
-        </button>
-        <button class="ctrl-btn" (click)="refresh()" pTooltip="Refresh">
-          <i class="pi pi-refresh" [class.spinning]="loading"></i>
-        </button>
-      </div>
-    </div>
+<app-intel-header title="Right-Sizing" icon="pi pi-sliders-h"
+  [subtitle]="(filteredRecs.length || 0) + ' recommendations · ' + (lastUpdated || 'loading...')">
+  <app-live-indicator [active]="autoRefresh" label="AUTO" offLabel="PAUSED" (click)="toggleAutoRefresh()" />
+  <button class="ctrl-btn" (click)="dryRun()" pTooltip="Dry Run" [disabled]="!data?.recommendations?.length || dryRunning">
+    <i class="pi pi-check-circle" [class.spinning]="dryRunning"></i>
+  </button>
+  <button class="ctrl-btn" (click)="exportGitops()" pTooltip="GitOps" [disabled]="!data?.recommendations?.length">
+    <i class="pi pi-code"></i>
+  </button>
+  <button class="ctrl-btn" (click)="exportYaml()" pTooltip="Export YAML" [disabled]="!data?.recommendations?.length">
+    <i class="pi pi-download"></i>
+  </button>
+  <button class="ctrl-btn" (click)="refresh()" pTooltip="Refresh">
+    <i class="pi pi-refresh" [class.spinning]="loading"></i>
+  </button>
+</app-intel-header>
 
     @if (!data && !loading) {
       <div class="empty-state"><div class="empty-icon"><i class="pi pi-sliders-h"></i></div><span>No analytics data</span><span class="empty-hint">Need at least 12 hours of metrics collection</span></div>

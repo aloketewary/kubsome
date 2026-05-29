@@ -1,20 +1,18 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
-import { ButtonModule } from 'primeng/button';
-import { TagModule } from 'primeng/tag';
 import { TooltipModule } from 'primeng/tooltip';
 import { PreferencesService } from '../../core/services/preferences.service';
 import { ConfirmService } from '../../shared/services/confirm.service';
+import { IntelHeaderComponent } from '../../shared/components/futuristic/intel-header.component';
 import { HoloCardComponent } from '../../shared/components/futuristic/holo-card.component';
-import { MetricTileComponent } from '../../shared/components/futuristic/metric-tile.component';
 import { StatusBeaconComponent } from '../../shared/components/futuristic/status-beacon.component';
 import { ActionIconComponent } from '../../shared/components/futuristic/action-icon.component';
 
 @Component({
   selector: 'app-settings',
   standalone: true,
-  imports: [FormsModule, ButtonModule, TagModule, TooltipModule, HoloCardComponent, MetricTileComponent, StatusBeaconComponent, ActionIconComponent],
+  imports: [FormsModule, TooltipModule, IntelHeaderComponent, HoloCardComponent, StatusBeaconComponent, ActionIconComponent],
   templateUrl: './settings.html',
   styleUrl: './settings.scss',
 })
@@ -27,8 +25,10 @@ export class SettingsComponent implements OnInit {
   webhooks: { type: string; url: string }[] = [];
   webhookSaving = false; webhookMsg = '';
   themes = [{ id: 'dark', label: 'Dark' }, { id: 'light', label: 'Light' }];
-  refreshOptions = [{ label: '10s', value: 10000 }, { label: '30s', value: 30000 }, { label: '60s', value: 60000 }, { label: 'Off', value: 0 }];
-  shortcutGroups = [{ label: 'Navigation', items: [{ key: '⌘K', action: 'Command Palette' }, { key: 'G D', action: 'Dashboard' }, { key: 'G P', action: 'Pods' }, { key: 'G E', action: 'Events' }, { key: 'G L', action: 'Logs' }] }, { label: 'Actions', items: [{ key: 'G T', action: 'Terminal' }, { key: 'G A', action: 'AI' }, { key: 'G R', action: 'Runbooks' }, { key: 'H', action: 'Help' }] }];
+  shortcutGroups = [
+    { label: 'Navigation', items: [{ key: '⌘K', action: 'Command Palette' }, { key: 'G D', action: 'Dashboard' }, { key: 'G P', action: 'Pods' }, { key: 'G E', action: 'Events' }, { key: 'G L', action: 'Logs' }] },
+    { label: 'Actions', items: [{ key: 'G T', action: 'Terminal' }, { key: 'G A', action: 'AI' }, { key: 'G R', action: 'Runbooks' }, { key: 'H', action: 'Help' }] },
+  ];
 
   ngOnInit() {
     this.http.get<any>('/api/version').subscribe({ next: (res) => this.appVersion = res.version || '1.7.6', error: () => this.appVersion = '1.7.6' });

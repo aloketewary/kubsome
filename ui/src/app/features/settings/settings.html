@@ -1,21 +1,22 @@
-<div class="intel-header">
-  <div class="intel-title-block">
-    <h1 class="intel-title"><span class="title-icon">⚙</span> Settings</h1>
-    <p class="intel-subtitle">v{{ appVersion }}</p>
-  </div>
-</div>
+<!-- ─── Header ─────────────────────────────────────────────────────── -->
+<app-intel-header title="Settings" icon="pi pi-cog"
+  [subtitle]="'v' + appVersion">
+</app-intel-header>
 
-<!-- Cluster Info -->
+<!-- ─── Cluster Info ───────────────────────────────────────────────── -->
 <app-holo-card title="Cluster" icon="pi pi-server" [glow]="clusterInfo.connected ? 'green' : 'red'" [compact]="true">
   <div class="info-grid">
     <div class="info-row"><span class="info-key">Context</span><code class="info-val">{{ clusterInfo.context || '—' }}</code></div>
     <div class="info-row"><span class="info-key">Namespace</span><code class="info-val">{{ clusterInfo.namespace || '—' }}</code></div>
     <div class="info-row"><span class="info-key">Server</span><code class="info-val">{{ clusterInfo.server || '—' }}</code></div>
-    <div class="info-row"><span class="info-key">Status</span><app-status-beacon [status]="clusterInfo.connected ? 'ok' : 'critical'" size="sm" /></div>
+    <div class="info-row">
+      <span class="info-key">Status</span>
+      <app-status-beacon [status]="clusterInfo.connected ? 'ok' : 'critical'" size="sm" />
+    </div>
   </div>
 </app-holo-card>
 
-<!-- Theme -->
+<!-- ─── Theme ──────────────────────────────────────────────────────── -->
 <app-holo-card title="Appearance" icon="pi pi-palette" [compact]="true">
   <div class="theme-row">
     @for (t of themes; track t.id) {
@@ -24,7 +25,7 @@
   </div>
 </app-holo-card>
 
-<!-- Notifications -->
+<!-- ─── Notifications ──────────────────────────────────────────────── -->
 <app-holo-card title="Notifications" icon="pi pi-bell" [compact]="true">
   <div class="toggle-row">
     <span>Desktop notifications</span>
@@ -32,7 +33,7 @@
   </div>
 </app-holo-card>
 
-<!-- Webhooks -->
+<!-- ─── Webhooks ───────────────────────────────────────────────────── -->
 <app-holo-card title="Webhooks" icon="pi pi-send" [compact]="true">
   @for (wh of webhooks; track $index; let i = $index) {
     <div class="wh-row">
@@ -49,7 +50,7 @@
   </div>
 </app-holo-card>
 
-<!-- Shortcuts -->
+<!-- ─── Shortcuts ──────────────────────────────────────────────────── -->
 <app-holo-card title="Keyboard Shortcuts" icon="pi pi-key" [compact]="true">
   @for (group of shortcutGroups; track group.label) {
     <div class="shortcut-group">
@@ -63,7 +64,7 @@
   }
 </app-holo-card>
 
-<!-- Danger Zone -->
+<!-- ─── Danger Zone ────────────────────────────────────────────────── -->
 <app-holo-card title="Danger Zone" icon="pi pi-exclamation-triangle" glow="red" [compact]="true">
   <button class="ctrl-btn ctrl-btn-wide danger-btn" (click)="resetAll()"><i class="pi pi-trash"></i> Reset All Settings</button>
 </app-holo-card>

@@ -1,44 +1,98 @@
-<div class="intel-header"><div class="intel-title-block"><h1 class="intel-title">Log Correlation</h1></div></div>
+<!-- ─── Header ─────────────────────────────────────────────────────── -->
+<app-intel-header title="Log Correlation" icon="pi pi-list"
+  [subtitle]="data ? data.total + ' entries · ' + data.pods.length + ' pods' : 'Merged timeline from multiple pods'">
+  <app-live-indicator [active]="streaming" (click)="toggleStream()" label="STREAM" offLabel="STREAM" />
+  <button class="ctrl-btn" (click)="correlate()" pTooltip="Correlate" [disabled]="selectedPods.length < 2">
+    <i class="pi pi-link"></i>
+  </button>
+  <button class="ctrl-btn" (click)="copyAll()" pTooltip="Copy all" [disabled]="!data">
+    <i class="pi pi-copy"></i>
+  </button>
+</app-intel-header>
 
-    <app-spotlight id="log-correlation" title="Log Correlation" icon="pi pi-list"
-      description="Merge logs from multiple pods into a unified timeline."
-      [capabilities]="['Multi-pod merge', 'Timestamp sorting', 'Error highlighting']" [compact]="true" />
+<!-- ─── Metrics Strip ──────────────────────────────────────────────── -->
+<div class="metrics-strip">
+  <app-metric-tile label="Entries" [value]="'' + (data?.total || 0)" accent="cyan" />
+  <app-metric-tile label="Pods" [value]="'' + selectedPods.length" accent="green" />
+  @if (errorCount > 0) {
+    <app-metric-tile label="Errors" [value]="'' + errorCount" accent="red" />
+  }
+  @if (warnCount > 0) {
+    <app-metric-tile label="Warnings" [value]="'' + warnCount" accent="amber" />
+  }
+</div>
 
-    <app-page-header title="Log Correlation" subtitle="Merged timeline from multiple pods">
-    </app-page-header>
+<!-- ─── Pod Selection ──────────────────────────────────────────────── -->
+<div class="controls">
+  <p-multiSelect [options]="podOptions" [(ngModel)]="selectedPods" placeholder="Select pods..."
+            [style]="{ width: '100%', maxWidth: '500px' }" [filter]="true"
+            optionLabel="label" optionValue="value" display="chip" />
+  <button class="ctrl-btn ctrl-btn-wide" (click)="correlate()" [disabled]="selectedPods.length < 2">
+    <i class="pi pi-link"></i> Correlate
+  </button>
+</div>
 
-    <!-- Pod Selection -->
-    <div class="controls">
-      <p-multiSelect [options]="podOptions" [(ngModel)]="selectedPods" placeholder="Select pods..."
-                [style]="{ width: '100%', maxWidth: '500px' }" [filter]="true"
-                optionLabel="label" optionValue="value" display="chip" />
-      <button pButton label="Correlate" icon="pi pi-link" class="p-button-sm" (click)="correlate()" [disabled]="selectedPods.length < 2"></button>
-    </div>
+@if (selectedPods.length > 0 && selectedPods.length < 2) {
+  <div class="hint">Select at least 2 pods to correlate logs</div>
+}
 
-    @if (selectedPods.length > 0 && selectedPods.length < 2) {
-      <div class="hint">Select at least 2 pods to correlate logs</div>
+<!-- ─── Level Filter (Command Bar style) ───────────────────────────── -->
+@if (data && data.entries.length > 0) {
+  <app-command-bar
+    [pills]="filterPills"
+    [activePill]="levelFilter"
+    [showSearch]="true"
+    placeholder="Filter log messages..."
+    (pillChange)="onLevelChange($event)"
+    (searchChange)="onSearchChange($event)" />
+}
+
+@if (loading) {
+  <div class="loading-state">
+    <div class="loader-ring"></div>
+    <span>Merging logs from {{ selectedPods.length }} pods...</span>
+  </div>
+}
+
+<!-- ─── Pod Legend ──────────────────────────────────────────────────── -->
+@if (data && data.pods.length > 0) {
+  <div class="pod-legend">
+    @for (pod of data.pods; track pod) {
+      <span class="legend-item">
+        <span class="legend-dot" [style.background]="podColor(pod)"></span>
+        <span class="legend-name">{{ shortName(pod) }}</span>
+      </span>
     }
+  </div>
+}
 
-    @if (loading) {
-      <div class="loading"><div class="spin"></div> Merging logs from {{ selectedPods.length }} pods...</div>
-    }
-
-    @if (data) {
-      <div class="result-header">
-        <span class="result-count">{{ data.total }} entries from {{ data.pods.length }} pods</span>
-        <button pButton icon="pi pi-copy" class="p-button-sm p-button-text p-button-rounded" pTooltip="Copy all" (click)="copyAll()"></button>
+<!-- ─── Log Timeline ───────────────────────────────────────────────── -->
+@if (data) {
+  <div class="log-timeline">
+    @for (entry of filteredEntries; track $index) {
+      <div class="log-entry" [class]="'level-' + entry.level" tabindex="0">
+        <span class="entry-time">{{ entry.timestamp?.slice(-12) || '' }}</span>
+        <span class="entry-pod" [style.color]="podColor(entry.pod)">{{ shortName(entry.pod) }}</span>
+        <span class="entry-msg">{{ entry.message }}</span>
+        <div class="entry-actions">
+          <app-action-icon icon="pi pi-copy" tooltip="Copy line" accent="cyan" (clicked)="copyLine(entry)" />
+        </div>
       </div>
-
-      <div class="log-timeline">
-        @for (entry of data.entries; track $index) {
-          <div class="log-entry" [class]="'level-' + entry.level">
-            <span class="entry-time">{{ entry.timestamp?.slice(-12) || '' }}</span>
-            <span class="entry-pod" [style.color]="podColor(entry.pod)">{{ entry.pod }}</span>
-            <span class="entry-msg">{{ entry.message }}</span>
-          </div>
-        }
-        @if (data.entries.length === 0) {
-          <div class="empty-logs">No log entries found</div>
-        }
+    }
+    @if (filteredEntries.length === 0) {
+      <div class="empty-state">
+        <div class="empty-icon"><i class="pi pi-align-left"></i></div>
+        <span>{{ searchQuery ? 'No entries matching "' + searchQuery + '"' : 'No log entries found' }}</span>
       </div>
     }
+  </div>
+}
+
+<!-- ─── Initial Empty State ────────────────────────────────────────── -->
+@if (!data && !loading) {
+  <div class="empty-state">
+    <div class="empty-icon"><i class="pi pi-list"></i></div>
+    <span>Select pods and correlate to view merged timeline</span>
+    <span class="empty-hint">Choose at least 2 pods to see interleaved logs</span>
+  </div>
+}

@@ -601,7 +601,8 @@ def _init_schema(conn):
             deployment VARCHAR,
             team VARCHAR,
             app VARCHAR,
-            env VARCHAR
+            env VARCHAR,
+            billing_tag VARCHAR
         )
     """)
 

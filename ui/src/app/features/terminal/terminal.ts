@@ -1,20 +1,18 @@
 import { Component, inject, ViewChild, ElementRef, AfterViewChecked } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
-import { ButtonModule } from 'primeng/button';
 import { TooltipModule } from 'primeng/tooltip';
-import { SpotlightComponent } from '../../shared/components/spotlight.component';
+import { IntelHeaderComponent } from '../../shared/components/futuristic/intel-header.component';
 
 interface TermLine {
   type: 'input' | 'output' | 'error' | 'system';
   text: string;
 }
 
-
 @Component({
   selector: 'app-terminal',
   standalone: true,
-  imports: [FormsModule, ButtonModule, TooltipModule, SpotlightComponent],
+  imports: [FormsModule, TooltipModule, IntelHeaderComponent],
   templateUrl: './terminal.html',
   styleUrl: './terminal.scss',
 })
@@ -53,9 +51,7 @@ export class TerminalComponent implements AfterViewChecked {
     if (this.shouldScroll) { this.scrollToBottom(); this.shouldScroll = false; }
   }
 
-  constructor() {
-    this.refreshContext();
-  }
+  constructor() { this.refreshContext(); }
 
   private refreshContext() {
     this.http.get<any>('/api/contexts').subscribe({
@@ -76,7 +72,6 @@ export class TerminalComponent implements AfterViewChecked {
     this.selectionChoices = [];
 
     if (cmd === 'clear') { this.lines = []; this.loading = false; return; }
-
     this.runCommand(cmd);
   }
 
@@ -87,7 +82,6 @@ export class TerminalComponent implements AfterViewChecked {
     this.http.post<any>('/api/exec', body).subscribe({
       next: (res) => {
         if (res.needs_selection) {
-          // Show selection UI
           this.selectionChoices = res.choices || [];
           this.selectionPrompt = res.selection_prompt || 'Select:';
           this.pendingCommand = res.original_command || cmd;
@@ -116,18 +110,11 @@ export class TerminalComponent implements AfterViewChecked {
     this.runCommand(this.pendingCommand, choice);
   }
 
-  runQuick(cmd: string) {
-    this.currentCmd = cmd;
-    this.execute();
-  }
+  runQuick(cmd: string) { this.currentCmd = cmd; this.execute(); }
 
   onInputChange(value: string) {
-    if (value.trim().length > 0) {
-      this.fetchCompletions(value);
-    } else {
-      this.showCompletions = false;
-      this.completions = [];
-    }
+    if (value.trim().length > 0) { this.fetchCompletions(value); }
+    else { this.showCompletions = false; this.completions = []; }
   }
 
   onEnter(event: Event) {
@@ -154,7 +141,8 @@ export class TerminalComponent implements AfterViewChecked {
       event.preventDefault();
       this.completionIndex = Math.min(this.completions.length - 1, this.completionIndex + 1);
     } else {
-      if (this.historyIndex < this.history.length - 1) { this.historyIndex++; this.currentCmd = this.history[this.historyIndex]; } else { this.historyIndex = this.history.length; this.currentCmd = ''; }
+      if (this.historyIndex < this.history.length - 1) { this.historyIndex++; this.currentCmd = this.history[this.historyIndex]; }
+      else { this.historyIndex = this.history.length; this.currentCmd = ''; }
     }
   }
 
@@ -167,14 +155,8 @@ export class TerminalComponent implements AfterViewChecked {
 
   acceptCompletion(value: string) {
     const words = this.currentCmd.trim().split(' ');
-    if (words.length >= 2) {
-      // Replace only the last word (the partial query)
-      words[words.length - 1] = value;
-      this.currentCmd = words.join(' ') + ' ';
-    } else {
-      // Top-level command
-      this.currentCmd = value + ' ';
-    }
+    if (words.length >= 2) { words[words.length - 1] = value; this.currentCmd = words.join(' ') + ' '; }
+    else { this.currentCmd = value + ' '; }
     this.showCompletions = false;
     this.completionIndex = -1;
     this.cmdInput?.nativeElement?.focus();
@@ -183,7 +165,6 @@ export class TerminalComponent implements AfterViewChecked {
   private debounceTimer: any = null;
 
   private fetchCompletions(query: string) {
-    // Debounce: wait 200ms after last keystroke
     if (this.debounceTimer) clearTimeout(this.debounceTimer);
     this.debounceTimer = setTimeout(() => {
       this.http.get<any>(`/api/completions?q=${encodeURIComponent(query)}`).subscribe({
@@ -203,11 +184,7 @@ export class TerminalComponent implements AfterViewChecked {
     navigator.clipboard.writeText(output);
   }
 
-  clear(event: Event) {
-    event.stopPropagation();
-    this.lines = [];
-  }
-
+  clear(event: Event) { event.stopPropagation(); this.lines = []; }
   focusInput() { this.cmdInput?.nativeElement?.focus(); }
   private scrollToBottom() { const el = this.termBody?.nativeElement; if (el) el.scrollTop = el.scrollHeight; }
 }

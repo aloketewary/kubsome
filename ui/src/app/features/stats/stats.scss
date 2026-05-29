@@ -4,12 +4,28 @@
 
 .stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
 .freq-row { display: flex; align-items: center; gap: 8px; padding: 5px 0; }
-.freq-label { font-size: 11px; color: rgba(255,255,255,0.6); min-width: 80px; font-family: 'JetBrains Mono', monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.freq-miss { color: rgba(245,158,11,0.7); font-style: italic; }
-.freq-bar-wrap { flex: 1; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.03); overflow: hidden; }
-.freq-bar { height: 100%; border-radius: 2px; background: #d09c60; box-shadow: 0 0 3px rgba(0,212,255,0.3); transition: width 0.4s; }
-.bar-miss { background: #f59e0b; box-shadow: 0 0 3px rgba(245,158,11,0.3); }
-.freq-val { font-size: 10px; font-weight: 700; font-family: 'JetBrains Mono', monospace; color: rgba(255,255,255,0.4); min-width: 24px; text-align: right; }
-.empty-hint { font-size: 10px; color: rgba(255,255,255,0.25); padding: 12px 0; }
+.freq-label {
+  font-size: 11px; color: var(--text-secondary); min-width: 80px;
+  font-family: 'JetBrains Mono', monospace;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.freq-miss { color: #f59e0b; font-style: italic; }
+.freq-bar-wrap { flex: 1; height: 4px; border-radius: 2px; background: rgba(94, 84, 75, 0.08); overflow: hidden; }
+.freq-bar { height: 100%; border-radius: 2px; background: #d09c60; box-shadow: 0 0 3px rgba(208, 156, 96, 0.3); transition: width 0.4s; }
+.bar-miss { background: #f59e0b; box-shadow: 0 0 3px rgba(245, 158, 11, 0.3); }
+.freq-val {
+  font-size: 10px; font-weight: 700; font-family: 'JetBrains Mono', monospace;
+  color: var(--text-muted); min-width: 24px; text-align: right;
+}
+.empty-hint { font-size: 10px; color: var(--text-muted); padding: 12px 0; }
 
 @media (max-width: 768px) { .stats-grid { grid-template-columns: 1fr; } }
+
+/* ─── Light Mode ─────────────────────────────────────────────────── */
+:host-context([data-theme="light"]) {
+  .title-icon { color: #7c3aed; }
+  .freq-miss { color: #b45309; }
+  .freq-bar-wrap { background: rgba(0, 0, 0, 0.04); }
+  .freq-bar { background: #9a5129; box-shadow: none; }
+  .bar-miss { background: #b45309; box-shadow: none; }
+}

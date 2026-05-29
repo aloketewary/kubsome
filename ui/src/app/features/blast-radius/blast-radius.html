@@ -1,15 +1,10 @@
-<div class="intel-header"><div class="intel-title-block"><h1 class="intel-title">Blast Radius</h1></div></div>
-
-    <app-spotlight id="blast-radius" title="Blast Radius" icon="pi pi-exclamation-circle"
-      description="Analyze impact before destructive operations — what breaks if you touch this?"
-      [capabilities]="['Service dependency mapping', 'PDB violation check', 'Risk scoring 1-10', 'Actionable recommendations']" [compact]="true" />
-
-    <app-page-header title="Blast Radius Analysis" subtitle="Understand impact before you act">
-    </app-page-header>
+<app-intel-header title="Blast Radius" icon="pi pi-bullseye"
+  subtitle="Understand impact before you act">
+</app-intel-header>
 
     <!-- Input -->
     <div class="input-section">
-      <input [(ngModel)]="target" placeholder="Deployment name" class="br-input" (keyup.enter)="analyze()" />
+      <p-select [options]="deployments" [(ngModel)]="target" placeholder="Select deployment..." [filter]="true" [editable]="true" [style]="{ flex: '1' }" />
       <select [(ngModel)]="action" class="br-select">
         <option value="restart">Restart</option>
         <option value="delete">Delete</option>

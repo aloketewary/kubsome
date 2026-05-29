@@ -4,13 +4,31 @@
 .disabled { opacity: 0.3; pointer-events: none; }
 
 .watch-form { display: flex; gap: 6px; align-items: center; }
-.watch-form input, .watch-form select { padding: 7px 10px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 6px; color: var(--text); font-size: 11px; outline: none; flex: 1; }
-.watch-form input:focus, .watch-form select:focus { border-color: rgba(0,212,255,0.3); }
+.watch-form input, .watch-form select {
+  padding: 7px 10px; background: transparent;
+  border: 1px solid rgba(94, 84, 75, 0.15); border-radius: 0;
+  color: var(--text); font-size: 11px; outline: none; flex: 1;
+}
+.watch-form input:focus, .watch-form select:focus { border-color: rgba(208, 156, 96, 0.3); }
 .form-error { display: block; margin-top: 6px; font-size: 10px; color: #f43f5e; }
 
-.watch-list { display: flex; flex-direction: column; gap: 4px; }
-.watch-row { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 0; background: linear-gradient(180deg, rgba(13,17,28,0.75) 0%, rgba(8,11,20,0.8) 100%); border: 1px solid rgba(255,255,255,0.04); transition: all 0.15s; }
-.watch-row:hover { border-color: rgba(255,255,255,0.07); }
+.watch-list { display: flex; flex-direction: column; gap: 0; }
+.watch-row {
+  display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+  border-radius: 0; background: transparent;
+  border: none; border-bottom: 1px solid rgba(94, 84, 75, 0.06);
+  transition: all 0.12s;
+}
+.watch-row:hover { background: rgba(208, 156, 96, 0.02); }
 .watch-body { flex: 1; display: flex; flex-direction: column; gap: 2px; }
-.watch-target { font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.8); }
-.watch-cond { font-size: 9px; color: rgba(255,255,255,0.3); }
+.watch-target { font-size: 12px; font-weight: 600; color: var(--text); }
+.watch-cond { font-size: 9px; color: var(--text-muted); }
+
+/* ─── Light Mode ─────────────────────────────────────────────────── */
+:host-context([data-theme="light"]) {
+  .title-icon { color: #9a5129; }
+  .watch-form input, .watch-form select { border-color: rgba(0, 0, 0, 0.08); }
+  .watch-form input:focus, .watch-form select:focus { border-color: rgba(154, 81, 41, 0.3); }
+  .watch-row { border-bottom-color: rgba(0, 0, 0, 0.04); }
+  .watch-row:hover { background: rgba(0, 0, 0, 0.015); }
+}

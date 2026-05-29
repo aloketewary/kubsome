@@ -363,8 +363,8 @@ def _kubectl_pod_details(ctx, ns=None):
 
     for item in data.get("items", []):
         name = item["metadata"]["name"]
-        ns = item["metadata"].get("namespace", "")
-        key = f"{ns}/{name}"
+        pod_ns = item["metadata"].get("namespace", "")
+        key = f"{pod_ns}/{name}"
         status = item["status"].get("phase", "Unknown")
 
         # Owner (deployment)
@@ -406,7 +406,7 @@ def _kubectl_pod_details(ctx, ns=None):
             restarts += cs.get("restartCount", 0)
 
         details[key] = {
-            "namespace": ns,
+            "namespace": pod_ns,
             "deployment": deployment,
             "container": container_name,
             "status": status,

@@ -1,47 +1,44 @@
-<div class="intel-header">
-  <div class="intel-title-block">
-    <h1 class="intel-title"><span class="title-icon">👤</span> Profiles</h1>
-    <p class="intel-subtitle">active: {{ active || 'default' }}</p>
-  </div>
-  <div class="intel-controls">
-    <button class="ctrl-btn ctrl-btn-wide" (click)="reset()" [class.disabled]="!active"><i class="pi pi-undo"></i> Reset</button>
-    <button class="ctrl-btn" (click)="refresh()"><i class="pi pi-refresh" [class.spinning]="loading"></i></button>
-  </div>
-</div>
+<!-- ─── Header ─────────────────────────────────────────────────────── -->
+<app-intel-header title="Profiles" icon="pi pi-user"
+  [subtitle]="'active: ' + (active || 'default')">
+  <button class="ctrl-btn" (click)="reset()" [class.disabled]="!active" pTooltip="Reset to default">
+    <i class="pi pi-undo"></i>
+  </button>
+  <button class="ctrl-btn" (click)="refresh()" pTooltip="Refresh">
+    <i class="pi pi-refresh" [class.spinning]="loading"></i>
+  </button>
+</app-intel-header>
 
+<!-- ─── Metrics Strip ──────────────────────────────────────────────── -->
 <div class="metrics-strip">
   <app-metric-tile label="Profiles" [value]="'' + profiles.length" accent="cyan" />
   <app-metric-tile label="Active" [value]="active || 'default'" accent="green" />
 </div>
 
+<!-- ─── Profile List ───────────────────────────────────────────────── -->
 @if (profiles.length) {
   <div class="profile-list">
     @for (p of profiles; track p.name) {
-      <div class="profile-row" [class.profile-active]="p.name === active">
-        <app-status-beacon [status]="p.name === active ? 'ok' : 'idle'" size="md" />
-        <div class="profile-body">
-          <div class="profile-top">
-            <span class="profile-name">{{ p.name }}</span>
-            @if (p.name === active) { <p-tag value="active" severity="success" [rounded]="true" /> }
-          </div>
-          <div class="profile-details">
-            @if (p.context) { <span class="pd">ctx: {{ p.context }}</span> }
-            @if (p.namespace) { <span class="pd">ns: {{ p.namespace }}</span> }
-            @if (p.theme) { <span class="pd">theme: {{ p.theme }}</span> }
-          </div>
-        </div>
+      <app-data-row [primary]="p.name" [secondary]="profileMeta(p)"
+                    [status]="p.name === active ? 'ok' : 'idle'"
+                    [selected]="p.name === active">
+        <p-tag meta [value]="p.name === active ? 'active' : ''" [severity]="'success'" [rounded]="true"
+               [style.visibility]="p.name === active ? 'visible' : 'hidden'" />
         @if (p.name !== active) {
           <app-action-icon icon="pi pi-check" tooltip="Activate" accent="green" (clicked)="activate(p.name)" />
         } @else {
           <app-action-icon icon="pi pi-times" tooltip="Deactivate" accent="red" (clicked)="reset()" />
         }
-      </div>
+      </app-data-row>
     }
   </div>
 }
 
 @if (!profiles.length && !loading) {
-  <div class="empty-state"><div class="empty-icon"><i class="pi pi-user"></i></div><span>No profiles configured</span></div>
+  <div class="empty-state">
+    <div class="empty-icon"><i class="pi pi-user"></i></div>
+    <span>No profiles configured</span>
+  </div>
 }
 @if (loading && !profiles.length) {
   <div class="loading-state"><div class="loader-ring"></div><span>Loading...</span></div>

@@ -228,11 +228,16 @@ def _refresh_pods(conn, ctx, ns, pods_raw):
     if not pods_raw:
         return
 
-    # Delete current state for this context/namespace
-    conn.execute(
-        "DELETE FROM pod_state WHERE context = ? AND namespace = ?",
-        [ctx, ns]
-    )
+    # Delete current state for this context (scoped to namespace if provided)
+    if ns:
+        conn.execute(
+            "DELETE FROM pod_state WHERE context = ? AND namespace = ?",
+            [ctx, ns]
+        )
+    else:
+        conn.execute(
+            "DELETE FROM pod_state WHERE context = ?", [ctx]
+        )
 
     rows = []
     for item in pods_raw.get("items", []):
@@ -290,7 +295,8 @@ def _refresh_pods(conn, ctx, ns, pods_raw):
         )
 
         rows.append((
-            ctx, ns, name, phase, restarts, deployment,
+            ctx, meta.get("namespace", ns or ""), name, phase,
+            restarts, deployment,
             cpu_req, mem_req, age_seconds, labels
         ))
 
@@ -306,10 +312,15 @@ def _refresh_deployments(conn, ctx, ns, deployments_raw):
     if not deployments_raw:
         return
 
-    conn.execute(
-        "DELETE FROM deployment_state WHERE context = ? AND namespace = ?",
-        [ctx, ns]
-    )
+    if ns:
+        conn.execute(
+            "DELETE FROM deployment_state WHERE context = ? AND namespace = ?",
+            [ctx, ns]
+        )
+    else:
+        conn.execute(
+            "DELETE FROM deployment_state WHERE context = ?", [ctx]
+        )
 
     rows = []
     for item in deployments_raw.get("items", []):
@@ -329,7 +340,7 @@ def _refresh_deployments(conn, ctx, ns, deployments_raw):
             f"{k}={v}" for k, v in meta.get("labels", {}).items()
         )
 
-        rows.append((ctx, ns, name, desired, available, ready, image, labels))
+        rows.append((ctx, meta.get("namespace", ns or ""), name, desired, available, ready, image, labels))
 
     if rows:
         conn.executemany(
@@ -406,7 +417,8 @@ def _ingest_events(conn, ctx, ns, events_raw):
         conn.execute(
             "INSERT INTO event_log VALUES (?,?,?,?,?,?,?,?,?)",
             [
-                event_ts, ctx, ns,
+                event_ts, ctx,
+                item.get("involvedObject", {}).get("namespace", ns or ""),
                 item.get("type", "Normal"),
                 reason,
                 obj,

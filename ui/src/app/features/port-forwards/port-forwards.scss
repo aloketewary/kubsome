@@ -1,19 +1,31 @@
 @use '../../styles/futuristic';
 :host { display: block; width: 100%; }
-.title-icon { color: #d09c60; }
 .disabled { opacity: 0.3; pointer-events: none; }
 
+/* ─── New Form ───────────────────────────────────────────────────── */
 .new-form { display: flex; align-items: center; gap: 6px; }
-.new-form input { flex: 1; padding: 7px 10px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 6px; color: var(--text); font-size: 11px; outline: none; }
-.new-form input:focus { border-color: rgba(0,212,255,0.3); }
 .port-input { max-width: 80px; }
-.port-sep { color: rgba(255,255,255,0.2); font-size: 14px; }
+.port-sep { color: var(--text-muted); opacity: 0.4; font-size: 14px; }
 
-.fwd-list { display: flex; flex-direction: column; gap: 4px; margin-top: 12px; }
-.fwd-row { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 0; background: linear-gradient(180deg, rgba(13,17,28,0.75) 0%, rgba(8,11,20,0.8) 100%); border: 1px solid rgba(255,255,255,0.04); transition: all 0.15s; }
-.fwd-row:hover { border-color: rgba(255,255,255,0.07); }
-.fwd-dead { border-left: 2px solid rgba(244,63,94,0.5); opacity: 0.6; }
+/* ─── Forward List ───────────────────────────────────────────────── */
+.fwd-list { display: flex; flex-direction: column; gap: 0; margin-top: 12px; }
+.fwd-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px; background: transparent; border: none;
+  border-bottom: 1px solid rgba(94, 84, 75, 0.06);
+  transition: background 0.12s;
+}
+.fwd-row:hover { background: rgba(208, 156, 96, 0.02); }
+.fwd-dead { border-left: 2px solid rgba(244, 63, 94, 0.4); opacity: 0.6; }
 .fwd-body { flex: 1; display: flex; flex-direction: column; gap: 2px; }
-.fwd-target { font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.8); }
-.fwd-ports { font-size: 10px; color: #d09c60; }
-.fwd-ns { font-size: 9px; color: rgba(255,255,255,0.25); font-family: 'JetBrains Mono', monospace; }
+.fwd-target { font-size: 12px; font-weight: 600; color: var(--text); font-family: 'JetBrains Mono', monospace; }
+.fwd-ports { font-size: 10px; color: var(--accent); font-family: 'JetBrains Mono', monospace; }
+.fwd-ns { font-size: 9px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+
+/* ─── Light Mode ─────────────────────────────────────────────────── */
+:host-context([data-theme="light"]) {
+  .fwd-row { border-bottom-color: rgba(0, 0, 0, 0.04); }
+  .fwd-row:hover { background: rgba(0, 0, 0, 0.015); }
+  .fwd-dead { border-left-color: rgba(220, 38, 38, 0.3); }
+  .fwd-ports { color: #9a5129; }
+}

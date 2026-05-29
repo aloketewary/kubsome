@@ -1,13 +1,8 @@
-<div class="intel-header">
-  <div class="intel-title-block">
-    <h1 class="intel-title"><span class="title-icon">⎈</span> Helm Releases</h1>
-    <p class="intel-subtitle">{{ releases.length }} releases · {{ lastUpdated || '...' }}</p>
-  </div>
-  <div class="intel-controls">
-    <app-live-indicator [active]="autoRefresh" label="AUTO" offLabel="PAUSED" (click)="toggleAutoRefresh()" />
-    <button class="ctrl-btn" (click)="refresh()"><i class="pi pi-refresh" [class.spinning]="loading"></i></button>
-  </div>
-</div>
+<app-intel-header title="Helm Releases" icon="pi pi-server"
+  [subtitle]="releases.length + ' releases · ' + (lastUpdated || '...')">
+  <app-live-indicator [active]="autoRefresh" label="AUTO" offLabel="PAUSED" (click)="toggleAutoRefresh()" />
+  <button class="ctrl-btn" (click)="refresh()" pTooltip="Refresh"><i class="pi pi-refresh" [class.spinning]="loading"></i></button>
+</app-intel-header>
 
 <div class="metrics-strip">
   <app-metric-tile label="Total" [value]="'' + releases.length" accent="cyan" />

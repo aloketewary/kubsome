@@ -592,6 +592,14 @@ def _ensure_tables(conn):
         )
     """)
 
+    # Migrate: add billing_tag if table existed without it
+    try:
+        conn.execute(
+            "ALTER TABLE label_mapping ADD COLUMN billing_tag VARCHAR"
+        )
+    except Exception:
+        pass  # Column already exists
+
     conn.execute("""
         CREATE TABLE IF NOT EXISTS cloud_billing (
             ts TIMESTAMP,

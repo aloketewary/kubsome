@@ -1,25 +1,15 @@
-<div class="intel-header"><div class="intel-title-block"><h1 class="intel-title">Chargeback</h1></div></div>
-
-    <app-spotlight id="chargeback" title="Cost Chargeback" icon="pi pi-wallet"
-      description="Label-based cost attribution — map cloud spend to teams, apps, and environments."
-      [capabilities]="['Team cost breakdown', 'App-level attribution', 'Namespace billing', 'OpenCost integration', 'CSV/Markdown export']" [compact]="true" />
-
-    <app-page-header title="Chargeback" [subtitle]="hasData ? '$' + totalCost.toFixed(2) + ' total · ' + (teamData.length) + ' teams · ' + lastUpdated : 'Cost attribution across teams, apps & namespaces'">
-        <button class="ar-btn" [class.ar-active]="autoRefresh" (click)="toggleAutoRefresh()" [pTooltip]="autoRefresh ? 'Auto-refresh on (60s)' : 'Auto-refresh off'">
-          <i class="pi" [class.pi-sync]="autoRefresh" [class.pi-pause]="!autoRefresh"></i>
-        </button>
-        <div class="search-wrap">
-          <i class="pi pi-search"></i>
-          <input pInputText [(ngModel)]="searchQuery" placeholder="Filter..." (ngModelChange)="applyFilter()" />
-        </div>
-        <p-selectbutton [options]="periodOptions" [(ngModel)]="days" (onChange)="refresh()" optionLabel="label" optionValue="value" size="small" />
-        <button pButton icon="pi pi-download" label="Export" class="p-button-outlined p-button-sm" (click)="exportReport('csv')" [disabled]="!hasData" pTooltip="Export CSV"></button>
-        <button pButton icon="pi pi-file" label="Markdown" class="p-button-outlined p-button-sm" (click)="exportReport('markdown')" [disabled]="!hasData" pTooltip="Export Markdown"></button>
-        <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="refresh()" [loading]="loading"></button>
-        <app-page-info title="Chargeback" description="Maps resource usage to teams via Kubernetes labels. Blends with OpenCost or cloud billing CSV for accurate showback."
-          [tips]="['Label pods with team/app/env for attribution', 'Import OpenCost data for real cloud costs', 'Unattributed = missing team label', 'billingTag label maps to Billing Tag tab']"
-          [commands]="['chargeback', 'chargeback team', 'chargeback app', 'chargeback namespace']" />
-    </app-page-header>
+<app-intel-header title="Chargeback" icon="pi pi-wallet"
+  [subtitle]="hasData ? '$' + totalCost.toFixed(2) + ' total · ' + teamData.length + ' teams · ' + lastUpdated : 'Cost attribution across teams & apps'">
+  <app-live-indicator [active]="autoRefresh" label="AUTO" offLabel="PAUSED" (click)="toggleAutoRefresh()" />
+  <div class="search-wrap">
+    <i class="pi pi-search"></i>
+    <input pInputText [(ngModel)]="searchQuery" placeholder="Filter..." (ngModelChange)="applyFilter()" />
+  </div>
+  <p-selectbutton [options]="periodOptions" [(ngModel)]="days" (onChange)="refresh()" optionLabel="label" optionValue="value" size="small" />
+  <button class="ctrl-btn ctrl-btn-wide" (click)="exportReport('csv')" [class.disabled]="!hasData" pTooltip="Export CSV"><i class="pi pi-download"></i> CSV</button>
+  <button class="ctrl-btn ctrl-btn-wide" (click)="exportReport('markdown')" [class.disabled]="!hasData" pTooltip="Markdown"><i class="pi pi-file"></i> MD</button>
+  <button class="ctrl-btn" (click)="refresh()" pTooltip="Refresh"><i class="pi pi-refresh" [class.spinning]="loading"></i></button>
+</app-intel-header>
 
     <!-- Hero Metrics -->
     @if (hasData) {

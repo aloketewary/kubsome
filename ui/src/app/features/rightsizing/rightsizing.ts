@@ -6,7 +6,7 @@ import { TagModule } from 'primeng/tag';
 import { TabsModule } from 'primeng/tabs';
 import { TooltipModule } from 'primeng/tooltip';
 import { InputTextModule } from 'primeng/inputtext';
-import { SpotlightComponent } from '../../shared/components/spotlight.component';
+import { IntelHeaderComponent } from '../../shared/components/futuristic/intel-header.component';
 import { RelatedPagesComponent } from '../../shared/components/related-pages.component';
 import { ConfirmService } from '../../shared/services/confirm.service';
 import { HoloCardComponent, MetricTileComponent, StatusBeaconComponent, CommandBarComponent, LiveIndicatorComponent } from '../../shared/components/futuristic';
@@ -16,7 +16,7 @@ import type { CommandPill } from '../../shared/components/futuristic/command-bar
 @Component({
   selector: 'app-rightsizing',
   standalone: true,
-  imports: [ButtonModule, TagModule, TabsModule, TooltipModule, FormsModule, InputTextModule, SpotlightComponent, RelatedPagesComponent, HoloCardComponent, MetricTileComponent, StatusBeaconComponent, CommandBarComponent, LiveIndicatorComponent],
+  imports: [ButtonModule, TagModule, TabsModule, TooltipModule, FormsModule, InputTextModule, IntelHeaderComponent, RelatedPagesComponent, HoloCardComponent, MetricTileComponent, StatusBeaconComponent, CommandBarComponent, LiveIndicatorComponent],
   templateUrl: './rightsizing.html',
   styleUrl: './rightsizing.scss',
 })

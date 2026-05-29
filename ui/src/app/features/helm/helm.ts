@@ -12,13 +12,14 @@ import { CommandBarComponent } from '../../shared/components/futuristic/command-
 import type { CommandPill } from '../../shared/components/futuristic/command-bar.component';
 import { LiveIndicatorComponent } from '../../shared/components/futuristic/live-indicator.component';
 import { ActionIconComponent } from '../../shared/components/futuristic/action-icon.component';
+import { IntelHeaderComponent } from '../../shared/components/futuristic/intel-header.component';
 import { AiInsightDrawerComponent } from '../../shared/components/ai-insight-drawer.component';
 import { ConfirmService } from '../../shared/services/confirm.service';
 
 @Component({
   selector: 'app-helm',
   standalone: true,
-  imports: [FormsModule, TagModule, ButtonModule, TooltipModule, DialogModule, HoloCardComponent, MetricTileComponent, StatusBeaconComponent, CommandBarComponent, LiveIndicatorComponent, ActionIconComponent, AiInsightDrawerComponent],
+  imports: [IntelHeaderComponent, FormsModule, TagModule, ButtonModule, TooltipModule, DialogModule, HoloCardComponent, MetricTileComponent, StatusBeaconComponent, CommandBarComponent, LiveIndicatorComponent, ActionIconComponent, AiInsightDrawerComponent],
   templateUrl: './helm.html',
   styleUrl: './helm.scss',
 })

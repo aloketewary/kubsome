@@ -1,48 +1,51 @@
-<div class="intel-header">
-  <div class="intel-title-block">
-    <h1 class="intel-title"><span class="title-icon">👁</span> Watch Manager</h1>
-    <p class="intel-subtitle">{{ status?.watches?.length || 0 }} active watches</p>
-  </div>
-  <div class="intel-controls">
-    <button class="ctrl-btn ctrl-btn-wide" (click)="showForm = !showForm"><i class="pi pi-plus"></i> Add</button>
-    <button class="ctrl-btn" (click)="refresh()"><i class="pi pi-refresh"></i></button>
-  </div>
-</div>
+<!-- ─── Header ─────────────────────────────────────────────────────── -->
+<app-intel-header title="Watch Manager" icon="pi pi-eye"
+  [subtitle]="(status?.watches?.length || 0) + ' active watches'">
+  <app-live-indicator [active]="status?.running" label="RUNNING" offLabel="STOPPED" />
+  <button class="ctrl-btn" (click)="showForm = !showForm" pTooltip="Add watch">
+    <i class="pi pi-plus"></i>
+  </button>
+  <button class="ctrl-btn" (click)="refresh()" pTooltip="Refresh">
+    <i class="pi pi-refresh"></i>
+  </button>
+</app-intel-header>
 
+<!-- ─── Metrics Strip ──────────────────────────────────────────────── -->
 <div class="metrics-strip">
   <app-metric-tile label="Watches" [value]="'' + (status?.watches?.length || 0)" accent="cyan" />
   <app-metric-tile label="Engine" [value]="status?.running ? 'Running' : 'Stopped'" [accent]="status?.running ? 'green' : 'red'" />
+  <app-metric-tile label="Triggered" [value]="'' + triggeredCount" [accent]="triggeredCount > 0 ? 'red' : 'green'" />
 </div>
 
+<!-- ─── Add Form ───────────────────────────────────────────────────── -->
 @if (showForm) {
-  <app-holo-card title="New Watch" icon="pi pi-plus" glow="cyan" [compact]="true">
-    <div class="watch-form">
-      <input [(ngModel)]="newTarget" placeholder="Pod/app pattern" />
-      <select [(ngModel)]="newCondition">
-        <option value="crash">Crash</option>
-        <option value="restart">Restart</option>
-        <option value="count">Count</option>
-      </select>
-      <button class="ctrl-btn ctrl-btn-wide" (click)="createWatch()" [class.disabled]="!newTarget">Create</button>
-    </div>
-    @if (formError) { <span class="form-error">{{ formError }}</span> }
-  </app-holo-card>
+  <div class="watch-form">
+    <input [(ngModel)]="newTarget" placeholder="Pod/app pattern" />
+    <select [(ngModel)]="newCondition">
+      <option value="crash">Crash</option>
+      <option value="restart">Restart</option>
+      <option value="count">Count</option>
+    </select>
+    <button class="ctrl-btn ctrl-btn-wide" (click)="createWatch()" [class.disabled]="!newTarget">Create</button>
+  </div>
+  @if (formError) { <span class="form-error">{{ formError }}</span> }
 }
 
+<!-- ─── Watch List ─────────────────────────────────────────────────── -->
 @if (status?.watches?.length) {
   <div class="watch-list">
     @for (w of status.watches; track w.target) {
-      <div class="watch-row">
-        <app-status-beacon [status]="w.triggered ? 'critical' : 'ok'" size="md" [pulse]="w.triggered" />
-        <div class="watch-body">
-          <span class="watch-target">{{ w.target }}</span>
-          <span class="watch-cond">{{ w.condition }} · since {{ formatTime(w.created) }}</span>
-        </div>
-        @if (w.triggered) { <p-tag value="TRIGGERED" severity="danger" [rounded]="true" /> }
+      <app-data-row [primary]="w.target" [secondary]="w.condition + ' · since ' + formatTime(w.created)"
+                    [status]="w.triggered ? 'critical' : 'ok'">
+        <p-tag meta [value]="w.triggered ? 'TRIGGERED' : 'OK'" [severity]="w.triggered ? 'danger' : 'success'" [rounded]="true" />
         <app-action-icon icon="pi pi-trash" tooltip="Remove" accent="red" (clicked)="removeWatch(w.target)" />
-      </div>
+      </app-data-row>
     }
   </div>
 } @else if (!showForm) {
-  <div class="empty-state"><div class="empty-icon"><i class="pi pi-eye"></i></div><span>No active watches</span></div>
+  <div class="empty-state">
+    <div class="empty-icon"><i class="pi pi-eye"></i></div>
+    <span>No active watches</span>
+    <span class="empty-hint">Create a watch to monitor pod conditions</span>
+  </div>
 }

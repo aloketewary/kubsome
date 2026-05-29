@@ -8,11 +8,12 @@ import { HoloCardComponent } from '../../shared/components/futuristic/holo-card.
 import { MetricTileComponent } from '../../shared/components/futuristic/metric-tile.component';
 import { StatusBeaconComponent } from '../../shared/components/futuristic/status-beacon.component';
 import { ActionIconComponent } from '../../shared/components/futuristic/action-icon.component';
+import { IntelHeaderComponent } from '../../shared/components/futuristic/intel-header.component';
 
 @Component({
   selector: 'app-port-forwards',
   standalone: true,
-  imports: [ButtonModule, TagModule, TooltipModule, FormsModule, HoloCardComponent, MetricTileComponent, StatusBeaconComponent, ActionIconComponent],
+  imports: [IntelHeaderComponent, ButtonModule, TagModule, TooltipModule, FormsModule, HoloCardComponent, MetricTileComponent, StatusBeaconComponent, ActionIconComponent],
   templateUrl: './port-forwards.html',
   styleUrl: './port-forwards.scss',
 })

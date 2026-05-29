@@ -2,26 +2,36 @@
 :host { display: block; width: 100%; }
 .title-icon { color: #d09c60; }
 
+/* ─── Search Bar ─────────────────────────────────────────────────── */
 .search-bar {
   position: relative; display: flex; align-items: center;
   margin-bottom: 16px;
 }
-.search-ico { position: absolute; left: 14px; color: rgba(255,255,255,0.25); }
+.search-ico { position: absolute; left: 14px; color: var(--text-muted); opacity: 0.5; }
 .search-bar input {
-  width: 100%; padding: 12px 16px 12px 40px;
-  background: linear-gradient(180deg, rgba(13,17,28,0.85) 0%, rgba(8,11,20,0.9) 100%);
-  border: 1px solid rgba(255,255,255,0.06); border-radius: 0;
-  color: var(--text); font-size: 13px; outline: none;
-  transition: all 0.15s;
+  width: 100%; padding: 12px 80px 12px 40px;
+  background: transparent;
+  border: 1px solid rgba(94, 84, 75, 0.15); border-radius: 0;
+  color: var(--text); font-size: 13px;
+  font-family: 'JetBrains Mono', monospace;
+  outline: none; transition: all 0.15s;
 }
-.search-bar input::placeholder { color: rgba(255,255,255,0.2); }
-.search-bar input:focus { border-color: rgba(0,212,255,0.3); box-shadow: 0 0 12px -4px rgba(0,212,255,0.2); }
+.search-bar input::placeholder { color: var(--text-muted); opacity: 0.5; }
+.search-bar input:focus { border-color: rgba(208, 156, 96, 0.3); }
+.search-hint {
+  position: absolute; right: 14px;
+  font-size: 9px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--text-muted); opacity: 0.4;
+  pointer-events: none;
+}
 
-.result-list { display: flex; flex-direction: column; gap: 3px; }
-.result-row {
-  display: flex; align-items: center; gap: 10px;
-  padding: 8px 10px; border-radius: 8px;
-  transition: all 0.12s;
+/* ─── Result List ────────────────────────────────────────────────── */
+.result-list { display: flex; flex-direction: column; gap: 0; }
+
+/* ─── Light Mode ─────────────────────────────────────────────────── */
+:host-context([data-theme="light"]) {
+  .title-icon { color: #9a5129; }
+  .search-bar input { border-color: rgba(0, 0, 0, 0.08); }
+  .search-bar input:focus { border-color: rgba(154, 81, 41, 0.3); }
 }
-.result-row:hover { background: rgba(255,255,255,0.02); }
-.result-name { font-size: 11px; font-family: 'JetBrains Mono', monospace; color: rgba(255,255,255,0.7); }

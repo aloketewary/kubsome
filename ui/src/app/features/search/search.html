@@ -1,36 +1,71 @@
-<div class="intel-header">
-  <div class="intel-title-block">
-    <h1 class="intel-title"><span class="title-icon">⌕</span> Search</h1>
-    <p class="intel-subtitle">cross-resource fuzzy search</p>
-  </div>
-</div>
+<!-- ─── Header ─────────────────────────────────────────────────────── -->
+<app-intel-header title="Search" icon="pi pi-search"
+  [subtitle]="searched ? filteredResults.length + ' results' + (kindFilter !== 'all' ? ' · ' + kindFilter : '') : 'cross-resource fuzzy search'">
+  <button class="ctrl-btn" (click)="clearSearch()" pTooltip="Clear" [disabled]="!searched">
+    <i class="pi pi-times"></i>
+  </button>
+</app-intel-header>
 
-<!-- Search Input -->
+<!-- ─── Search Input ───────────────────────────────────────────────── -->
 <div class="search-bar">
   <svg class="search-ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-  <input [(ngModel)]="query" placeholder="Search pods, deployments, services..." (keyup.enter)="doSearch()" />
+  <input #searchInput [(ngModel)]="query" placeholder="Search pods, deployments, services..."
+         (keyup.enter)="doSearch()" (keyup.escape)="clearSearch()" />
+  <span class="search-hint">↵ to search</span>
 </div>
 
-<!-- Results -->
-@if (results.length > 0) {
-  <div class="metrics-strip">
-    <app-metric-tile label="Results" [value]="'' + results.length" accent="cyan" />
+<!-- ─── Loading ────────────────────────────────────────────────────── -->
+@if (loading) {
+  <div class="loading-state">
+    <div class="loader-ring"></div>
+    <span>Searching cluster...</span>
   </div>
+}
 
-  <app-holo-card glow="cyan" [compact]="true">
-    <div class="result-list">
-      @for (r of results; track r.name) {
-        <div class="result-row">
-          <app-status-beacon status="info" size="sm" />
-          <p-tag [value]="r.kind" severity="info" [rounded]="true" />
-          <code class="result-name">{{ r.name }}</code>
-        </div>
+<!-- ─── Results ────────────────────────────────────────────────────── -->
+@if (searched && !loading) {
+  @if (results.length > 0) {
+    <!-- Metrics -->
+    <div class="metrics-strip">
+      <app-metric-tile label="Total" [value]="'' + results.length" accent="cyan" />
+      @for (k of kindCounts; track k.kind) {
+        <app-metric-tile [label]="k.kind" [value]="'' + k.count" accent="green" />
       }
     </div>
-  </app-holo-card>
-} @else if (searched) {
+
+    <!-- Kind Filter -->
+    @if (kindCounts.length > 1) {
+      <app-command-bar
+        [pills]="filterPills"
+        [activePill]="kindFilter"
+        [showSearch]="false"
+        (pillChange)="onKindChange($event)" />
+    }
+
+    <!-- Result List -->
+    <div class="result-list">
+      @for (r of filteredResults; track r.name) {
+        <app-data-row [primary]="r.name" [secondary]="r.namespace ? r.kind + ' · ' + r.namespace : r.kind"
+                      status="info" (rowClick)="navigateTo(r)">
+          <p-tag meta [value]="r.kind" severity="info" [rounded]="true" />
+          <app-action-icon icon="pi pi-external-link" tooltip="Open" accent="cyan" (clicked)="navigateTo(r)" />
+        </app-data-row>
+      }
+    </div>
+  } @else {
+    <div class="empty-state">
+      <div class="empty-icon"><i class="pi pi-search"></i></div>
+      <span>No results for "{{ lastQuery }}"</span>
+      <span class="empty-hint">Try a partial name or different resource type</span>
+    </div>
+  }
+}
+
+<!-- ─── Initial State ──────────────────────────────────────────────── -->
+@if (!searched && !loading) {
   <div class="empty-state">
     <div class="empty-icon"><i class="pi pi-search"></i></div>
-    <span>No results for "{{ lastQuery }}"</span>
+    <span>Type a query and press Enter</span>
+    <span class="empty-hint">Searches pods, deployments, services, configmaps, and more</span>
   </div>
 }

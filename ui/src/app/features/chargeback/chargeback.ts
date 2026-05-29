@@ -8,9 +8,8 @@ import { SelectButtonModule } from 'primeng/selectbutton';
 import { TooltipModule } from 'primeng/tooltip';
 import { InputTextModule } from 'primeng/inputtext';
 import { FormsModule } from '@angular/forms';
-import { PageInfoComponent } from '../../shared/components/page-info.component';
-import { SpotlightComponent } from '../../shared/components/spotlight.component';
-import { PageHeaderComponent } from '../../shared/components/page-header.component';
+import { IntelHeaderComponent } from '../../shared/components/futuristic/intel-header.component';
+import { LiveIndicatorComponent } from '../../shared/components/futuristic/live-indicator.component';
 import { RelatedPagesComponent } from '../../shared/components/related-pages.component';
 import { SkeletonComponent } from '../../shared/components/skeleton.component';
 
@@ -18,7 +17,7 @@ import { SkeletonComponent } from '../../shared/components/skeleton.component';
 @Component({
   selector: 'app-chargeback',
   standalone: true,
-  imports: [CommonModule, ButtonModule, TagModule, TabsModule, SelectButtonModule, TooltipModule, InputTextModule, FormsModule, PageInfoComponent, SpotlightComponent, RelatedPagesComponent, PageHeaderComponent, SkeletonComponent],
+  imports: [CommonModule, ButtonModule, TagModule, TabsModule, SelectButtonModule, TooltipModule, InputTextModule, FormsModule, IntelHeaderComponent, LiveIndicatorComponent, RelatedPagesComponent, SkeletonComponent],
   templateUrl: './chargeback.html',
   styleUrl: './chargeback.scss',
 })

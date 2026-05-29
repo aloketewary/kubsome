@@ -1,20 +1,12 @@
-<div class="intel-header"><div class="intel-title-block"><h1 class="intel-title">Cost Estimate</h1></div></div>
-
-    <app-spotlight id="cost-estimate" title="Cost Estimation" icon="pi pi-dollar"
-      description="Estimated monthly spend per deployment based on resource requests."
-      [capabilities]="['Per-deployment cost', 'CPU/memory pricing', 'Right-sizing tips']" [compact]="true" />
-
-    <app-page-header title="Cost Estimation" [subtitle]="'Estimated monthly spend based on resource requests · ' + lastUpdated">
-        <div class="search-wrap">
-          <i class="pi pi-search"></i>
-          <input pInputText [(ngModel)]="searchQuery" placeholder="Filter deployments..." (ngModelChange)="applyFilter()" />
-        </div>
-        <button pButton icon="pi pi-download" label="Export" class="p-button-outlined p-button-sm" (click)="exportCsv()" [disabled]="!data?.deployments?.length" pTooltip="Export CSV"></button>
-        <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-sm p-button-rounded" (click)="refresh()" [loading]="loading"></button>
-        <app-page-info title="Cost Estimation" description="Estimated monthly spend per deployment based on CPU and memory resource requests."
-          [tips]="['Based on AWS on-demand pricing (~$30/vCPU, ~$4/GB)', 'Sorted by highest cost first', 'Reduce cost by right-sizing: optimize command']"
-          [commands]="['cost-estimate', 'optimize', 'top pods']" />
-    </app-page-header>
+<app-intel-header title="Cost Estimation" icon="pi pi-calculator"
+  [subtitle]="'monthly spend based on resource requests · ' + lastUpdated">
+  <div class="search-wrap">
+    <i class="pi pi-search"></i>
+    <input pInputText [(ngModel)]="searchQuery" placeholder="Filter..." (ngModelChange)="applyFilter()" />
+  </div>
+  <button class="ctrl-btn ctrl-btn-wide" (click)="exportCsv()" [class.disabled]="!data?.deployments?.length" pTooltip="Export CSV"><i class="pi pi-download"></i> Export</button>
+  <button class="ctrl-btn" (click)="refresh()" pTooltip="Refresh"><i class="pi pi-refresh" [class.spinning]="loading"></i></button>
+</app-intel-header>
 
     @if (data) {
       <!-- Cost Trend Chart (auto-hides if no DuckDB data) -->

@@ -175,7 +175,7 @@ def _calculate_risk(affected, action, pod_count, pdb, services, ingresses):
     # PDB violation risk
     if pdb and action == "delete":
         score += 2
-    elif pdb and pod_count <= (pdb.get("min_available", 0)):
+    elif pdb and pod_count <= (pdb.get("min_available") or 0):
         score += 2
 
     # Single replica = no redundancy

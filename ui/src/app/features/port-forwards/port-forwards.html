@@ -1,13 +1,8 @@
-<div class="intel-header">
-  <div class="intel-title-block">
-    <h1 class="intel-title"><span class="title-icon">🔀</span> Port Forwards</h1>
-    <p class="intel-subtitle">{{ forwards.length }} active</p>
-  </div>
-  <div class="intel-controls">
-    <button class="ctrl-btn ctrl-btn-wide" (click)="stopAll()" [class.disabled]="!forwards.length"><i class="pi pi-stop"></i> Stop All</button>
-    <button class="ctrl-btn" (click)="refresh()"><i class="pi pi-refresh"></i></button>
-  </div>
-</div>
+<app-intel-header title="Port Forwards" icon="pi pi-link"
+  [subtitle]="forwards.length + ' active'">
+  <button class="ctrl-btn ctrl-btn-wide" (click)="stopAll()" [class.disabled]="!forwards.length"><i class="pi pi-stop"></i> Stop All</button>
+  <button class="ctrl-btn" (click)="refresh()" pTooltip="Refresh"><i class="pi pi-refresh"></i></button>
+</app-intel-header>
 
 <div class="metrics-strip">
   <app-metric-tile label="Active" [value]="'' + forwards.length" accent="cyan" />
