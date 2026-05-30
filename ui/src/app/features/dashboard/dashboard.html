@@ -50,6 +50,60 @@
     </div>
   }
 
+  <!-- ─── Insight Pills ────────────────────────────────────────────── -->
+  <div class="insight-container">
+    @if (activeIncident) {
+      <div class="insight-pill insight-incident" (click)="router.navigate(['/incident'])">
+        <i class="pi pi-exclamation-circle insight-icon"></i>
+        <div class="insight-content">
+          <span class="insight-label">Active Incident</span>
+          <span class="insight-value">{{ activeIncident.title }}</span>
+        </div>
+        <button class="insight-btn">Resume</button>
+      </div>
+    }
+
+    @if (totalTimeSavedMins > 60) {
+      <div class="insight-pill insight-roi" (click)="router.navigate(['/stats'])">
+        <i class="pi pi-trophy insight-icon"></i>
+        <div class="insight-content">
+          <span class="insight-label">ROI Milestone</span>
+          <span class="insight-value">{{ Math.floor(totalTimeSavedMins / 60) }}h saved this week</span>
+        </div>
+      </div>
+    }
+
+    @if (data.pods.critical > 3) {
+      <div class="insight-pill insight-instability" (click)="router.navigate(['/incident'])">
+        <i class="pi pi-bolt insight-icon"></i>
+        <div class="insight-content">
+          <span class="insight-label">High Instability</span>
+          <span class="insight-value">{{ data.pods.critical }} pods failing – start incident?</span>
+        </div>
+      </div>
+    }
+
+    @if (costTrend?.trend === 'growing') {
+      <div class="insight-pill insight-cost" (click)="router.navigate(['/cost'])">
+        <i class="pi pi-chart-line insight-icon"></i>
+        <div class="insight-content">
+          <span class="insight-label">Cost Alert</span>
+          <span class="insight-value">Projected costs increasing – optimize now?</span>
+        </div>
+      </div>
+    }
+
+    @if (diffTimeline?.total > 0) {
+      <div class="insight-pill insight-activity" (click)="router.navigate(['/timeline'])">
+        <i class="pi pi-history insight-icon"></i>
+        <div class="insight-content">
+          <span class="insight-label">24h Activity</span>
+          <span class="insight-value">{{ activitySummary }}</span>
+        </div>
+      </div>
+    }
+  </div>
+
   <!-- ─── Bento Grid ───────────────────────────────────────────────── -->
   <div class="bento-grid">
     <app-holo-card [glow]="data.pods.critical > 0 ? 'red' : 'cyan'" [interactive]="true" [compact]="true">

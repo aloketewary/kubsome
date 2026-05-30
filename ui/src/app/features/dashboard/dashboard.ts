@@ -22,7 +22,7 @@ import { HealthRingComponent } from '../../shared/components/futuristic/health-r
 export class DashboardComponent implements OnInit, OnDestroy {
   private api = inject(ApiService);
   private http = inject(HttpClient);
-  router = inject(Router);
+  public router = inject(Router);
   data: OverviewResponse | null = null;
   recentEvents: KubeEvent[] = [];
   lastUpdated = '';
@@ -32,6 +32,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
   stats: any = null;
   costTrend: any = null;
   activeIncident: any = null;
+  diffTimeline: any = null;
+  protected Math = Math;
 
   get podTotal() { return (this.data?.pods.healthy || 0) + (this.data?.pods.warning || 0) + (this.data?.pods.critical || 0); }
   get nodeTotal() { return (this.data?.nodes.healthy || 0) + (this.data?.nodes.warning || 0); }
@@ -54,6 +56,24 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (this.overallHealth === 'critical') return 'red';
     if (this.overallHealth === 'degraded') return 'amber';
     return 'green';
+  }
+
+  get totalTimeSavedMins(): number {
+    if (!this.stats) return 0;
+    const SAVED_PER_CMD = 2;
+    const SAVED_PER_FIX = 15;
+    return ((this.stats.total_commands - this.stats.unresolved_count) * SAVED_PER_CMD) + (this.stats.auto_remediations * SAVED_PER_FIX);
+  }
+
+  get activitySummary(): string {
+    if (!this.diffTimeline || !this.diffTimeline.changes) return '';
+    const items: string[] = [];
+    const c = this.diffTimeline.changes;
+    if (c.restarts?.length) items.push(`${c.restarts.length} restarts`);
+    if (c.scaling?.length) items.push(`${c.scaling.length} scaling events`);
+    if (c.new_deployments?.length) items.push(`${c.new_deployments.length} new deploys`);
+    if (c.image_changes?.length) items.push(`${c.image_changes.length} image updates`);
+    return items.join(', ');
   }
 
   pct(value: number, total: number): number { return total === 0 ? 0 : Math.round((value / total) * 100); }
@@ -83,6 +103,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.api.getStats().subscribe({ next: (res) => (this.stats = res), error: () => {} });
     this.api.getCostTrend().subscribe({ next: (res) => (this.costTrend = res), error: () => {} });
     this.api.getIncidentStatus().subscribe({ next: (res) => { this.activeIncident = res.id ? res : null; }, error: () => {} });
+    this.api.getDiffTimeline(24).subscribe({ next: (res) => (this.diffTimeline = res), error: () => {} });
     this.lastUpdated = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   }
 

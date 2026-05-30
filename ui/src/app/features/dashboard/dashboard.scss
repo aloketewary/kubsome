@@ -40,6 +40,49 @@
 .alert-btn-ai { border-color: rgba(208,156,96,0.2); background: rgba(208,156,96,0.04); color: #d09c60; }
 .alert-btn-ai:hover { background: rgba(208,156,96,0.08); border-color: rgba(208,156,96,0.3); }
 
+/* ─── Insight Pills ────────────────────────────────────────────── */
+.insight-container {
+  display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px;
+}
+.insight-pill {
+  display: flex; align-items: center; gap: 12px;
+  padding: 8px 14px; border-radius: 8px; cursor: pointer;
+  background: rgba(94,84,75,0.03); border: 1px solid rgba(94,84,75,0.08);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: slideIn 0.3s ease-out backwards;
+}
+@keyframes slideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
+
+.insight-pill:hover {
+  transform: translateY(-2px);
+  background: rgba(94,84,75,0.06); border-color: rgba(94,84,75,0.15);
+  box-shadow: 0 4px 12px -4px rgba(0,0,0,0.2);
+}
+
+.insight-icon { font-size: 14px; flex-shrink: 0; }
+.insight-content { display: flex; flex-direction: column; gap: 1px; }
+.insight-label { font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
+.insight-value { font-size: 11px; font-weight: 500; color: var(--text); }
+.insight-btn {
+  margin-left: 10px; padding: 3px 10px; border-radius: 4px; border: 1px solid rgba(208,156,96,0.2);
+  background: rgba(208,156,96,0.08); color: #d09c60; font-size: 9px; font-weight: 700; cursor: pointer;
+}
+
+.insight-incident { border-left: 3px solid #f59e0b; }
+.insight-incident .insight-icon { color: #f59e0b; }
+
+.insight-roi { border-left: 3px solid #4ade80; }
+.insight-roi .insight-icon { color: #4ade80; }
+
+.insight-instability { border-left: 3px solid #f43f5e; }
+.insight-instability .insight-icon { color: #f43f5e; }
+
+.insight-cost { border-left: 3px solid #d09c60; }
+.insight-cost .insight-icon { color: #d09c60; }
+
+.insight-activity { border-left: 3px solid #22d3ee; }
+.insight-activity .insight-icon { color: #22d3ee; }
+
 /* ─── Bento Grid ─────────────────────────────────────────────────── */
 .bento-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; margin: 14px 0; }
 .bento-inner { cursor: pointer; }
