@@ -44,3 +44,8 @@
 **Learning:** Sequential `kubectl` calls to fetch names for multiple resource types (Pods, Deployments, Services, etc.) for fuzzy searching created a significant latency floor. By parallelizing these independent I/O tasks using `ThreadPoolExecutor` and applying a 60-second cache, the search response time was reduced from O(N) to O(1) relative to the number of resource types.
 
 **Action:** Use `ThreadPoolExecutor` and `@cached` for bulk resource discovery operations to minimize latency in interactive features like fuzzy search.
+
+## 2026-05-24 - [Optimizing Image Pull Secret Diagnostics]
+**Learning:** Sequential 'kubectl' calls for each ServiceAccount found in a pod list created an O(N) bottleneck. Additionally, using direct 'subprocess.run' bypassed the centralized caching and hardening logic of the unified fetcher.
+
+**Action:** Replace sequential resource lookups with batch fetches (e.g., all ServiceAccounts in a namespace) using 'get_raw_resources' to reduce shell overhead from O(N) to O(1).
