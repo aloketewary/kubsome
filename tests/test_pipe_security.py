@@ -20,13 +20,27 @@ def test_apply_pipe_blocked_commands():
     result = apply_pipe(output, "ls /")
     assert "Error: Command 'ls' is not allowed" in result
 
+    # Test awk and sed (now blocked)
+    assert "Error: Command 'awk' is not allowed" in apply_pipe(output, "awk '{print $1}'")
+    assert "Error: Command 'sed' is not allowed" in apply_pipe(output, "sed 's/a/b/'")
+
     # Test command injection attempt
     result = apply_pipe(output, "grep foo; touch /tmp/jules_pwned")
     # shlex.split will treat 'grep foo; touch /tmp/jules_pwned' as ['grep', 'foo;', 'touch', '/tmp/jules_pwned']
     # If it tries to run grep with these args, it's fine as long as shell=False.
     # Actually, shlex.split treats ; as a literal character unless it's a shell-like split.
     # Our implementation uses shlex.split(segment) where segment is the whole chain if no | is present.
-    assert "Error" not in result # grep will just fail to find anything
+    # Now it will fail because of '/' in arguments
+    assert "Error: Arguments containing '/' or '..' are not allowed" in result
+
+def test_apply_pipe_path_blocking():
+    output = "some data"
+
+    # Absolute path blocking
+    assert "Error: Arguments containing '/' or '..' are not allowed" in apply_pipe(output, "grep . /etc/passwd")
+
+    # Traversal blocking
+    assert "Error: Arguments containing '/' or '..' are not allowed" in apply_pipe(output, "grep . ../file")
 
 def test_apply_pipe_chain_injection():
     output = "some data"

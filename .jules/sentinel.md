@@ -52,3 +52,8 @@
 **Vulnerability:** The `apply_pipe` function in `core/pipe.py` used `subprocess.run(..., shell=True)` to execute user-provided pipe chains (e.g., `grep foo`), allowing for arbitrary command execution via shell metacharacters (e.g., `grep foo; rm -rf /`).
 **Learning:** Even "utility" functions that provide convenience features like piping can be dangerous if they rely on the shell for execution. Whitelisting allowed commands and manually chaining processes with `shell=False` is the only secure way to implement this.
 **Prevention:** Implement a strict whitelist of allowed binaries for piping. Use list-based `subprocess.run` or `Popen` with `shell=False`. Ensure the splitter correctly handles quotes to prevent bypassing the whitelist (e.g., `grep 'pattern | touch /tmp/pwned'`).
+
+## 2026-06-10 - [HIGH] Excessive Whitelist and Path Traversal in Pipe Implementation
+**Vulnerability:** The pipe implementation in `core/pipe.py` whitelisted `awk` and `sed`, which allow arbitrary command execution via their own internal script handlers (e.g., awk's `system()`). Additionally, it lacked validation for command arguments, allowing users to read arbitrary local files by passing absolute paths or traversal sequences (e.g., `grep . /etc/passwd`).
+**Learning:** Whitelisting commands is not enough if the commands themselves are powerful enough to execute other programs or if they can be directed to unauthorized files. `shell=False` protects against shell injection but not against application-level logic flaws in the executed binaries.
+**Prevention:** Remove dangerous tools from whitelists. Validate all arguments for disallowed patterns like absolute paths (`/`) or parent directory references (`..`) before execution.
