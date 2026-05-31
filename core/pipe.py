@@ -15,7 +15,7 @@ from rich.console import Console
 # Allowed commands for piping to prevent arbitrary command execution
 ALLOWED_COMMANDS = {
     "grep", "head", "tail", "sort", "wc", "uniq",
-    "awk", "sed", "cut", "tr", "cat"
+    "cut", "tr", "cat"
 }
 
 def split_pipe(user_input):
@@ -91,6 +91,12 @@ def apply_pipe(output_text, pipe_chain):
             cmd = args[0]
             if cmd not in ALLOWED_COMMANDS:
                 return f"Error: Command '{cmd}' is not allowed in pipe chain."
+
+            # Security: Block file path arguments to prevent unauthorized file access
+            # We check all arguments for '/' or '..'
+            for arg in args[1:]:
+                if "/" in arg or ".." in arg:
+                    return f"Error: Arguments containing '/' or '..' are not allowed for security reasons."
 
             # Execute each segment sequentially, feeding output of previous as input to next
             result = subprocess.run(
