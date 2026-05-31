@@ -44,3 +44,8 @@
 **Learning:** Sequential `kubectl` calls to fetch names for multiple resource types (Pods, Deployments, Services, etc.) for fuzzy searching created a significant latency floor. By parallelizing these independent I/O tasks using `ThreadPoolExecutor` and applying a 60-second cache, the search response time was reduced from O(N) to O(1) relative to the number of resource types.
 
 **Action:** Use `ThreadPoolExecutor` and `@cached` for bulk resource discovery operations to minimize latency in interactive features like fuzzy search.
+
+## 2026-05-23 - [N+1 Problem in Node Operations]
+**Learning:** Sequential kubectl calls within a loop (e.g., counting pods for every node) create a massive performance bottleneck that scales linearly with cluster size. By fetching all resources in a single batch and aggregating in memory, we can reduce complexity from O(N) to O(1) external process executions. Additionally, using a ThreadPoolExecutor to parallelize independent batch fetches (e.g., Nodes and Pods) further minimizes the latency floor to the slowest single call.
+
+**Action:** Always batch resource lookups and use in-memory aggregation instead of per-item kubectl calls in loops. Leverage ThreadPoolExecutor for independent batch operations.
