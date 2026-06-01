@@ -74,24 +74,26 @@ def search_incidents(query=None, days=90, limit=20):
 
     _ensure_tables(conn)
 
-    filters = [f"started::TIMESTAMP >= NOW() - INTERVAL '{days} days'"]
+    params = [days]
+    filters = ["started::TIMESTAMP >= NOW() - INTERVAL (?) DAY"]
     if query:
+        q = f"%{query}%"
         filters.append(
-            f"(title LIKE '%{query}%' "
-            f"OR root_cause LIKE '%{query}%' "
-            f"OR resolution LIKE '%{query}%')"
+            "(title LIKE ? OR root_cause LIKE ? OR resolution LIKE ?)"
         )
+        params.extend([q, q, q])
 
     where = " AND ".join(filters)
 
+    params.append(limit)
     rows = conn.execute(f"""
         SELECT id, title, started, ended, duration_min,
                context, namespace, root_cause, resolution
         FROM incidents
         WHERE {where}
         ORDER BY started DESC
-        LIMIT {limit}
-    """).fetchall()
+        LIMIT ?
+    """, params).fetchall()
 
     cols = [
         "id", "title", "started", "ended", "duration_min",
@@ -112,26 +114,26 @@ def incident_metrics(days=90):
 
     _ensure_tables(conn)
 
-    row = conn.execute(f"""
+    row = conn.execute("""
         SELECT
             COUNT(*) AS total,
             AVG(duration_min)::INTEGER AS avg_mttr_min,
             MAX(duration_min) AS max_duration_min,
             MIN(duration_min) AS min_duration_min
         FROM incidents
-        WHERE started::TIMESTAMP >= NOW() - INTERVAL '{days} days'
+        WHERE started::TIMESTAMP >= NOW() - INTERVAL (?) DAY
           AND duration_min > 0
-    """).fetchone()
+    """, [days]).fetchone()
 
-    top_causes = conn.execute(f"""
+    top_causes = conn.execute("""
         SELECT root_cause, COUNT(*) AS count
         FROM incidents
-        WHERE started::TIMESTAMP >= NOW() - INTERVAL '{days} days'
+        WHERE started::TIMESTAMP >= NOW() - INTERVAL (?) DAY
           AND root_cause != ''
         GROUP BY root_cause
         ORDER BY count DESC
         LIMIT 5
-    """).fetchall()
+    """, [days]).fetchall()
 
     return {
         "total_incidents": row[0] if row else 0,

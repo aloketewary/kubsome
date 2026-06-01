@@ -52,3 +52,8 @@
 **Vulnerability:** The `apply_pipe` function in `core/pipe.py` used `subprocess.run(..., shell=True)` to execute user-provided pipe chains (e.g., `grep foo`), allowing for arbitrary command execution via shell metacharacters (e.g., `grep foo; rm -rf /`).
 **Learning:** Even "utility" functions that provide convenience features like piping can be dangerous if they rely on the shell for execution. Whitelisting allowed commands and manually chaining processes with `shell=False` is the only secure way to implement this.
 **Prevention:** Implement a strict whitelist of allowed binaries for piping. Use list-based `subprocess.run` or `Popen` with `shell=False`. Ensure the splitter correctly handles quotes to prevent bypassing the whitelist (e.g., `grep 'pattern | touch /tmp/pwned'`).
+
+## 2025-06-10 - [CRITICAL] SQL Injection in Analytics Engine
+**Vulnerability:** User-controlled input (search queries, context names, days/intervals) was interpolated directly into SQL strings using f-strings, allowing for arbitrary SQL execution against the DuckDB analytics database.
+**Learning:** Even with an "analytical" or "local" database like DuckDB, SQL injection is a critical risk if the data is exposed via an API. Traditional parameterization using `?` placeholders is necessary. DuckDB's interval syntax `INTERVAL (?) DAY` is the correct way to parameterize dynamic time ranges.
+**Prevention:** Always use parameterized queries (placeholders like `?` or `$1`) and pass variables as a separate list/tuple to the `execute` method. Never use f-strings or `.format()` to build SQL queries from user-influenced data.

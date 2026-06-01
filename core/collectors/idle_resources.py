@@ -147,18 +147,18 @@ def _detect_idle_deployments(ctx, ns):
     """Find deployments with near-zero CPU usage over 24h+."""
     try:
         from core.analytics.engine import execute
-        rows = execute(f"""
+        rows = execute("""
             SELECT deployment, namespace,
                    AVG(cpu_avg)::INTEGER AS cpu_avg,
                    AVG(mem_avg)::INTEGER AS mem_avg,
                    AVG(pod_count)::INTEGER AS pods
             FROM hourly_pod_metrics
-            WHERE context = '{ctx}'
+            WHERE context = ?
               AND hour >= NOW() - INTERVAL '24 hours'
               AND deployment != ''
             GROUP BY deployment, namespace
             HAVING cpu_avg < 2 AND mem_avg < 10 AND pods > 0
-        """)
+        """, [ctx])
         return [
             {
                 "kind": "Deployment",
