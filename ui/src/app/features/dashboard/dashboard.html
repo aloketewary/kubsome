@@ -37,6 +37,40 @@
     </div>
   </app-holo-card>
 
+  <!-- ─── Growth Insights ──────────────────────────────────────────── -->
+  <div class="insight-container">
+    @if (totalTimeSavedMins > 60) {
+      <div class="insight-pill insight-roi" pTooltip="Time saved via Kubsome automation">
+        <i class="pi pi-clock"></i>
+        <span>{{ Math.floor(totalTimeSavedMins / 60) }}h saved</span>
+      </div>
+    }
+    @if (activitySummary) {
+      <div class="insight-pill" (click)="router.navigate(['/timeline'])" pTooltip="Recent cluster mutations">
+        <i class="pi pi-history"></i>
+        <span>{{ activitySummary }}</span>
+      </div>
+    }
+    @if (activeIncident) {
+      <div class="insight-pill insight-warn" (click)="router.navigate(['/incident'])" pTooltip="Ongoing incident investigation">
+        <i class="pi pi-exclamation-triangle"></i>
+        <span>Active Incident: {{ activeIncident.title }}</span>
+      </div>
+    }
+    @if (hasHighInstability) {
+      <div class="insight-pill insight-crit" (click)="router.navigate(['/pods'])">
+        <app-status-beacon status="critical" size="sm" />
+        <span>High instability detected</span>
+      </div>
+    }
+    @if ((costTrend?.trend || 0) > 5) {
+      <div class="insight-pill insight-warn" (click)="router.navigate(['/cost'])">
+        <i class="pi pi-chart-line"></i>
+        <span>Cost trend: +{{ costTrend.trend }}%</span>
+      </div>
+    }
+  </div>
+
   <!-- ─── Alert Banner ─────────────────────────────────────────────── -->
   @if (data.pods.critical > 0 || data.nodes.warning > 0) {
     <div class="alert-banner">

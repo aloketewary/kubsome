@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { CostEstimateComponent } from './cost-estimate.component';
+import { CostEstimateComponent } from './cost-estimate';
 
 describe('CostEstimateComponent', () => {
   let component: CostEstimateComponent;

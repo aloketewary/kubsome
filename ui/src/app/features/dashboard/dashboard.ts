@@ -32,6 +32,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   stats: any = null;
   costTrend: any = null;
   activeIncident: any = null;
+  activity24h: any = null;
 
   get podTotal() { return (this.data?.pods.healthy || 0) + (this.data?.pods.warning || 0) + (this.data?.pods.critical || 0); }
   get nodeTotal() { return (this.data?.nodes.healthy || 0) + (this.data?.nodes.warning || 0); }
@@ -55,6 +56,30 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (this.overallHealth === 'degraded') return 'amber';
     return 'green';
   }
+
+  private readonly SAVED_PER_CMD = 2;
+  private readonly SAVED_PER_FIX = 15;
+
+  get totalTimeSavedMins(): number {
+    if (!this.stats) return 0;
+    return (this.stats.total_commands || 0) * this.SAVED_PER_CMD + (this.stats.auto_remediations || 0) * this.SAVED_PER_FIX;
+  }
+
+  get activitySummary(): string {
+    if (!this.activity24h?.changes) return '';
+    const restarts = this.activity24h.changes.restarts?.length || 0;
+    const scaling = this.activity24h.changes.scaling?.length || 0;
+    const parts = [];
+    if (restarts > 0) parts.push(`${restarts} restarts`);
+    if (scaling > 0) parts.push(`${scaling} scaling events`);
+    return parts.length > 0 ? `24h: ${parts.join(', ')}` : '';
+  }
+
+  get hasHighInstability(): boolean {
+    return (this.data?.pods.critical || 0) > 3;
+  }
+
+  protected readonly Math = Math;
 
   pct(value: number, total: number): number { return total === 0 ? 0 : Math.round((value / total) * 100); }
   goToPods() { this.router.navigate(['/pods']); }
@@ -83,6 +108,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.api.getStats().subscribe({ next: (res) => (this.stats = res), error: () => {} });
     this.api.getCostTrend().subscribe({ next: (res) => (this.costTrend = res), error: () => {} });
     this.api.getIncidentStatus().subscribe({ next: (res) => { this.activeIncident = res.id ? res : null; }, error: () => {} });
+    this.api.getDiffTimeline(24).subscribe({ next: (res) => (this.activity24h = res), error: () => {} });
     this.lastUpdated = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   }
 
