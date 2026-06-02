@@ -37,6 +37,34 @@
     </div>
   </app-holo-card>
 
+  <!-- ─── Growth Insights ──────────────────────────────────────────── -->
+  <div class="insight-container">
+    @if (activeIncident) {
+      <div class="insight-pill insight-pill-red" (click)="router.navigate(['/incident'])">
+        <i class="pi pi-exclamation-triangle"></i>
+        <span>Active Incident: {{ activeIncident.title }}</span>
+      </div>
+    }
+    @if (totalTimeSavedMins > 60) {
+      <div class="insight-pill insight-pill-gold" (click)="router.navigate(['/stats'])">
+        <i class="pi pi-clock"></i>
+        <span>ROI Milestone: {{ Math.floor(totalTimeSavedMins / 60) }}h saved this month</span>
+      </div>
+    }
+    @if ((data?.pods?.warning || 0) + (data?.pods?.critical || 0) > 3) {
+      <div class="insight-pill insight-pill-orange" (click)="goToPods()">
+        <i class="pi pi-chart-line"></i>
+        <span>High Instability: {{ (data?.pods?.warning || 0) + (data?.pods?.critical || 0) }} pods need attention</span>
+      </div>
+    }
+    @if (activitySummary) {
+      <div class="insight-pill" (click)="router.navigate(['/timeline'])">
+        <i class="pi pi-history"></i>
+        <span>24h Activity: {{ activitySummary }}</span>
+      </div>
+    }
+  </div>
+
   <!-- ─── Alert Banner ─────────────────────────────────────────────── -->
   @if (data.pods.critical > 0 || data.nodes.warning > 0) {
     <div class="alert-banner">

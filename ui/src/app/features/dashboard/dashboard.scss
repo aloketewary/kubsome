@@ -20,6 +20,46 @@
 .health-sub { font-size: 11px; color: var(--text-muted); display: block; margin-top: 2px; }
 .health-metrics { display: flex; gap: 0; }
 
+/* ─── Insights ───────────────────────────────────────────────────── */
+.insight-container {
+  display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0;
+}
+.insight-pill {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 12px; border-radius: 20px;
+  background: rgba(208,156,96,0.05);
+  border: 1px solid rgba(208,156,96,0.15);
+  color: #d09c60; font-size: 11px; font-weight: 500;
+  cursor: pointer; transition: all 0.2s;
+}
+.insight-pill:hover {
+  background: rgba(208,156,96,0.1);
+  border-color: rgba(208,156,96,0.3);
+  transform: translateY(-1px);
+  box-shadow: 0 0 10px rgba(208,156,96,0.1);
+}
+.insight-pill-red {
+  background: rgba(244,63,94,0.05); border-color: rgba(244,63,94,0.2); color: #f43f5e;
+}
+.insight-pill-red:hover {
+  background: rgba(244,63,94,0.1); border-color: rgba(244,63,94,0.4);
+  box-shadow: 0 0 10px rgba(244,63,94,0.1);
+}
+.insight-pill-gold {
+  background: rgba(255,215,0,0.05); border-color: rgba(255,215,0,0.2); color: #ffd700;
+}
+.insight-pill-gold:hover {
+  background: rgba(255,215,0,0.1); border-color: rgba(255,215,0,0.4);
+  box-shadow: 0 0 10px rgba(255,215,0,0.1);
+}
+.insight-pill-orange {
+  background: rgba(245,158,11,0.05); border-color: rgba(245,158,11,0.2); color: #f59e0b;
+}
+.insight-pill-orange:hover {
+  background: rgba(245,158,11,0.1); border-color: rgba(245,158,11,0.4);
+  box-shadow: 0 0 10px rgba(245,158,11,0.1);
+}
+
 /* ─── Alert Banner ───────────────────────────────────────────────── */
 .alert-banner {
   display: flex; align-items: center; gap: 10px;
@@ -123,6 +163,8 @@
   .alert-banner { border-top-color: rgba(220,38,38,0.12); background: rgba(220,38,38,0.03); }
   .alert-btn-ai { border-color: rgba(154,81,41,0.15); background: rgba(154,81,41,0.04); color: #9a5129; }
   .alert-btn-ai:hover { background: rgba(154,81,41,0.08); }
+  .insight-pill { background: rgba(0,0,0,0.03); border-color: rgba(0,0,0,0.08); }
+  .insight-pill:hover { background: rgba(0,0,0,0.05); }
   .action-card { border-top-color: rgba(0,0,0,0.05); }
   .action-card:hover { color: #9a5129; }
   .sk-hero, .sk-card { background: rgba(0,0,0,0.03); }

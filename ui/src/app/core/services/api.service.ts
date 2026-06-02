@@ -150,4 +150,30 @@ export class ApiService {
   getCostTrend(): Observable<any> {
     return this.http.get<any>(`${this.base}/cost-trend`);
   }
+
+  getDiffTimeline(hours = 24): Observable<any> {
+    return this.http.get<any>(`${this.base}/diff-timeline`, { params: { hours } });
+  }
+
+  getScorecard(): Observable<any> {
+    return this.http.get<any>(`${this.base}/scorecard`);
+  }
+
+  getAiSuggestions(): Observable<any> {
+    return this.http.get<any>(`${this.base}/ai/suggestions`);
+  }
+
+  remediate(pod: string): Observable<any> {
+    return this.http.post<any>(`${this.base}/remediate/${pod}`, {});
+  }
+
+  getDoctor(): Observable<any> {
+    return this.http.get<any>(`${this.base}/doctor`);
+  }
+
+  getAudit(limit = 50, action?: string): Observable<any> {
+    const params: any = { limit };
+    if (action) params.action = action;
+    return this.http.get<any>(`${this.base}/audit`, { params });
+  }
 }
