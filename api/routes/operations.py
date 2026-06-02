@@ -698,18 +698,29 @@ class WaitRequest(BaseModel):
 @router.get("/node-ops")
 def get_node_ops():
     """List nodes with scheduling status and pod counts."""
-    import subprocess, json
+    from concurrent.futures import ThreadPoolExecutor
     from core.context import context as ctx
-    cmd = [
-        "kubectl", "--context", str(ctx.current_context or ""),
-        "get", "nodes", "-o", "json"
-    ]
-    r = subprocess.run(cmd, capture_output=True, text=True)
-    if r.returncode != 0:
-        return {"nodes": []}
-    data = json.loads(r.stdout)
+    from core.k8s import get_raw_resources
+
+    kctx = ctx.current_context
+
+    # Bolt: Parallelize nodes and pods fetching to eliminate N+1 subprocess latency
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        f_nodes = executor.submit(get_raw_resources, "nodes", kctx)
+        f_pods = executor.submit(get_raw_resources, "pods", kctx, all_namespaces=True)
+
+        node_data = f_nodes.result()
+        pod_data = f_pods.result()
+
+    # Aggregate pod counts by node name in-memory
+    pod_counts = {}
+    for pod in pod_data.get("items", []):
+        node_name = pod.get("spec", {}).get("nodeName")
+        if node_name:
+            pod_counts[node_name] = pod_counts.get(node_name, 0) + 1
+
     nodes = []
-    for item in data.get("items", []):
+    for item in node_data.get("items", []):
         conditions = item["status"].get("conditions", [])
         ready = any(
             c["type"] == "Ready" and c["status"] == "True"
@@ -718,18 +729,12 @@ def get_node_ops():
         spec = item.get("spec", {})
         schedulable = not spec.get("unschedulable", False)
         name = item["metadata"]["name"]
-        # Count pods on node
-        cmd2 = [
-            "kubectl", "--context", str(ctx.current_context or ""),
-            "get", "pods", "--all-namespaces",
-            f"--field-selector=spec.nodeName={name}",
-            "-o", "jsonpath={.items[*].metadata.name}"
-        ]
-        r2 = subprocess.run(cmd2, capture_output=True, text=True)
-        pods_count = len(r2.stdout.strip().split()) if r2.stdout.strip() else 0
+
         nodes.append({
-            "name": name, "ready": ready,
-            "schedulable": schedulable, "pods_count": pods_count
+            "name": name,
+            "ready": ready,
+            "schedulable": schedulable,
+            "pods_count": pod_counts.get(name, 0)
         })
     return {"nodes": nodes}
 
