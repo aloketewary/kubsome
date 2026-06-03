@@ -20,6 +20,37 @@
 .health-sub { font-size: 11px; color: var(--text-muted); display: block; margin-top: 2px; }
 .health-metrics { display: flex; gap: 0; }
 
+/* ─── Insight Pills ─────────────────────────────────────────────── */
+.insight-container {
+  display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px;
+}
+.insight-pill {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 12px; border-radius: 20px; cursor: pointer;
+  background: rgba(94,84,75,0.06); border: 1px solid rgba(94,84,75,0.1);
+  transition: all 0.2s;
+}
+.insight-pill:hover { transform: translateY(-1px); border-color: rgba(94,84,75,0.25); background: rgba(94,84,75,0.1); }
+.insight-pill i { font-size: 12px; }
+.ip-lbl { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
+.ip-val { font-size: 11px; font-weight: 600; color: var(--text); }
+
+.insight-pill.critical { background: rgba(244,63,94,0.06); border-color: rgba(244,63,94,0.15); }
+.insight-pill.critical i { color: #f43f5e; }
+.insight-pill.critical:hover { background: rgba(244,63,94,0.1); border-color: rgba(244,63,94,0.3); }
+
+.insight-pill.warning { background: rgba(245,158,11,0.06); border-color: rgba(245,158,11,0.15); }
+.insight-pill.warning i { color: #f59e0b; }
+.insight-pill.warning:hover { background: rgba(245,158,11,0.1); border-color: rgba(245,158,11,0.3); }
+
+.insight-pill.success { background: rgba(74,222,128,0.06); border-color: rgba(74,222,128,0.15); }
+.insight-pill.success i { color: #4ade80; }
+.insight-pill.success:hover { background: rgba(74,222,128,0.1); border-color: rgba(74,222,128,0.3); }
+
+.insight-pill.info { background: rgba(56,189,248,0.06); border-color: rgba(56,189,248,0.15); }
+.insight-pill.info i { color: #38bdf8; }
+.insight-pill.info:hover { background: rgba(56,189,248,0.1); border-color: rgba(56,189,248,0.3); }
+
 /* ─── Alert Banner ───────────────────────────────────────────────── */
 .alert-banner {
   display: flex; align-items: center; gap: 10px;

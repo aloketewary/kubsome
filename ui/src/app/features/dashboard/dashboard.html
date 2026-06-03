@@ -37,6 +37,49 @@
     </div>
   </app-holo-card>
 
+  <!-- ─── Insight Pills ────────────────────────────────────────────── -->
+  <div class="insight-container">
+    @if (activeIncident) {
+      <div class="insight-pill critical" (click)="router.navigate(['/incident'])">
+        <i class="pi pi-exclamation-triangle"></i>
+        <span class="ip-lbl">Active Incident</span>
+        <span class="ip-val">{{ activeIncident.title }}</span>
+      </div>
+    }
+
+    @if (totalTimeSavedMins > 60) {
+      <div class="insight-pill success" (click)="router.navigate(['/stats'])">
+        <i class="pi pi-bolt"></i>
+        <span class="ip-lbl">ROI Milestone</span>
+        <span class="ip-val">{{ Math.floor(totalTimeSavedMins/60) }}h saved</span>
+      </div>
+    }
+
+    @if (costTrend?.trend === 'growing') {
+      <div class="insight-pill warning" (click)="router.navigate(['/cost'])">
+        <i class="pi pi-chart-line"></i>
+        <span class="ip-lbl">Cost Trend</span>
+        <span class="ip-val">Increasing</span>
+      </div>
+    }
+
+    @if (data.pods.critical > 3) {
+      <div class="insight-pill critical" (click)="goToPods()">
+        <i class="pi pi-activity"></i>
+        <span class="ip-lbl">Instability</span>
+        <span class="ip-val">High</span>
+      </div>
+    }
+
+    @if (diffTimeline?.total > 0) {
+      <div class="insight-pill info" (click)="router.navigate(['/timeline'])">
+        <i class="pi pi-history"></i>
+        <span class="ip-lbl">24h Activity</span>
+        <span class="ip-val">{{ diffTimeline.total }} changes</span>
+      </div>
+    }
+  </div>
+
   <!-- ─── Alert Banner ─────────────────────────────────────────────── -->
   @if (data.pods.critical > 0 || data.nodes.warning > 0) {
     <div class="alert-banner">

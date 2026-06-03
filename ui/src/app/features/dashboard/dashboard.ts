@@ -32,6 +32,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
   stats: any = null;
   costTrend: any = null;
   activeIncident: any = null;
+  diffTimeline: any = null;
+  Math = Math;
+
+  get totalTimeSavedMins(): number {
+    if (!this.stats) return 0;
+    const resolved = (this.stats.total_commands || 0) - (this.stats.unresolved_count || 0);
+    return (resolved * 2) + ((this.stats.auto_remediations || 0) * 15);
+  }
 
   get podTotal() { return (this.data?.pods.healthy || 0) + (this.data?.pods.warning || 0) + (this.data?.pods.critical || 0); }
   get nodeTotal() { return (this.data?.nodes.healthy || 0) + (this.data?.nodes.warning || 0); }
@@ -83,6 +91,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.api.getStats().subscribe({ next: (res) => (this.stats = res), error: () => {} });
     this.api.getCostTrend().subscribe({ next: (res) => (this.costTrend = res), error: () => {} });
     this.api.getIncidentStatus().subscribe({ next: (res) => { this.activeIncident = res.id ? res : null; }, error: () => {} });
+    this.api.getDiffTimeline(24).subscribe({ next: (res) => (this.diffTimeline = res), error: () => {} });
     this.lastUpdated = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   }
 
