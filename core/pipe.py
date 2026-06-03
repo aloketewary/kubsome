@@ -12,10 +12,12 @@ import shlex
 from io import StringIO
 from rich.console import Console
 
-# Allowed commands for piping to prevent arbitrary command execution
+# Allowed commands for piping to prevent arbitrary command execution.
+# Commands like 'awk', 'sed', and 'cat' are excluded as they can be
+# abused for arbitrary command execution or unauthorized file access.
 ALLOWED_COMMANDS = {
     "grep", "head", "tail", "sort", "wc", "uniq",
-    "awk", "sed", "cut", "tr", "cat"
+    "cut", "tr"
 }
 
 def split_pipe(user_input):
@@ -91,6 +93,30 @@ def apply_pipe(output_text, pipe_chain):
             cmd = args[0]
             if cmd not in ALLOWED_COMMANDS:
                 return f"Error: Command '{cmd}' is not allowed in pipe chain."
+
+            # Security check: Prevent path traversal and unauthorized file access.
+            # We block arguments that appear to be file paths while allowing
+            # common patterns (like URLs) that might contain slashes.
+            import os
+            for arg in args[1:]:
+                if ".." in arg:
+                    # Special case: allow '...' as a literal pattern if it's not actually '..'
+                    # But '..' is strictly forbidden.
+                    if arg == "..":
+                        return f"Error: Directory traversal sequence '..' is not allowed: {arg}"
+                    # If it's more than two dots, it might be a pattern.
+                    # A more robust check:
+                    import re
+                    if re.search(r'(^|[\\/])\.\.([\\/]|$)', arg) or arg == "..":
+                         return f"Error: Directory traversal sequences '..' are not allowed: {arg}"
+
+                # Check for path separators (both / and Windows-style \)
+                has_sep = "/" in arg or "\\" in arg
+
+                # Block if it's an existing file, an absolute path, or looks like a relative path
+                # this prevents 'grep foo /etc/passwd' or 'grep foo ./config.yaml'
+                if os.path.exists(arg) or os.path.isabs(arg) or arg.startswith("./") or arg.startswith(".\\"):
+                    return f"Error: File paths are not allowed as pipe arguments: {arg}"
 
             # Execute each segment sequentially, feeding output of previous as input to next
             result = subprocess.run(

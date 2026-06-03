@@ -23,10 +23,8 @@ def test_apply_pipe_blocked_commands():
     # Test command injection attempt
     result = apply_pipe(output, "grep foo; touch /tmp/jules_pwned")
     # shlex.split will treat 'grep foo; touch /tmp/jules_pwned' as ['grep', 'foo;', 'touch', '/tmp/jules_pwned']
-    # If it tries to run grep with these args, it's fine as long as shell=False.
-    # Actually, shlex.split treats ; as a literal character unless it's a shell-like split.
-    # Our implementation uses shlex.split(segment) where segment is the whole chain if no | is present.
-    assert "Error" not in result # grep will just fail to find anything
+    # Now it should be blocked because it's an absolute path.
+    assert "Error: File paths are not allowed as pipe arguments" in result
 
 def test_apply_pipe_chain_injection():
     output = "some data"
@@ -58,3 +56,43 @@ def test_apply_pipe_complex_chain():
 def test_grep_no_match():
     output = "hello world"
     assert apply_pipe(output, "grep non-existent") == ""
+
+def test_pipe_vulnerabilities_fixed():
+    output = "test data"
+
+    # 1. awk arbitrary command execution
+    assert "Error: Command 'awk' is not allowed" in apply_pipe(output, "awk 'BEGIN {system(\"echo pwned\")}'")
+
+    # 2. sed arbitrary command execution
+    assert "Error: Command 'sed' is not allowed" in apply_pipe(output, "sed '1e echo pwned'")
+
+    # 3. cat arbitrary file read
+    res = apply_pipe(output, "cat /etc/hostname")
+    assert "Error: Command 'cat' is not allowed" in res
+
+    # 4. grep arbitrary file read (absolute path blocking)
+    res = apply_pipe(output, "grep . /etc/hostname")
+    assert "Error: File paths are not allowed as pipe arguments" in res
+
+    # 5. grep arbitrary file read (relative path traversal)
+    res = apply_pipe(output, "grep . ../../../etc/hostname")
+    # It might be blocked by '..' check or 'File paths' check depending on which comes first
+    # In my current implementation, shlex.split("grep . ../../../etc/hostname") -> ['grep', '.', '../../../etc/hostname']
+    # The first arg after cmd is '.', which is an existing file (current dir).
+    assert "Error" in res
+
+    # 6. grep with pattern containing slashes (should be allowed if not a file)
+    output_url = "Accessing https://google.com"
+    res = apply_pipe(output_url, "grep https://")
+    assert res.strip() == "Accessing https://google.com"
+
+    # 7. grep with local file (should be blocked)
+    import os
+    with open("temp_test_secret.txt", "w") as f:
+        f.write("sensitive info")
+    try:
+        res = apply_pipe(output, "grep info temp_test_secret.txt")
+        assert "Error: File paths are not allowed as pipe arguments" in res
+    finally:
+        if os.path.exists("temp_test_secret.txt"):
+            os.remove("temp_test_secret.txt")
