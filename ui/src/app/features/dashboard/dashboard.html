@@ -37,6 +37,40 @@
     </div>
   </app-holo-card>
 
+  <!-- ─── Growth Insights ───────────────────────────────────────────── -->
+  <div class="insight-container">
+    @if (activeIncident) {
+      <div class="insight-pill insight-incident" (click)="router.navigate(['/incident'])">
+        <i class="pi pi-exclamation-circle"></i>
+        <span>Active Incident: {{ activeIncident.title }}</span>
+      </div>
+    }
+    @if (totalTimeSavedMins > 60) {
+      <div class="insight-pill insight-roi" (click)="router.navigate(['/stats'])">
+        <i class="pi pi-verified"></i>
+        <span>ROI Milestone: {{ Math.floor(totalTimeSavedMins/60) }}h saved</span>
+      </div>
+    }
+    @if (costTrend?.trend === 'growing') {
+      <div class="insight-pill insight-cost" (click)="router.navigate(['/cost'])">
+        <i class="pi pi-chart-line"></i>
+        <span>Cost Trend: +{{ Math.round((costTrend.growth_factor-1)*100) }}% projected</span>
+      </div>
+    }
+    @if (data.pods.critical > 3) {
+      <div class="insight-pill insight-instability" (click)="goToPods()">
+        <i class="pi pi-bolt"></i>
+        <span>High Instability: {{ data.pods.critical }} critical pods</span>
+      </div>
+    }
+    @if (diffTimeline) {
+      <div class="insight-pill insight-activity" (click)="router.navigate(['/timeline'])">
+        <i class="pi pi-history"></i>
+        <span>24h Activity: {{ activitySummary }}</span>
+      </div>
+    }
+  </div>
+
   <!-- ─── Alert Banner ─────────────────────────────────────────────── -->
   @if (data.pods.critical > 0 || data.nodes.warning > 0) {
     <div class="alert-banner">
@@ -117,6 +151,18 @@
       </div>
     </app-holo-card>
   </div>
+
+  <!-- ─── Pro Tip ──────────────────────────────────────────────────── -->
+  @if (activeProTip) {
+    <div class="pro-tip" (click)="activeProTip.query ? router.navigate([activeProTip.route], { queryParams: { q: activeProTip.query } }) : router.navigate([activeProTip.route])">
+      <div class="tip-icon"><i class="pi pi-lightbulb"></i></div>
+      <div class="tip-content">
+        <span class="tip-label">PRO TIP</span>
+        <span class="tip-text">{{ activeProTip.text }}</span>
+      </div>
+      <i class="pi pi-chevron-right tip-arrow"></i>
+    </div>
+  }
 
   <!-- ─── Recent Events ────────────────────────────────────────────── -->
   <app-holo-card title="Recent Events" icon="pi pi-bolt" glow="none" [compact]="true">

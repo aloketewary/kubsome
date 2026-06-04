@@ -57,6 +57,9 @@
       <div class="empty-icon"><i class="pi pi-search"></i></div>
       <span>No results for "{{ lastQuery }}"</span>
       <span class="empty-hint">Try a partial name or different resource type</span>
+      <button class="empty-ai-btn" (click)="router.navigate(['/ai'], { queryParams: { q: lastQuery } })">
+        <i class="pi pi-sparkles"></i> Ask AI Assistant instead
+      </button>
     </div>
   }
 }
@@ -67,5 +70,13 @@
     <div class="empty-icon"><i class="pi pi-search"></i></div>
     <span>Type a query and press Enter</span>
     <span class="empty-hint">Searches pods, deployments, services, configmaps, and more</span>
+    <div class="search-suggestions">
+      <span class="suggest-label">Try searching for:</span>
+      <div class="suggest-pills">
+        <span class="suggest-pill" (click)="query='pod'; doSearch()">pod</span>
+        <span class="suggest-pill" (click)="query='svc'; doSearch()">svc</span>
+        <span class="suggest-pill" (click)="query='error'; doSearch()">error</span>
+      </div>
+    </div>
   </div>
 }

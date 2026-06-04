@@ -1,5 +1,5 @@
 import { Component, inject, OnInit, OnDestroy } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { JsonPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TagModule } from 'primeng/tag';
@@ -47,6 +47,7 @@ interface PodGroup {
 export class PodsComponent implements OnInit, OnDestroy {
   private api = inject(ApiService);
   private ws = inject(WsService);
+  public router = inject(Router);
   private route = inject(ActivatedRoute);
   private watchSub: Subscription | null = null;
   private watchClose: (() => void) | null = null;

@@ -32,6 +32,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
   stats: any = null;
   costTrend: any = null;
   activeIncident: any = null;
+  diffTimeline: any = null;
+  scorecard: any = null;
+  activeProTip: any = null;
+
+  Math = Math;
 
   get podTotal() { return (this.data?.pods.healthy || 0) + (this.data?.pods.warning || 0) + (this.data?.pods.critical || 0); }
   get nodeTotal() { return (this.data?.nodes.healthy || 0) + (this.data?.nodes.warning || 0); }
@@ -54,6 +59,33 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (this.overallHealth === 'critical') return 'red';
     if (this.overallHealth === 'degraded') return 'amber';
     return 'green';
+  }
+
+  get totalTimeSavedMins(): number {
+    if (!this.stats) return 0;
+    return (this.stats.total_commands - this.stats.unresolved_count) * 2 + (this.stats.auto_remediations * 15);
+  }
+
+  get activitySummary(): string {
+    if (!this.diffTimeline) return '';
+    const restarts = this.diffTimeline.categories?.find((c: any) => c.name === 'Restarts')?.count || 0;
+    const deploys = this.diffTimeline.categories?.find((c: any) => c.name === 'Deployments')?.count || 0;
+    if (restarts === 0 && deploys === 0) return 'Quiet 24h';
+    return `${restarts} restarts, ${deploys} deploys (24h)`;
+  }
+
+  pickProTip() {
+    if (!this.stats) return;
+    const tips = [
+      { id: 'scorecard', icon: 'pi-trophy', text: 'Check your cluster health grade with Scorecard', route: '/scorecard' },
+      { id: 'security', icon: 'pi-shield', text: 'Run a security scan to find misconfigurations', route: '/ai', query: 'security scan' },
+      { id: 'optimize', icon: 'pi-dollar', text: 'Right-size your resources to save on cloud costs', route: '/cost' },
+      { id: 'timeline', icon: 'pi-history', text: 'View 24h cluster mutations in the Diff Timeline', route: '/timeline' },
+    ];
+    // Find a tip for a feature that hasn't been used much (just simple random for now if stats don't have per-command breakdown yet)
+    const usedCmds = this.stats.top_commands.map((c: any) => c[0]);
+    const unusedTips = tips.filter(t => !usedCmds.includes(t.id));
+    this.activeProTip = unusedTips.length > 0 ? unusedTips[Math.floor(Math.random() * unusedTips.length)] : tips[0];
   }
 
   pct(value: number, total: number): number { return total === 0 ? 0 : Math.round((value / total) * 100); }
@@ -80,9 +112,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
       next: (res) => { this.uptime = res; },
       error: () => { this.uptime = { cluster_down: false, day: new Date().toLocaleDateString('en', { weekday: 'long' }) }; },
     });
-    this.api.getStats().subscribe({ next: (res) => (this.stats = res), error: () => {} });
+    this.api.getStats().subscribe({ next: (res) => { this.stats = res; this.pickProTip(); }, error: () => {} });
     this.api.getCostTrend().subscribe({ next: (res) => (this.costTrend = res), error: () => {} });
     this.api.getIncidentStatus().subscribe({ next: (res) => { this.activeIncident = res.id ? res : null; }, error: () => {} });
+    this.api.getDiffTimeline(24).subscribe({ next: (res) => (this.diffTimeline = res), error: () => {} });
+    this.api.getScorecard().subscribe({ next: (res) => (this.scorecard = res), error: () => {} });
     this.lastUpdated = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   }
 

@@ -110,6 +110,9 @@
   <div class="empty-state">
     <div class="empty-icon"><i class="pi pi-box"></i></div>
     <span>No pods in this namespace</span>
+    <button class="empty-ai-btn" (click)="router.navigate(['/ai'], { queryParams: { q: 'how to deploy an app' } })">
+      <i class="pi pi-sparkles"></i> Ask AI how to deploy
+    </button>
   </div>
 }
 @if (loading && pods.length === 0) {
