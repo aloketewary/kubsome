@@ -3,6 +3,7 @@ Analytics API Routes — exposes DuckDB analytics engine
 to the Web UI (charts, cost, alerts, predictions, SQL, export).
 """
 
+import re
 from fastapi import APIRouter, Query
 
 from core.context import context
@@ -180,10 +181,25 @@ def run_sql_query(body: dict):
     sql = body.get("sql", "").strip()
     if not sql:
         return {"error": "No SQL provided"}
-    # Safety: block destructive statements
-    first_word = sql.split()[0].upper() if sql.split() else ""
-    if first_word in ("DROP", "DELETE", "TRUNCATE", "ALTER", "UPDATE"):
-        return {"error": f"{first_word} not allowed via API"}
+
+    # Safety: strip comments and validate first keyword
+    # Remove /* ... */ comments
+    clean_sql = re.sub(r"/\*.*?\*/", "", sql, flags=re.DOTALL)
+    # Remove -- comments
+    clean_sql = re.sub(r"--.*$", "", clean_sql, flags=re.MULTILINE)
+
+    tokens = clean_sql.split()
+    first_word = tokens[0].upper() if tokens else ""
+
+    # Allow only read-only statements
+    allowed_keywords = {"SELECT", "WITH", "DESCRIBE", "EXPLAIN", "SHOW", "SUMMARIZE"}
+    if first_word not in allowed_keywords:
+        return {"error": f"Statement type '{first_word}' not allowed via API"}
+
+    # Block multiple statements (semicolons) to prevent injection chaining
+    if ";" in clean_sql.strip().rstrip(";"):
+        return {"error": "Multiple statements not allowed"}
+
     try:
         from core.analytics.export import run_custom_query
         return run_custom_query(sql)
