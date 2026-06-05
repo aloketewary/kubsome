@@ -9,13 +9,15 @@ Examples:
 
 import subprocess
 import shlex
+import os
 from io import StringIO
 from rich.console import Console
 
-# Allowed commands for piping to prevent arbitrary command execution
+# Allowed commands for piping to prevent arbitrary command execution.
+# Removed 'awk', 'sed', and 'cat' as they allow arbitrary command execution or file access.
 ALLOWED_COMMANDS = {
     "grep", "head", "tail", "sort", "wc", "uniq",
-    "awk", "sed", "cut", "tr", "cat"
+    "cut", "tr"
 }
 
 def split_pipe(user_input):
@@ -91,6 +93,16 @@ def apply_pipe(output_text, pipe_chain):
             cmd = args[0]
             if cmd not in ALLOWED_COMMANDS:
                 return f"Error: Command '{cmd}' is not allowed in pipe chain."
+
+            # Hardening: Validate arguments to prevent file access or traversal
+            for arg in args[1:]:
+                # Block absolute paths or traversal
+                if os.path.isabs(arg) or ".." in arg:
+                    return f"Error: Forbidden argument '{arg}' in pipe segment."
+                # Block arguments that exist as files on the local system
+                # (allowing patterns like URLs which might contain slashes but don't exist as files)
+                if os.path.exists(arg):
+                    return f"Error: Forbidden argument (file path) '{arg}' in pipe segment."
 
             # Execute each segment sequentially, feeding output of previous as input to next
             result = subprocess.run(
