@@ -698,38 +698,41 @@ class WaitRequest(BaseModel):
 @router.get("/node-ops")
 def get_node_ops():
     """List nodes with scheduling status and pod counts."""
-    import subprocess, json
     from core.context import context as ctx
-    cmd = [
-        "kubectl", "--context", str(ctx.current_context or ""),
-        "get", "nodes", "-o", "json"
-    ]
-    r = subprocess.run(cmd, capture_output=True, text=True)
-    if r.returncode != 0:
-        return {"nodes": []}
-    data = json.loads(r.stdout)
+    from core.k8s import get_raw_resources
+    from concurrent.futures import ThreadPoolExecutor
+
+    # Bolt: optimize node-ops endpoint by eliminating N+1 bottleneck
+    # Fetches all nodes and all pods in parallel, then aggregates in-memory
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        f_nodes = executor.submit(get_raw_resources, "nodes", ctx.current_context)
+        f_pods = executor.submit(get_raw_resources, "pods", ctx.current_context, all_namespaces=True)
+
+        node_data = f_nodes.result()
+        pod_data = f_pods.result()
+
+    # Create a mapping of node name to pod count
+    pod_counts = {}
+    for pod in pod_data.get("items", []):
+        node_name = pod.get("spec", {}).get("nodeName")
+        if node_name:
+            pod_counts[node_name] = pod_counts.get(node_name, 0) + 1
+
     nodes = []
-    for item in data.get("items", []):
-        conditions = item["status"].get("conditions", [])
+    for item in node_data.get("items", []):
+        conditions = item.get("status", {}).get("conditions", [])
         ready = any(
-            c["type"] == "Ready" and c["status"] == "True"
+            c.get("type") == "Ready" and c.get("status") == "True"
             for c in conditions
         )
         spec = item.get("spec", {})
         schedulable = not spec.get("unschedulable", False)
         name = item["metadata"]["name"]
-        # Count pods on node
-        cmd2 = [
-            "kubectl", "--context", str(ctx.current_context or ""),
-            "get", "pods", "--all-namespaces",
-            f"--field-selector=spec.nodeName={name}",
-            "-o", "jsonpath={.items[*].metadata.name}"
-        ]
-        r2 = subprocess.run(cmd2, capture_output=True, text=True)
-        pods_count = len(r2.stdout.strip().split()) if r2.stdout.strip() else 0
         nodes.append({
-            "name": name, "ready": ready,
-            "schedulable": schedulable, "pods_count": pods_count
+            "name": name,
+            "ready": ready,
+            "schedulable": schedulable,
+            "pods_count": pod_counts.get(name, 0)
         })
     return {"nodes": nodes}
 

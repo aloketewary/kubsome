@@ -44,3 +44,8 @@
 **Learning:** Sequential `kubectl` calls to fetch names for multiple resource types (Pods, Deployments, Services, etc.) for fuzzy searching created a significant latency floor. By parallelizing these independent I/O tasks using `ThreadPoolExecutor` and applying a 60-second cache, the search response time was reduced from O(N) to O(1) relative to the number of resource types.
 
 **Action:** Use `ThreadPoolExecutor` and `@cached` for bulk resource discovery operations to minimize latency in interactive features like fuzzy search.
+
+## 2026-05-23 - [Optimizing Node Ops Pod Counting]
+**Learning:** The `get_node_ops` endpoint was performing sequential `kubectl` calls for every node to count its pods, leading to an O(N) bottleneck in shell overhead. By parallelizing the fetch of all nodes and all pods (across all namespaces) and aggregating counts in-memory, we reduced the complexity to O(1) external calls and significantly improved performance.
+
+**Action:** Avoid executing shell commands in loops for resource discovery; instead, fetch bulk data in parallel and use in-memory data structures for cross-referencing.
