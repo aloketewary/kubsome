@@ -32,6 +32,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
   stats: any = null;
   costTrend: any = null;
   activeIncident: any = null;
+  timeline: any = null;
+  Math = Math;
 
   get podTotal() { return (this.data?.pods.healthy || 0) + (this.data?.pods.warning || 0) + (this.data?.pods.critical || 0); }
   get nodeTotal() { return (this.data?.nodes.healthy || 0) + (this.data?.nodes.warning || 0); }
@@ -83,7 +85,16 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.api.getStats().subscribe({ next: (res) => (this.stats = res), error: () => {} });
     this.api.getCostTrend().subscribe({ next: (res) => (this.costTrend = res), error: () => {} });
     this.api.getIncidentStatus().subscribe({ next: (res) => { this.activeIncident = res.id ? res : null; }, error: () => {} });
+    this.api.getDiffTimeline(24).subscribe({ next: (res) => { this.timeline = res; }, error: () => {} });
     this.lastUpdated = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  }
+
+  pickProTip(): { icon: string; label: string; action: () => void } {
+    if (!this.stats) return { icon: 'pi pi-info-circle', label: 'Check the cluster scorecard for optimization tips.', action: () => this.router.navigate(['/scorecard']) };
+    const { total_commands, unresolved_count } = this.stats;
+    if (total_commands < 5) return { icon: 'pi pi-sparkles', label: 'Try asking AI "why is my pod failing?" to start diagnosing.', action: () => this.router.navigate(['/ai']) };
+    if (unresolved_count > 3) return { icon: 'pi pi-search', label: 'Use fuzzy search to find resources faster.', action: () => this.router.navigate(['/search']) };
+    return { icon: 'pi pi-shield', label: 'Run a security scan to find cluster misconfigurations.', action: () => this.router.navigate(['/cost']) };
   }
 
   ngOnInit() { this.refresh(); this.refreshInterval = setInterval(() => this.refresh(), 30000); }

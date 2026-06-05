@@ -19,6 +19,50 @@
     </div>
   </div>
 
+  <!-- ─── Insights ─────────────────────────────────────────────────── -->
+  <div class="insight-container">
+    @if (activeIncident) {
+      <div class="insight-pill insight-incident" (click)="router.navigate(['/incident'])">
+        <i class="pi pi-exclamation-circle"></i>
+        <span>Active Incident: {{ activeIncident.title }}</span>
+        <button class="pill-btn">RESUME</button>
+      </div>
+    }
+
+    @if (stats && (stats.total_commands - stats.unresolved_count) * 2 + stats.auto_remediations * 15 >= 60) {
+      <div class="insight-pill insight-roi" (click)="router.navigate(['/stats'])">
+        <i class="pi pi-trophy"></i>
+        <span>ROI Milestone: > {{ Math.floor(((stats.total_commands - stats.unresolved_count) * 2 + stats.auto_remediations * 15) / 60) }}h manual work saved</span>
+      </div>
+    }
+
+    @if (costTrend?.trend === 'increasing') {
+      <div class="insight-pill insight-cost" (click)="router.navigate(['/cost'])">
+        <i class="pi pi-chart-line"></i>
+        <span>Projected costs increasing (+{{ costTrend.percent }}%)</span>
+        <button class="pill-btn">OPTIMIZE</button>
+      </div>
+    }
+
+    @if (data.pods.critical > 3) {
+      <div class="insight-pill insight-warn">
+        <i class="pi pi-bolt"></i>
+        <span>High cluster instability detected</span>
+      </div>
+    }
+
+    @if (timeline?.total > 0) {
+      <div class="insight-pill insight-activity" (click)="router.navigate(['/timeline'])">
+        <i class="pi pi-history"></i>
+        <span>24h Activity: {{ timeline.total }} changes</span>
+        @if (timeline.changes.restarts) {
+          <span class="pill-sub">({{ timeline.changes.restarts.length }} restarts)</span>
+        }
+        <button class="pill-btn pill-btn-ai" (click)="$event.stopPropagation(); router.navigate(['/ai'], { queryParams: { q: 'what changed recently' } })">ASK AI</button>
+      </div>
+    }
+  </div>
+
   <!-- ─── Health Ring + Status ─────────────────────────────────────── -->
   <app-holo-card [glow]="healthColor" [compact]="true">
     <div class="health-hero">
@@ -135,6 +179,16 @@
       <div class="ev-empty"><i class="pi pi-check-circle"></i> No recent events</div>
     }
   </app-holo-card>
+
+  <!-- ─── Pro Tip ──────────────────────────────────────────────────── -->
+  @if (stats) {
+    @let tip = pickProTip();
+    <div class="pro-tip" (click)="tip.action()">
+      <i [class]="tip.icon"></i>
+      <span class="tip-label">PRO TIP:</span>
+      <span class="tip-text">{{ tip.label }}</span>
+    </div>
+  }
 
   <!-- ─── Quick Actions ────────────────────────────────────────────── -->
   <div class="actions-grid">
