@@ -15,7 +15,7 @@ from rich.console import Console
 # Allowed commands for piping to prevent arbitrary command execution
 ALLOWED_COMMANDS = {
     "grep", "head", "tail", "sort", "wc", "uniq",
-    "awk", "sed", "cut", "tr", "cat"
+    "cut", "tr"
 }
 
 def split_pipe(user_input):
@@ -91,6 +91,52 @@ def apply_pipe(output_text, pipe_chain):
             cmd = args[0]
             if cmd not in ALLOWED_COMMANDS:
                 return f"Error: Command '{cmd}' is not allowed in pipe chain."
+
+            # Validate arguments to prevent reading local files
+            # We allow flags but limit positional arguments to ensure they only read from stdin
+            # and don't accept file paths.
+            positional_count = 0
+            # Some flags take arguments (e.g. grep -e PATTERN, grep -m 1)
+            # We must skip these when counting positional args.
+            flags_with_args = {
+                "-e", "--regexp", "-f", "--file", "-m", "--max-count", "-A", "-B", "-C",
+                "-n", "--lines", "-c", "--bytes", "-t", "--field-separator", "-k", "--key",
+                "-d", "--delimiter", "-f", "--fields"
+            }
+            skip_next = False
+
+            for i, arg in enumerate(args[1:]):
+                if skip_next:
+                    skip_next = False
+                    continue
+
+                if arg.startswith("-"):
+                    # Block dangerous flags that read files or write output
+                    if arg in ("-f", "--file"):
+                        return f"Error: Flag '{arg}' is blocked in pipes (security)."
+                    if arg in ("-o", "--output"): # relevant for sort/others
+                        return f"Error: Flag '{arg}' is blocked in pipes (security)."
+
+                    if arg in flags_with_args:
+                        skip_next = True
+                    continue
+
+                positional_count += 1
+
+            # Enforcement: limit positional args based on command.
+            # 0 means the command must only read from stdin and take no file arguments.
+            # grep [pattern], tr [set1] [set2].
+            # head, tail, sort, wc, cut are restricted to 0 positional args to prevent LFI.
+            limits = {
+                "grep": 1, "tr": 2, "head": 0, "tail": 0,
+                "sort": 0, "uniq": 0, "wc": 0, "cut": 0
+            }
+            max_allowed = limits.get(cmd, 0)
+
+            if positional_count > max_allowed:
+                return (f"Error: Too many positional arguments for '{cmd}' in pipe. "
+                        f"Expected {max_allowed}, got {positional_count}. "
+                        "Pipes only process data from stdin.")
 
             # Execute each segment sequentially, feeding output of previous as input to next
             result = subprocess.run(
