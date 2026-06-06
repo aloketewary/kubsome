@@ -20,7 +20,7 @@ import { ActionIconComponent } from '../../shared/components/futuristic/action-i
 })
 export class SearchComponent implements AfterViewInit {
   private api = inject(ApiService);
-  private router = inject(Router);
+  router = inject(Router);
 
   @ViewChild('searchInput') searchInput!: ElementRef;
 

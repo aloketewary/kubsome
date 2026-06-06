@@ -37,6 +37,40 @@
     </div>
   </app-holo-card>
 
+  <!-- ─── Insights ────────────────────────────────────────────────── -->
+  <div class="insight-container">
+    @if (activeIncident) {
+      <div class="insight-pill insight-pill-incident" (click)="router.navigate(['/incident'])">
+        <i class="pi pi-exclamation-circle"></i>
+        <span>Active Incident: <strong>{{ activeIncident.title || 'In Progress' }}</strong></span>
+      </div>
+    }
+    @if (hoursSaved > 1) {
+      <div class="insight-pill insight-pill-roi" (click)="router.navigate(['/stats'])">
+        <i class="pi pi-chart-line"></i>
+        <span>ROI: <strong>{{ Math.floor(hoursSaved) }}h+ saved</strong></span>
+      </div>
+    }
+    @if (costTrend?.increasing) {
+      <div class="insight-pill insight-pill-cost" (click)="router.navigate(['/cost'])">
+        <i class="pi pi-dollar"></i>
+        <span>Cost Alert: Projected increase detected</span>
+      </div>
+    }
+    @if (data.pods.critical > 3) {
+      <div class="insight-pill insight-pill-warn" (click)="goToPods()">
+        <i class="pi pi-bolt"></i>
+        <span>High Instability: {{ data.pods.critical }} critical pods</span>
+      </div>
+    }
+    @if (timelineSummary) {
+      <div class="insight-pill" (click)="router.navigate(['/timeline'])">
+        <i class="pi pi-history"></i>
+        <span>24h Activity: {{ timelineSummary.restarts }} restarts, {{ timelineSummary.deploys }} deploys</span>
+      </div>
+    }
+  </div>
+
   <!-- ─── Alert Banner ─────────────────────────────────────────────── -->
   @if (data.pods.critical > 0 || data.nodes.warning > 0) {
     <div class="alert-banner">
@@ -145,6 +179,15 @@
     <button class="action-card" (click)="router.navigate(['/scorecard'])"><i class="pi pi-trophy"></i><span>Scorecard</span></button>
     <button class="action-card" (click)="router.navigate(['/cost'])"><i class="pi pi-dollar"></i><span>Optimize</span></button>
   </div>
+
+  <!-- ─── Pro Tip ──────────────────────────────────────────────────── -->
+  @if (proTip) {
+    <div class="pro-tip" (click)="router.navigate([proTip.link])">
+      <i class="pi" [class]="proTip.icon"></i>
+      <span class="tip-text">{{ proTip.text }}</span>
+      <i class="pi pi-arrow-right tip-arrow"></i>
+    </div>
+  }
 } @else {
   <!-- Skeleton -->
   <div class="sk-hero"></div>

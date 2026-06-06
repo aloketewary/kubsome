@@ -4,6 +4,28 @@
 
 .title-icon { color: #d09c60; }
 
+/* ─── Insights ───────────────────────────────────────────────────── */
+.insight-container {
+  display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px;
+}
+.insight-pill {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 12px; border-radius: 20px;
+  background: rgba(94,84,75,0.05); border: 1px solid rgba(94,84,75,0.1);
+  color: var(--text-secondary); font-size: 11px; cursor: pointer;
+  transition: all 0.2s;
+}
+.insight-pill:hover { background: rgba(94,84,75,0.08); transform: translateY(-1px); }
+.insight-pill i { font-size: 12px; color: #d09c60; }
+.insight-pill-incident { border-color: rgba(244,63,94,0.3); background: rgba(244,63,94,0.04); }
+.insight-pill-incident i { color: #f43f5e; }
+.insight-pill-roi { border-color: rgba(74,222,128,0.3); background: rgba(74,222,128,0.04); }
+.insight-pill-roi i { color: #4ade80; }
+.insight-pill-cost { border-color: rgba(245,158,11,0.3); background: rgba(245,158,11,0.04); }
+.insight-pill-cost i { color: #f59e0b; }
+.insight-pill-warn { border-color: rgba(244,63,94,0.3); background: rgba(244,63,94,0.04); }
+.insight-pill-warn i { color: #f43f5e; }
+
 /* ─── Health Hero ────────────────────────────────────────────────── */
 .health-hero { display: flex; align-items: center; gap: 20px; }
 .health-ring { position: relative; width: 60px; height: 60px; flex-shrink: 0; }
@@ -86,6 +108,20 @@
   transform: translateY(-2px);
 }
 .action-card i { font-size: 16px; }
+
+/* ─── Pro Tip ────────────────────────────────────────────────────── */
+.pro-tip {
+  margin-top: 20px; padding: 12px 16px;
+  background: linear-gradient(90deg, rgba(208,156,96,0.05) 0%, transparent 100%);
+  border-left: 2px solid #d09c60;
+  display: flex; align-items: center; gap: 12px;
+  cursor: pointer; transition: all 0.2s;
+}
+.pro-tip:hover { background: linear-gradient(90deg, rgba(208,156,96,0.08) 0%, transparent 100%); }
+.pro-tip i { color: #d09c60; font-size: 14px; }
+.tip-text { flex: 1; font-size: 12px; color: var(--text-secondary); }
+.tip-arrow { opacity: 0; transform: translateX(-5px); transition: all 0.2s; }
+.pro-tip:hover .tip-arrow { opacity: 1; transform: translateX(0); }
 
 /* ─── Skeleton ───────────────────────────────────────────────────── */
 .sk-hero { height: 80px; border-radius: 0; margin-bottom: 14px; background: rgba(94,84,75,0.05); animation: skPulse 1.5s infinite; }

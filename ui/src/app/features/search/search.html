@@ -57,6 +57,9 @@
       <div class="empty-icon"><i class="pi pi-search"></i></div>
       <span>No results for "{{ lastQuery }}"</span>
       <span class="empty-hint">Try a partial name or different resource type</span>
+      <button class="ctrl-btn ctrl-btn-wide mt-10" (click)="router.navigate(['/ai'], { queryParams: { q: 'is ' + lastQuery + ' failing?' } })">
+        <i class="pi pi-sparkles"></i> Ask AI about "{{ lastQuery }}"
+      </button>
     </div>
   }
 }
@@ -67,5 +70,12 @@
     <div class="empty-icon"><i class="pi pi-search"></i></div>
     <span>Type a query and press Enter</span>
     <span class="empty-hint">Searches pods, deployments, services, configmaps, and more</span>
+    <div class="mt-20">
+      <p class="empty-hint mb-10">Popular AI Queries:</p>
+      <div class="flex-center gap-10">
+        <button class="ctrl-btn ctrl-btn-sm" (click)="router.navigate(['/ai'], { queryParams: { q: 'summarize cluster health' } })">Health Summary</button>
+        <button class="ctrl-btn ctrl-btn-sm" (click)="router.navigate(['/ai'], { queryParams: { q: 'what changed recently' } })">Recent Changes</button>
+      </div>
+    </div>
   </div>
 }

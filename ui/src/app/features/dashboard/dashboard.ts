@@ -32,6 +32,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
   stats: any = null;
   costTrend: any = null;
   activeIncident: any = null;
+  timelineSummary: any = null;
+  proTip: any = null;
+  Math = Math;
 
   get podTotal() { return (this.data?.pods.healthy || 0) + (this.data?.pods.warning || 0) + (this.data?.pods.critical || 0); }
   get nodeTotal() { return (this.data?.nodes.healthy || 0) + (this.data?.nodes.warning || 0); }
@@ -54,6 +57,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (this.overallHealth === 'critical') return 'red';
     if (this.overallHealth === 'degraded') return 'amber';
     return 'green';
+  }
+
+  get hoursSaved(): number {
+    if (!this.stats) return 0;
+    return ((this.stats.total_commands - this.stats.unresolved_count) * 2 + this.stats.auto_remediations * 15) / 60;
   }
 
   pct(value: number, total: number): number { return total === 0 ? 0 : Math.round((value / total) * 100); }
@@ -80,10 +88,34 @@ export class DashboardComponent implements OnInit, OnDestroy {
       next: (res) => { this.uptime = res; },
       error: () => { this.uptime = { cluster_down: false, day: new Date().toLocaleDateString('en', { weekday: 'long' }) }; },
     });
-    this.api.getStats().subscribe({ next: (res) => (this.stats = res), error: () => {} });
+    this.api.getStats().subscribe({
+      next: (res) => {
+        this.stats = res;
+        this.pickProTip();
+      },
+      error: () => {}
+    });
     this.api.getCostTrend().subscribe({ next: (res) => (this.costTrend = res), error: () => {} });
     this.api.getIncidentStatus().subscribe({ next: (res) => { this.activeIncident = res.id ? res : null; }, error: () => {} });
+    this.api.getDiffTimeline(24).subscribe({
+      next: (res) => {
+        const restarts = res.filter((e: any) => e.reason === 'BackOff').length;
+        const deploys = res.filter((e: any) => e.reason === 'ScalingReplicaSet').length;
+        this.timelineSummary = { restarts, deploys };
+      },
+      error: () => {}
+    });
     this.lastUpdated = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  }
+
+  pickProTip() {
+    const tips = [
+      { text: 'Try "Scorecard" to see your cluster health grade.', icon: 'pi-trophy', link: '/scorecard' },
+      { text: 'Use "Security" to find common misconfigurations.', icon: 'pi-shield', link: '/security' },
+      { text: 'Check "Optimization" to save on infrastructure costs.', icon: 'pi-dollar', link: '/cost' }
+    ];
+    // Dynamic tip selection based on what's underused
+    this.proTip = tips[Math.floor(Math.random() * tips.length)];
   }
 
   ngOnInit() { this.refresh(); this.refreshInterval = setInterval(() => this.refresh(), 30000); }
