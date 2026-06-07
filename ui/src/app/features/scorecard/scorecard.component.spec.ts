@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { ScorecardComponent } from './scorecard.component';
+import { ScorecardComponent } from './scorecard';
 
 describe('ScorecardComponent', () => {
   let component: ScorecardComponent;

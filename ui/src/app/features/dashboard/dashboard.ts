@@ -1,5 +1,6 @@
 import { Component, inject, OnInit, OnDestroy } from '@angular/core';
 import { Router } from '@angular/router';
+import { DecimalPipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { TagModule } from 'primeng/tag';
 import { ButtonModule } from 'primeng/button';
@@ -15,7 +16,7 @@ import { HealthRingComponent } from '../../shared/components/futuristic/health-r
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [TagModule, ButtonModule, TooltipModule, HoloCardComponent, MetricTileComponent, StatusBeaconComponent, LiveIndicatorComponent, HealthRingComponent],
+  imports: [TagModule, ButtonModule, TooltipModule, HoloCardComponent, MetricTileComponent, StatusBeaconComponent, LiveIndicatorComponent, HealthRingComponent, DecimalPipe],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.scss',
 })
@@ -32,6 +33,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
   stats: any = null;
   costTrend: any = null;
   activeIncident: any = null;
+  diffTimeline: any = null;
+  scorecard: any = null;
+  proTip: any = null;
 
   get podTotal() { return (this.data?.pods.healthy || 0) + (this.data?.pods.warning || 0) + (this.data?.pods.critical || 0); }
   get nodeTotal() { return (this.data?.nodes.healthy || 0) + (this.data?.nodes.warning || 0); }
@@ -55,6 +59,15 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (this.overallHealth === 'degraded') return 'amber';
     return 'green';
   }
+
+  get hoursSaved(): number {
+    if (!this.stats) return 0;
+    return ((this.stats.total_commands - (this.stats.unresolved_count || 0)) * 2 + (this.stats.auto_remediations || 0) * 15) / 60;
+  }
+
+  get showRoiMilestone(): boolean { return this.hoursSaved >= 1; }
+  get showCostAlert(): boolean { return this.costTrend?.trend === 'increasing' && this.costTrend?.projected_increase > 10; }
+  get showInstability(): boolean { return (this.data?.pods.critical || 0) > 3; }
 
   pct(value: number, total: number): number { return total === 0 ? 0 : Math.round((value / total) * 100); }
   goToPods() { this.router.navigate(['/pods']); }
@@ -83,9 +96,27 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.api.getStats().subscribe({ next: (res) => (this.stats = res), error: () => {} });
     this.api.getCostTrend().subscribe({ next: (res) => (this.costTrend = res), error: () => {} });
     this.api.getIncidentStatus().subscribe({ next: (res) => { this.activeIncident = res.id ? res : null; }, error: () => {} });
+    this.api.getDiffTimeline(24).subscribe({ next: (res) => { this.diffTimeline = res; }, error: () => {} });
+    this.api.getScorecard().subscribe({ next: (res) => { this.scorecard = res; }, error: () => {} });
     this.lastUpdated = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   }
 
-  ngOnInit() { this.refresh(); this.refreshInterval = setInterval(() => this.refresh(), 30000); }
+  pickProTip() {
+    if (!this.stats) return;
+    const tips = [
+      { id: 'scorecard', text: 'Check your Cluster Scorecard for health optimizations.', link: '/scorecard', icon: 'pi-trophy' },
+      { id: 'security', text: 'Run a Security Scan to find misconfigurations.', link: '/rbac', icon: 'pi-shield' },
+      { id: 'cost', text: 'Use Resource Optimization to save cluster costs.', link: '/cost', icon: 'pi-dollar' },
+      { id: 'ai', text: 'Try "summarize cluster health" for a quick briefing.', link: '/ai', query: 'summarize cluster health', icon: 'pi-sparkles' }
+    ];
+    // Suggest based on low usage (telemetry would go here, for now random)
+    this.proTip = tips[Math.floor(Math.random() * tips.length)];
+  }
+
+  ngOnInit() {
+    this.refresh();
+    this.refreshInterval = setInterval(() => this.refresh(), 30000);
+    setTimeout(() => this.pickProTip(), 2000);
+  }
   ngOnDestroy() { clearInterval(this.refreshInterval); }
 }

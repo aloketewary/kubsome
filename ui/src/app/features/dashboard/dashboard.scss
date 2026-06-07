@@ -20,6 +20,49 @@
 .health-sub { font-size: 11px; color: var(--text-muted); display: block; margin-top: 2px; }
 .health-metrics { display: flex; gap: 0; }
 
+/* ─── Insight Pills ──────────────────────────────────────────────── */
+.insight-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0;
+}
+.insight-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  cursor: pointer;
+  background: rgba(94, 84, 75, 0.05);
+  border: 1px solid rgba(94, 84, 75, 0.1);
+  color: var(--text-secondary);
+  transition: all 0.2s;
+  animation: fadeInPill 0.4s ease-out;
+}
+@keyframes fadeInPill { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+.insight-pill:hover {
+  transform: translateY(-1px);
+  background: rgba(94, 84, 75, 0.08);
+  border-color: rgba(94, 84, 75, 0.2);
+}
+.insight-pill i { font-size: 12px; }
+.insight-pill strong { font-weight: 700; color: var(--text); }
+
+.insight-pill-incident { border-color: rgba(244, 63, 94, 0.3); background: rgba(244, 63, 94, 0.04); }
+.insight-pill-incident i { color: #f43f5e; }
+.insight-pill-roi { border-color: rgba(74, 222, 128, 0.3); background: rgba(74, 222, 128, 0.04); }
+.insight-pill-roi i { color: #4ade80; }
+.insight-pill-cost { border-color: rgba(245, 158, 11, 0.3); background: rgba(245, 158, 11, 0.04); }
+.insight-pill-cost i { color: #f59e0b; }
+.insight-pill-alert { border-color: rgba(244, 63, 94, 0.3); background: rgba(244, 63, 94, 0.04); }
+.insight-pill-alert i { color: #f43f5e; }
+.insight-pill-activity { border-color: rgba(56, 189, 248, 0.3); background: rgba(56, 189, 248, 0.04); }
+.insight-pill-activity i { color: #38bdf8; }
+.insight-pill-tip { border-color: rgba(208, 156, 96, 0.3); background: rgba(208, 156, 96, 0.04); border-style: dashed; }
+.insight-pill-tip i { color: #d09c60; }
+
 /* ─── Alert Banner ───────────────────────────────────────────────── */
 .alert-banner {
   display: flex; align-items: center; gap: 10px;

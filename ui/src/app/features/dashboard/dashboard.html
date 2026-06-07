@@ -37,6 +37,51 @@
     </div>
   </app-holo-card>
 
+  <!-- ─── Insight Pills ────────────────────────────────────────────── -->
+  <div class="insight-container">
+    @if (activeIncident) {
+      <div class="insight-pill insight-pill-incident" (click)="router.navigate(['/incident'])">
+        <i class="pi pi-exclamation-circle"></i>
+        <span>Active Incident: <strong>{{ activeIncident.title }}</strong></span>
+      </div>
+    }
+
+    @if (showRoiMilestone) {
+      <div class="insight-pill insight-pill-roi" (click)="router.navigate(['/stats'])">
+        <i class="pi pi-trophy"></i>
+        <span>ROI Milestone: <strong>{{ hoursSaved | number:'1.1-1' }} hours</strong> saved</span>
+      </div>
+    }
+
+    @if (showCostAlert) {
+      <div class="insight-pill insight-pill-cost" (click)="router.navigate(['/cost'])">
+        <i class="pi pi-dollar"></i>
+        <span>Cost Trend: Projected increase <strong>+{{ costTrend.projected_increase }}%</strong></span>
+      </div>
+    }
+
+    @if (showInstability) {
+      <div class="insight-pill insight-pill-alert" (click)="goToPods()">
+        <i class="pi pi-bolt"></i>
+        <span>High Instability: <strong>{{ data.pods.critical }} pods</strong> failing</span>
+      </div>
+    }
+
+    @if (diffTimeline?.total > 0) {
+      <div class="insight-pill insight-pill-activity" (click)="router.navigate(['/timeline'])">
+        <i class="pi pi-history"></i>
+        <span>24h Activity: <strong>{{ diffTimeline.total }} changes</strong> detected</span>
+      </div>
+    }
+
+    @if (proTip) {
+      <div class="insight-pill insight-pill-tip" (click)="proTip.query ? router.navigate([proTip.link], { queryParams: { q: proTip.query } }) : router.navigate([proTip.link])">
+        <i class="pi" [class]="proTip.icon"></i>
+        <span>Pro Tip: {{ proTip.text }}</span>
+      </div>
+    }
+  </div>
+
   <!-- ─── Alert Banner ─────────────────────────────────────────────── -->
   @if (data.pods.critical > 0 || data.nodes.warning > 0) {
     <div class="alert-banner">
