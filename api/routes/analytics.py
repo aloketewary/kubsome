@@ -3,6 +3,7 @@ Analytics API Routes — exposes DuckDB analytics engine
 to the Web UI (charts, cost, alerts, predictions, SQL, export).
 """
 
+import re
 from fastapi import APIRouter, Query
 
 from core.context import context
@@ -180,10 +181,26 @@ def run_sql_query(body: dict):
     sql = body.get("sql", "").strip()
     if not sql:
         return {"error": "No SQL provided"}
-    # Safety: block destructive statements
-    first_word = sql.split()[0].upper() if sql.split() else ""
-    if first_word in ("DROP", "DELETE", "TRUNCATE", "ALTER", "UPDATE"):
-        return {"error": f"{first_word} not allowed via API"}
+
+    # 🛡️ Sentinel: Strip comments to prevent bypasses
+    # -- comment
+    clean_sql = re.sub(r'--.*', '', sql)
+    # /* comment */
+    clean_sql = re.sub(r'/\*.*?\*/', '', clean_sql, flags=re.DOTALL).strip()
+
+    if not clean_sql:
+        return {"error": "No SQL provided after stripping comments"}
+
+    # 🛡️ Sentinel: Block multiple statements
+    if ";" in clean_sql:
+        return {"error": "Multiple statements not allowed via API"}
+
+    # 🛡️ Sentinel: Whitelist allowed starting keywords (read-only)
+    ALLOWED_KEYWORDS = {"SELECT", "WITH", "DESCRIBE", "EXPLAIN", "SHOW", "SUMMARIZE"}
+    first_word = clean_sql.split()[0].upper() if clean_sql.split() else ""
+    if first_word not in ALLOWED_KEYWORDS:
+        return {"error": f"Command {first_word} not allowed. Only read-only queries are permitted."}
+
     try:
         from core.analytics.export import run_custom_query
         return run_custom_query(sql)

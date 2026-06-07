@@ -52,3 +52,8 @@
 **Vulnerability:** The `apply_pipe` function in `core/pipe.py` used `subprocess.run(..., shell=True)` to execute user-provided pipe chains (e.g., `grep foo`), allowing for arbitrary command execution via shell metacharacters (e.g., `grep foo; rm -rf /`).
 **Learning:** Even "utility" functions that provide convenience features like piping can be dangerous if they rely on the shell for execution. Whitelisting allowed commands and manually chaining processes with `shell=False` is the only secure way to implement this.
 **Prevention:** Implement a strict whitelist of allowed binaries for piping. Use list-based `subprocess.run` or `Popen` with `shell=False`. Ensure the splitter correctly handles quotes to prevent bypassing the whitelist (e.g., `grep 'pattern | touch /tmp/pwned'`).
+
+## 2025-06-10 - [HIGH] SQL Injection in Analytics Custom Query
+**Vulnerability:** The `/analytics/query` endpoint used a simple blacklist to block destructive SQL commands. This could be bypassed using comments (e.g., `--` or `/* */`) to hide keywords from the prefix check, or by using semicolons to chain multiple statements.
+**Learning:** Blacklists are insufficient for SQL security. A strict whitelist of allowed starting keywords, combined with comment stripping and multiple statement blocking, is necessary for safe read-only access.
+**Prevention:** 1) Strip all comments before validation. 2) Block queries containing semicolons. 3) Enforce a whitelist of allowed starting keywords (e.g., `SELECT`, `WITH`). 4) Use parameterized queries for all dynamic values.
