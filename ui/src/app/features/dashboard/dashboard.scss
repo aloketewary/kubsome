@@ -4,6 +4,27 @@
 
 .title-icon { color: #d09c60; }
 
+/* ─── Growth Insights ────────────────────────────────────────────── */
+.insight-container {
+  display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px 0;
+}
+.insight-pill {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 12px; border-radius: 20px; cursor: pointer;
+  font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em;
+  transition: all 0.2s;
+  background: rgba(94,84,75,0.06); color: var(--text-secondary);
+  border: 1px solid rgba(94,84,75,0.1);
+}
+.insight-pill:hover { transform: translateY(-1px); border-color: rgba(208,156,96,0.3); background: rgba(208,156,96,0.04); }
+.insight-pill i { font-size: 11px; }
+
+.insight-incident { border-color: rgba(244,63,94,0.3); background: rgba(244,63,94,0.04); color: #f43f5e; }
+.insight-roi { border-color: rgba(74,222,128,0.3); background: rgba(74,222,128,0.04); color: #4ade80; }
+.insight-cost { border-color: rgba(245,158,11,0.3); background: rgba(245,158,11,0.04); color: #f59e0b; }
+.insight-instability { border-color: rgba(244,63,94,0.3); background: rgba(244,63,94,0.04); color: #f43f5e; }
+.insight-activity { border-color: rgba(208,156,96,0.3); background: rgba(208,156,96,0.04); color: #d09c60; }
+
 /* ─── Health Hero ────────────────────────────────────────────────── */
 .health-hero { display: flex; align-items: center; gap: 20px; }
 .health-ring { position: relative; width: 60px; height: 60px; flex-shrink: 0; }
@@ -92,6 +113,19 @@
 .sk-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .sk-card { height: 120px; border-radius: 0; background: rgba(94,84,75,0.05); animation: skPulse 1.5s infinite; }
 @keyframes skPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+/* ─── Pro Tip ────────────────────────────────────────────────────── */
+.pro-tip-container { margin-top: 14px; }
+.pro-tip-content { display: flex; align-items: center; gap: 16px; padding: 4px 8px; }
+.pro-tip-icon { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; background: rgba(208,156,96,0.1); border-radius: 8px; color: #d09c60; font-size: 16px; }
+.pro-tip-text { flex: 1; }
+.pro-tip-title { font-size: 13px; font-weight: 700; color: var(--text); }
+.pro-tip-sub { font-size: 11px; color: var(--text-muted); }
+.pro-tip-btn {
+  padding: 6px 12px; border-radius: 6px; font-size: 10px; font-weight: 600; cursor: pointer;
+  border: 1px solid rgba(208,156,96,0.2); background: rgba(208,156,96,0.06); color: #d09c60; transition: all 0.2s;
+}
+.pro-tip-btn:hover { background: rgba(208,156,96,0.12); border-color: #d09c60; }
 
 /* ─── Responsive ─────────────────────────────────────────────────── */
 @media (max-width: 900px) {

@@ -150,4 +150,8 @@ export class ApiService {
   getCostTrend(): Observable<any> {
     return this.http.get<any>(`${this.base}/cost-trend`);
   }
+
+  getDiffTimeline(hours = 24): Observable<any> {
+    return this.http.get<any>(`${this.base}/diff-timeline`, { params: { hours } });
+  }
 }

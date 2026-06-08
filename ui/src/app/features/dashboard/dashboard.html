@@ -19,6 +19,40 @@
     </div>
   </div>
 
+  <!-- ─── Growth Insights ─────────────────────────────────────────── -->
+  <div class="insight-container">
+    @if (activeIncident) {
+      <div class="insight-pill insight-incident" (click)="router.navigate(['/incident'])">
+        <i class="pi pi-exclamation-triangle"></i>
+        <span>Active Incident: {{ activeIncident.title || 'In Progress' }}</span>
+      </div>
+    }
+    @if (hoursSaved >= 1) {
+      <div class="insight-pill insight-roi" (click)="router.navigate(['/stats'])">
+        <i class="pi pi-bolt"></i>
+        <span>ROI Milestone: {{ hoursSaved }}h saved this month</span>
+      </div>
+    }
+    @if (costTrend?.trend === 'growing') {
+      <div class="insight-pill insight-cost" (click)="router.navigate(['/cost'])">
+        <i class="pi pi-dollar"></i>
+        <span>Cost Trend: Projected costs increasing</span>
+      </div>
+    }
+    @if (data.pods.critical > 3) {
+      <div class="insight-pill insight-instability" (click)="goToPods()">
+        <i class="pi pi-chart-bar"></i>
+        <span>High Instability: Multiple pods failing</span>
+      </div>
+    }
+    @if (diffTimeline) {
+      <div class="insight-pill insight-activity" (click)="router.navigate(['/timeline'])">
+        <i class="pi pi-history"></i>
+        <span>24h Activity: {{ getActivitySummary() }}</span>
+      </div>
+    }
+  </div>
+
   <!-- ─── Health Ring + Status ─────────────────────────────────────── -->
   <app-holo-card [glow]="healthColor" [compact]="true">
     <div class="health-hero">
@@ -145,6 +179,24 @@
     <button class="action-card" (click)="router.navigate(['/scorecard'])"><i class="pi pi-trophy"></i><span>Scorecard</span></button>
     <button class="action-card" (click)="router.navigate(['/cost'])"><i class="pi pi-dollar"></i><span>Optimize</span></button>
   </div>
+
+  <!-- ─── Pro Tip ──────────────────────────────────────────────────── -->
+  @if (proTip) {
+    <div class="pro-tip-container">
+      <app-holo-card [compact]="true" glow="cyan">
+        <div class="pro-tip-content">
+          <div class="pro-tip-icon"><i [class]="proTip.icon"></i></div>
+          <div class="pro-tip-text">
+            <div class="pro-tip-title">{{ proTip.title }}</div>
+            <div class="pro-tip-sub">{{ proTip.text }}</div>
+          </div>
+          <button class="pro-tip-btn" (click)="router.navigate([proTip.link], { queryParams: proTip.query ? { q: proTip.query } : {} })">
+            Try it out
+          </button>
+        </div>
+      </app-holo-card>
+    </div>
+  }
 } @else {
   <!-- Skeleton -->
   <div class="sk-hero"></div>

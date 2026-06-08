@@ -143,3 +143,21 @@ export interface UsageStats {
   auto_remediations: number;
   days_tracked: number;
 }
+
+export interface TimelineMutation {
+  type: string;
+  name: string;
+  action: string;
+  time: string;
+  details?: string;
+}
+
+export interface DiffTimelineResponse {
+  hours: number;
+  changes: TimelineMutation[];
+  summary: {
+    restarts: number;
+    deployments: number;
+    config_changes: number;
+  };
+}
