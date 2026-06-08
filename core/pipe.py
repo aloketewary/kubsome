@@ -14,8 +14,7 @@ from rich.console import Console
 
 # Allowed commands for piping to prevent arbitrary command execution
 ALLOWED_COMMANDS = {
-    "grep", "head", "tail", "sort", "wc", "uniq",
-    "awk", "sed", "cut", "tr", "cat"
+    "grep", "head", "tail", "sort", "wc", "uniq", "cut", "tr"
 }
 
 def split_pipe(user_input):

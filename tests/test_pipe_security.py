@@ -20,6 +20,11 @@ def test_apply_pipe_blocked_commands():
     result = apply_pipe(output, "ls /")
     assert "Error: Command 'ls' is not allowed" in result
 
+    # Test dangerous commands that were previously allowed but are now blocked
+    for cmd in ["awk", "sed", "cat"]:
+        result = apply_pipe(output, f"{cmd} something")
+        assert f"Error: Command '{cmd}' is not allowed" in result
+
     # Test command injection attempt
     result = apply_pipe(output, "grep foo; touch /tmp/jules_pwned")
     # shlex.split will treat 'grep foo; touch /tmp/jules_pwned' as ['grep', 'foo;', 'touch', '/tmp/jules_pwned']
