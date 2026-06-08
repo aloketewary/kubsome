@@ -8,13 +8,15 @@ from core.cache import cached
 
 
 @cached(ttl=5)
-def get_raw_resources(kind, context_name, namespace=None, selector=None, field_selector=None, sort_by=None):
+def get_raw_resources(kind, context_name, namespace=None, selector=None, field_selector=None, sort_by=None, all_namespaces=False):
     """Unified raw resource fetcher with caching."""
     command = ["kubectl"]
     if context_name:
         command.extend(["--context", str(context_name)])
     command.extend(["get", kind, "-o", "json"])
-    if namespace:
+    if all_namespaces:
+        command.append("-A")
+    elif namespace:
         command.extend(["-n", namespace])
     if selector:
         command.extend(["-l", selector])
