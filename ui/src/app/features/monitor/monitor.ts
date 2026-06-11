@@ -38,6 +38,7 @@ interface MonitorCard {
   alertEnabled: boolean;
   alertThreshold: number;
   actionLog: ActionEntry[];
+  prevHealthPct: number;
 }
 
 @Component({
@@ -69,13 +70,24 @@ export class MonitorComponent implements OnInit, OnDestroy {
     return total > 0 ? Math.round((this.totalHealthy / total) * 100) : 100;
   }
 
+  /** P0: Cards needing attention (health < 90%), sorted worst-first */
+  get attentionCards(): MonitorCard[] {
+    return this.cards
+      .filter(c => c.data && this.healthPct(c) < 90)
+      .sort((a, b) => this.healthPct(a) - this.healthPct(b));
+  }
+
+  /** P0: Auto-sort cards by severity (critical → warning → healthy) */
+  get sortedCards(): MonitorCard[] {
+    return [...this.cards].sort((a, b) => this.healthPct(a) - this.healthPct(b));
+  }
+
   ngOnInit() {
     this.http.get<any>('/api/contexts').subscribe(res => {
       this.contexts = (res.contexts || []).map((c: any) => c.name);
     });
     this.loadSavedCards();
     this.fetchSignals();
-    // Start per-card auto-refresh
     this.startCardTimers();
   }
 
@@ -89,7 +101,7 @@ export class MonitorComponent implements OnInit, OnDestroy {
   }
 
   navigateTo(path: string) {
-    this.router.navigate([path]);
+    this.router.navigateByUrl(path);
   }
 
   addCard() {
@@ -99,6 +111,7 @@ export class MonitorComponent implements OnInit, OnDestroy {
       expanded: true, configuring: true, fullscreen: false, refreshInterval: 60,
       lastUpdated: '', namespaces: [], apps: [], order: this.cards.length,
       alertEnabled: false, alertThreshold: 70, actionLog: [],
+      prevHealthPct: -1,
     };
     this.cards.push(card);
     this.saveCards();
@@ -115,7 +128,6 @@ export class MonitorComponent implements OnInit, OnDestroy {
 
   private startCardTimers() {
     this.stopCardTimers();
-    // Group cards by refresh interval and batch them
     const grouped = new Map<number, MonitorCard[]>();
     for (const card of this.cards) {
       if (card.refreshInterval > 0 && card.context && card.namespace) {
@@ -128,7 +140,6 @@ export class MonitorComponent implements OnInit, OnDestroy {
       const timer = setInterval(() => {
         cards.filter(c => c.context && c.namespace).forEach(c => this.fetchCardData(c));
       }, interval * 1000);
-      // Store timer with first card's id as key
       this.cardTimers.set(cards[0].id, timer);
     });
   }
@@ -148,9 +159,7 @@ export class MonitorComponent implements OnInit, OnDestroy {
     this.http.get<any>('/api/ns-for-context', { params: { ctx: card.context } }).subscribe({
       next: (res) => {
         card.namespaces = res.namespaces || [];
-        if (res.error) {
-          card.data = { error: res.error };
-        }
+        if (res.error) { card.data = { error: res.error }; }
       },
       error: () => { card.namespaces = []; },
     });
@@ -177,6 +186,10 @@ export class MonitorComponent implements OnInit, OnDestroy {
 
   fetchCardData(card: MonitorCard) {
     if (!card.context || !card.namespace) return;
+    // P2: Store previous health before fetching new data
+    if (card.data) {
+      card.prevHealthPct = this.healthPct(card);
+    }
     card.loading = true;
     const params: any = { ctx: card.context, ns: card.namespace };
     if (card.app) params.app = card.app;
@@ -233,6 +246,24 @@ export class MonitorComponent implements OnInit, OnDestroy {
     return this.cardHealth(card) === 'critical';
   }
 
+  /** P1: Warning event count */
+  warningEventCount(card: MonitorCard): number {
+    return (card.events || []).filter((e: any) => e.type === 'Warning').length;
+  }
+
+  /** P1: Critical event count */
+  criticalEventCount(card: MonitorCard): number {
+    return (card.events || []).filter((e: any) =>
+      e.type !== 'Normal' && /Kill|OOM|Back|Failed|Error/i.test(e.reason || '')
+    ).length;
+  }
+
+  /** P2: Health delta from previous fetch */
+  healthDelta(card: MonitorCard): number {
+    if (card.prevHealthPct < 0) return 0;
+    return this.healthPct(card) - card.prevHealthPct;
+  }
+
   private buildBars(events: any[]): number[] {
     const bars = new Array(20).fill(0);
     const total = events.length;
@@ -279,7 +310,7 @@ export class MonitorComponent implements OnInit, OnDestroy {
   }
 
   diagnoseCard(card: MonitorCard) {
-    window.location.href = `/pods?filter=${card.namespace}`;
+    this.router.navigateByUrl(`/pods?filter=${card.namespace}`);
   }
 
   openFsDialog(card: MonitorCard) {
@@ -325,12 +356,11 @@ export class MonitorComponent implements OnInit, OnDestroy {
             expanded: s.expanded ?? true, configuring: !(s.context && s.namespace), fullscreen: false,
             refreshInterval: s.refreshInterval || 60, lastUpdated: '', namespaces: [], apps: [], order: this.cards.length,
             alertEnabled: s.alertEnabled || false, alertThreshold: s.alertThreshold || 70,
-            actionLog: s.actionLog || [],
+            actionLog: s.actionLog || [], prevHealthPct: -1,
           };
           this.cards.push(card);
           if (card.context && card.namespace) cardsToFetch.push(card);
         }
-        // Parallel init: fetch namespaces for all cards at once
         if (cardsToFetch.length > 0) {
           const nsRequests = cardsToFetch.map(c =>
             this.http.get<any>('/api/ns-for-context', { params: { ctx: c.context } })
@@ -340,7 +370,6 @@ export class MonitorComponent implements OnInit, OnDestroy {
               const card = cardsToFetch[i];
               card.namespaces = res.namespaces || [];
             });
-            // Fetch data for all cards in parallel
             cardsToFetch.forEach(card => this.fetchCardData(card));
             this.startCardTimers();
           });

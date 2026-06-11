@@ -29,6 +29,24 @@
       </div>
     }
 
+    <!-- P0: Attention Strip — degraded/critical cards surfaced -->
+    @if (attentionCards.length > 0) {
+      <div class="attention-strip">
+        @for (card of attentionCards; track card.id) {
+          <div class="attn-item" [class.attn-crit]="healthPct(card) < 60" [class.attn-warn]="healthPct(card) >= 60">
+            <span class="attn-icon">🔥</span>
+            <span class="attn-name">{{ card.app || card.namespace }}</span>
+            <span class="attn-health">{{ healthPct(card) }}%</span>
+            @if (healthDelta(card) !== 0) {
+              <span class="attn-delta" [class.delta-down]="healthDelta(card) < 0">
+                {{ healthDelta(card) > 0 ? '↑' : '↓' }}{{ Math.abs(healthDelta(card)) }}%
+              </span>
+            }
+          </div>
+        }
+      </div>
+    }
+
     <!-- Health Signals Strip -->
     @if (signals && (signals.oomkills_24h || signals.hpa_at_max || signals.quota_pressure || signals.stalled_rollouts)) {
       <div class="signals-strip">
@@ -63,17 +81,19 @@
       </div>
     }
 
-    <!-- Cards Grid -->
+    <!-- Cards Grid (P0: auto-sorted by severity) -->
     <div class="monitor-grid">
-      @for (card of cards; track card.id; let i = $index) {
+      @for (card of sortedCards; track card.id; let i = $index) {
         <div class="monitor-card" [class.card-critical]="isCritical(card)" [class.card-healthy]="cardHealth(card) === 'healthy'" [class.card-degraded]="cardHealth(card) === 'degraded'"
              [attr.draggable]="true" (dragstart)="onDragStart(i)" (dragover)="onDragOver($event, i)" (drop)="onDrop(i)">
 
-          <!-- Card Toolbar -->
+          <!-- P0: Redesigned Card Header -->
           <div class="mc-toolbar">
             <div class="mc-drag" pTooltip="Drag to reorder"><i class="pi pi-bars"></i></div>
-            <div class="mc-badge" [class]="'badge-' + cardHealth(card)">{{ cardHealth(card) }}</div>
-            <span class="mc-title">{{ card.context ? (card.context | slice:0:20) : 'New Card' }} / {{ card.namespace || '...' }}{{ card.app ? ' / ' + card.app : '' }}</span>
+            <div class="mc-header-block">
+              <span class="mc-name">{{ card.app || card.namespace || 'New Card' }}</span>
+              <span class="mc-ctx-hint">{{ card.context ? (card.context | slice:0:18) : '' }}{{ card.context && card.namespace && !card.app ? '' : card.namespace ? ' / ' + card.namespace : '' }}</span>
+            </div>
             <div class="mc-toolbar-actions">
               <button pButton icon="pi pi-expand" class="p-button-text p-button-sm p-button-rounded" pTooltip="Full screen" (click)="openFsDialog(card)"></button>
               <button pButton icon="pi pi-cog" class="p-button-text p-button-sm p-button-rounded" pTooltip="Configure" (click)="card.configuring = !card.configuring"></button>
@@ -129,48 +149,66 @@
 
           <!-- Data -->
           @if (card.data) {
-            @if (card.data.mode === 'app') {
-              <!-- App-specific View -->
-              <div class="mc-app-view">
-                <div class="app-replica-ring">
-                  <app-health-ring [pct]="healthPct(card)" [label]="(card.data.app_info?.available || 0) + '/' + (card.data.app_info?.desired || 0)" [status]="cardHealth(card) === 'healthy' ? 'ok' : cardHealth(card) === 'degraded' ? 'warning' : 'critical'" size="md" />
-                </div>
-                <div class="app-details">
-                  <div class="app-stat-row"><span class="app-stat-label">Pods</span><span class="app-stat-val">{{ card.data.pods?.total || 0 }}</span></div>
-                  <div class="app-stat-row"><span class="app-stat-label">Running</span><span class="app-stat-val app-ok">{{ card.data.pods?.healthy || 0 }}</span></div>
-                  <div class="app-stat-row"><span class="app-stat-label">Restarts</span><span class="app-stat-val" [class.app-warn]="(card.data.pods?.restarts || 0) > 5">{{ card.data.pods?.restarts || 0 }}</span></div>
-                  @if (card.data.pods?.critical > 0) {
-                    <div class="app-stat-row"><span class="app-stat-label">Failed</span><span class="app-stat-val app-crit">{{ card.data.pods?.critical }}</span></div>
-                  }
-                </div>
+            <!-- P0: Immediate status summary -->
+            <div class="mc-summary">
+              <div class="mc-status-badge" [class]="'badge-' + cardHealth(card)">
+                <span class="badge-dot"></span> {{ cardHealth(card) }}
               </div>
-              @if (card.data.app_info?.image) {
-                <div class="app-image"><i class="pi pi-box"></i> {{ card.data.app_info.image | slice:-40 }}</div>
-              }
+              <span class="mc-health-val">
+                {{ healthPct(card) }}%
+                @if (healthDelta(card) !== 0) {
+                  <span class="mc-trend" [class.trend-down]="healthDelta(card) < 0" [class.trend-up]="healthDelta(card) > 0">
+                    {{ healthDelta(card) > 0 ? '↑' : '↓' }}{{ Math.abs(healthDelta(card)) }}%
+                  </span>
+                }
+              </span>
+            </div>
+
+            <div class="mc-stats-row">
+              <div class="mc-stat">
+                <span class="mc-stat-val">{{ (card.data.deployments?.healthy || 0) }}/{{ (card.data.deployments?.healthy || 0) + (card.data.deployments?.unavailable || 0) }}</span>
+                <span class="mc-stat-label">Deploys</span>
+              </div>
+              <div class="mc-stat">
+                <span class="mc-stat-val mc-stat-warn">{{ warningEventCount(card) }}</span>
+                <span class="mc-stat-label">Warnings</span>
+              </div>
+              <div class="mc-stat">
+                <span class="mc-stat-val mc-stat-crit">{{ criticalEventCount(card) }}</span>
+                <span class="mc-stat-label">Critical</span>
+              </div>
+            </div>
+
+            @if (card.data.mode === 'app') {
+              <!-- App-specific: replica info -->
+              <div class="mc-app-replica">
+                <app-health-ring [pct]="healthPct(card)" [label]="(card.data.app_info?.available || 0) + '/' + (card.data.app_info?.desired || 0)" [status]="cardHealth(card) === 'healthy' ? 'ok' : cardHealth(card) === 'degraded' ? 'warning' : 'critical'" size="sm" />
+                <span class="mc-replica-text">{{ card.data.pods?.healthy || 0 }} running · {{ card.data.pods?.restarts || 0 }} restarts</span>
+              </div>
             } @else {
-              <!-- Cluster View -->
-              <div class="mc-compact">
-                <div class="compact-ring">
-                  <app-health-ring [pct]="healthPct(card)" [status]="cardHealth(card) === 'healthy' ? 'ok' : cardHealth(card) === 'degraded' ? 'warning' : 'critical'" size="md" />
-                </div>
-                <div class="compact-stats">
-                  <div class="cs-row"><span class="cs-dot cs-ok"></span><span class="cs-num">{{ card.data.pods?.healthy || 0 }}</span> running</div>
-                  <div class="cs-row"><span class="cs-dot cs-warn"></span><span class="cs-num">{{ card.data.pods?.warning || 0 }}</span> warn</div>
-                  <div class="cs-row"><span class="cs-dot cs-crit"></span><span class="cs-num">{{ card.data.pods?.critical || 0 }}</span> crit</div>
-                </div>
-                <div class="compact-nodes">
-                  <span class="cn-label">Nodes</span>
-                  <span class="cn-val">{{ card.data.nodes?.healthy || 0 }}/{{ (card.data.nodes?.healthy || 0) + (card.data.nodes?.warning || 0) }}</span>
-                </div>
+              <!-- Cluster view: pod breakdown -->
+              <div class="mc-pod-row">
+                <span class="mc-pod-stat"><span class="cs-dot cs-ok"></span> {{ card.data.pods?.healthy || 0 }}</span>
+                <span class="mc-pod-stat"><span class="cs-dot cs-warn"></span> {{ card.data.pods?.warning || 0 }}</span>
+                <span class="mc-pod-stat"><span class="cs-dot cs-crit"></span> {{ card.data.pods?.critical || 0 }}</span>
               </div>
             }
 
-            <!-- Mini Activity -->
-            <app-sparkline [bars]="card.activityBars" label="Activity" height="sm" />
+            <!-- P1: Card action links -->
+            <div class="mc-card-actions">
+              <button class="card-link" (click)="navigateTo('/pods?filter=' + card.namespace)">
+                <i class="pi pi-search"></i> Investigate
+              </button>
+              <button class="card-link" (click)="navigateTo('/events?ns=' + card.namespace)">
+                <i class="pi pi-bolt"></i> Events
+              </button>
+              <button class="card-link" (click)="navigateTo('/metrics?ns=' + card.namespace)">
+                <i class="pi pi-chart-line"></i> Metrics
+              </button>
+            </div>
 
             <!-- Footer -->
             <div class="mc-footer">
-              <span class="mc-events-count"><i class="pi pi-bolt"></i> {{ card.events.length }} events</span>
               @if (card.alertEnabled) {
                 <span class="mc-alert-badge" [class.alert-triggered]="healthPct(card) < card.alertThreshold">
                   <i class="pi pi-bell"></i> {{ healthPct(card) < card.alertThreshold ? 'ALERT' : 'OK' }}
@@ -179,19 +217,6 @@
               <span class="mc-time">{{ card.lastUpdated || '—' }}</span>
             </div>
 
-
-            <!-- Action Log -->
-            @if (card.actionLog.length > 0) {
-              <div class="mc-action-log">
-                @for (entry of card.actionLog.slice(-3).reverse(); track $index) {
-                  <div class="action-entry">
-                    <span class="action-icon" [class.action-restart]="entry.action === 'restart'" [class.action-scale]="entry.action.startsWith('scale')">●</span>
-                    <span class="action-text">{{ entry.target }} {{ entry.action }}</span>
-                    <span class="action-time">{{ entry.time }}</span>
-                  </div>
-                }
-              </div>
-            }
           } @else if (card.loading) {
             <div class="loading-state"><div class="loader-ring"></div></div>
           } @else if (card.data?.error) {
@@ -248,7 +273,7 @@
             <app-sparkline [bars]="fsCard!.activityBars" height="lg" />
           </div>
 
-          <!-- Action Log -->
+          <!-- Action Log (moved here from main card) -->
           @if (fsCard!.actionLog.length > 0) {
             <div class="fsd-section">
               <h4>Action Log</h4>
