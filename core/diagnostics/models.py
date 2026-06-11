@@ -5,12 +5,10 @@ Core objects that flow through diagnose → evidence → plan → execute.
 All interfaces (CLI, TUI, API, Web UI) render the same report.
 """
 
-from __future__ import annotations
-
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Optional
+from typing import Any, Dict, List, Optional
 
 SCHEMA_VERSION = "1"
 
@@ -53,10 +51,10 @@ class Observation:
     id: str
     source: ObservationSource
     message: str
-    timestamp: datetime | None = None
+    timestamp: Optional[datetime] = None
     verified: bool = True
     raw_ref: str = ""
-    metadata: dict[str, Any] = field(
+    metadata: Dict[str, Any] = field(
         default_factory=dict
     )
 
@@ -67,14 +65,14 @@ class Finding:
     severity: Severity
     title: str
     conclusion: str
-    finding_type: str | None = None
-    evidence_ids: list[str] = field(
+    finding_type: Optional[str] = None
+    evidence_ids: List[str] = field(
         default_factory=list
     )
-    related_finding_ids: list[str] = field(
+    related_finding_ids: List[str] = field(
         default_factory=list
     )
-    verification_commands: list[str] = field(
+    verification_commands: List[str] = field(
         default_factory=list
     )
 
@@ -90,8 +88,8 @@ class Recommendation:
 @dataclass
 class ExecutionPlan:
     id: str
-    finding_ids: list[str]
-    steps: list[str]
+    finding_ids: List[str]
+    steps: List[str]
     risk: Risk
     reversible: bool = True
 
@@ -106,16 +104,16 @@ class InvestigationReport:
     target: ResourceRef
     generated_at: datetime
     schema_version: str = SCHEMA_VERSION
-    observations: list[Observation] = field(
+    observations: List[Observation] = field(
         default_factory=list
     )
-    findings: list[Finding] = field(
+    findings: List[Finding] = field(
         default_factory=list
     )
-    recommendations: list[Recommendation] = field(
+    recommendations: List[Recommendation] = field(
         default_factory=list
     )
-    execution_plans: list[ExecutionPlan] = field(
+    execution_plans: List[ExecutionPlan] = field(
         default_factory=list
     )
 
@@ -196,10 +194,10 @@ class InvestigationReport:
 @dataclass
 class ServiceInvestigationReport(InvestigationReport):
     """Service-level report containing child pod reports."""
-    affected_pods: list[ResourceRef] = field(
+    affected_pods: List[ResourceRef] = field(
         default_factory=list
     )
-    child_reports: list[InvestigationReport] = field(
+    child_reports: List[InvestigationReport] = field(
         default_factory=list
     )
 
