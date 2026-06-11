@@ -8,6 +8,8 @@ No PagerDuty, no Jira, no external integrations yet.
 Auto-creates incidents from clustered critical findings.
 """
 
+from __future__ import annotations
+
 import json
 import os
 import uuid

@@ -4,11 +4,11 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "kubsome"
-version = "1.13.29"
+version = "1.13.30"
 description = "AI-native Kubernetes Operational Workspace"
 readme = "README.md"
 license = {text = "MIT"}
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 authors = [
     {name = "Aloke Tewary", email = "aloketewary@gmail.com"}
 ]

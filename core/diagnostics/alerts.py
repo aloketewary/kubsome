@@ -10,6 +10,8 @@ Does NOT:
 Only enriches alerts with Kubsome investigation artifacts.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 

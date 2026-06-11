@@ -11,6 +11,8 @@ Input: InvestigationReport + Previous Report + Diff + Timeline
 Output: InvestigationNarrative
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 from datetime import datetime
 
