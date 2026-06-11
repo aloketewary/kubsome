@@ -5,10 +5,12 @@ Core objects that flow through diagnose → evidence → plan → execute.
 All interfaces (CLI, TUI, API, Web UI) render the same report.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any
+from typing import Any, Optional
 
 SCHEMA_VERSION = "1"
 
