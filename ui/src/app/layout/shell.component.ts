@@ -144,6 +144,14 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
         }
       }
     </nav>
+    <nav class="nav-section">
+      <a class="nav-item nav-item-more" (click)="openMore()" (keydown)="onKey($event, openMore.bind(this))" tabindex="0" role="button">
+        <i class="pi pi-ellipsis-h"></i>
+        <span>More...</span>
+        <kbd>⌘K</kbd>
+      </a>
+    </nav>
+
 
     <div class="nav-footer">
       <a class="nav-item" (click)="openHelp()" (keydown)="onKey($event, openHelp.bind(this))" tabindex="0" role="button">
@@ -413,6 +421,10 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
     }
     :host-context([data-theme="light"]) .help-close { color: rgba(0, 0, 0, 0.4); }
     :host-context([data-theme="light"]) .help-close:hover { background: rgba(0, 0, 0, 0.04); color: rgba(0, 0, 0, 0.8); }
+
+    .nav-item-more { opacity: 0.5; }
+    .nav-item-more:hover { opacity: 1; }
+
   `],
 })
 export class ShellComponent implements OnInit {
@@ -436,67 +448,40 @@ export class ShellComponent implements OnInit {
   monitorItems: any[] = [
     { path: '/dashboard', icon: 'pi pi-objects-column', label: 'Dashboard' },
     { path: '/monitor', icon: 'pi pi-desktop', label: 'Monitor' },
-    { path: '/health-signals', icon: 'pi pi-wave-pulse', label: 'Signals', badge: 'NEW' },
-    { path: '/pods', icon: 'pi pi-box', label: 'Pods' },
-    { path: '/events', icon: 'pi pi-bolt', label: 'Events' },
+    { path: '/investigate', icon: 'pi pi-search', label: 'Investigate' },
     { path: '/metrics', icon: 'pi pi-chart-line', label: 'Metrics' },
-    { path: '/scorecard', icon: 'pi pi-trophy', label: 'Scorecard' },
-    { path: '/timeline', icon: 'pi pi-history', label: 'Timeline' },
-    { path: '/doctor', icon: 'pi pi-heart', label: 'Health' },
+    { path: '/events', icon: 'pi pi-bolt', label: 'Events' },
+    { path: '/logs', icon: 'pi pi-align-left', label: 'Logs' },
   ];
 
   opsItems: any[] = [
+    { path: '/pods', icon: 'pi pi-box', label: 'Pods' },
     { path: '/deployments', icon: 'pi pi-send', label: 'Deployments' },
-    { path: '/logs', icon: 'pi pi-align-left', label: 'Logs' },
     { path: '/jobs', icon: 'pi pi-clock', label: 'Jobs' },
-    { path: '/namespace', icon: 'pi pi-th-large', label: 'Namespace' },
     { path: '/resources', icon: 'pi pi-database', label: 'Resources' },
-    { path: '/rbac', icon: 'pi pi-shield', label: 'RBAC' },
-    { path: '/network', icon: 'pi pi-globe', label: 'Network' },
-    { path: '/secrets', icon: 'pi pi-lock', label: 'Pull Secrets' },
     { path: '/incident', icon: 'pi pi-exclamation-circle', label: 'Incident' },
-    { path: '/audit', icon: 'pi pi-file-check', label: 'Audit' },
-    { path: '/yaml', icon: 'pi pi-file-edit', label: 'YAML Editor' },
-    { path: '/yaml-diff', icon: 'pi pi-copy', label: 'YAML Diff' },
+    { path: '/terminal', icon: 'pi pi-code', label: 'Terminal' },
+    { path: '/runbooks', icon: 'pi pi-book', label: 'Runbooks' },
+    { path: '/yaml', icon: 'pi pi-file-edit', label: 'YAML' },
   ];
 
   infraItems: any[] = [
+    { path: '/network', icon: 'pi pi-globe', label: 'Network' },
     { path: '/graph', icon: 'pi pi-sitemap', label: 'Service Map' },
-    { path: '/gateway-monitor', icon: 'pi pi-server', label: 'Gateway' },
-    { path: '/gitops', icon: 'pi pi-sync', label: 'GitOps', badge: 'NEW' },
-    { path: '/mesh', icon: 'pi pi-share-alt', label: 'Service Mesh', badge: 'NEW' },
-    { path: '/integrations', icon: 'pi pi-link', label: 'Integrations', badge: 'NEW' },
-    { path: '/compare', icon: 'pi pi-arrows-h', label: 'Compare' },
+    { path: '/gitops', icon: 'pi pi-sync', label: 'GitOps' },
     { path: '/policy', icon: 'pi pi-verified', label: 'Policy' },
-    { path: '/taints', icon: 'pi pi-ban', label: 'Node Taints' },
-    { path: '/node-ops', icon: 'pi pi-cog', label: 'Node Ops', badge: 'NEW' },
-    { path: '/resource-ops', icon: 'pi pi-wrench', label: 'Resource Ops', badge: 'NEW' },
   ];
 
   costItems: any[] = [
-    { path: '/analytics', icon: 'pi pi-chart-bar', label: 'Analytics', badge: 'NEW' },
+    { path: '/analytics', icon: 'pi pi-chart-bar', label: 'Analytics' },
     { path: '/cost', icon: 'pi pi-dollar', label: 'Optimization' },
-    { path: '/cost-estimate', icon: 'pi pi-calculator', label: 'Cost Estimate' },
-    { path: '/rightsizing', icon: 'pi pi-sliders-h', label: 'Right-Sizing', badge: 'NEW' },
-    { path: '/helm', icon: 'pi pi-server', label: 'Helm', badge: 'NEW' },
-    { path: '/port-forwards', icon: 'pi pi-link', label: 'Port Forwards', badge: 'NEW' },
-    { path: '/blast-radius', icon: 'pi pi-bullseye', label: 'Blast Radius', badge: 'NEW' },
-    { path: '/chargeback', icon: 'pi pi-wallet', label: 'Chargeback', badge: 'NEW' },
-    { path: '/idle-resources', icon: 'pi pi-trash', label: 'Idle Resources', badge: 'NEW' },
   ];
 
   aiItems: any[] = [
     { path: '/ai', icon: 'pi pi-sparkles', label: 'AI Assistant' },
-    { path: '/log-correlation', icon: 'pi pi-arrows-alt', label: 'Log Correlate' },
-    { path: '/runbooks', icon: 'pi pi-book', label: 'Runbooks' },
-    { path: '/pins', icon: 'pi pi-bookmark', label: 'Pins' },
-    { path: '/watches', icon: 'pi pi-eye', label: 'Watches' },
-    { path: '/schedule', icon: 'pi pi-calendar', label: 'Schedules' },
-    { path: '/terminal', icon: 'pi pi-code', label: 'Terminal' },
-    { path: '/profiles', icon: 'pi pi-user', label: 'Profiles', badge: 'NEW' },
-    { path: '/stats', icon: 'pi pi-percentage', label: 'Usage Stats' },
     { path: '/settings', icon: 'pi pi-cog', label: 'Settings' },
   ];
+
 
   @HostListener('document:keydown', ['$event'])
   onKeydown(event: KeyboardEvent) {
@@ -549,7 +534,7 @@ export class ShellComponent implements OnInit {
     this.loadFavorites();
     this.http.get<any>('/api/contexts').subscribe({
       next: (res) => { this.currentContext = res.current ?? 'none'; },
-      error: () => {},
+      error: () => { },
     });
     this.http.get<any>('/api/uptime').subscribe({
       next: (res) => { this.clusterOk = res.api_reachable && !res.cluster_down; },
@@ -590,5 +575,10 @@ export class ShellComponent implements OnInit {
   isFavorite(path: string): boolean {
     return this.prefsService.get('sidebarFavorites').includes(path);
   }
+
+  openMore() {
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }));
+  }
+
 
 }

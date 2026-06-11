@@ -160,3 +160,34 @@ def _parse_percent(val):
         return int(val.replace("%", ""))
     except ValueError:
         return 0
+
+@cached(ttl=10)
+def pod_resource_specs():
+    """Return resource requests/limits for each pod."""
+    from core.k8s import get_raw_resources
+    data = get_raw_resources(
+        "pods", context.current_context, context.namespace
+    )
+    specs = {}
+    for item in data.get("items", []):
+        name = item["metadata"]["name"]
+        containers = item.get("spec", {}).get("containers", [])
+        total_req_cpu = 0
+        total_req_mem = 0
+        total_lim_cpu = 0
+        total_lim_mem = 0
+        for c in containers:
+            res = c.get("resources", {})
+            req = res.get("requests", {})
+            lim = res.get("limits", {})
+            total_req_cpu += _parse_cpu(req.get("cpu", "0"))
+            total_req_mem += _parse_memory(req.get("memory", "0"))
+            total_lim_cpu += _parse_cpu(lim.get("cpu", "0"))
+            total_lim_mem += _parse_memory(lim.get("memory", "0"))
+        specs[name] = {
+            "cpu_request_m": total_req_cpu,
+            "mem_request_mb": total_req_mem,
+            "cpu_limit_m": total_lim_cpu,
+            "mem_limit_mb": total_lim_mem,
+        }
+    return specs

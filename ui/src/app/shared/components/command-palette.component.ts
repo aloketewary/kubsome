@@ -223,111 +223,69 @@ export class CommandPaletteComponent implements OnInit {
   filtered: PaletteItem[] = [];
 
   private pages: PaletteItem[] = [
-    {
-      type: 'page',
-      icon: 'pi pi-objects-column',
-      label: 'Dashboard',
-      hint: 'G D',
-      action: () => this.go('/dashboard'),
-    },
-    {
-      type: 'page',
-      icon: 'pi pi-box',
-      label: 'Pods',
-      hint: 'G P',
-      action: () => this.go('/pods'),
-    },
-    {
-      type: 'page',
-      icon: 'pi pi-bolt',
-      label: 'Events',
-      hint: 'G E',
-      action: () => this.go('/events'),
-    },
-    {
-      type: 'page',
-      icon: 'pi pi-chart-bar',
-      label: 'Metrics',
-      action: () => this.go('/metrics'),
-    },
-    {
-      type: 'page',
-      icon: 'pi pi-send',
-      label: 'Deployments',
-      action: () => this.go('/deployments'),
-    },
-    {
-      type: 'page',
-      icon: 'pi pi-align-left',
-      label: 'Logs',
-      hint: 'G L',
-      action: () => this.go('/logs'),
-    },
-    {
-      type: 'page',
-      icon: 'pi pi-clock',
-      label: 'Jobs',
-      action: () => this.go('/jobs'),
-    },
-    {
-      type: 'page',
-      icon: 'pi pi-shield',
-      label: 'RBAC',
-      action: () => this.go('/rbac'),
-    },
-    {
-      type: 'page',
-      icon: 'pi pi-globe',
-      label: 'Network',
-      action: () => this.go('/network'),
-    },
-    {
-      type: 'page',
-      icon: 'pi pi-exclamation-circle',
-      label: 'Incident',
-      action: () => this.go('/incident'),
-    },
-    {
-      type: 'page',
-      icon: 'pi pi-th-large',
-      label: 'Namespace',
-      action: () => this.go('/namespace'),
-    },
-    {
-      type: 'page',
-      icon: 'pi pi-sparkles',
-      label: 'AI Assistant',
-      hint: 'G A',
-      action: () => this.go('/ai'),
-    },
-    {
-      type: 'page',
-      icon: 'pi pi-book',
-      label: 'Runbooks',
-      hint: 'G R',
-      action: () => this.go('/runbooks'),
-    },
-    {
-      type: 'page',
-      icon: 'pi pi-chart-bar',
-      label: 'Usage Stats',
-      action: () => this.go('/stats'),
-    },
-    {
-      type: 'page',
-      icon: 'pi pi-code',
-      label: 'Terminal',
-      hint: 'G T',
-      action: () => this.go('/terminal'),
-    },
-    {
-      type: 'page',
-      icon: 'pi pi-cog',
-      label: 'Settings',
-      hint: 'G S',
-      action: () => this.go('/settings'),
-    },
+    // Observe
+    { type: 'page', icon: 'pi pi-objects-column', label: 'Dashboard', hint: 'G D', action: () => this.go('/dashboard') },
+    { type: 'page', icon: 'pi pi-desktop', label: 'Monitor', action: () => this.go('/monitor') },
+    { type: 'page', icon: 'pi pi-search', label: 'Investigate', action: () => this.go('/investigate') },
+    { type: 'page', icon: 'pi pi-wave-pulse', label: 'Health Signals', action: () => this.go('/health-signals') },
+    { type: 'page', icon: 'pi pi-chart-line', label: 'Metrics', hint: 'G M', action: () => this.go('/metrics') },
+    { type: 'page', icon: 'pi pi-bolt', label: 'Events', hint: 'G E', action: () => this.go('/events') },
+    { type: 'page', icon: 'pi pi-align-left', label: 'Logs', hint: 'G L', action: () => this.go('/logs') },
+    { type: 'page', icon: 'pi pi-trophy', label: 'Scorecard', action: () => this.go('/scorecard') },
+    { type: 'page', icon: 'pi pi-history', label: 'Timeline', action: () => this.go('/timeline') },
+    { type: 'page', icon: 'pi pi-heart', label: 'Health Check', action: () => this.go('/doctor') },
+
+    // Workloads
+    { type: 'page', icon: 'pi pi-box', label: 'Pods', hint: 'G P', action: () => this.go('/pods') },
+    { type: 'page', icon: 'pi pi-send', label: 'Deployments', action: () => this.go('/deployments') },
+    { type: 'page', icon: 'pi pi-clock', label: 'Jobs', action: () => this.go('/jobs') },
+    { type: 'page', icon: 'pi pi-database', label: 'Resources', action: () => this.go('/resources') },
+    { type: 'page', icon: 'pi pi-th-large', label: 'Namespace', action: () => this.go('/namespace') },
+    { type: 'page', icon: 'pi pi-shield', label: 'RBAC', action: () => this.go('/rbac') },
+    { type: 'page', icon: 'pi pi-lock', label: 'Pull Secrets', action: () => this.go('/secrets') },
+    { type: 'page', icon: 'pi pi-exclamation-circle', label: 'Incident', action: () => this.go('/incident') },
+    { type: 'page', icon: 'pi pi-code', label: 'Terminal', hint: 'G T', action: () => this.go('/terminal') },
+    { type: 'page', icon: 'pi pi-book', label: 'Runbooks', hint: 'G R', action: () => this.go('/runbooks') },
+    { type: 'page', icon: 'pi pi-file-edit', label: 'YAML Editor', action: () => this.go('/yaml') },
+    { type: 'page', icon: 'pi pi-copy', label: 'YAML Diff', action: () => this.go('/yaml-diff') },
+    { type: 'page', icon: 'pi pi-file-check', label: 'Audit', action: () => this.go('/audit') },
+
+    // Infrastructure
+    { type: 'page', icon: 'pi pi-globe', label: 'Network', action: () => this.go('/network') },
+    { type: 'page', icon: 'pi pi-sitemap', label: 'Service Map', action: () => this.go('/graph') },
+    { type: 'page', icon: 'pi pi-server', label: 'Gateway', action: () => this.go('/gateway-monitor') },
+    { type: 'page', icon: 'pi pi-sync', label: 'GitOps', action: () => this.go('/gitops') },
+    { type: 'page', icon: 'pi pi-share-alt', label: 'Service Mesh', action: () => this.go('/mesh') },
+    { type: 'page', icon: 'pi pi-link', label: 'Integrations', action: () => this.go('/integrations') },
+    { type: 'page', icon: 'pi pi-arrows-h', label: 'Compare Clusters', action: () => this.go('/compare') },
+    { type: 'page', icon: 'pi pi-verified', label: 'Policy', action: () => this.go('/policy') },
+    { type: 'page', icon: 'pi pi-ban', label: 'Node Taints', action: () => this.go('/taints') },
+    { type: 'page', icon: 'pi pi-cog', label: 'Node Operations', action: () => this.go('/node-ops') },
+    { type: 'page', icon: 'pi pi-wrench', label: 'Resource Operations', action: () => this.go('/resource-ops') },
+
+    // Cost & Analytics
+    { type: 'page', icon: 'pi pi-chart-bar', label: 'Analytics', action: () => this.go('/analytics') },
+    { type: 'page', icon: 'pi pi-dollar', label: 'Optimization', action: () => this.go('/cost') },
+    { type: 'page', icon: 'pi pi-calculator', label: 'Cost Estimate', action: () => this.go('/cost-estimate') },
+    { type: 'page', icon: 'pi pi-sliders-h', label: 'Right-Sizing', action: () => this.go('/rightsizing') },
+    { type: 'page', icon: 'pi pi-server', label: 'Helm', action: () => this.go('/helm') },
+    { type: 'page', icon: 'pi pi-link', label: 'Port Forwards', action: () => this.go('/port-forwards') },
+    { type: 'page', icon: 'pi pi-bullseye', label: 'Blast Radius', action: () => this.go('/blast-radius') },
+    { type: 'page', icon: 'pi pi-wallet', label: 'Chargeback', action: () => this.go('/chargeback') },
+    { type: 'page', icon: 'pi pi-trash', label: 'Idle Resources', action: () => this.go('/idle-resources') },
+
+    // Tools
+    { type: 'page', icon: 'pi pi-sparkles', label: 'AI Assistant', hint: 'G A', action: () => this.go('/ai') },
+    { type: 'page', icon: 'pi pi-arrows-alt', label: 'Log Correlation', action: () => this.go('/log-correlation') },
+    { type: 'page', icon: 'pi pi-bookmark', label: 'Pins', action: () => this.go('/pins') },
+    { type: 'page', icon: 'pi pi-eye', label: 'Watches', action: () => this.go('/watches') },
+    { type: 'page', icon: 'pi pi-calendar', label: 'Schedules', action: () => this.go('/schedule') },
+    { type: 'page', icon: 'pi pi-user', label: 'Profiles', action: () => this.go('/profiles') },
+    { type: 'page', icon: 'pi pi-percentage', label: 'Usage Stats', action: () => this.go('/stats') },
+    { type: 'page', icon: 'pi pi-cog', label: 'Settings', hint: 'G S', action: () => this.go('/settings') },
+    { type: 'page', icon: 'pi pi-th-large', label: 'Custom Dashboard', action: () => this.go('/my-dashboard') },
   ];
+
 
   @HostListener('document:keydown', ['$event'])
   onKeydown(event: KeyboardEvent) {

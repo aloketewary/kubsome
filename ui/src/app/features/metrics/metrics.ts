@@ -1,4 +1,5 @@
 import { Component, inject, OnInit, OnDestroy } from '@angular/core';
+import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { TagModule } from 'primeng/tag';
@@ -18,7 +19,7 @@ import { IntelHeaderComponent } from '../../shared/components/futuristic/intel-h
 @Component({
   selector: 'app-metrics',
   standalone: true,
-  imports: [IntelHeaderComponent, 
+  imports: [IntelHeaderComponent,
     FormsModule, TagModule, ButtonModule, TooltipModule,
     HoloCardComponent, MetricTileComponent, CommandBarComponent,
     LiveIndicatorComponent, StatusBeaconComponent,
@@ -29,6 +30,7 @@ import { IntelHeaderComponent } from '../../shared/components/futuristic/intel-h
 export class MetricsComponent implements OnInit, OnDestroy {
   private api = inject(ApiService);
   private http = inject(HttpClient);
+  router = inject(Router);
 
   topPods: PodMetrics[] = [];
   topNodes: NodeMetrics[] = [];
@@ -44,6 +46,10 @@ export class MetricsComponent implements OnInit, OnDestroy {
   private maxMem = 1;
   private refreshTimer: any;
 
+  // Previous snapshot for deltas
+  private prevNodes: Map<string, { cpu: number; mem: number }> = new Map();
+  nodeDeltas: Map<string, { cpuDelta: number; memDelta: number }> = new Map();
+
   get avgCpu(): number {
     if (!this.topNodes.length) return 0;
     return Math.round(this.topNodes.reduce((s, n) => s + (n.cpu_pct_val || 0), 0) / this.topNodes.length);
@@ -51,6 +57,30 @@ export class MetricsComponent implements OnInit, OnDestroy {
   get avgMem(): number {
     if (!this.topNodes.length) return 0;
     return Math.round(this.topNodes.reduce((s, n) => s + (n.mem_pct_val || 0), 0) / this.topNodes.length);
+  }
+
+  /** HOT nodes: CPU > 80% or MEM > 80% */
+  get hotNodes(): NodeMetrics[] {
+    return this.topNodes.filter(n => n.cpu_pct_val > 80 || n.mem_pct_val > 80);
+  }
+
+  /** HOT pods: top 3 by CPU or any above threshold */
+  get hotPods(): PodMetrics[] {
+    return this.sortedPods.filter(p => this.cpuPct(p) > 80 || this.memPct(p) > 80).slice(0, 5);
+  }
+
+  /** Normal nodes (not HOT) */
+  get normalNodes(): NodeMetrics[] {
+    return this.topNodes.filter(n => n.cpu_pct_val <= 80 && n.mem_pct_val <= 80);
+  }
+
+  /** Top consumers */
+  get topCpuPod(): string {
+    return this.topPods[0]?.name || '—';
+  }
+  get topMemPod(): string {
+    const sorted = [...this.topPods].sort((a, b) => b.memory_mb - a.memory_mb);
+    return sorted[0]?.name || '—';
   }
 
   get filterPills(): CommandPill[] {
@@ -97,7 +127,24 @@ export class MetricsComponent implements OnInit, OnDestroy {
       },
       error: () => { this.loading = false; },
     });
-    this.api.getTopNodes().subscribe(res => (this.topNodes = res.nodes));
+    this.api.getTopNodes().subscribe(res => {
+      // Compute deltas from previous
+      const newDeltas = new Map<string, { cpuDelta: number; memDelta: number }>();
+      for (const node of res.nodes) {
+        const prev = this.prevNodes.get(node.name);
+        if (prev) {
+          newDeltas.set(node.name, {
+            cpuDelta: node.cpu_pct_val - prev.cpu,
+            memDelta: node.mem_pct_val - prev.mem,
+          });
+        }
+      }
+      this.nodeDeltas = newDeltas;
+
+      // Store current as prev for next cycle
+      this.prevNodes = new Map(res.nodes.map(n => [n.name, { cpu: n.cpu_pct_val, mem: n.mem_pct_val }]));
+      this.topNodes = res.nodes;
+    });
     this.api.getNodeWorkloads().subscribe({
       next: res => { this.nodeWorkloads = res.nodes || {}; },
       error: () => {},
@@ -136,5 +183,17 @@ export class MetricsComponent implements OnInit, OnDestroy {
     if (node.cpu_pct_val > 80 || node.mem_pct_val > 80) return 'critical';
     if (node.cpu_pct_val > 50 || node.mem_pct_val > 50) return 'warning';
     return 'ok';
+  }
+
+  nodeCpuDelta(name: string): string {
+    const d = this.nodeDeltas.get(name);
+    if (!d || d.cpuDelta === 0) return '';
+    return d.cpuDelta > 0 ? `↑${d.cpuDelta}%` : `↓${Math.abs(d.cpuDelta)}%`;
+  }
+
+  nodeMemDelta(name: string): string {
+    const d = this.nodeDeltas.get(name);
+    if (!d || d.memDelta === 0) return '';
+    return d.memDelta > 0 ? `↑${d.memDelta}%` : `↓${Math.abs(d.memDelta)}%`;
   }
 }

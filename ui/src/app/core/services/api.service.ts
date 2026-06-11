@@ -114,6 +114,24 @@ export class ApiService {
     return this.http.get<DiagnoseResponse>(`${this.base}/diagnose/${pod}`);
   }
 
+  investigate(name: string): Observable<any> {
+    return this.http.get<any>(`${this.base}/investigate/${name}`);
+  }
+
+  getBenchmark(): Observable<any> {
+    return this.http.get<any>(`${this.base}/benchmark`);
+  }
+
+  submitFeedback(findingType: string, verdict: string, comment = ''): Observable<any> {
+    return this.http.post<any>(`${this.base}/feedback`, null, {
+      params: { finding_type: findingType, verdict, comment }
+    });
+  }
+
+  getFeedbackSummary(): Observable<any> {
+    return this.http.get<any>(`${this.base}/feedback/summary`);
+  }
+
   trace(name: string): Observable<any> {
     return this.http.get(`${this.base}/trace/${name}`);
   }

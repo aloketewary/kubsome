@@ -1,0 +1,300 @@
+<!-- ─── Header ─────────────────────────────────────────────────────── -->
+<app-intel-header title="Investigation" icon="pi pi-search"
+  [subtitle]="report ? target + ' · ' + findings.length + ' findings' : 'evidence-backed diagnosis'">
+  <button class="ctrl-btn" (click)="loadBenchmark()" pTooltip="Trust & Accuracy">
+    <i class="pi pi-shield"></i>
+  </button>
+</app-intel-header>
+
+<!-- ─── Search ─────────────────────────────────────────────────────── -->
+ <!-- ─── Search with Dropdown ───────────────────────────────────────── -->
+<div class="search-bar">
+  <div class="search-wrapper">
+    <input class="search-input" type="text" [(ngModel)]="target"
+      placeholder="Pod or service name..."
+      (input)="onSearchInput()"
+      (keydown.enter)="investigate()"
+      (blur)="hideSuggestions()"
+      (focus)="onSearchInput()" />
+    @if (showSuggestions && suggestions.length > 0) {
+      <div class="search-dropdown">
+        @for (s of suggestions; track s) {
+          <button class="search-option" (mousedown)="selectSuggestion(s)">
+            <i class="pi pi-box"></i>
+            <span class="search-option-name">{{ s }}</span>
+          </button>
+        }
+      </div>
+    }
+  </div>
+  <button class="ctrl-btn ctrl-btn-accent" (click)="investigate()" [disabled]="loading">
+    <i class="pi" [class.pi-search]="!loading" [class.pi-spin]="loading" [class.pi-spinner]="loading"></i>
+    <span>Investigate</span>
+  </button>
+</div>
+
+<!-- ─── Loading ────────────────────────────────────────────────────── -->
+@if (loading) {
+  <div class="loading-state"><div class="loader-ring"></div><span>Investigating {{ target }}...</span></div>
+}
+
+@if (loadError) {
+  <div class="empty-state"><div class="empty-icon"><i class="pi pi-exclamation-triangle"></i></div><span>{{ loadError }}</span></div>
+}
+
+<!-- ─── Report ─────────────────────────────────────────────────────── -->
+@if (report && !loading) {
+
+  <!-- ━━━ Incident Summary Hero ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+  @if (topFinding) {
+    <div class="incident-hero" [attr.data-severity]="topFinding.severity">
+      <div class="hero-severity">{{ topFinding.severity | uppercase }}</div>
+      <div class="hero-title">{{ topFinding.title }}</div>
+      <div class="hero-conclusion">{{ topFinding.conclusion }}</div>
+
+      <div class="hero-confidence">
+        <span class="hero-confidence-label">Confidence</span>
+        <span class="confidence-bar">
+          <span class="confidence-fill" [style.width.%]="overallConfidence"></span>
+        </span>
+        <span class="confidence-value">{{ overallConfidence }}%</span>
+      </div>
+
+      @if (topRecommendation) {
+        <div class="hero-action">
+          <span class="hero-action-label">Recommended Action</span>
+          <span class="hero-action-text">{{ topRecommendation.action }}</span>
+        </div>
+      }
+
+      <div class="hero-ctas">
+        @if (topFinding.verification_commands?.length) {
+          <button class="hero-cta" (click)="copyToClipboard(topFinding.verification_commands[0])">
+            <i class="pi pi-check-circle"></i> Verify
+          </button>
+        }
+        <button class="hero-cta" (click)="activeTab = 'evidence'">
+          <i class="pi pi-list"></i> Evidence
+        </button>
+        @if (plans.length) {
+          <button class="hero-cta" (click)="activeTab = 'plans'">
+            <i class="pi pi-directions"></i> Plan
+          </button>
+        }
+      </div>
+    </div>
+  }
+
+  <!-- ━━━ Metrics Strip ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+  <div class="metrics-strip">
+    <app-metric-tile label="Findings" [value]="'' + findings.length" accent="cyan" />
+    @if (criticalCount) { <app-metric-tile label="Critical" [value]="'' + criticalCount" accent="red" /> }
+    @if (highCount) { <app-metric-tile label="High" [value]="'' + highCount" accent="amber" /> }
+    @if (mediumCount) { <app-metric-tile label="Medium" [value]="'' + mediumCount" accent="purple" /> }
+    @if (lowCount) { <app-metric-tile label="Low" [value]="'' + lowCount" accent="cyan" /> }
+    <app-metric-tile label="Confidence" [value]="overallConfidence + '%'" accent="green" />
+    <app-metric-tile label="Plans" [value]="'' + plans.length" accent="green" />
+  </div>
+
+  <!-- ━━━ Tabs ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+  <div class="tab-bar">
+    <button class="tab-btn" [class.active]="activeTab === 'findings'" (click)="activeTab = 'findings'">Findings</button>
+    <button class="tab-btn" [class.active]="activeTab === 'timeline'" (click)="activeTab = 'timeline'">Timeline</button>
+    <button class="tab-btn" [class.active]="activeTab === 'evidence'" (click)="activeTab = 'evidence'">Evidence</button>
+    <button class="tab-btn" [class.active]="activeTab === 'plans'" (click)="activeTab = 'plans'">Plans</button>
+    <button class="tab-btn tab-btn-muted" [class.active]="activeTab === 'trust'" (click)="loadBenchmark()">Trust & Accuracy</button>
+  </div>
+
+  <!-- ━━━ Findings Tab ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+  @if (activeTab === 'findings') {
+    <div class="findings-list">
+      @for (f of findings; track f.id) {
+        <div class="finding-row" [attr.data-severity]="f.severity">
+          <!-- 1. Severity + Title -->
+          <div class="finding-header">
+            <app-status-beacon [status]="severityBeacon(f.severity)" size="sm" />
+            <span class="finding-title">{{ f.title }}</span>
+          </div>
+
+          <!-- 2. Confidence -->
+          @if (confidenceForFinding(f)) {
+            <div class="finding-confidence">
+              <span class="confidence-bar confidence-bar-sm">
+                <span class="confidence-fill" [style.width.%]="confidenceForFinding(f)"></span>
+              </span>
+              <span class="confidence-value-sm">{{ confidenceForFinding(f) }}%</span>
+            </div>
+          }
+
+          <!-- 3. Conclusion -->
+          <div class="finding-conclusion">{{ f.conclusion }}</div>
+
+          <!-- 4. Why we think this -->
+          @if (getEvidenceForFinding(f).length) {
+            <div class="finding-evidence">
+              <span class="evidence-heading">Why we think this</span>
+              @for (obs of getEvidenceForFinding(f); track obs.id) {
+                <div class="evidence-item">
+                  <span class="evidence-check">✓</span>
+                  <span class="evidence-msg">{{ obs.message }}</span>
+                </div>
+              }
+            </div>
+          }
+
+          <!-- 5. Verify command -->
+          @if (f.verification_commands?.length) {
+            <div class="verify-section">
+              <span class="verify-label">Verify</span>
+              @for (cmd of f.verification_commands; track cmd) {
+                <div class="verify-cmd-row">
+                  <code class="verify-cmd">{{ cmd }}</code>
+                  <button class="copy-btn" (click)="copyToClipboard(cmd)" [class.copied]="copyFeedback === cmd">
+                    {{ copyFeedback === cmd ? '✓' : '📋' }}
+                  </button>
+                </div>
+              }
+            </div>
+          }
+
+          <!-- 6. Fix + Risk -->
+          @if (getRecsForFinding(f).length) {
+            <div class="finding-recs">
+              <span class="recs-heading">Fix</span>
+              @for (r of getRecsForFinding(f); track r.id) {
+                <div class="rec-item">
+                  <span class="rec-action">{{ r.action }}</span>
+                  <span class="rec-risk" [attr.data-risk]="r.risk">{{ r.risk }} risk</span>
+                </div>
+              }
+            </div>
+          }
+
+          <!-- 7. Feedback -->
+          <div class="feedback-row">
+            <button class="fb-btn fb-correct" (click)="submitFeedback(f.finding_type, 'correct')" pTooltip="Correct">✓</button>
+            <button class="fb-btn fb-partial" (click)="submitFeedback(f.finding_type, 'partial')" pTooltip="Partially correct">~</button>
+            <button class="fb-btn fb-wrong" (click)="submitFeedback(f.finding_type, 'wrong')" pTooltip="Wrong">✗</button>
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- ━━━ Timeline Tab ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+  @if (activeTab === 'timeline') {
+    @if (timelineEntries.length === 0) {
+      <div class="empty-state"><div class="empty-icon"><i class="pi pi-clock"></i></div><span>No timestamped observations</span></div>
+    } @else {
+      <div class="timeline-list">
+        @for (entry of timelineEntries; track entry.id) {
+          <div class="timeline-row">
+            <span class="timeline-time">{{ formatTime(entry.timestamp) }}</span>
+            <span class="timeline-dot" [attr.data-source]="entry.source"></span>
+            <span class="timeline-source">{{ entry.source | uppercase }}</span>
+            <span class="timeline-msg">{{ entry.message }}</span>
+          </div>
+        }
+      </div>
+    }
+  }
+
+  <!-- ━━━ Evidence Tab (Grouped by Source) ━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+  @if (activeTab === 'evidence') {
+    @if (evidenceBySource.length === 0) {
+      <div class="empty-state"><span>No observations collected</span></div>
+    } @else {
+      <div class="evidence-groups">
+        @for (group of evidenceBySource; track group.source) {
+          <div class="evidence-group">
+            <button class="evidence-group-header" (click)="toggleSource(group.source)">
+              <i class="pi" [class.pi-chevron-right]="!isSourceExpanded(group.source)" [class.pi-chevron-down]="isSourceExpanded(group.source)"></i>
+              <span class="evidence-group-name">{{ sourceLabel(group.source) }}</span>
+              <span class="evidence-group-count">({{ group.items.length }})</span>
+            </button>
+            @if (isSourceExpanded(group.source)) {
+              <div class="evidence-group-items">
+                @for (obs of group.items; track obs.id) {
+                  <div class="obs-row">
+                    <span class="obs-msg">{{ obs.message }}</span>
+                    @if (obs.verified) { <span class="obs-verified">✓</span> }
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        }
+      </div>
+    }
+  }
+
+  <!-- ━━━ Plans Tab ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+  @if (activeTab === 'plans') {
+    @if (plans.length === 0) {
+      <div class="empty-state"><span>No execution plans generated</span></div>
+    }
+    @for (plan of plans; track plan.id) {
+      <div class="plan-card">
+        <div class="plan-header">
+          <span class="plan-risk" [attr.data-risk]="plan.risk">{{ plan.risk | uppercase }} RISK</span>
+          @if (plan.reversible) { <span class="plan-reversible">↩ Reversible</span> }
+        </div>
+        <ol class="plan-steps">
+          @for (step of plan.steps; track step) {
+            <li>
+              <span class="step-text">{{ step }}</span>
+              <button class="copy-btn copy-btn-inline" (click)="copyToClipboard(step)" [class.copied]="copyFeedback === step">
+                {{ copyFeedback === step ? '✓' : '📋' }}
+              </button>
+            </li>
+          }
+        </ol>
+      </div>
+    }
+  }
+
+  <!-- ━━━ Trust & Accuracy (collapsed section) ━━━━━━━━━━━━━━━━━━━━━━━ -->
+  @if (activeTab === 'trust') {
+    <app-holo-card [compact]="true">
+      <div class="benchmark-header">Model Performance</div>
+      @if (benchmarkData) {
+        @if (benchmarkData.total === 0) {
+          <div class="empty-state"><span>{{ benchmarkData.message || 'No corpus entries yet.' }}</span></div>
+        } @else {
+          <div class="metrics-strip">
+            <app-metric-tile label="Corpus" [value]="'' + benchmarkData.total" accent="cyan" />
+            <app-metric-tile label="Top-1" [value]="(benchmarkData.top1_accuracy * 100 | number:'1.0-0') + '%'" accent="green" />
+            <app-metric-tile label="Top-3" [value]="(benchmarkData.top3_accuracy * 100 | number:'1.0-0') + '%'" accent="green" />
+            <app-metric-tile label="FP Rate" [value]="(benchmarkData.false_positive_rate * 100 | number:'1.0-0') + '%'" accent="red" />
+          </div>
+        }
+      } @else {
+        <div class="loading-state"><div class="loader-ring"></div><span>Running benchmark...</span></div>
+      }
+    </app-holo-card>
+
+    @if (feedbackEntries.length) {
+      <app-holo-card [compact]="true">
+        <div class="benchmark-header">Feedback History</div>
+        <div class="feedback-table">
+          @for (entry of feedbackEntries; track entry.key) {
+            <div class="feedback-row-summary">
+              <span class="fb-type">{{ entry.key }}</span>
+              <span class="fb-accuracy">{{ entry.accuracy * 100 | number:'1.0-0' }}%</span>
+              <span class="fb-counts">{{ entry.correct }}✓ {{ entry.wrong }}✗ {{ entry.partial }}~</span>
+            </div>
+          }
+        </div>
+      </app-holo-card>
+    }
+  }
+}
+
+<!-- ─── Empty State ────────────────────────────────────────────────── -->
+@if (!report && !loading && !loadError) {
+  <div class="empty-state">
+    <div class="empty-icon"><i class="pi pi-search"></i></div>
+    <span>Enter a pod or service name to investigate</span>
+    <span class="empty-hint">Root cause → confidence → action in seconds</span>
+  </div>
+}

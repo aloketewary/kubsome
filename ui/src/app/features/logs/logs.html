@@ -18,6 +18,33 @@
   <button class="ctrl-btn ctrl-btn-wide" [class.ctrl-btn-warn]="watching" (click)="toggleWatch()" [class.disabled]="!selectedPod"><i class="pi" [class.pi-sync]="!watching" [class.pi-stop-circle]="watching"></i> {{ watching ? 'Unwatch' : 'Watch' }}</button>
 </div>
 
+<!-- ━━━ P0: Error Summary ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+@if (fetched && errorSummary.length > 0) {
+  <div class="error-summary">
+    <div class="error-summary-header">
+      <span class="error-summary-title">Errors Found</span>
+      <span class="error-summary-count">{{ errorCount }}</span>
+    </div>
+    <div class="error-summary-items">
+      @for (item of errorSummary; track item.pattern) {
+        <div class="error-summary-row">
+          <span class="error-pattern">{{ item.pattern }}</span>
+          <span class="error-pattern-count">{{ item.count }}×</span>
+          <button class="error-jump-btn" (click)="jumpToErrorAt(item.firstIndex)">Jump</button>
+        </div>
+      }
+    </div>
+    <div class="error-nav">
+      <button class="ctrl-btn ctrl-btn-sm" (click)="jumpToFirstError()"><i class="pi pi-step-backward"></i> First</button>
+      <button class="ctrl-btn ctrl-btn-sm" (click)="jumpToPrevError()"><i class="pi pi-chevron-left"></i> Prev</button>
+      <button class="ctrl-btn ctrl-btn-sm" (click)="jumpToNextError()">Next <i class="pi pi-chevron-right"></i></button>
+      @if (selectedPod) {
+        <button class="ctrl-btn ctrl-btn-sm error-action" (click)="router.navigate(['/investigate'], { queryParams: { target: selectedPod } })"><i class="pi pi-search"></i> Investigate</button>
+      }
+    </div>
+  </div>
+}
+
 <!-- Toolbar -->
 @if (lines.length > 0 || streaming) {
   <div class="log-toolbar">

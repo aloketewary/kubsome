@@ -31,3 +31,8 @@ def get_node_workloads():
         "namespace": context.namespace,
         "nodes": node_workloads(),
     }
+
+@router.get("/top/pods/specs")
+def get_pod_specs():
+    from core.collectors.metrics import pod_resource_specs
+    return {"specs": pod_resource_specs()}

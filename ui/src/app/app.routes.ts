@@ -54,4 +54,5 @@ export const routes: Routes = [
   { path: 'taints', title: 'Node Taints — Kubsome', loadComponent: () => import('./features/taints/taints').then(m => m.TaintsComponent) },
   { path: 'node-ops', title: 'Node Operations — Kubsome', loadComponent: () => import('./features/node-ops/node-ops').then(m => m.NodeOpsComponent) },
   { path: 'resource-ops', title: 'Resource Operations — Kubsome', loadComponent: () => import('./features/resource-ops/resource-ops').then(m => m.ResourceOpsComponent) },
+  { path: 'investigate', title: 'Investigate — Kubsome', loadComponent: () => import('./features/investigate/investigate').then(m => m.InvestigateComponent) },
 ];
