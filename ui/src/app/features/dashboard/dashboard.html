@@ -19,120 +19,159 @@
     </div>
   </div>
 
-  <!-- ━━━ P0: Incident Hero (only when problems exist) ━━━━━━━━━━━━━━ -->
-  @if (hasProblems) {
-    <div class="incident-hero" [attr.data-health]="overallHealth">
-      <div class="hero-status">{{ overallHealth === 'critical' ? 'CRITICAL' : 'DEGRADED' }}</div>
-      <div class="hero-summary">
-        @if (data.pods.critical > 0) { {{ data.pods.critical }} pod(s) critical }
-        @if (data.pods.critical > 0 && data.nodes.warning > 0) { · }
-        @if (data.nodes.warning > 0) { {{ data.nodes.warning }} node(s) not ready }
-        @if ((data.deployments.unavailable || 0) > 0) { · {{ data.deployments.unavailable }} deploy(s) down }
+  <!-- ─── Growth Insights ─────────────────────────────────────────── -->
+  <div class="insight-container">
+    @if (activeIncident) {
+      <div class="insight-pill insight-incident" (click)="router.navigate(['/incident'])">
+        <i class="pi pi-exclamation-triangle"></i>
+        <span>Active Incident: {{ activeIncident.title || 'In Progress' }}</span>
       </div>
-
-      @if (topIssue) {
-        <div class="hero-top-issue">
-          <span class="hero-issue-label">Top Issue</span>
-          <span class="hero-issue-text">{{ topIssue.object }}: {{ topIssue.reason }}</span>
-        </div>
-      }
-
-      <div class="hero-ctas">
-        <button class="hero-cta hero-cta-primary" (click)="goToPods()">
-          <i class="pi pi-search"></i> Investigate
-        </button>
-        <button class="hero-cta" (click)="router.navigate(['/ai'], { queryParams: { q: 'why are pods failing' } })">
-          <i class="pi pi-sparkles"></i> AI Diagnose
-        </button>
+    }
+    @if (hoursSaved >= 1) {
+      <div class="insight-pill insight-roi" (click)="router.navigate(['/stats'])">
+        <i class="pi pi-bolt"></i>
+        <span>ROI Milestone: {{ hoursSaved }}h saved this month</span>
       </div>
-    </div>
-  }
-
-  <!-- ━━━ Metrics Strip ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
-  <div class="metrics-strip">
-    <app-metric-tile label="Pods" [value]="'' + podTotal" accent="cyan" />
-    <app-metric-tile label="Nodes" [value]="'' + nodeTotal" accent="green" />
-    <app-metric-tile label="Deploys" [value]="'' + depTotal" accent="purple" />
-    <app-metric-tile label="Health" [value]="healthPct + '%'" [accent]="healthColor === 'red' ? 'red' : healthColor === 'amber' ? 'amber' : 'green'" />
+    }
+    @if (costTrend?.trend === 'growing') {
+      <div class="insight-pill insight-cost" (click)="router.navigate(['/cost'])">
+        <i class="pi pi-dollar"></i>
+        <span>Cost Trend: Projected costs increasing</span>
+      </div>
+    }
+    @if (data.pods.critical > 3) {
+      <div class="insight-pill insight-instability" (click)="goToPods()">
+        <i class="pi pi-chart-bar"></i>
+        <span>High Instability: Multiple pods failing</span>
+      </div>
+    }
+    @if (diffTimeline) {
+      <div class="insight-pill insight-activity" (click)="router.navigate(['/timeline'])">
+        <i class="pi pi-history"></i>
+        <span>24h Activity: {{ getActivitySummary() }}</span>
+      </div>
+    }
   </div>
 
-  <!-- ━━━ P0: Problem Resources (only unhealthy, by name) ━━━━━━━━━━━ -->
-  @if (problemPods.length > 0) {
-    <div class="problem-section">
-      <div class="problem-header">
-        <span class="problem-title">Problem Resources</span>
-        <span class="problem-count">{{ problemPods.length }}</span>
+  <!-- ─── Health Ring + Status ─────────────────────────────────────── -->
+  <app-holo-card [glow]="healthColor" [compact]="true">
+    <div class="health-hero">
+      <div class="health-ring">
+        <app-health-ring [pct]="healthPct" [status]="overallHealth === 'healthy' ? 'ok' : overallHealth === 'degraded' ? 'warning' : 'critical'" size="md" />
       </div>
-      <div class="problem-list">
-        @for (pod of problemPods; track pod.name) {
-          <div class="problem-row" [attr.data-severity]="podSeverity(pod)">
-            <app-status-beacon [status]="podSeverity(pod)" size="sm" />
-            <span class="problem-name">{{ pod.name }}</span>
-            <span class="problem-status">{{ pod.status }}</span>
-            @if (pod.restarts > 0) {
-              <span class="problem-restarts">{{ pod.restarts }} restarts</span>
-            }
-            <button class="problem-btn" (click)="router.navigate(['/investigate'], { queryParams: { target: pod.name } })">
-              Investigate
-            </button>
-          </div>
-        }
+      <div class="health-info">
+        <span class="health-title">{{ overallHealth === 'healthy' ? 'All Systems Operational' : overallHealth === 'degraded' ? 'Degraded Performance' : 'Critical Issues Detected' }}</span>
+        <span class="health-sub">{{ (data.pods.healthy || 0) + (data.nodes.healthy || 0) + (data.deployments.healthy || 0) }} / {{ podTotal + nodeTotal + depTotal }} resources healthy</span>
       </div>
+      <div class="health-metrics">
+        <app-metric-tile label="Pods" [value]="'' + podTotal" accent="cyan" />
+        <app-metric-tile label="Nodes" [value]="'' + nodeTotal" accent="green" />
+        <app-metric-tile label="Deploys" [value]="'' + depTotal" accent="purple" />
+      </div>
+    </div>
+  </app-holo-card>
+
+  <!-- ─── Alert Banner ─────────────────────────────────────────────── -->
+  @if (data.pods.critical > 0 || data.nodes.warning > 0) {
+    <div class="alert-banner">
+      <app-status-beacon status="critical" size="md" [pulse]="true" />
+      <span class="alert-text">
+        @if (data.pods.critical > 0) { {{ data.pods.critical }} pod(s) critical. }
+        @if (data.nodes.warning > 0) { {{ data.nodes.warning }} node(s) not ready. }
+      </span>
+      <button class="alert-btn" (click)="goToPods()">Investigate</button>
+      <button class="alert-btn alert-btn-ai" (click)="router.navigate(['/ai'], { queryParams: { q: 'why are pods failing' } })">AI Diagnose</button>
     </div>
   }
 
-  <!-- ━━━ Health Ring (confirmation — shows when stable) ━━━━━━━━━━━━━ -->
-  @if (!hasProblems) {
-    <app-holo-card [glow]="healthColor" [compact]="true">
-      <div class="health-hero">
-        <div class="health-ring">
-          <app-health-ring [pct]="healthPct" status="ok" size="md" />
+  <!-- ─── Bento Grid ───────────────────────────────────────────────── -->
+  <div class="bento-grid">
+    <app-holo-card [glow]="data.pods.critical > 0 ? 'red' : 'cyan'" [interactive]="true" [compact]="true">
+      <div class="bento-inner" (click)="goToPods()">
+        <div class="bento-head">
+          <app-status-beacon [status]="data.pods.critical > 0 ? 'critical' : data.pods.warning > 0 ? 'warning' : 'ok'" size="md" />
+          <span class="bento-lbl">Pods</span>
         </div>
-        <div class="health-info">
-          <span class="health-title">All Systems Operational</span>
-          <span class="health-sub">{{ (data.pods.healthy || 0) + (data.nodes.healthy || 0) + (data.deployments.healthy || 0) }} / {{ podTotal + nodeTotal + depTotal }} resources healthy</span>
+        <div class="bento-val-row">
+          <span class="bento-val">{{ data.pods.healthy }}</span>
+          <span class="bento-of">/ {{ podTotal }}</span>
+        </div>
+        <div class="bento-bar">
+          <div class="bb-ok" [style.width.%]="pct(data.pods.healthy, podTotal)"></div>
+          <div class="bb-warn" [style.width.%]="pct(data.pods.warning, podTotal)"></div>
+          <div class="bb-crit" [style.width.%]="pct(data.pods.critical, podTotal)"></div>
+        </div>
+        <div class="bento-tags">
+          @if (data.pods.warning > 0) { <span class="bt bt-warn">{{ data.pods.warning }} warn</span> }
+          @if (data.pods.critical > 0) { <span class="bt bt-crit">{{ data.pods.critical }} crit</span> }
+          @if (data.pods.warning === 0 && data.pods.critical === 0) { <span class="bt bt-ok">Healthy</span> }
         </div>
       </div>
     </app-holo-card>
-  }
 
-  <!-- ━━━ P0: Recent Events — Warnings First ━━━━━━━━━━━━━━━━━━━━━━━━ -->
+    <app-holo-card [glow]="data.nodes.warning > 0 ? 'amber' : 'none'" [interactive]="true" [compact]="true">
+      <div class="bento-inner" (click)="router.navigate(['/metrics'])">
+        <div class="bento-head">
+          <app-status-beacon [status]="data.nodes.warning > 0 ? 'warning' : 'ok'" size="md" />
+          <span class="bento-lbl">Nodes</span>
+        </div>
+        <div class="bento-val-row">
+          <span class="bento-val">{{ data.nodes.healthy }}</span>
+          <span class="bento-of">/ {{ nodeTotal }}</span>
+        </div>
+        <div class="bento-bar">
+          <div class="bb-ok" [style.width.%]="pct(data.nodes.healthy, nodeTotal)"></div>
+          <div class="bb-warn" [style.width.%]="pct(data.nodes.warning, nodeTotal)"></div>
+        </div>
+        <div class="bento-tags">
+          @if (data.nodes.warning > 0) { <span class="bt bt-warn">{{ data.nodes.warning }} not ready</span> }
+          @else { <span class="bt bt-ok">All ready</span> }
+        </div>
+      </div>
+    </app-holo-card>
+
+    <app-holo-card [glow]="(data.deployments.unavailable || 0) > 0 ? 'red' : 'none'" [interactive]="true" [compact]="true">
+      <div class="bento-inner" (click)="router.navigate(['/deployments'])">
+        <div class="bento-head">
+          <app-status-beacon [status]="(data.deployments.unavailable || 0) > 0 ? 'critical' : 'ok'" size="md" />
+          <span class="bento-lbl">Deployments</span>
+        </div>
+        <div class="bento-val-row">
+          <span class="bento-val">{{ data.deployments.healthy }}</span>
+          <span class="bento-of">/ {{ depTotal }}</span>
+        </div>
+        <div class="bento-bar">
+          <div class="bb-ok" [style.width.%]="pct(data.deployments.healthy, depTotal)"></div>
+          <div class="bb-crit" [style.width.%]="pct(data.deployments.unavailable || 0, depTotal)"></div>
+        </div>
+        <div class="bento-tags">
+          @if ((data.deployments.unavailable || 0) > 0) { <span class="bt bt-crit">{{ data.deployments.unavailable }} down</span> }
+          @else { <span class="bt bt-ok">All available</span> }
+        </div>
+      </div>
+    </app-holo-card>
+  </div>
+
+  <!-- ─── Recent Events ────────────────────────────────────────────── -->
   <app-holo-card title="Recent Events" icon="pi pi-bolt" glow="none" [compact]="true">
     <button header-actions class="ctrl-btn" (click)="router.navigate(['/events'])" pTooltip="View all">
       <i class="pi pi-arrow-right"></i>
     </button>
-
-    @if (warningEvents.length > 0) {
-      @for (event of warningEvents; track $index) {
-        <div class="ev-row ev-row-warning">
-          <app-status-beacon status="warning" size="sm" />
-          <span class="ev-reason">{{ event.reason }}</span>
-          <span class="ev-msg">{{ event.message }}</span>
-          <code class="ev-obj">{{ event.object }}</code>
-        </div>
-      }
-    }
-
-    @for (event of normalEvents; track $index) {
+    @for (event of recentEvents; track $index) {
       <div class="ev-row">
-        <app-status-beacon status="info" size="sm" />
+        <app-status-beacon [status]="event.type === 'Warning' ? 'warning' : 'info'" size="sm" />
         <span class="ev-reason">{{ event.reason }}</span>
         <span class="ev-msg">{{ event.message }}</span>
         <code class="ev-obj">{{ event.object }}</code>
       </div>
     }
-
     @if (recentEvents.length === 0) {
       <div class="ev-empty"><i class="pi pi-check-circle"></i> No recent events</div>
     }
   </app-holo-card>
 
-  <!-- ━━━ Quick Actions (context-aware) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+  <!-- ─── Quick Actions ────────────────────────────────────────────── -->
   <div class="actions-grid">
-    @if (hasProblems && topIssue) {
-      <button class="action-card action-card-hot" (click)="router.navigate(['/investigate'], { queryParams: { target: topIssue.object } })"><i class="pi pi-search"></i><span>Investigate {{ topIssue.object | slice:0:12 }}</span></button>
-      <button class="action-card action-card-hot" (click)="router.navigate(['/ai'], { queryParams: { q: 'why is ' + topIssue.object + ' failing' } })"><i class="pi pi-sparkles"></i><span>AI Diagnose</span></button>
-    }
     <button class="action-card" (click)="router.navigate(['/ai'], { queryParams: { q: 'summarize cluster health' } })"><i class="pi pi-sparkles"></i><span>AI Summary</span></button>
     <button class="action-card" (click)="router.navigate(['/terminal'])"><i class="pi pi-code"></i><span>Terminal</span></button>
     <button class="action-card" (click)="router.navigate(['/runbooks'])"><i class="pi pi-book"></i><span>Runbooks</span></button>
@@ -140,6 +179,24 @@
     <button class="action-card" (click)="router.navigate(['/scorecard'])"><i class="pi pi-trophy"></i><span>Scorecard</span></button>
     <button class="action-card" (click)="router.navigate(['/cost'])"><i class="pi pi-dollar"></i><span>Optimize</span></button>
   </div>
+
+  <!-- ─── Pro Tip ──────────────────────────────────────────────────── -->
+  @if (proTip) {
+    <div class="pro-tip-container">
+      <app-holo-card [compact]="true" glow="cyan">
+        <div class="pro-tip-content">
+          <div class="pro-tip-icon"><i [class]="proTip.icon"></i></div>
+          <div class="pro-tip-text">
+            <div class="pro-tip-title">{{ proTip.title }}</div>
+            <div class="pro-tip-sub">{{ proTip.text }}</div>
+          </div>
+          <button class="pro-tip-btn" (click)="router.navigate([proTip.link], { queryParams: proTip.query ? { q: proTip.query } : {} })">
+            Try it out
+          </button>
+        </div>
+      </app-holo-card>
+    </div>
+  }
 } @else {
   <!-- Skeleton -->
   <div class="sk-hero"></div>
