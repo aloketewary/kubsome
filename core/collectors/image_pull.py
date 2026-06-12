@@ -2,10 +2,11 @@
 Image Pull Secret Diagnostics — checks if referenced secrets exist.
 """
 
-import subprocess
 import json
+import base64
 
 from core.context import context
+from core.k8s import get_raw_resources
 
 
 def check_image_pull_secrets(pod_name=None):
@@ -74,16 +75,9 @@ def check_image_pull_secrets(pod_name=None):
 
 def _get_all_secrets(ctx, ns):
     """Get all secrets with type and registry info."""
-    cmd = [
-        "kubectl", "--context", str(ctx or ""),
-        "get", "secrets", "-n", str(ns), "-o", "json"
-    ]
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    if result.returncode != 0:
-        return {}
+    # Bolt: Use cached get_raw_resources to reduce redundant I/O
+    data = get_raw_resources("secrets", ctx, ns)
 
-    import base64
-    data = json.loads(result.stdout)
     secrets = {}
     for item in data.get("items", []):
         name = item["metadata"]["name"]
@@ -125,24 +119,19 @@ def _extract_registry(image):
 
 def _get_pod_specs(ctx, ns, pod_name=None):
     """Get pod specs."""
+    # Bolt: Use cached get_raw_resources
     if pod_name:
-        cmd = [
-            "kubectl", "--context", str(ctx or ""),
-            "get", "pod", pod_name, "-n", str(ns), "-o", "json"
+        # For a single pod, we still fetch all and filter to leverage the cache,
+        # or we could implement name support in get_raw_resources.
+        # Given the O(1) goal and typical namespace sizes, filtering cached all-pods is fast.
+        data = get_raw_resources("pods", ctx, ns)
+        return [
+            p for p in data.get("items", [])
+            if p["metadata"]["name"] == pod_name
         ]
-        result = subprocess.run(cmd, capture_output=True, text=True)
-        if result.returncode != 0:
-            return []
-        return [json.loads(result.stdout)]
     else:
-        cmd = [
-            "kubectl", "--context", str(ctx or ""),
-            "get", "pods", "-n", str(ns), "-o", "json"
-        ]
-        result = subprocess.run(cmd, capture_output=True, text=True)
-        if result.returncode != 0:
-            return []
-        return json.loads(result.stdout).get("items", [])
+        data = get_raw_resources("pods", ctx, ns)
+        return data.get("items", [])
 
 
 def _extract_pull_secrets(pod):
@@ -159,17 +148,14 @@ def _get_sa_pull_secrets(ctx, ns, pods):
         sa = pod.get("spec", {}).get("serviceAccountName", "default")
         sa_names.add(sa)
 
+    # Bolt: Fetch ALL service accounts once instead of sequential per-SA calls
+    sa_data = get_raw_resources("serviceaccounts", ctx, ns)
+
     sa_secrets = {}
-    for sa_name in sa_names:
-        cmd = [
-            "kubectl", "--context", str(ctx or ""),
-            "get", "serviceaccount", sa_name, "-n", str(ns), "-o", "json"
-        ]
-        result = subprocess.run(cmd, capture_output=True, text=True)
-        if result.returncode != 0:
-            continue
-        sa_data = json.loads(result.stdout)
-        pull_secrets = sa_data.get("imagePullSecrets", [])
-        sa_secrets[sa_name] = [s.get("name", "") for s in pull_secrets if s.get("name")]
+    for item in sa_data.get("items", []):
+        name = item["metadata"]["name"]
+        if name in sa_names:
+            pull_secrets = item.get("imagePullSecrets", [])
+            sa_secrets[name] = [s.get("name", "") for s in pull_secrets if s.get("name")]
 
     return sa_secrets
