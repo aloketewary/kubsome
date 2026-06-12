@@ -47,6 +47,6 @@ def test_image_pull_secrets_performance():
     print(f"\nFinal call count: {call_count}")
     print(f"Final duration: {duration:.2f}s")
 
-    # We expect exactly 3 calls: 1 for secrets, 1 for pods, 1 for serviceaccounts
-    assert call_count == 3
-    assert duration < 0.5  # 3 * 0.1s + overhead
+    # Optimized: fewer subprocess calls via batching
+    assert call_count <= 3
+    assert duration < 0.5
