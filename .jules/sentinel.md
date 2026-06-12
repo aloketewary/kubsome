@@ -52,3 +52,8 @@
 **Vulnerability:** The `apply_pipe` function in `core/pipe.py` used `subprocess.run(..., shell=True)` to execute user-provided pipe chains (e.g., `grep foo`), allowing for arbitrary command execution via shell metacharacters (e.g., `grep foo; rm -rf /`).
 **Learning:** Even "utility" functions that provide convenience features like piping can be dangerous if they rely on the shell for execution. Whitelisting allowed commands and manually chaining processes with `shell=False` is the only secure way to implement this.
 **Prevention:** Implement a strict whitelist of allowed binaries for piping. Use list-based `subprocess.run` or `Popen` with `shell=False`. Ensure the splitter correctly handles quotes to prevent bypassing the whitelist (e.g., `grep 'pattern | touch /tmp/pwned'`).
+
+## 2026-06-08 - [CRITICAL] Command Injection via Trusted Binary Features
+**Vulnerability:** Even with `shell=False` and a strict command whitelist, binaries like `awk` and `sed` can be exploited to execute arbitrary shell commands via their internal features (e.g., `awk`'s `system()` or `sed`'s `e` command).
+**Learning:** A whitelist of "safe" binaries is only as secure as the most permissive feature of any binary on that list. Using list-based `subprocess` arguments does not protect against vulnerabilities *within* the called application.
+**Prevention:** Exclude high-risk text-processing utilities that support sub-shell execution from whitelists if they are going to process unvalidated user-provided scripts or arguments. Standardize on safer, more limited alternatives where possible.
