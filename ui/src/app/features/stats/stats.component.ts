@@ -63,6 +63,15 @@ import { TrendChartComponent } from '../../shared/components/trend-chart.compone
           <div class="stat-value">{{ timeSavedHuman }}</div>
           <div class="stat-footer">{{ stats.auto_remediations }} auto-fixes applied</div>
         </div>
+
+        <div class="stat-main-card glass stagger-5">
+          <div class="stat-header">
+            <i class="pi pi-shield"></i>
+            <span>Operational Readiness</span>
+          </div>
+          <div class="stat-value">{{ readinessScore }}%</div>
+          <div class="stat-footer">{{ integrationsCount }} active integrations</div>
+        </div>
       </div>
 
       <!-- Growth: Recovery Efficiency Metric -->
@@ -131,7 +140,7 @@ import { TrendChartComponent } from '../../shared/components/trend-chart.compone
   `,
   styles: [`
     :host { display: block; padding-bottom: 40px; }
-    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 24px; }
+    .stats-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; margin-bottom: 24px; }
     .stat-main-card { padding: 24px; border-radius: 16px; border: 1px solid var(--border); }
     .stat-header { display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 13px; font-weight: 600; margin-bottom: 12px; }
     .stat-header i { color: var(--accent); }
@@ -197,7 +206,16 @@ import { TrendChartComponent } from '../../shared/components/trend-chart.compone
 })
 export class StatsComponent implements OnInit {
   private api = inject(ApiService);
+  private http = inject(HttpClient);
   stats: UsageStats | null = null;
+  integrationsCount = 0;
+
+  get readinessScore() {
+    if (!this.stats) return 0;
+    const base = this.coveragePct;
+    const bonus = this.integrationsCount > 0 ? 20 : 0;
+    return Math.min(base + bonus, 100);
+  }
 
   get coveragePct() {
     if (!this.stats || this.stats.total_commands === 0) return 0;
@@ -225,6 +243,10 @@ export class StatsComponent implements OnInit {
         this.maxCmdCount = Math.max(...this.stats.top_commands.map(c => c[1]), 1);
         this.maxUnresolvedCount = Math.max(...this.stats.top_unresolved.map(u => u[1]), 1);
       }
+    });
+
+    this.http.get<any>('/api/webhooks').subscribe(res => {
+      this.integrationsCount = (res.webhooks || []).filter((w: any) => w.configured).length;
     });
   }
 }

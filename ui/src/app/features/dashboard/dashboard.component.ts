@@ -795,6 +795,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private refreshInterval: any;
   uptime: any = null;
   pins: any[] = [];
+  webhooks: any[] = [];
   contextCopied = false;
   stats: any = null;
   costTrend: any = null;
@@ -852,6 +853,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
   get featureNudge(): { text: string, link: string } | null {
     if (!this.stats) return null;
     const used = new Set(this.stats.top_commands.map((c: any) => c[0].toLowerCase()));
+
+    // Growth: Prioritize integration for retention
+    if (this.webhooks && this.webhooks.length === 0) {
+      return { text: 'Connect Slack or Teams for instant alerts', link: '/settings' };
+    }
+
     if (!used.has('scorecard')) return { text: 'Try Scorecard for health grades', link: '/scorecard' };
     if (!used.has('security')) return { text: 'Run security scan for vulnerabilities', link: '/policy' };
     return null;
@@ -918,6 +925,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.refreshing = true;
     this.loadPins();
     this.loadStats();
+    this.loadWebhooks();
     this.api.getCostTrend().subscribe(res => this.costTrend = res);
     this.api.getIncidentStatus().subscribe(res => {
       this.activeIncident = res.id ? res : null;
@@ -962,6 +970,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.api.getStats().subscribe({
       next: (res) => (this.stats = res),
       error: () => (this.stats = null),
+    });
+  }
+
+  loadWebhooks() {
+    this.http.get<any>('/api/webhooks').subscribe({
+      next: (res) => (this.webhooks = (res.webhooks || []).filter((w: any) => w.configured)),
+      error: () => (this.webhooks = []),
     });
   }
 
