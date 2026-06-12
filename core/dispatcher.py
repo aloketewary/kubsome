@@ -423,56 +423,185 @@ def _handle_rollout(cmd, env):
 
 
 def _handle_rollback(cmd, env):
-    target = cmd["target"]
-    console.print(
-        f"[dim]→ kubectl rollout undo "
-        f"deployment/{target} -n {context.namespace}[/dim]"
+    from core.models.plan import RemediationPlan, RiskLevel, LifecycleState
+    from core.models.action import Action, ActionType
+    from core.models.resource import ResourceRef
+    from core.models.verification import VerificationGoal
+    from core.execution.engine import ExecutionEngine
+    from core.execution.kubectl import KubectlExecutor
+    from core.verification.kubectl import KubectlVerifier
+
+    target_name = cmd["target"]
+    target_ref = ResourceRef(
+        kind="deployment",
+        name=target_name,
+        namespace=context.namespace,
+        cluster=context.current_context
     )
-    if confirm_production({"environment": env}):
-        success, output = rollout_rollback(target)
-        if success:
-            log_action("rollback", target)
-            invalidate_pods()
-            invalidate_deployments()
-            console.print(f"[green]✓ Rolled back {target}[/green]")
-        else:
-            console.print("[red]Rollback failed[/red]")
-    else:
+
+    plan = RemediationPlan(
+        target=target_ref,
+        risk=RiskLevel.MEDIUM,
+        actions=[
+            Action(
+                type=ActionType.ROLLBACK,
+                target=target_ref,
+                description=f"Rollback deployment/{target_name}"
+            )
+        ],
+        verification_goal=VerificationGoal(timeout_seconds=300)
+    )
+
+    console.print(Panel(
+        f"[bold]Plan:[/bold] {plan.actions[0].description}\n"
+        f"[bold]Risk:[/bold] {plan.risk.value}\n"
+        f"[bold]Verification:[/bold] Wait for rollout completion",
+        title="[bold]Proposed Remediation[/bold]",
+        border_style="yellow"
+    ))
+
+    from core.safety import confirm_production
+    if not confirm_production({"environment": env, "name": f"rollback {target_name}", "risk": "MEDIUM"}):
+        from core.execution.state_machine import StateMachine
+        from core.audit import log_plan_transition
+        StateMachine.transition(plan, LifecycleState.CANCELLED)
+        log_plan_transition(plan.id, "rollback_cancelled", str(plan.target), plan.state)
         console.print("[yellow]Cancelled[/yellow]")
+        return
+
+    engine = ExecutionEngine(KubectlExecutor(), KubectlVerifier())
+    with loading(f"Executing and verifying rollback for {target_name}..."):
+        result = engine.run(plan)
+
+    if result.success:
+        invalidate_pods()
+        invalidate_deployments()
+        console.print(f"[green]✓ Rollback successful and verified[/green]")
+    else:
+        console.print(f"[red]Rollback failed: {result.error or 'Verification timed out'}[/red]")
 
 
 def _handle_restart(cmd, env):
-    target = cmd["target"]
-    success, output = rollout_restart(target)
-    if success:
-        log_action("restart", target)
+    from core.models.plan import RemediationPlan, RiskLevel, LifecycleState
+    from core.models.action import Action, ActionType
+    from core.models.resource import ResourceRef
+    from core.models.verification import VerificationGoal
+    from core.execution.engine import ExecutionEngine
+    from core.execution.kubectl import KubectlExecutor
+    from core.verification.kubectl import KubectlVerifier
+
+    target_name = cmd["target"]
+    target_ref = ResourceRef(
+        kind="deployment",
+        name=target_name,
+        namespace=context.namespace,
+        cluster=context.current_context
+    )
+
+    plan = RemediationPlan(
+        target=target_ref,
+        risk=RiskLevel.LOW, # Default for restart
+        actions=[
+            Action(
+                type=ActionType.ROLLING_RESTART,
+                target=target_ref,
+                description=f"Rolling restart {target_name}"
+            )
+        ],
+        verification_goal=VerificationGoal(timeout_seconds=300)
+    )
+
+    # UI/CLI rendering of the plan
+    console.print(Panel(
+        f"[bold]Plan:[/bold] {plan.actions[0].description}\n"
+        f"[bold]Risk:[/bold] {plan.risk.value}\n"
+        f"[bold]Verification:[/bold] Wait for rollout completion",
+        title="[bold]Proposed Remediation[/bold]",
+        border_style="cyan"
+    ))
+
+    # Approval check
+    from core.safety import confirm_production
+    if not confirm_production({"environment": env, "name": f"restart {target_name}"}):
+        from core.execution.state_machine import StateMachine
+        from core.audit import log_plan_transition
+        StateMachine.transition(plan, LifecycleState.CANCELLED)
+        log_plan_transition(plan.id, "restart_cancelled", str(plan.target), plan.state)
+        console.print("[yellow]Cancelled[/yellow]")
+        return
+
+    # Execution & Verification
+    engine = ExecutionEngine(KubectlExecutor(), KubectlVerifier())
+
+    with loading(f"Executing and verifying restart for {target_name}..."):
+        result = engine.run(plan)
+
+    if result.success:
         invalidate_pods()
-        console.print(f"[green]✓ Restarted {target}[/green]")
+        console.print(f"[green]✓ Restart successful and verified[/green]")
     else:
-        console.print("[red]Restart failed[/red]")
+        console.print(f"[red]Restart failed: {result.error or 'Verification timed out'}[/red]")
 
 
 def _handle_scale(cmd, env):
-    target = cmd["target"]
+    from core.models.plan import RemediationPlan, RiskLevel, LifecycleState
+    from core.models.action import Action, ActionType
+    from core.models.resource import ResourceRef
+    from core.models.verification import VerificationGoal
+    from core.execution.engine import ExecutionEngine
+    from core.execution.kubectl import KubectlExecutor
+    from core.verification.kubectl import KubectlVerifier
+
+    target_name = cmd["target"]
     replicas = cmd["replicas"]
-    scale_cmd = [
-        "kubectl", "--context", context.current_context,
-        "scale", f"deployment/{target}",
-        f"--replicas={replicas}", "-n", context.namespace
-    ]
-    result = subprocess.run(
-        scale_cmd, shell=False,
-        capture_output=True, text=True
+    target_ref = ResourceRef(
+        kind="deployment",
+        name=target_name,
+        namespace=context.namespace,
+        cluster=context.current_context
     )
-    if result.returncode == 0:
-        log_action("scale", target, f"replicas={replicas}")
+
+    plan = RemediationPlan(
+        target=target_ref,
+        risk=RiskLevel.MEDIUM,
+        actions=[
+            Action(
+                type=ActionType.SCALE,
+                target=target_ref,
+                description=f"Scale deployment/{target_name} to {replicas} replicas",
+                parameters={"replicas": replicas}
+            )
+        ],
+        verification_goal=VerificationGoal(timeout_seconds=300)
+    )
+
+    console.print(Panel(
+        f"[bold]Plan:[/bold] {plan.actions[0].description}\n"
+        f"[bold]Risk:[/bold] {plan.risk.value}\n"
+        f"[bold]Verification:[/bold] Wait for replica count to reach {replicas}",
+        title="[bold]Proposed Remediation[/bold]",
+        border_style="yellow"
+    ))
+
+    from core.safety import confirm_production
+    if not confirm_production({"environment": env, "name": f"scale {target_name} to {replicas}", "risk": "MEDIUM"}):
+        from core.execution.state_machine import StateMachine
+        from core.audit import log_plan_transition
+        StateMachine.transition(plan, LifecycleState.CANCELLED)
+        log_plan_transition(plan.id, "scale_cancelled", str(plan.target), plan.state)
+        console.print("[yellow]Cancelled[/yellow]")
+        return
+
+    engine = ExecutionEngine(KubectlExecutor(), KubectlVerifier())
+    with loading(f"Scaling and verifying {target_name}..."):
+        result = engine.run(plan)
+
+    if result.success:
         invalidate_pods()
         invalidate_deployments()
-        console.print(
-            f"[green]✓ Scaled {target} to {replicas} replicas[/green]"
-        )
+        console.print(f"[green]✓ Scaling successful and verified[/green]")
     else:
-        console.print(f"[red]{result.stderr}[/red]")
+        console.print(f"[red]Scaling failed: {result.error or 'Verification timed out'}[/red]")
 
 
 def _handle_top_pods(cmd, env):

@@ -1,48 +1,77 @@
 """
-Audit Log — tracks destructive operations for compliance.
-Stored in DuckDB (falls back to flat file if unavailable).
+Audit Log — tracks destructive operations and plan lifecycles.
 """
 
 import json
 from datetime import datetime
 from pathlib import Path
+from typing import Optional
 
 from core.context import context
+from core.models.audit import AuditRecord
+from core.models.plan import LifecycleState
 
 AUDIT_FILE = Path.home() / ".kubsome" / "audit.log"
 
 
-def log_action(action, target, details=""):
-    """Log a destructive action."""
+def log_audit(record: AuditRecord):
+    """Log a structured audit record."""
     entry = {
-        "timestamp": datetime.now().isoformat(),
+        "id": record.id,
+        "timestamp": record.timestamp.isoformat(),
+        "user": record.user,
+        "action": record.action_type,
+        "target": record.target,
+        "plan_id": record.plan_id,
+        "state": record.state.value if record.state else None,
+        "details": record.details,
+        "result": record.result,
         "context": context.current_context,
         "namespace": context.namespace,
-        "action": action,
-        "target": target,
-        "details": details,
     }
 
-    # Try DuckDB first
     if _log_to_db(entry):
         return
 
-    # Fallback to flat file
     AUDIT_FILE.parent.mkdir(parents=True, exist_ok=True)
     with open(AUDIT_FILE, "a") as f:
         f.write(json.dumps(entry) + "\n")
 
 
+def log_plan_transition(plan_id: str, action_type: str, target: str, state: LifecycleState, details: str = ""):
+    """Convenience helper to log a plan state transition."""
+    record = AuditRecord(
+        id=f"evt_{datetime.now().timestamp()}",
+        timestamp=datetime.now(),
+        user="system", # TODO: Get actual user
+        action_type=action_type,
+        target=target,
+        plan_id=plan_id,
+        state=state,
+        details=details
+    )
+    log_audit(record)
+
+
+def log_action(action, target, details=""):
+    """Legacy helper for simple action logging."""
+    record = AuditRecord(
+        id=f"legacy_{datetime.now().timestamp()}",
+        timestamp=datetime.now(),
+        user="system",
+        action_type=action,
+        target=target,
+        details=details
+    )
+    log_audit(record)
+
+
 def get_audit_log(limit=20, action=None, target=None, days=None):
-    """
-    Read audit entries. Supports filtering by action, target, days.
-    """
-    # Try DuckDB first
+    """Read audit entries."""
     result = _read_from_db(limit, action, target, days)
     if result is not None:
         return result
 
-    # Fallback to flat file
     if not AUDIT_FILE.exists():
         return []
 
@@ -56,71 +85,16 @@ def get_audit_log(limit=20, action=None, target=None, days=None):
                 except json.JSONDecodeError:
                     pass
 
-    # Apply filters on flat file
     if action:
         entries = [e for e in entries if e.get("action") == action]
     if target:
-        entries = [
-            e for e in entries
-            if target in e.get("target", "")
-        ]
+        entries = [e for e in entries if target in e.get("target", "")]
 
     return entries[-limit:]
 
 
-def audit_stats(days=30):
-    """
-    Audit statistics — action frequency, top targets, timeline.
-    Only available with DuckDB.
-    """
-    try:
-        from core.analytics.engine import get_conn
-        conn = get_conn()
-    except (ImportError, Exception):
-        return None
-
-    _ensure_table(conn)
-
-    rows = conn.execute(f"""
-        SELECT
-            action,
-            COUNT(*) AS count,
-            COUNT(DISTINCT target) AS unique_targets
-        FROM audit_log
-        WHERE ts >= NOW() - INTERVAL '{days} days'
-        GROUP BY action
-        ORDER BY count DESC
-    """).fetchall()
-
-    top_targets = conn.execute(f"""
-        SELECT target, action, COUNT(*) AS count
-        FROM audit_log
-        WHERE ts >= NOW() - INTERVAL '{days} days'
-        GROUP BY target, action
-        ORDER BY count DESC
-        LIMIT 10
-    """).fetchall()
-
-    total = conn.execute(f"""
-        SELECT COUNT(*) FROM audit_log
-        WHERE ts >= NOW() - INTERVAL '{days} days'
-    """).fetchone()[0]
-
-    return {
-        "total_actions": total,
-        "by_action": [
-            {"action": r[0], "count": r[1], "targets": r[2]}
-            for r in rows
-        ],
-        "top_targets": [
-            {"target": r[0], "action": r[1], "count": r[2]}
-            for r in top_targets
-        ],
-    }
-
-
 def _log_to_db(entry):
-    """Write audit entry to DuckDB. Returns True on success."""
+    """Write audit entry to DuckDB."""
     try:
         from core.analytics.engine import get_conn
         conn = get_conn()
@@ -129,21 +103,24 @@ def _log_to_db(entry):
 
     _ensure_table(conn)
     conn.execute(
-        "INSERT INTO audit_log VALUES (?, ?, ?, ?, ?, ?)",
+        "INSERT INTO audit_log (ts, context, namespace, action, target, details, plan_id, state, result) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
         [
             datetime.fromisoformat(entry["timestamp"]),
             entry.get("context", ""),
             entry.get("namespace", ""),
             entry["action"],
             entry["target"],
-            entry.get("details", ""),
+            str(entry.get("details", "")),
+            entry.get("plan_id"),
+            entry.get("state"),
+            entry.get("result"),
         ]
     )
     return True
 
 
 def _read_from_db(limit, action=None, target=None, days=None):
-    """Read audit entries from DuckDB. Returns None if unavailable."""
+    """Read audit entries from DuckDB."""
     try:
         from core.analytics.engine import get_conn
         conn = get_conn()
@@ -158,12 +135,13 @@ def _read_from_db(limit, action=None, target=None, days=None):
     if target:
         filters.append(f"target LIKE '%{target}%'")
     if days:
-        filters.append(f"ts >= NOW() - INTERVAL '{days} days'")
+        from core.analytics.engine import PARAM_INTERVAL_DAYS
+        filters.append(f"ts >= NOW() - {PARAM_INTERVAL_DAYS(days)}")
 
     where = f"WHERE {' AND '.join(filters)}" if filters else ""
 
     rows = conn.execute(f"""
-        SELECT ts, context, namespace, action, target, details
+        SELECT ts, context, namespace, action, target, details, plan_id, state, result
         FROM audit_log
         {where}
         ORDER BY ts DESC
@@ -178,6 +156,9 @@ def _read_from_db(limit, action=None, target=None, days=None):
             "action": r[3],
             "target": r[4],
             "details": r[5],
+            "plan_id": r[6],
+            "state": r[7],
+            "result": r[8],
         }
         for r in rows
     ]
@@ -187,26 +168,36 @@ _table_created = False
 
 
 def _ensure_table(conn):
-    """Create audit_log table if not exists."""
+    """Create audit_log table with new columns if not exists."""
     global _table_created
     if _table_created:
         return
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS audit_log (
-            ts TIMESTAMP,
-            context VARCHAR,
-            namespace VARCHAR,
-            action VARCHAR,
-            target VARCHAR,
-            details VARCHAR
-        )
-    """)
-    conn.execute("""
-        CREATE INDEX IF NOT EXISTS idx_audit_ts
-        ON audit_log (ts)
-    """)
-    conn.execute("""
-        CREATE INDEX IF NOT EXISTS idx_audit_action
-        ON audit_log (action, ts)
-    """)
+
+    # Check if columns exist (for migration)
+    columns = conn.execute("PRAGMA table_info('audit_log')").fetchall()
+    if not columns:
+        conn.execute("""
+            CREATE TABLE audit_log (
+                ts TIMESTAMP,
+                context VARCHAR,
+                namespace VARCHAR,
+                action VARCHAR,
+                target VARCHAR,
+                details VARCHAR,
+                plan_id VARCHAR,
+                state VARCHAR,
+                result VARCHAR
+            )
+        """)
+    else:
+        # Migration: Add missing columns if they don't exist
+        existing_names = [c[1] for c in columns]
+        if "plan_id" not in existing_names:
+            conn.execute("ALTER TABLE audit_log ADD COLUMN plan_id VARCHAR")
+        if "state" not in existing_names:
+            conn.execute("ALTER TABLE audit_log ADD COLUMN state VARCHAR")
+        if "result" not in existing_names:
+            conn.execute("ALTER TABLE audit_log ADD COLUMN result VARCHAR")
+
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_audit_ts ON audit_log (ts)")
     _table_created = True
