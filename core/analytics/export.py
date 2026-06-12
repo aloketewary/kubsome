@@ -25,26 +25,26 @@ def export_csv(query_name="raw_pods", days=7, output=None):
     path = EXPORT_DIR / filename
 
     queries = {
-        "raw_pods": f"""
+        "raw_pods": """
             SELECT * FROM raw_pod_metrics
-            WHERE ts >= NOW() - INTERVAL '{days} days'
+            WHERE ts >= NOW() - INTERVAL (?) DAYS
             ORDER BY ts DESC
         """,
-        "raw_nodes": f"""
+        "raw_nodes": """
             SELECT * FROM raw_node_metrics
-            WHERE ts >= NOW() - INTERVAL '{days} days'
+            WHERE ts >= NOW() - INTERVAL (?) DAYS
             ORDER BY ts DESC
         """,
-        "hourly": f"""
+        "hourly": """
             SELECT * FROM hourly_pod_metrics
-            WHERE hour >= NOW() - INTERVAL '{days} days'
+            WHERE hour >= NOW() - INTERVAL (?) DAYS
             ORDER BY hour DESC
         """,
         "daily": """
             SELECT * FROM daily_summary
             ORDER BY day DESC
         """,
-        "rightsizing": f"""
+        "rightsizing": """
             SELECT
                 deployment, namespace,
                 AVG(pod_count)::INTEGER AS pods,
@@ -53,12 +53,12 @@ def export_csv(query_name="raw_pods", days=7, output=None):
                 MAX(mem_request) AS mem_req_mb,
                 MAX(mem_p95) AS mem_p95_mb
             FROM hourly_pod_metrics
-            WHERE hour >= NOW() - INTERVAL '{days} days'
+            WHERE hour >= NOW() - INTERVAL (?) DAYS
               AND deployment != ''
             GROUP BY deployment, namespace
             ORDER BY deployment
         """,
-        "cost": f"""
+        "cost": """
             SELECT
                 d.deployment, d.namespace,
                 d.cpu_avg, d.mem_avg,
@@ -72,8 +72,10 @@ def export_csv(query_name="raw_pods", days=7, output=None):
     if not sql:
         return None
 
+    # 🛡️ Sentinel: Use parameterized queries to prevent SQLi
     conn.execute(
-        f"COPY ({sql}) TO '{path}' (HEADER, DELIMITER ',')"
+        f"COPY ({sql}) TO '{path}' (HEADER, DELIMITER ',')",
+        [days] if "(?)" in sql else None
     )
 
     return str(path)
@@ -89,14 +91,14 @@ def export_parquet(query_name="hourly", days=30, output=None):
     path = EXPORT_DIR / filename
 
     queries = {
-        "hourly": f"""
+        "hourly": """
             SELECT * FROM hourly_pod_metrics
-            WHERE hour >= NOW() - INTERVAL '{days} days'
+            WHERE hour >= NOW() - INTERVAL (?) DAYS
         """,
         "daily": "SELECT * FROM daily_summary",
-        "nodes": f"""
+        "nodes": """
             SELECT * FROM hourly_node_metrics
-            WHERE hour >= NOW() - INTERVAL '{days} days'
+            WHERE hour >= NOW() - INTERVAL (?) DAYS
         """,
     }
 
@@ -104,7 +106,11 @@ def export_parquet(query_name="hourly", days=30, output=None):
     if not sql:
         return None
 
-    conn.execute(f"COPY ({sql}) TO '{path}' (FORMAT PARQUET)")
+    # 🛡️ Sentinel: Use parameterized queries to prevent SQLi
+    conn.execute(
+        f"COPY ({sql}) TO '{path}' (FORMAT PARQUET)",
+        [days] if "(?)" in sql else None
+    )
 
     return str(path)
 

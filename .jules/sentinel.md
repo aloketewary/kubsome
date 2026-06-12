@@ -57,3 +57,7 @@
 **Vulnerability:** Even with `shell=False` and a strict command whitelist, binaries like `awk` and `sed` can be exploited to execute arbitrary shell commands via their internal features (e.g., `awk`'s `system()` or `sed`'s `e` command).
 **Learning:** A whitelist of "safe" binaries is only as secure as the most permissive feature of any binary on that list. Using list-based `subprocess` arguments does not protect against vulnerabilities *within* the called application.
 **Prevention:** Exclude high-risk text-processing utilities that support sub-shell execution from whitelists if they are going to process unvalidated user-provided scripts or arguments. Standardize on safer, more limited alternatives where possible.
+## 2025-06-10 - [HIGH] SQL Injection in Analytics Custom Query
+**Vulnerability:** The `/analytics/query` endpoint used a simple blacklist to block destructive SQL commands. This could be bypassed using comments (e.g., `--` or `/* */`) to hide keywords from the prefix check, or by using semicolons to chain multiple statements.
+**Learning:** Blacklists are insufficient for SQL security. A strict whitelist of allowed starting keywords, combined with comment stripping and multiple statement blocking, is necessary for safe read-only access.
+**Prevention:** 1) Strip all comments before validation. 2) Block queries containing semicolons. 3) Enforce a whitelist of allowed starting keywords (e.g., `SELECT`, `WITH`). 4) Use parameterized queries for all dynamic values.
