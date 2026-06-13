@@ -620,6 +620,61 @@ def _init_schema(conn):
         )
     """)
 
+    # --- Health snapshot tables ---
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS pod_health_snapshot (
+            ts TIMESTAMP,
+            context VARCHAR,
+            namespace VARCHAR,
+            pod VARCHAR,
+            deployment VARCHAR,
+            health_score INTEGER,
+            severity VARCHAR,
+            reasons VARCHAR,
+            event_count INTEGER,
+            warning_count INTEGER,
+            critical_count INTEGER,
+            top_reason VARCHAR,
+            health_version INTEGER
+        )
+    """)
+
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS deployment_health_snapshot (
+            ts TIMESTAMP,
+            context VARCHAR,
+            namespace VARCHAR,
+            deployment VARCHAR,
+            health_score INTEGER,
+            severity VARCHAR,
+            available_replicas INTEGER,
+            desired_replicas INTEGER,
+            warning_count INTEGER,
+            restart_count INTEGER,
+            pod_count INTEGER,
+            unhealthy_pods INTEGER,
+            top_reason VARCHAR,
+            health_version INTEGER
+        )
+    """)
+
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS incident_candidate (
+            incident_id VARCHAR,
+            ts TIMESTAMP,
+            context VARCHAR,
+            namespace VARCHAR,
+            object VARCHAR,
+            object_kind VARCHAR,
+            severity VARCHAR,
+            status VARCHAR,
+            reason VARCHAR,
+            health_before INTEGER,
+            health_after INTEGER,
+            details VARCHAR
+        )
+    """)
+
     # --- Indexes for common query patterns ---
     conn.execute("""
         CREATE INDEX IF NOT EXISTS idx_raw_pods_ts
@@ -652,6 +707,24 @@ def _init_schema(conn):
     conn.execute("""
         CREATE INDEX IF NOT EXISTS idx_event_log_ts
         ON event_log (ts)
+    """)
+    conn.execute("""
+        CREATE INDEX IF NOT EXISTS idx_pod_health_ts
+        ON pod_health_snapshot (context, namespace, ts)
+    """)
+    conn.execute("""
+        CREATE INDEX IF NOT EXISTS idx_dep_health_ts
+        ON deployment_health_snapshot (
+            context, namespace, ts
+        )
+    """)
+    conn.execute("""
+        CREATE INDEX IF NOT EXISTS idx_dep_health_deploy
+        ON deployment_health_snapshot (deployment, ts)
+    """)
+    conn.execute("""
+        CREATE INDEX IF NOT EXISTS idx_incident_status
+        ON incident_candidate (context, namespace, status)
     """)
 
     # --- Materialized views (pre-computed aggregates) ---

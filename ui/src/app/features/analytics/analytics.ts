@@ -8,39 +8,45 @@ import { TabsModule } from 'primeng/tabs';
 import { ChartModule } from 'primeng/chart';
 import { TooltipModule } from 'primeng/tooltip';
 import { IntelHeaderComponent } from '../../shared/components/futuristic/intel-header.component';
+import { MetricTileComponent } from '../../shared/components/futuristic/metric-tile.component';
 import { RelatedPagesComponent } from '../../shared/components/related-pages.component';
 import { SkeletonComponent } from '../../shared/components/skeleton.component';
+import { AnalyticsOverview } from './analytics.models';
 
 
 @Component({
   selector: 'app-analytics',
   standalone: true,
-  imports: [ButtonModule, TagModule, TabsModule, ChartModule, TooltipModule, FormsModule, DecimalPipe, IntelHeaderComponent, RelatedPagesComponent, SkeletonComponent],
+  imports: [
+    ButtonModule, TagModule, TabsModule, ChartModule, TooltipModule,
+    FormsModule, DecimalPipe, IntelHeaderComponent, MetricTileComponent,
+    RelatedPagesComponent, SkeletonComponent,
+  ],
   templateUrl: './analytics.html',
   styleUrl: './analytics.scss',
 })
 export class AnalyticsComponent implements OnInit {
   private http = inject(HttpClient);
-  stats: any = null;
-  costData: any[] = [];
-  costSummary: any = null;
-  alerts: any[] = [];
-  predictions: any[] = [];
+
+  overview: AnalyticsOverview | null = null;
   loading = false;
   loadError = false;
-  collecting = false;
-  querying = false;
   activeTab = '0';
+
+  // Resources tab charts
+  cpuMemChart: any = null;
+  consumersChart: any = null;
+
+  // Cost tab
+  costData: any[] = [];
+  costSummary: any = null;
+
+  // Investigate tab
+  querying = false;
   sqlQuery = '';
   queryResult: any = null;
   queryError = '';
   exportMsg = '';
-
-  // Charts
-  cpuMemChart: any = null;
-  costChart: any = null;
-  consumersChart: any = null;
-  eventChart: any = null;
 
   lineOptions: any = {
     plugins: { legend: { labels: { color: '#aaa', font: { size: 11 } } } },
@@ -48,14 +54,8 @@ export class AnalyticsComponent implements OnInit {
     maintainAspectRatio: false,
     responsive: true,
   };
-  barOptions: any = {
-    plugins: { legend: { display: false } },
-    scales: { x: { ticks: { color: '#666', font: { size: 10 } } }, y: { beginAtZero: true, ticks: { color: '#666' } } },
-    maintainAspectRatio: false,
-    responsive: true,
-  };
   horizontalBarOptions: any = {
-    indexAxis: 'y',
+    indexAxis: 'y' as const,
     plugins: { legend: { labels: { color: '#aaa', font: { size: 11 } } } },
     scales: { x: { beginAtZero: true, ticks: { color: '#666' } }, y: { ticks: { color: '#666', font: { size: 10 } } } },
     maintainAspectRatio: false,
@@ -79,24 +79,28 @@ export class AnalyticsComponent implements OnInit {
 
   refresh() {
     this.loading = true;
-    this.http.get<any>('/api/analytics').subscribe({
-      next: (res) => { this.stats = res; this.loading = false; this.loadError = false; },
-      error: () => { this.stats = null; this.loading = false; this.loadError = true; },
+    this.http.get<AnalyticsOverview>('/api/analytics/overview').subscribe({
+      next: (res) => {
+        this.overview = res;
+        this.loading = false;
+        this.loadError = false;
+      },
+      error: () => {
+        this.overview = null;
+        this.loading = false;
+        this.loadError = true;
+      },
     });
-    this.http.get<any>('/api/analytics/cost').subscribe({
-      next: (res) => { this.costData = res.deployments || []; this.costSummary = res.summary; },
-    });
-    this.http.get<any>('/api/analytics/alerts').subscribe({
-      next: (res) => { this.alerts = res.alerts || []; },
-    });
-    this.http.get<any>('/api/analytics/predictions').subscribe({
-      next: (res) => { this.predictions = res.predictions || []; },
-    });
-    this.loadCharts();
   }
 
-  loadCharts() {
-    // CPU/Memory line chart
+  onTabChange(tab: string) {
+    this.activeTab = tab;
+    if (tab === '1' && !this.cpuMemChart) this.loadResourcesCharts();
+    if (tab === '2' && !this.costData.length) this.loadCostData();
+  }
+
+  // --- Resources tab ---
+  loadResourcesCharts() {
     this.http.get<any>('/api/analytics/series/cpu-memory?hours=24').subscribe({
       next: (res) => {
         const series = res.series || [];
@@ -104,28 +108,13 @@ export class AnalyticsComponent implements OnInit {
           this.cpuMemChart = {
             labels: series.map((s: any) => s.ts?.substring(11, 16) || ''),
             datasets: [
-              { label: 'CPU (m)', data: series.map((s: any) => s.cpu), borderColor: '#22d3ee', backgroundColor: 'rgba(34,211,238,0.1)', fill: true, tension: 0.3 },
+              { label: 'CPU (m)', data: series.map((s: any) => s.cpu), borderColor: '#d09c60', backgroundColor: 'rgba(208,156,96,0.1)', fill: true, tension: 0.3 },
               { label: 'Memory (Mi)', data: series.map((s: any) => s.mem), borderColor: '#a78bfa', backgroundColor: 'rgba(167,139,250,0.1)', fill: true, tension: 0.3 },
             ],
           };
         }
       },
     });
-
-    // Cost bar chart
-    this.http.get<any>('/api/analytics/series/cost?days=30').subscribe({
-      next: (res) => {
-        const series = res.series || [];
-        if (series.length > 0) {
-          this.costChart = {
-            labels: series.map((s: any) => s.day?.substring(5, 10) || ''),
-            datasets: [{ label: 'Daily Cost ($)', data: series.map((s: any) => s.cost || 0), backgroundColor: '#22c55e', borderRadius: 3 }],
-          };
-        }
-      },
-    });
-
-    // Top consumers
     this.http.get<any>('/api/analytics/series/top-consumers?hours=6').subscribe({
       next: (res) => {
         const consumers = res.consumers || [];
@@ -133,42 +122,23 @@ export class AnalyticsComponent implements OnInit {
           this.consumersChart = {
             labels: consumers.map((c: any) => c.deployment?.substring(0, 20) || ''),
             datasets: [
-              { label: 'CPU (m)', data: consumers.map((c: any) => c.cpu_avg || 0), backgroundColor: '#22d3ee', borderRadius: 3 },
+              { label: 'CPU (m)', data: consumers.map((c: any) => c.cpu_avg || 0), backgroundColor: '#d09c60', borderRadius: 3 },
               { label: 'Memory (Mi)', data: consumers.map((c: any) => c.mem_avg || 0), backgroundColor: '#a78bfa', borderRadius: 3 },
             ],
           };
         }
       },
     });
+  }
 
-    // Event timeline
-    this.http.get<any>('/api/analytics/series/events?hours=24').subscribe({
-      next: (res) => {
-        const series = res.series || [];
-        if (series.length) {
-          const allHours = [...new Set(series.map((s: any) => s.ts?.substring(11, 13) || ''))].sort();
-          const warnings = series.filter((s: any) => s.type === 'Warning');
-          const normals = series.filter((s: any) => s.type === 'Normal');
-          this.eventChart = {
-            labels: allHours,
-            datasets: [
-              { label: 'Warning', data: allHours.map(h => warnings.find((w: any) => w.ts?.substring(11, 13) === h)?.count || 0), backgroundColor: '#f59e0b', borderRadius: 3 },
-              { label: 'Normal', data: allHours.map(h => normals.find((n: any) => n.ts?.substring(11, 13) === h)?.count || 0), backgroundColor: '#6b7280', borderRadius: 3 },
-            ],
-          };
-        }
-      },
+  // --- Cost tab ---
+  loadCostData() {
+    this.http.get<any>('/api/analytics/cost').subscribe({
+      next: (res) => { this.costData = res.deployments || []; this.costSummary = res.summary; },
     });
   }
 
-  collectNow() {
-    this.collecting = true;
-    this.http.post<any>('/api/analytics/collect', {}).subscribe({
-      next: () => { this.collecting = false; this.refresh(); },
-      error: () => { this.collecting = false; },
-    });
-  }
-
+  // --- Investigate tab ---
   runQuery() {
     if (!this.sqlQuery.trim()) return;
     this.querying = true;
@@ -185,5 +155,39 @@ export class AnalyticsComponent implements OnInit {
       next: (res) => { this.exportMsg = `✓ Exported: ${res.path}`; setTimeout(() => this.exportMsg = '', 5000); },
       error: () => { this.exportMsg = '✗ Export failed'; setTimeout(() => this.exportMsg = '', 5000); },
     });
+  }
+
+  // --- Helpers ---
+  get freshnessLabel(): string {
+    if (!this.overview) return '';
+    const s = this.overview.data_freshness_seconds;
+    if (s < 60) return `${s}s ago`;
+    if (s < 3600) return `${Math.round(s / 60)}m ago`;
+    return `${Math.round(s / 3600)}h ago`;
+  }
+
+  heroHealthAccent(): 'green' | 'amber' | 'red' {
+    if (!this.overview) return 'green';
+    if (this.overview.health_score >= 80) return 'green';
+    if (this.overview.health_score >= 60) return 'amber';
+    return 'red';
+  }
+
+  heroCostDelta(): string {
+    if (!this.overview) return '$0';
+    const d = this.overview.cost_delta_monthly;
+    return d >= 0 ? `+$${d.toFixed(0)}` : `-$${Math.abs(d).toFixed(0)}`;
+  }
+
+  heroCostTrend(): 'up' | 'down' {
+    return (this.overview?.cost_delta_monthly ?? 0) >= 0 ? 'up' : 'down';
+  }
+
+  heroRiskAccent(): 'green' | 'amber' | 'red' {
+    const sev = this.overview?.highest_risk_severity;
+    if (sev === 'critical') return 'red';
+    if (sev === 'high') return 'amber';
+    if (sev === 'medium') return 'amber';
+    return 'green';
   }
 }

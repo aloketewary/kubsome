@@ -4,11 +4,51 @@ to the Web UI (charts, cost, alerts, predictions, SQL, export).
 """
 
 import re
+import time
 from fastapi import APIRouter, Query
 
 from core.context import context
 
 router = APIRouter(tags=["analytics"])
+
+# --- Overview cache (TTL-based, invalidated on collect) ---
+_overview_cache = {"data": None, "ts": 0}
+_OVERVIEW_TTL = 120  # seconds
+
+
+def _invalidate_overview_cache():
+    _overview_cache["data"] = None
+    _overview_cache["ts"] = 0
+
+
+@router.get("/analytics/overview")
+def get_analytics_overview():
+    """Aggregated overview payload for Analytics landing page."""
+    now = time.time()
+    if (
+        _overview_cache["data"] is not None
+        and now - _overview_cache["ts"] < _OVERVIEW_TTL
+    ):
+        return _overview_cache["data"]
+
+    try:
+        from core.analytics.overview import build_overview
+        overview = build_overview()
+        payload = overview.to_dict()
+        _overview_cache["data"] = payload
+        _overview_cache["ts"] = now
+        return payload
+    except ImportError:
+        return {
+            "health_score": 0,
+            "empty_state_reason": "analytics_unavailable",
+        }
+    except Exception as e:
+        return {
+            "health_score": 0,
+            "empty_state_reason": "analytics_unavailable",
+            "error": str(e),
+        }
 
 
 @router.get("/analytics")
@@ -29,6 +69,7 @@ def collect_now():
     try:
         from core.analytics.collector import collect_now as _collect
         result = _collect()
+        _invalidate_overview_cache()
         return {"status": "ok", **result}
     except ImportError:
         return {"error": "duckdb not installed"}

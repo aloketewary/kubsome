@@ -14,6 +14,23 @@ import { Component, Input, Output, EventEmitter } from '@angular/core';
                [style.width.%]="healthPct"></div>
         </div>
         <span class="sg-ratio">{{ total - unhealthy }}<span class="sg-sep">/</span>{{ total }}</span>
+        @if (healthScore !== null) {
+  <span class="sg-health" [class.sg-health-ok]="healthScore >= 80"
+        [class.sg-health-warn]="healthScore >= 40 && healthScore < 80"
+        [class.sg-health-crit]="healthScore < 40">
+    {{ healthScore }}
+  </span>
+}
+@if (healthTrend !== null && healthTrend !== 0) {
+  <span class="sg-trend" [class.sg-trend-down]="healthTrend < 0"
+        [class.sg-trend-up]="healthTrend > 0">
+    {{ healthTrend > 0 ? '↑' : '↓' }}{{ Math.abs(healthTrend) }}
+  </span>
+}
+@if (healthReason) {
+  <span class="sg-reason">{{ healthReason }}</span>
+}
+
         @if (unhealthy > 0) {
           <span class="sg-warn-badge">{{ unhealthy }}</span>
         }
@@ -108,6 +125,34 @@ import { Component, Input, Output, EventEmitter } from '@angular/core';
       padding: 2px 6px 6px;
     }
 
+    .sg-health {
+  font-size: 11px; font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: -0.04em;
+}
+.sg-health-ok { color: #4ade80; }
+.sg-health-warn { color: #f59e0b; }
+.sg-health-crit { color: #f43f5e; }
+
+.sg-trend {
+  font-size: 9px; font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
+}
+.sg-trend-down { color: #f43f5e; }
+.sg-trend-up { color: #4ade80; }
+
+.sg-reason {
+  font-size: 9px; font-weight: 500;
+  color: rgba(168, 158, 148, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+
     /* Light Mode */
     :host-context([data-theme="light"]) .sg { background: transparent; border-color: rgba(0,0,0,0.04); }
     :host-context([data-theme="light"]) .sg::after { background: linear-gradient(90deg, transparent, rgba(0,0,0,0.04), transparent); }
@@ -124,13 +169,24 @@ import { Component, Input, Output, EventEmitter } from '@angular/core';
     :host-context([data-theme="light"]) .sg-ratio { color: rgba(0,0,0,0.4); }
     :host-context([data-theme="light"]) .sg-warn-badge { background: rgba(220,38,38,0.06); color: #dc2626; }
     :host-context([data-theme="light"]) .sg-body { border-top-color: rgba(0,0,0,0.04); }
+    :host-context([data-theme="light"]) .sg-health-ok { color: #16a34a; }
+:host-context([data-theme="light"]) .sg-health-warn { color: #b45309; }
+:host-context([data-theme="light"]) .sg-health-crit { color: #dc2626; }
+:host-context([data-theme="light"]) .sg-trend-down { color: #dc2626; }
+:host-context([data-theme="light"]) .sg-trend-up { color: #16a34a; }
+:host-context([data-theme="light"]) .sg-reason { color: rgba(0,0,0,0.45); }
+
   `],
 })
 export class SectionGroupComponent {
+  Math = Math;
   @Input() title = '';
   @Input() healthPct = 100;
   @Input() total = 0;
   @Input() unhealthy = 0;
   @Input() expanded = true;
   @Output() toggle = new EventEmitter<void>();
+  @Input() healthScore: number | null = null;  // from deployment_health_snapshot
+  @Input() healthTrend: number | null = null;  // computed via LAG()
+  @Input() healthReason = '';                   // top_reason
 }

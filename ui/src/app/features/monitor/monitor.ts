@@ -94,11 +94,24 @@ export class MonitorComponent implements OnInit, OnDestroy {
   ngOnDestroy() { this.stopCardTimers(); }
 
   fetchSignals() {
-    this.http.get<any>('/api/monitor/health-signals').subscribe({
-      next: (res) => { this.signals = res; },
+    this.http.get<any>('/api/monitor/health').subscribe({
+      next: (res) => {
+        const deps = res.deployments || [];
+        const critical = deps.filter((d: any) => d.severity === 'critical').length;
+        const warning = deps.filter((d: any) => d.severity === 'warning' || d.severity === 'degraded').length;
+        const stalled = deps.filter((d: any) => d.top_reason?.includes('not_ready')).length;
+        const oomkills = deps.filter((d: any) => d.top_reason?.includes('OOMKilled')).length;
+        this.signals = {
+          oomkills_24h: oomkills,
+          hpa_at_max: 0,
+          quota_pressure: warning,
+          stalled_rollouts: stalled + critical,
+        };
+      },
       error: () => { this.signals = null; },
     });
   }
+
 
   navigateTo(path: string) {
     this.router.navigateByUrl(path);

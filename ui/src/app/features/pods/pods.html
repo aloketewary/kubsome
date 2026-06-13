@@ -62,16 +62,25 @@
 <!-- ─── Pod Groups ─────────────────────────────────────────────────── -->
 @for (group of filteredGroups; track group.deployment) {
   <app-section-group
-    [title]="group.deployment"
-    [healthPct]="group.healthPct"
-    [total]="group.pods.length"
-    [unhealthy]="group.unhealthyCount"
-    [expanded]="group.expanded"
-    (toggle)="group.expanded = !group.expanded">
+  [title]="group.deployment"
+  [healthPct]="group.healthPct"
+  [total]="group.pods.length"
+  [unhealthy]="group.unhealthyCount"
+  [expanded]="group.expanded"
+  [healthScore]="groupHealthScore(group)"
+  [healthTrend]="groupHealthTrend(group)"
+  [healthReason]="groupHealthReason(group)"
+  (toggle)="group.expanded = !group.expanded">
+
 
     <button group-actions class="ctrl-btn ctrl-btn-sm" pTooltip="Select all" (click)="selectGroup(group, $event)">
       <i class="pi pi-check-square"></i>
     </button>
+    <button group-actions class="ctrl-btn ctrl-btn-sm" pTooltip="Investigate"
+        (click)="navigateInvestigate(group.deployment, $event)">
+  <i class="pi pi-search-plus"></i>
+</button>
+
 
     @for (pod of group.pods; track pod.name) {
       <div class="pod-row" [class.pod-row-selected]="isSelected(pod)" [class.pod-row-alert]="!isHealthy(pod)"

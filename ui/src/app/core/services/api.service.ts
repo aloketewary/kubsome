@@ -172,4 +172,12 @@ export class ApiService {
   getDiffTimeline(hours = 24): Observable<any> {
     return this.http.get<any>(`${this.base}/diff-timeline`, { params: { hours } });
   }
+
+  getHealth(): Observable<any> {
+    return this.http.get<any>('/api/monitor/health');
+  }
+
+  getDeploymentHealth(query: string): Observable<any> {
+    return this.http.get<any>(`/api/monitor/health/${query}?hours=1`);
+  }
 }

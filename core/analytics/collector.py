@@ -172,18 +172,38 @@ def _collect_cycle():
     except Exception:
         pass
 
+    # Fetch shared data for state cache + health
+    pods_raw = _kubectl_json(ctx, "pods", ns)
+    events_raw = _kubectl_json(ctx, "events", ns)
+    metrics_map = _kubectl_top_pods(ctx, ns)
+
     # Refresh state cache for instant reads
     try:
         from core.analytics.state_cache import refresh_state
         from core.analytics.engine import get_conn
         conn = get_conn()
-        pods_raw = _kubectl_json(ctx, "pods", ns)
         deps_raw = _kubectl_json(ctx, "deployments", ns)
         nodes_raw = _kubectl_json(ctx, "nodes", None)
-        events_raw = _kubectl_json(ctx, "events", ns)
-        refresh_state(conn, ctx, ns, pods_raw, deps_raw, nodes_raw, events_raw)
+        refresh_state(
+            conn, ctx, ns, pods_raw, deps_raw,
+            nodes_raw, events_raw
+        )
     except Exception:
         pass
+
+    # Compute and persist health scores
+    try:
+        from core.analytics.health import (
+            compute_health, resolve_incidents,
+        )
+        compute_health(
+            ts, ctx, ns or context.namespace,
+            pods_raw, events_raw, metrics_map
+        )
+        resolve_incidents(ctx, ns or context.namespace)
+    except Exception:
+        pass
+
 
     return {
         "pods": pods_collected,

@@ -1,175 +1,249 @@
 <app-intel-header title="Analytics" icon="pi pi-chart-bar"
-  [subtitle]="stats ? (stats.raw_rows + stats.hourly_rows + stats.daily_rows) + ' rows · ' + stats.db_size_mb + 'MB' : 'loading...'">
-  <button class="ctrl-btn ctrl-btn-wide" (click)="collectNow()" [class.disabled]="collecting"><i class="pi pi-database"></i> Collect</button>
+  [subtitle]="overview ? 'Updated ' + freshnessLabel : 'loading...'">
   <button class="ctrl-btn" (click)="refresh()" pTooltip="Refresh"><i class="pi pi-refresh" [class.spinning]="loading"></i></button>
 </app-intel-header>
 
-    @if (loading && !stats) {
-      <div class="loading"><app-skeleton variant="stats" /><app-skeleton variant="card" /></div>
+@if (loading && !overview) {
+  <div class="loading"><app-skeleton variant="stats" /><app-skeleton variant="card" /></div>
+}
+
+@if (loadError && !overview) {
+  <div class="empty-state">
+    <div class="empty-icon"><i class="pi pi-exclamation-triangle"></i></div>
+    <span>Analytics unavailable</span>
+    <span class="empty-hint">Check that DuckDB is installed and collection is running</span>
+    <button pButton label="Retry" icon="pi pi-refresh" class="p-button-outlined p-button-sm" (click)="refresh()"></button>
+  </div>
+}
+
+@if (overview?.empty_state_reason && !loadError) {
+  <div class="empty-state">
+    <div class="empty-icon"><i class="pi pi-database"></i></div>
+    <span>No analytics data yet</span>
+    <span class="empty-hint">Data will appear after the first collection cycle</span>
+  </div>
+}
+
+@if (overview && !overview.empty_state_reason) {
+  <!-- ─── Hero Tiles ───────────────────────────────────────────────── -->
+  <div class="metrics-strip">
+    <app-metric-tile
+      label="Health"
+      [value]="overview.health_score + '/100'"
+      [accent]="heroHealthAccent()" />
+    <app-metric-tile
+      label="Cost Trend"
+      [value]="heroCostDelta() + '/mo'"
+      [deltaType]="heroCostTrend()"
+      accent="default" />
+    <app-metric-tile
+      label="Risks"
+      [value]="'' + overview.active_risks"
+      [accent]="heroRiskAccent()" />
+    @if (overview.biggest_change; as bc) {
+      <app-metric-tile
+        [label]="bc.deployment"
+        [value]="(bc.trend === 'up' ? '+' : '-') + (bc.delta_pct | number:'1.0-0') + '% ' + bc.metric"
+        [deltaType]="bc.trend"
+        accent="default" />
+    } @else {
+      <app-metric-tile label="Biggest Change" value="—" accent="default" />
     }
+  </div>
 
-    @if (loadError && !stats) {
-      <div class="error-state">
-        <i class="pi pi-exclamation-triangle"></i>
-        <span>Failed to connect to analytics engine. Is DuckDB installed?</span>
-        <button pButton label="Retry" icon="pi pi-refresh" class="p-button-outlined p-button-sm" (click)="refresh()"></button>
-      </div>
-    }
+  <!-- ─── Tabs ─────────────────────────────────────────────────────── -->
+  <p-tabs [value]="activeTab" (valueChange)="onTabChange('' + $event)">
+    <p-tablist>
+      <p-tab value="0">Overview</p-tab>
+      <p-tab value="1">Resources</p-tab>
+      <p-tab value="2">Cost</p-tab>
+      <p-tab value="3">Forecasts</p-tab>
+      <p-tab value="4">Investigate</p-tab>
+    </p-tablist>
 
-    @if (stats) {
-      <!-- Summary Cards -->
-      <div class="summary-grid">
-        <div class="summary-card">
-          <span class="summary-value">{{ (stats.raw_rows + stats.hourly_rows) | number }}</span>
-          <span class="summary-label">Data Points</span>
-        </div>
-        <div class="summary-card">
-          <span class="summary-value">{{ stats.db_size_mb }}MB</span>
-          <span class="summary-label">DB Size</span>
-        </div>
-        <div class="summary-card" [class.warn]="predictions.length > 0">
-          <span class="summary-value">{{ predictions.length }}</span>
-          <span class="summary-label">Predictions</span>
-        </div>
-        <div class="summary-card" [class.warn]="alerts.length > 0">
-          <span class="summary-value">{{ alerts.length }}</span>
-          <span class="summary-label">Alerts</span>
-        </div>
-      </div>
-
-      <!-- Tabs -->
-      <p-tabs [value]="activeTab" (valueChange)="activeTab = '' + $event">
-        <p-tablist>
-          <p-tab value="0">Charts</p-tab>
-          <p-tab value="1">Cost ({{ costData.length }})</p-tab>
-          <p-tab value="2">Predictions ({{ predictions.length }})</p-tab>
-          <p-tab value="3">SQL Query</p-tab>
-          <p-tab value="4">Export</p-tab>
-        </p-tablist>
-
-        <p-tabpanels>
-          <!-- Charts Tab -->
-          <p-tabpanel value="0">
-            <div class="charts-grid">
-              <div class="chart-card">
-                <h4>CPU & Memory (24h)</h4>
-                @if (cpuMemChart) {
-                  <p-chart type="line" [data]="cpuMemChart" [options]="lineOptions" height="250px" />
-                } @else {
-                  <p class="empty-tab">No time-series data yet. Wait for collection.</p>
-                }
-              </div>
-              <div class="chart-card">
-                <h4>Daily Cost (30d)</h4>
-                @if (costChart) {
-                  <p-chart type="bar" [data]="costChart" [options]="barOptions" height="250px" />
-                } @else {
-                  <p class="empty-tab">Need 24h+ of data for cost chart.</p>
-                }
-              </div>
-              <div class="chart-card">
-                <h4>Top Consumers (6h)</h4>
-                @if (consumersChart) {
-                  <p-chart type="bar" [data]="consumersChart" [options]="horizontalBarOptions" height="250px" />
-                } @else {
-                  <p class="empty-tab">No consumer data yet.</p>
-                }
-              </div>
-              <div class="chart-card">
-                <h4>Event Activity (24h)</h4>
-                @if (eventChart) {
-                  <p-chart type="bar" [data]="eventChart" [options]="barOptions" height="250px" />
-                } @else {
-                  <p class="empty-tab">No event data yet.</p>
-                }
-              </div>
-            </div>
-          </p-tabpanel>
-
-          <!-- Cost Tab -->
-          <p-tabpanel value="1">
-            @if (costSummary) {
-              <div class="cost-summary">
-                <span><strong>{{ "$" + costSummary.monthly_usd?.toFixed(2) }}</strong>/mo</span>
-                <span>{{ "$" + costSummary.daily_avg_usd?.toFixed(2) }}/day</span>
-                <span>{{ costSummary.deployments }} deployments</span>
-              </div>
+    <p-tabpanels>
+      <!-- ═══ Overview Tab ═══════════════════════════════════════════ -->
+      <p-tabpanel value="0">
+        <div class="overview-sections">
+          <!-- Changes Since Yesterday -->
+          <section class="ov-section">
+            <h3 class="ov-title">Changes Since Yesterday</h3>
+            @if (overview.top_changes.length === 0) {
+              <p class="ov-empty">No significant changes detected</p>
             }
-            @for (item of costData; track item.deployment) {
-              <div class="cost-row">
-                <span class="cost-name"><strong>{{ item.deployment }}</strong> <span class="ns">{{ item.namespace }}</span></span>
-                <span class="cost-metrics">{{ item.avg_pods }} pods · CPU {{ item.cpu_avg_m }}m · Mem {{ item.mem_avg_mb }}Mi</span>
-                <span class="cost-value">{{ "$" + item.cost_requested_usd?.toFixed(2) }}
-                  @if (item.waste_pct > 20) { <span class="waste">({{ item.waste_pct }}% waste)</span> }
+            @for (c of overview.top_changes; track c.deployment) {
+              <div class="ov-row">
+                <div class="ov-row-main">
+                  <span class="ov-deploy">{{ c.deployment }}</span>
+                  <span class="ov-ns">{{ c.namespace }}</span>
+                </div>
+                <span class="ov-delta" [class.ov-up]="c.trend === 'up'" [class.ov-down]="c.trend === 'down'">
+                  {{ c.trend === 'up' ? '+' : '-' }}{{ c.delta_pct | number:'1.0-0' }}% {{ c.metric }}
                 </span>
               </div>
             }
-            @if (!costData.length) { <p class="empty-tab">No cost data yet.</p> }
-          </p-tabpanel>
+          </section>
 
-          <!-- Predictions Tab -->
-          <p-tabpanel value="2">
-            @if (!predictions.length) { <p class="empty-tab">No resource exhaustion predicted in next 24h ✓</p> }
-            @for (p of predictions; track p.message) {
-              <div class="prediction-row" [class]="'sev-' + p.severity">
-                <i class="pi pi-exclamation-triangle"></i>
-                <div class="pred-content">
-                  <strong>{{ p.type }}</strong>
-                  <span>{{ p.message }}</span>
-                  @if (p.recommendation) { <span class="pred-rec">→ {{ p.recommendation }}</span> }
+          <!-- Cost Optimization Opportunities -->
+          <section class="ov-section">
+            <h3 class="ov-title">Cost Optimization Opportunities</h3>
+            @if (overview.cost_opportunities.length === 0) {
+              <p class="ov-empty">No savings identified — resources well-utilized</p>
+            }
+            @for (opp of overview.cost_opportunities; track opp.deployment) {
+              <div class="ov-row">
+                <div class="ov-row-main">
+                  <span class="ov-deploy">{{ opp.deployment }}</span>
+                  <span class="ov-action">{{ opp.action }}</span>
                 </div>
-                <div class="pred-meta">
-                  @if (p.hours_remaining) { <span>~{{ p.hours_remaining }}h</span> }
-                  <span>{{ p.confidence }}%</span>
-                </div>
+                <span class="ov-savings">${{ opp.savings_monthly | number:'1.0-0' }}/mo</span>
               </div>
             }
-          </p-tabpanel>
+          </section>
 
-          <!-- SQL Tab -->
-          <p-tabpanel value="3">
-            <div class="sql-section">
-              <div class="sql-input">
-                <textarea [(ngModel)]="sqlQuery" placeholder="SELECT * FROM hourly_pod_metrics LIMIT 10" rows="3"></textarea>
-                <button pButton icon="pi pi-play" label="Run" class="p-button-sm" (click)="runQuery()" [loading]="querying"></button>
-              </div>
-              <div class="sql-hints">Tables: raw_pod_metrics, hourly_pod_metrics, daily_summary, pod_state, event_log, audit_log, command_usage, incidents, cost_model</div>
-              @if (queryError) { <div class="sql-error">{{ queryError }}</div> }
-              @if (queryResult) {
-                <div class="sql-result">
-                  <div class="result-header">
-                    @for (col of queryResult.columns; track col) { <span>{{ col }}</span> }
-                  </div>
-                  @for (row of queryResult.rows; track $index) {
-                    <div class="result-row">
-                      @for (col of queryResult.columns; track col) { <span>{{ row[col] }}</span> }
-                    </div>
-                  }
-                  <div class="result-footer">{{ queryResult.count }} rows</div>
-                </div>
-              }
-            </div>
-          </p-tabpanel>
-
-          <!-- Export Tab -->
-          <p-tabpanel value="4">
-            @if (exportMsg) {
-              <div class="export-feedback" [class.export-ok]="exportMsg.startsWith('✓')" [class.export-err]="exportMsg.startsWith('✗')">{{ exportMsg }}</div>
+          <!-- Upcoming Risks -->
+          <section class="ov-section">
+            <h3 class="ov-title">Upcoming Risks</h3>
+            @if (overview.upcoming_risks.length === 0) {
+              <p class="ov-empty">No resource exhaustion predicted ✓</p>
             }
-            <div class="export-grid">
-              @for (q of exportQueries; track q.name) {
-                <div class="export-card">
-                  <div><strong>{{ q.label }}</strong><br><span class="export-desc">{{ q.description }}</span></div>
-                  <div class="export-actions">
-                    <button pButton icon="pi pi-file" label="CSV" class="p-button-outlined p-button-sm" (click)="exportData(q.name, 'csv')"></button>
-                    <button pButton icon="pi pi-database" label="Parquet" class="p-button-outlined p-button-sm" (click)="exportData(q.name, 'parquet')"></button>
-                  </div>
+            @for (risk of overview.upcoming_risks; track risk.deployment) {
+              <div class="ov-row" [class]="'ov-sev-' + risk.severity">
+                <div class="ov-row-main">
+                  <span class="ov-deploy">{{ risk.deployment }}</span>
+                  <span class="ov-risk-msg">{{ risk.message }}</span>
+                </div>
+                <span class="ov-hours">~{{ risk.hours_remaining | number:'1.0-0' }}h</span>
+              </div>
+            }
+          </section>
+
+          <!-- Recent Incidents -->
+          <section class="ov-section">
+            <h3 class="ov-title">Recent Incidents</h3>
+            @if (overview.recent_incidents.length === 0) {
+              <p class="ov-empty">No active incidents</p>
+            }
+            @for (inc of overview.recent_incidents; track inc.deployment + inc.occurred_at) {
+              <div class="ov-row ov-sev-{{ inc.severity }}">
+                <div class="ov-row-main">
+                  <span class="ov-deploy">{{ inc.deployment }}</span>
+                  <span class="ov-inc-title">{{ inc.title }}</span>
+                </div>
+                <span class="ov-inc-desc">{{ inc.description }}</span>
+              </div>
+            }
+          </section>
+        </div>
+      </p-tabpanel>
+
+      <!-- ═══ Resources Tab ════════════════════════════════════════════ -->
+      <p-tabpanel value="1">
+        <div class="charts-grid">
+          <div class="chart-card">
+            <h4>CPU & Memory (24h)</h4>
+            @if (cpuMemChart) {
+              <p-chart type="line" [data]="cpuMemChart" [options]="lineOptions" height="280px" />
+            } @else {
+              <p class="empty-tab">Loading chart data...</p>
+            }
+          </div>
+          <div class="chart-card">
+            <h4>Top Consumers (6h)</h4>
+            @if (consumersChart) {
+              <p-chart type="bar" [data]="consumersChart" [options]="horizontalBarOptions" height="280px" />
+            } @else {
+              <p class="empty-tab">Loading chart data...</p>
+            }
+          </div>
+        </div>
+      </p-tabpanel>
+
+      <!-- ═══ Cost Tab ═════════════════════════════════════════════════ -->
+      <p-tabpanel value="2">
+        @if (costSummary) {
+          <div class="cost-summary">
+            <span><strong>${{ costSummary.monthly_usd?.toFixed(2) }}</strong>/mo</span>
+            <span>${{ costSummary.daily_avg_usd?.toFixed(2) }}/day</span>
+            <span>{{ costSummary.deployments }} deployments</span>
+          </div>
+        }
+        @for (item of costData; track item.deployment) {
+          <div class="cost-row">
+            <span class="cost-name"><strong>{{ item.deployment }}</strong> <span class="ns">{{ item.namespace }}</span></span>
+            <span class="cost-metrics">{{ item.avg_pods }} pods · CPU {{ item.cpu_avg_m }}m · Mem {{ item.mem_avg_mb }}Mi</span>
+            <span class="cost-value">{{ "$" + item.cost_requested_usd?.toFixed(2) }}
+              @if (item.waste_pct > 20) { <span class="waste">({{ item.waste_pct }}% waste)</span> }
+            </span>
+          </div>
+        }
+        @if (!costData.length && !costSummary) {
+          <p class="empty-tab">No cost data yet. Switch to this tab after collection runs.</p>
+        }
+      </p-tabpanel>
+
+      <!-- ═══ Forecasts Tab ════════════════════════════════════════════ -->
+      <p-tabpanel value="3">
+        @if (!overview.upcoming_risks.length) {
+          <p class="empty-tab">No resource exhaustion predicted in next 24h ✓</p>
+        }
+        @for (p of overview.upcoming_risks; track p.message) {
+          <div class="prediction-row" [class]="'sev-' + p.severity">
+            <i class="pi pi-exclamation-triangle"></i>
+            <div class="pred-content">
+              <strong>{{ p.risk_type }}</strong>
+              <span>{{ p.message }}</span>
+              @if (p.recommendation) { <span class="pred-rec">→ {{ p.recommendation }}</span> }
+            </div>
+            <div class="pred-meta">
+              @if (p.hours_remaining) { <span>~{{ p.hours_remaining }}h</span> }
+              <span>{{ p.confidence }}%</span>
+            </div>
+          </div>
+        }
+      </p-tabpanel>
+
+      <!-- ═══ Investigate Tab ══════════════════════════════════════════ -->
+      <p-tabpanel value="4">
+        <div class="sql-section">
+          <div class="sql-input">
+            <textarea [(ngModel)]="sqlQuery" placeholder="SELECT * FROM hourly_pod_metrics LIMIT 10" rows="3"></textarea>
+            <button pButton icon="pi pi-play" label="Run" class="p-button-sm" (click)="runQuery()" [loading]="querying"></button>
+          </div>
+          <div class="sql-hints">Tables: raw_pod_metrics, hourly_pod_metrics, daily_summary, pod_state, event_log, audit_log, command_usage, incidents, cost_model</div>
+          @if (queryError) { <div class="sql-error">{{ queryError }}</div> }
+          @if (queryResult) {
+            <div class="sql-result">
+              <div class="result-header">
+                @for (col of queryResult.columns; track col) { <span>{{ col }}</span> }
+              </div>
+              @for (row of queryResult.rows; track $index) {
+                <div class="result-row">
+                  @for (col of queryResult.columns; track col) { <span>{{ row[col] }}</span> }
                 </div>
               }
+              <div class="result-footer">{{ queryResult.count }} rows</div>
             </div>
-          </p-tabpanel>
-        </p-tabpanels>
-      </p-tabs>
-    }
+          }
+        </div>
 
-    <app-related-pages label="Related" [pages]="relatedPages" />
+        @if (exportMsg) {
+          <div class="export-feedback" [class.export-ok]="exportMsg.startsWith('✓')" [class.export-err]="exportMsg.startsWith('✗')">{{ exportMsg }}</div>
+        }
+        <div class="export-grid">
+          @for (q of exportQueries; track q.name) {
+            <div class="export-card">
+              <div><strong>{{ q.label }}</strong><br><span class="export-desc">{{ q.description }}</span></div>
+              <div class="export-actions">
+                <button pButton icon="pi pi-file" label="CSV" class="p-button-outlined p-button-sm" (click)="exportData(q.name, 'csv')"></button>
+                <button pButton icon="pi pi-database" label="Parquet" class="p-button-outlined p-button-sm" (click)="exportData(q.name, 'parquet')"></button>
+              </div>
+            </div>
+          }
+        </div>
+      </p-tabpanel>
+    </p-tabpanels>
+  </p-tabs>
+}
+
+<app-related-pages label="Related" [pages]="relatedPages" />

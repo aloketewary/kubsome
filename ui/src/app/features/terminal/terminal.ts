@@ -1,4 +1,4 @@
-import { Component, inject, ViewChild, ElementRef, AfterViewChecked } from '@angular/core';
+import { Component, inject, ViewChild, ElementRef, AfterViewChecked, HostListener } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { TooltipModule } from 'primeng/tooltip';
@@ -7,6 +7,19 @@ import { IntelHeaderComponent } from '../../shared/components/futuristic/intel-h
 interface TermLine {
   type: 'input' | 'output' | 'error' | 'system';
   text: string;
+  pinned?: boolean;
+  ts?: number;
+}
+
+interface PaletteItem {
+  label: string;
+  command: string;
+  category: string;
+}
+
+interface RecentResource {
+  kind: string;
+  name: string;
 }
 
 @Component({
@@ -21,8 +34,10 @@ export class TerminalComponent implements AfterViewChecked {
 
   @ViewChild('termBody') termBody!: ElementRef;
   @ViewChild('cmdInput') cmdInput!: ElementRef;
+  @ViewChild('paletteInput') paletteInput!: ElementRef;
 
   lines: TermLine[] = [];
+  pinnedLines: TermLine[] = [];
   currentCmd = '';
   loading = false;
   context = '...';
@@ -37,21 +52,105 @@ export class TerminalComponent implements AfterViewChecked {
   historyIndex = -1;
   private shouldScroll = false;
 
-  quickCommands = [
-    { label: 'pods', command: 'pods' },
-    { label: 'events', command: 'events' },
-    { label: 'overview', command: 'overview' },
-    { label: 'top pods', command: 'top pods' },
-    { label: 'top nodes', command: 'top nodes' },
-    { label: 'kubectl get svc', command: 'kubectl get svc' },
-    { label: 'kubectl get deploy', command: 'kubectl get deploy' },
+  // Palette
+  showPalette = false;
+  paletteQuery = '';
+  paletteIndex = 0;
+
+  paletteItems: PaletteItem[] = [
+    { label: 'View Pods', command: 'pods', category: 'observe' },
+    { label: 'View Events', command: 'events', category: 'observe' },
+    { label: 'Cluster Overview', command: 'overview', category: 'observe' },
+    { label: 'Top Pods', command: 'top pods', category: 'observe' },
+    { label: 'Top Nodes', command: 'top nodes', category: 'observe' },
+    { label: 'Scorecard', command: 'scorecard', category: 'observe' },
+    { label: 'View Logs', command: 'logs ', category: 'operate' },
+    { label: 'Describe Pod', command: 'describe pod ', category: 'operate' },
+    { label: 'Restart Deployment', command: 'restart ', category: 'operate' },
+    { label: 'Scale Deployment', command: 'scale ', category: 'operate' },
+    { label: 'Rollout Status', command: 'rollout ', category: 'operate' },
+    { label: 'Diagnose Pod', command: 'diagnose ', category: 'diagnose' },
+    { label: 'Inspect Pod', command: 'inspect ', category: 'diagnose' },
+    { label: 'Security Scan', command: 'security', category: 'diagnose' },
   ];
+
+  // Templates — inline shortcuts
+  templates = [
+    { label: 'Pods', cmd: 'pods', key: '1' },
+    { label: 'Logs', cmd: 'logs ', key: '2' },
+    { label: 'Describe', cmd: 'describe pod ', key: '3' },
+    { label: 'Restart', cmd: 'restart ', key: '4' },
+    { label: 'Scale', cmd: 'scale ', key: '5' },
+    { label: 'Events', cmd: 'events', key: '6' },
+  ];
+
+  favorites: string[] = [];
+  recentResources: RecentResource[] = [];
+  activeResourceIdx = -1;
+
+  // Danger
+  private dangerPatterns = ['delete', 'drain', 'scale 0', 'rollout undo'];
+  showDangerConfirm = false;
+  dangerCommand = '';
+
+  get filteredPalette(): PaletteItem[] {
+    if (!this.paletteQuery.trim()) return this.paletteItems;
+    const q = this.paletteQuery.toLowerCase();
+    return this.paletteItems.filter(i =>
+      i.label.toLowerCase().includes(q) || i.command.toLowerCase().includes(q)
+    );
+  }
+
+  get isDangerContext(): boolean {
+    return this.context.includes('prod') || this.context.includes('prd');
+  }
 
   ngAfterViewChecked() {
     if (this.shouldScroll) { this.scrollToBottom(); this.shouldScroll = false; }
   }
 
-  constructor() { this.refreshContext(); }
+  constructor() {
+    this.refreshContext();
+    this.loadFavorites();
+  }
+
+  @HostListener('document:keydown', ['$event'])
+  onGlobalKey(e: KeyboardEvent) {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      e.preventDefault();
+      this.togglePalette();
+    }
+    if (e.key === 'Escape') {
+      if (this.showPalette) this.showPalette = false;
+      if (this.showDangerConfirm) this.cancelDanger();
+    }
+  }
+
+  togglePalette() {
+    this.showPalette = !this.showPalette;
+    this.paletteQuery = '';
+    this.paletteIndex = 0;
+    if (this.showPalette) {
+      setTimeout(() => this.paletteInput?.nativeElement?.focus(), 40);
+    }
+  }
+
+  onPaletteKey(e: KeyboardEvent) {
+    const items = this.filteredPalette;
+    if (e.key === 'ArrowDown') { e.preventDefault(); this.paletteIndex = Math.min(items.length - 1, this.paletteIndex + 1); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); this.paletteIndex = Math.max(0, this.paletteIndex - 1); }
+    else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (items[this.paletteIndex]) this.selectPaletteItem(items[this.paletteIndex]);
+    }
+  }
+
+  selectPaletteItem(item: PaletteItem) {
+    this.showPalette = false;
+    this.currentCmd = item.command;
+    if (!item.command.endsWith(' ')) { this.execute(); }
+    else { setTimeout(() => this.cmdInput?.nativeElement?.focus(), 40); }
+  }
 
   private refreshContext() {
     this.http.get<any>('/api/contexts').subscribe({
@@ -60,10 +159,24 @@ export class TerminalComponent implements AfterViewChecked {
     });
   }
 
+  private isDangerCommand(cmd: string): boolean {
+    const lower = cmd.toLowerCase().trim();
+    return this.dangerPatterns.some(p => lower.includes(p));
+  }
+
   execute() {
     const cmd = this.currentCmd.trim();
     if (!cmd || this.loading) return;
-    this.lines.push({ type: 'input', text: cmd });
+
+    if (this.isDangerCommand(cmd) && !this.showDangerConfirm) {
+      this.dangerCommand = cmd;
+      this.showDangerConfirm = true;
+      return;
+    }
+
+    this.showDangerConfirm = false;
+    this.dangerCommand = '';
+    this.lines.push({ type: 'input', text: cmd, ts: Date.now() });
     this.history.push(cmd);
     this.historyIndex = this.history.length;
     this.currentCmd = '';
@@ -75,6 +188,14 @@ export class TerminalComponent implements AfterViewChecked {
     this.runCommand(cmd);
   }
 
+  confirmDanger() {
+    this.currentCmd = this.dangerCommand;
+    this.showDangerConfirm = false;
+    this.execute();
+  }
+
+  cancelDanger() { this.showDangerConfirm = false; this.dangerCommand = ''; }
+
   private runCommand(cmd: string, selection?: string) {
     const body: any = { command: cmd };
     if (selection) body.selection = selection;
@@ -85,35 +206,104 @@ export class TerminalComponent implements AfterViewChecked {
           this.selectionChoices = res.choices || [];
           this.selectionPrompt = res.selection_prompt || 'Select:';
           this.pendingCommand = res.original_command || cmd;
-          this.loading = false;
-          this.shouldScroll = true;
         } else {
-          if (res.output) { this.lines.push({ type: res.exit_code === 0 ? 'output' : 'error', text: res.output }); }
-          this.loading = false;
-          this.shouldScroll = true;
+          if (res.output) {
+            this.lines.push({ type: res.exit_code === 0 ? 'output' : 'error', text: res.output, ts: Date.now() });
+            this.extractResources(res.output);
+          }
           this.refreshContext();
         }
+        this.loading = false;
+        this.shouldScroll = true;
       },
       error: () => {
-        this.lines.push({ type: 'error', text: 'Connection error — is the API running?' });
+        this.lines.push({ type: 'error', text: 'Connection error — is the API running?', ts: Date.now() });
         this.loading = false;
         this.shouldScroll = true;
       },
     });
   }
 
+  private extractResources(output: string) {
+    const regex = /(?:pod|po|deployment|deploy)\/([a-z0-9][\w.-]*)/gi;
+    let match: RegExpExecArray | null;
+    while ((match = regex.exec(output)) !== null) {
+      const full = match[0];
+      const [kindRaw, name] = full.split('/');
+      const kind = kindRaw.toLowerCase().startsWith('dep') ? 'deployment' : 'pod';
+      if (!this.recentResources.find(r => r.kind === kind && r.name === name)) {
+        this.recentResources.unshift({ kind, name });
+        if (this.recentResources.length > 6) this.recentResources.pop();
+      }
+    }
+  }
+
   selectChoice(choice: string) {
-    this.lines.push({ type: 'system', text: `→ ${choice}` });
+    this.lines.push({ type: 'system', text: `→ ${choice}`, ts: Date.now() });
     this.selectionChoices = [];
     this.loading = true;
     this.shouldScroll = true;
     this.runCommand(this.pendingCommand, choice);
   }
 
-  runQuick(cmd: string) { this.currentCmd = cmd; this.execute(); }
+  useTemplate(cmd: string) {
+    this.currentCmd = cmd;
+    if (!cmd.endsWith(' ')) this.execute();
+    else setTimeout(() => this.cmdInput?.nativeElement?.focus(), 40);
+  }
 
+  // Favorites
+  private loadFavorites() {
+    const saved = localStorage.getItem('kubsome-terminal-favorites');
+    this.favorites = saved ? JSON.parse(saved) : ['kubectl get pods -A', 'kubectl top nodes'];
+  }
+
+  private saveFavorites() {
+    localStorage.setItem('kubsome-terminal-favorites', JSON.stringify(this.favorites));
+  }
+
+  toggleFavorite(cmd?: string) {
+    const target = cmd || this.currentCmd.trim();
+    if (!target) return;
+    if (this.favorites.includes(target)) {
+      this.favorites = this.favorites.filter(f => f !== target);
+    } else {
+      this.favorites.unshift(target);
+      if (this.favorites.length > 10) this.favorites.pop();
+    }
+    this.saveFavorites();
+  }
+
+  isFavorite(cmd: string): boolean { return this.favorites.includes(cmd); }
+
+  runFavorite(cmd: string) { this.currentCmd = cmd; this.execute(); }
+
+  // Recent resource actions
+  resourceAction(res: RecentResource, action: string) {
+    this.activeResourceIdx = -1;
+    const map: Record<string, string> = {
+      describe: `describe ${res.kind} ${res.name}`,
+      logs: `logs ${res.name}`,
+      inspect: `inspect ${res.name}`,
+    };
+    this.currentCmd = map[action] || '';
+    this.execute();
+  }
+
+  // Pinning
+  pinLine(idx: number) {
+    const line = this.lines[idx];
+    if (line && !line.pinned) {
+      line.pinned = true;
+      this.pinnedLines.push({ ...line });
+    }
+  }
+
+  unpinLine(idx: number) { this.pinnedLines.splice(idx, 1); }
+
+  // Input
   onInputChange(value: string) {
-    if (value.trim().length > 0) { this.fetchCompletions(value); }
+    if (value.trim().length > 0) this.fetchCompletions(value);
     else { this.showCompletions = false; this.completions = []; }
   }
 
@@ -175,7 +365,7 @@ export class TerminalComponent implements AfterViewChecked {
         },
         error: () => { this.showCompletions = false; }
       });
-    }, 200);
+    }, 180);
   }
 
   copyOutput(event: Event) {

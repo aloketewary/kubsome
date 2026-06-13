@@ -1,160 +1,182 @@
 <app-intel-header title="Right-Sizing" icon="pi pi-sliders-h"
-  [subtitle]="(filteredRecs.length || 0) + ' recommendations · ' + (lastUpdated || 'loading...')">
-  <app-live-indicator [active]="autoRefresh" label="AUTO" offLabel="PAUSED" (click)="toggleAutoRefresh()" />
-  <button class="ctrl-btn" (click)="dryRun()" pTooltip="Dry Run" [disabled]="!data?.recommendations?.length || dryRunning">
+  [subtitle]="data ? 'Updated ' + freshnessLabel : 'loading...'">
+  <button class="ctrl-btn" (click)="dryRun()" pTooltip="Dry Run" [disabled]="!data?.opportunities?.length || dryRunning">
     <i class="pi pi-check-circle" [class.spinning]="dryRunning"></i>
   </button>
-  <button class="ctrl-btn" (click)="exportGitops()" pTooltip="GitOps" [disabled]="!data?.recommendations?.length">
+  <button class="ctrl-btn" (click)="exportGitops()" pTooltip="GitOps" [disabled]="!data?.opportunities?.length">
     <i class="pi pi-code"></i>
   </button>
-  <button class="ctrl-btn" (click)="exportYaml()" pTooltip="Export YAML" [disabled]="!data?.recommendations?.length">
+  <button class="ctrl-btn" (click)="exportYaml()" pTooltip="Export YAML" [disabled]="!data?.opportunities?.length">
     <i class="pi pi-download"></i>
-  </button>
-  <button class="ctrl-btn" (click)="refresh()" pTooltip="Refresh">
-    <i class="pi pi-refresh" [class.spinning]="loading"></i>
   </button>
 </app-intel-header>
 
-    @if (!data && !loading) {
-      <div class="empty-state"><div class="empty-icon"><i class="pi pi-sliders-h"></i></div><span>No analytics data</span><span class="empty-hint">Need at least 12 hours of metrics collection</span></div>
-    }
+@if (loading && !data) {
+  <div class="loading"><app-skeleton variant="stats" /><app-skeleton variant="card" /></div>
+}
 
-    @if (loading && !data) {
-      <div class="loading-state"><div class="loader-ring"></div><span>Analyzing resource usage...</span></div>
-    }
+@if (loadError && !data) {
+  <div class="empty-state">
+    <div class="empty-icon"><i class="pi pi-exclamation-triangle"></i></div>
+    <span>Right-sizing unavailable</span>
+    <span class="empty-hint">Need at least 12 hours of metrics collection</span>
+  </div>
+}
 
-    @if (data) {
-      <!-- Metrics Strip -->
-      <div class="metrics-strip">
-        <app-metric-tile label="Deployments" [value]="'' + data.summary.deployments" accent="cyan" />
-        <app-metric-tile label="CPU Util" [value]="data.summary.cpu_util_pct + '%'" [accent]="data.summary.cpu_util_pct < 40 ? 'amber' : 'green'" />
-        <app-metric-tile label="Mem Util" [value]="data.summary.mem_util_pct + '%'" [accent]="data.summary.mem_util_pct < 40 ? 'amber' : 'green'" />
-        <app-metric-tile label="Savings" [value]="'$' + data.total_monthly_savings_usd?.toFixed(0)" accent="green" />
-      </div>
+@if (data?.empty_state_reason && !loadError) {
+  <div class="empty-state">
+    <div class="empty-icon"><i class="pi pi-sliders-h"></i></div>
+    <span>No analytics data yet</span>
+    <span class="empty-hint">Data will appear after the first collection cycle</span>
+  </div>
+}
 
-      <!-- Tabs -->
-      <p-tabs [value]="activeTab" (valueChange)="activeTab = '' + $event">
-        <p-tablist>
-          <p-tab value="0">Recommendations ({{ filteredRecs.length }})</p-tab>
-          <p-tab value="1">At Risk ({{ data.underprovisioned_count }})</p-tab>
-          <p-tab value="2">Rollout Plan</p-tab>
-        </p-tablist>
+@if (data && !data.empty_state_reason) {
+  <!-- ─── Hero ─────────────────────────────────────────────────────── -->
+  <div class="metrics-strip">
+    <app-metric-tile label="Deployments" [value]="'' + data.deployments_analyzed" accent="default" />
+    <app-metric-tile label="Savings" [value]="'$' + (data.total_savings_monthly | number:'1.0-0') + '/mo'" accent="green" />
+    <app-metric-tile label="At Risk" [value]="'' + data.at_risk_count" [accent]="riskAccent()" />
+    <app-metric-tile label="Safe To Apply" [value]="'' + data.safe_to_apply" accent="cyan" />
+  </div>
 
-        <p-tabpanels>
-          <!-- Recommendations -->
-          <p-tabpanel value="0">
-            <app-command-bar [pills]="filterPills" [activePill]="riskFilter" [search]="searchQuery" placeholder="Filter deployments..." (pillChange)="onRiskFilterChange($event)" (searchChange)="onSearchChange($event)" />
+  <!-- ─── Tabs ─────────────────────────────────────────────────────── -->
+  <p-tabs [value]="activeTab" (valueChange)="activeTab = '' + $event">
+    <p-tablist>
+      <p-tab value="0">Opportunities ({{ data.opportunities.length }})</p-tab>
+      <p-tab value="1">Risks ({{ data.risks.length }})</p-tab>
+      <p-tab value="2">Execution</p-tab>
+    </p-tablist>
 
-            @for (rec of filteredRecs; track rec.deployment) {
-              <div class="rec-card" [class.risk-low]="rec.risk === 'low'" [class.risk-medium]="rec.risk === 'medium'" [class.risk-high]="rec.risk === 'high'">
-                <div class="rec-header">
-                  <div class="rec-title">
-                    <app-status-beacon [status]="rec.risk === 'high' ? 'critical' : rec.risk === 'medium' ? 'warning' : 'ok'" size="sm" />
-                    <strong>{{ rec.deployment }}</strong>
-                    <span class="rec-ns">{{ rec.namespace }}</span>
-                  </div>
-                  <div class="rec-meta">
-                    <span class="confidence">{{ rec.confidence }}%</span>
-                    <p-tag [value]="rec.risk" [severity]="riskSeverity(rec.risk)" [rounded]="true" size="small" />
-                    <span class="savings">{{'$' + rec.total_savings_monthly?.toFixed(2)}}/mo</span>
-                  </div>
-                </div>
-                <div class="rec-body">
-                  <div class="resource-row">
-                    <span class="res-label">CPU</span>
-                    <span class="current">{{ rec.current.cpu_request }}m</span>
-                    <span class="arrow">→</span>
-                    <span class="recommended">{{ rec.recommended.cpu_request }}m</span>
-                    <span class="limit">lim {{ rec.recommended.cpu_limit }}m</span>
-                    <span class="usage-stats">P95={{ rec.usage.cpu_p95 }}m</span>
-                    @if (rec.usage.cpu_volatile) { <span class="volatile">⚡</span> }
-                  </div>
-                  <div class="resource-row">
-                    <span class="res-label">Mem</span>
-                    <span class="current">{{ rec.current.mem_request }}Mi</span>
-                    <span class="arrow">→</span>
-                    <span class="recommended">{{ rec.recommended.mem_request }}Mi</span>
-                    <span class="limit">lim {{ rec.recommended.mem_limit }}Mi</span>
-                    <span class="usage-stats">P95={{ rec.usage.mem_p95 }}Mi</span>
-                    @if (rec.usage.mem_volatile) { <span class="volatile">⚡</span> }
-                  </div>
-                </div>
+    <p-tabpanels>
+      <!-- ═══ Opportunities ════════════════════════════════════════════ -->
+      <p-tabpanel value="0">
+        @if (data.opportunities.length) {
+          <div class="opp-summary">
+            <span class="opp-total">${{ data.total_savings_monthly | number:'1.0-0' }}/month</span>
+            <span class="opp-meta">{{ data.opportunities.length }} deployments optimizable · {{ data.safe_to_apply }} safe to apply</span>
+          </div>
+        }
+        @for (opp of data.opportunities; track opp.deployment) {
+          <div class="opp-card" [class]="'risk-' + opp.risk">
+            <div class="opp-header">
+              <div class="opp-title">
+                <strong>{{ opp.deployment }}</strong>
+                <span class="opp-ns">{{ opp.namespace }}</span>
               </div>
-            }
-            @if (!filteredRecs.length && !searchQuery) {
-              <div class="empty-state"><div class="empty-icon"><i class="pi pi-check-circle"></i></div><span>All deployments well-sized</span></div>
-            }
-            @if (!filteredRecs.length && searchQuery) {
-              <div class="empty-state"><div class="empty-icon"><i class="pi pi-search"></i></div><span>No match for "{{ searchQuery }}"</span></div>
-            }
-          </p-tabpanel>
-
-          <!-- At Risk -->
-          <p-tabpanel value="1">
-            @for (item of data.at_risk; track item.deployment) {
-              <div class="rec-card risk-high">
-                <div class="rec-header">
-                  <div class="rec-title">
-                    <app-status-beacon status="critical" size="sm" [pulse]="true" />
-                    <strong>{{ item.deployment }}</strong>
-                    <span class="rec-ns">{{ item.namespace }}</span>
-                  </div>
-                  <p-tag value="at risk" severity="danger" [rounded]="true" size="small" />
-                </div>
-                <div class="rec-body">
-                  <div class="resource-row">
-                    <span class="res-label">CPU</span>
-                    <span class="usage-stats">{{ item.cpu_util_pct }}% · {{ item.cpu_p95 }}m / {{ item.cpu_request }}m</span>
-                  </div>
-                  <div class="resource-row">
-                    <span class="res-label">Mem</span>
-                    <span class="usage-stats">{{ item.mem_util_pct }}% · {{ item.mem_p95 }}Mi / {{ item.mem_request }}Mi</span>
-                  </div>
-                  @if (item.restarts > 0) { <span class="restarts">↻ {{ item.restarts }} restarts</span> }
-                </div>
+              <div class="opp-meta-row">
+                <span class="opp-savings">${{ opp.savings_monthly | number:'1.0-0' }}/mo</span>
+                <p-tag [value]="opp.risk" [severity]="sevTag(opp.risk)" [rounded]="true" />
+                <span class="opp-conf">{{ opp.confidence }}%</span>
               </div>
-            }
-            @if (!data.at_risk?.length) {
-              <div class="empty-state"><div class="empty-icon"><i class="pi pi-check-circle"></i></div><span>No workloads at risk</span></div>
-            }
-          </p-tabpanel>
+            </div>
+            <div class="opp-resources">
+              <div class="res-row">
+                <span class="res-label">CPU</span>
+                <span class="res-current">{{ opp.cpu_current }}m</span>
+                <span class="res-arrow">→</span>
+                <span class="res-rec">{{ opp.cpu_recommended }}m</span>
+                <span class="res-p95">P95={{ opp.cpu_p95 }}m</span>
+                @if (opp.cpu_volatile) { <span class="res-volatile">⚡</span> }
+              </div>
+              <div class="res-row">
+                <span class="res-label">Mem</span>
+                <span class="res-current">{{ opp.mem_current }}Mi</span>
+                <span class="res-arrow">→</span>
+                <span class="res-rec">{{ opp.mem_recommended }}Mi</span>
+                <span class="res-p95">P95={{ opp.mem_p95 }}Mi</span>
+                @if (opp.mem_volatile) { <span class="res-volatile">⚡</span> }
+              </div>
+            </div>
+          </div>
+        }
+        @if (!data.opportunities.length) {
+          <div class="empty-state"><div class="empty-icon"><i class="pi pi-check-circle"></i></div><span>All deployments well-sized</span></div>
+        }
+      </p-tabpanel>
 
-          <!-- Rollout Plan -->
-          <p-tabpanel value="2">
-            @if (data.rollout_plan) {
-              @for (phase of phases; track phase.key) {
-                <app-holo-card [title]="phase.data.label" [glow]="phase.key === 'phase_1' ? 'green' : phase.key === 'phase_2' ? 'amber' : 'red'" [compact]="true">
-                  @if (phase.data.auto_apply) { <span header-actions><p-tag value="auto-safe" severity="success" [rounded]="true" size="small" /></span> }
-                  @for (item of phase.data.items; track item.deployment) {
-                    <div class="phase-item">
-                      <app-status-beacon status="ok" size="sm" />
-                      <span class="phase-dep">{{ item.deployment }}</span>
-                      <span class="phase-savings">{{'$' + item.total_savings_monthly?.toFixed(2)}}/mo</span>
-                    </div>
-                  }
-                  @if (!phase.data.items?.length) {
-                    <span class="empty-hint">No items in this phase</span>
-                  }
-                </app-holo-card>
+      <!-- ═══ Risks ════════════════════════════════════════════════════ -->
+      <p-tabpanel value="1">
+        @if (!data.risks.length) {
+          <div class="empty-state"><div class="empty-icon"><i class="pi pi-check-circle"></i></div><span>No workloads at risk</span></div>
+        }
+        @for (risk of data.risks; track risk.deployment) {
+          <div class="risk-card" [class]="'sev-' + risk.severity">
+            <div class="risk-header">
+              <div class="risk-title">
+                <strong>{{ risk.deployment }}</strong>
+                <span class="risk-ns">{{ risk.namespace }}</span>
+              </div>
+              <p-tag [value]="risk.severity" [severity]="sevTag(risk.severity === 'critical' ? 'high' : risk.severity)" [rounded]="true" />
+            </div>
+            <div class="risk-body">
+              <div class="risk-stat">
+                <span class="risk-stat-label">{{ risk.resource }} utilization</span>
+                <span class="risk-stat-value">{{ risk.utilization_pct | number:'1.0-0' }}%</span>
+              </div>
+              <div class="risk-stat">
+                <span class="risk-stat-label">Request</span>
+                <span class="risk-stat-value">{{ risk.request }}{{ risk.unit }}</span>
+              </div>
+              <div class="risk-stat">
+                <span class="risk-stat-label">P95</span>
+                <span class="risk-stat-value">{{ risk.p95 }}{{ risk.unit }}</span>
+              </div>
+              @if (risk.restarts > 0) {
+                <div class="risk-stat">
+                  <span class="risk-stat-label">Restarts</span>
+                  <span class="risk-stat-value risk-restarts">{{ risk.restarts }}</span>
+                </div>
               }
+            </div>
+            <div class="risk-action">→ {{ risk.action }}</div>
+          </div>
+        }
+      </p-tabpanel>
+
+      <!-- ═══ Execution ════════════════════════════════════════════════ -->
+      <p-tabpanel value="2">
+        @for (phase of data.execution; track phase.label; let i = $index) {
+          <div class="exec-phase" [class]="'exec-phase-' + i">
+            <div class="exec-phase-header">
+              <div class="exec-phase-title">
+                <span class="exec-phase-num">{{ i + 1 }}</span>
+                <span class="exec-phase-label">{{ phase.label }}</span>
+              </div>
+              <div class="exec-phase-meta">
+                <span>{{ phase.count }} workloads</span>
+                <span class="exec-phase-savings">${{ phase.savings_monthly | number:'1.0-0' }}/mo</span>
+                @if (phase.auto_apply) { <p-tag value="auto-safe" severity="success" [rounded]="true" /> }
+              </div>
+            </div>
+            @if (phase.items.length) {
+              <div class="exec-items">
+                @for (item of phase.items; track item.deployment) {
+                  <div class="exec-item">
+                    <span class="exec-item-name">{{ item.deployment }}</span>
+                    <span class="exec-item-savings">${{ item.savings_monthly | number:'1.0-2' }}/mo</span>
+                  </div>
+                }
+              </div>
+            } @else {
+              <span class="exec-empty">No items in this phase</span>
             }
-          </p-tabpanel>
-        </p-tabpanels>
-      </p-tabs>
+          </div>
+        }
+        @if (!data.execution.length) {
+          <div class="empty-state"><div class="empty-icon"><i class="pi pi-check-circle"></i></div><span>No execution plan available</span></div>
+        }
+      </p-tabpanel>
+    </p-tabpanels>
+  </p-tabs>
+}
 
-      <!-- Methodology -->
-      <div class="methodology">
-        <strong>Methodology:</strong>
-        Request = {{ data.methodology?.request_formula }} · Limit = {{ data.methodology?.limit_formula }} · Source: {{ data.methodology?.data_source }}
-      </div>
-    }
+<app-related-pages label="Related" [pages]="relatedPages" />
 
-    <app-related-pages label="Related" [pages]="relatedPages" />
-
-    @if (toast) {
-      <div class="inline-toast" [class.toast-success]="toast.severity === 'success'" [class.toast-danger]="toast.severity === 'danger'" [class.toast-info]="toast.severity === 'info'">
-        <i class="pi" [class.pi-check-circle]="toast.severity === 'success'" [class.pi-times-circle]="toast.severity === 'danger'" [class.pi-info-circle]="toast.severity === 'info'"></i>
-        <span>{{ toast.message }}</span>
-        <button class="toast-close" (click)="toast = null"><i class="pi pi-times"></i></button>
-      </div>
-    }
+@if (toast) {
+  <div class="inline-toast" [class.toast-success]="toast.severity === 'success'" [class.toast-danger]="toast.severity === 'danger'" [class.toast-info]="toast.severity === 'info'">
+    <i class="pi" [class.pi-check-circle]="toast.severity === 'success'" [class.pi-times-circle]="toast.severity === 'danger'" [class.pi-info-circle]="toast.severity === 'info'"></i>
+    <span>{{ toast.message }}</span>
+    <button class="toast-close" (click)="toast = null"><i class="pi pi-times"></i></button>
+  </div>
+}

@@ -1,5 +1,5 @@
 import { Component, inject, OnInit, OnDestroy } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { JsonPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TagModule } from 'primeng/tag';
@@ -48,9 +48,11 @@ export class PodsComponent implements OnInit, OnDestroy {
   private api = inject(ApiService);
   private ws = inject(WsService);
   private route = inject(ActivatedRoute);
+  private router = inject(Router);
   private watchSub: Subscription | null = null;
   private watchClose: (() => void) | null = null;
   private searchTimeout: any = null;
+  deploymentHealth: Map<string, { score: number; trend: number | null; reason: string }> = new Map();
 
   watching = false;
   pods: Pod[] = [];
@@ -306,12 +308,57 @@ export class PodsComponent implements OnInit, OnDestroy {
     return parts.length > 2 ? parts.slice(0, -2).join('-') : podName;
   }
 
+  private fetchHealth() {
+    this.api.getHealth().subscribe({
+      next: (res) => {
+        for (const d of res.deployments || []) {
+          this.deploymentHealth.set(d.deployment, {
+            score: d.health_score,
+            trend: null,
+            reason: d.top_reason || '',
+          });
+        }
+        // Fetch trends for unhealthy deployments
+        const unhealthy = (res.deployments || []).filter((d: any) => d.health_score < 80);
+        for (const d of unhealthy) {
+          this.api.getDeploymentHealth(d.deployment).subscribe({
+            next: (t) => {
+              const entry = this.deploymentHealth.get(d.deployment);
+              if (entry && t.trend !== null) entry.trend = t.trend;
+            },
+          });
+        }
+      },
+    });
+
+  }
+
   ngOnInit() {
     this.route.queryParams.subscribe(params => {
       if (params['filter']) this.searchQuery = params['filter'];
       this.fetchPods();
+      this.fetchHealth();
     });
   }
 
   ngOnDestroy() { this.stopWatch(); }
+
+  groupHealthScore(group: PodGroup): number | null {
+    return this.deploymentHealth.get(group.deployment)?.score ?? null;
+  }
+
+  groupHealthTrend(group: PodGroup): number | null {
+    return this.deploymentHealth.get(group.deployment)?.trend ?? null;
+  }
+
+  groupHealthReason(group: PodGroup): string {
+    return this.deploymentHealth.get(group.deployment)?.reason ?? '';
+  }
+
+  navigateInvestigate(deployment: string, event: Event) {
+    event.stopPropagation();
+    this.router.navigateByUrl(`/investigate?deployment=${deployment}`);
+  }
+
+
 }

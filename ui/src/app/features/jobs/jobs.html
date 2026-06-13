@@ -2,87 +2,147 @@
 <app-intel-header title="Jobs & CronJobs" icon="pi pi-clock"
   [subtitle]="cronjobs.length + ' cronjobs · ' + jobs.length + ' jobs · ' + (lastUpdated || 'loading...')">
   <app-live-indicator [active]="autoRefresh" label="AUTO" offLabel="PAUSED" (click)="toggleAutoRefresh()" />
-  <button class="ctrl-btn" (click)="load()" pTooltip="Refresh"><i class="pi pi-refresh" [class.spinning]="loading"></i></button>
+  <div class="interval-select">
+    @for (s of [10, 30, 60]; track s) {
+    <button class="interval-btn" [class.interval-active]="refreshInterval === s" (click)="setRefreshInterval(s)">{{ s
+      }}s</button>
+    }
+  </div>
+  <button class="ctrl-btn" (click)="load()" pTooltip="Refresh"><i class="pi pi-refresh"
+      [class.spinning]="loading"></i></button>
 </app-intel-header>
 
 <!-- ─── Metrics ────────────────────────────────────────────────────── -->
 <div class="metrics-strip">
   <app-metric-tile label="CronJobs" [value]="'' + cronjobs.length" accent="purple" />
   <app-metric-tile label="Jobs" [value]="'' + jobs.length" accent="cyan" />
-  @if (runningCount > 0) { <app-metric-tile label="Running" [value]="'' + runningCount" accent="cyan" /> }
-  @if (completedCount > 0) { <app-metric-tile label="Complete" [value]="'' + completedCount" accent="green" /> }
   @if (failedCount > 0) { <app-metric-tile label="Failed" [value]="'' + failedCount" accent="red" /> }
+  @if (runningCount > 0) { <app-metric-tile label="Running" [value]="'' + runningCount" accent="cyan" /> }
+  @if (pendingCount > 0) { <app-metric-tile label="Pending" [value]="'' + pendingCount" accent="amber" /> }
+  @if (completedCount > 0) { <app-metric-tile label="Complete" [value]="'' + completedCount" accent="green" /> }
 </div>
 
-<!-- ─── CronJobs Section ───────────────────────────────────────────── -->
-@if (cronjobs.length > 0) {
-  <app-holo-card title="CronJobs" icon="pi pi-history" [badge]="'' + cronjobs.length" glow="purple" [compact]="true">
-    <div class="cj-grid">
-      @for (cj of cronjobs; track cj.name) {
-        <div class="cj-card">
-          <div class="cj-top">
-            <code class="cj-name">{{ cj.name }}</code>
-            <app-action-icon icon="pi pi-play" tooltip="Trigger now" accent="green" (clicked)="trigger(cj)" />
-          </div>
-          <div class="cj-schedule">
-            <code class="cj-cron">{{ cj.schedule }}</code>
-            @if (humanSchedule(cj.schedule)) {
-              <span class="cj-human">{{ humanSchedule(cj.schedule) }}</span>
-            }
-          </div>
-          @if (cj.last_schedule) {
-            <span class="cj-last">Last: {{ cj.last_schedule }}</span>
-          }
-          @if (cj.triggered) {
-            <span class="cj-triggered">✓ Triggered</span>
-          }
-        </div>
-      }
-    </div>
-  </app-holo-card>
+<!-- ─── Failed Banner ──────────────────────────────────────────────── -->
+@if (failedJobs.length > 0) {
+<div class="failed-banner">
+  <i class="pi pi-exclamation-triangle"></i>
+  <span>{{ failedJobs.length }} job{{ failedJobs.length > 1 ? 's' : '' }} failed</span>
+  <span class="fb-names">{{ failedJobNames }}</span>
+</div>
 }
 
-<!-- ─── Jobs Filter ────────────────────────────────────────────────── -->
-<app-command-bar
-  [pills]="filterPills"
-  [activePill]="statusFilter"
-  [search]="searchQuery"
-  placeholder="Filter jobs..."
-  (pillChange)="onFilterChange($event)"
+<!-- ─── Filters / Search (unified) ─────────────────────────────────── -->
+<app-command-bar [pills]="filterPills" [activePill]="statusFilter" [search]="searchQuery"
+  placeholder="Filter jobs & cronjobs..." (pillChange)="onFilterChange($event)"
   (searchChange)="onSearchChange($event)" />
 
-<!-- ─── Jobs List ──────────────────────────────────────────────────── -->
+<!-- ─── Running + Failed Jobs ──────────────────────────────────────── -->
+@if (activeJobs.length > 0) {
 <div class="job-list">
-  @for (j of sortedJobs; track j.name) {
-    <div class="job-card" [class.job-failed]="jobStatus(j) === 'failed'">
-      <app-status-beacon [status]="jobBeacon(j)" size="md" [pulse]="jobStatus(j) === 'running'" />
+  @for (j of activeJobs; track j.name) {
+  <div class="job-card" [class.job-failed]="jobStatus(j) === 'failed'">
+    <app-status-beacon [status]="jobBeacon(j)" size="md" [pulse]="jobStatus(j) === 'running'" />
+    <div class="job-body">
+      <div class="job-top">
+        <code class="job-name">{{ j.name }}</code>
+        <p-tag [value]="j.state || j.status || 'Unknown'" [severity]="jobSeverity(j)" [rounded]="true" />
+      </div>
+      @if (j.duration) {
+      <span class="job-duration">⏱ {{ j.duration }}</span>
+      }
+      @if ((j.reason || j.message) && jobStatus(j) === 'failed') {
+      <button class="failure-toggle" (click)="toggleFailure(j.name)">
+        <i class="pi" [class.pi-chevron-right]="!isFailureExpanded(j.name)"
+          [class.pi-chevron-down]="isFailureExpanded(j.name)"></i>
+        {{ j.reason || 'Details' }}
+      </button>
+      @if (isFailureExpanded(j.name)) {
+      <div class="job-failure">
+        @if (j.reason) { <span class="jf-reason">{{ j.reason }}</span> }
+        @if (j.message) { <span class="jf-msg">{{ j.message }}</span> }
+      </div>
+      }
+      }
+    </div>
+    <div class="job-progress">
+      <span class="jp-dot jp-done"></span>
+      <span class="jp-line" [class.jp-line-done]="jobStatus(j) !== 'pending'"></span>
+      <span class="jp-dot" [class.jp-done]="jobStatus(j) !== 'pending'"></span>
+      <span class="jp-line" [class.jp-line-done]="jobStatus(j) === 'complete' || jobStatus(j) === 'failed'"></span>
+      <span class="jp-dot" [class.jp-done]="jobStatus(j) === 'complete'"
+        [class.jp-fail]="jobStatus(j) === 'failed'"></span>
+    </div>
+  </div>
+  }
+</div>
+} @else if (!loading && statusFilter !== 'all') {
+<div class="empty-state">
+  <div class="empty-icon"><i class="pi pi-check-circle"></i></div><span>No {{ statusFilter }} jobs</span>
+</div>
+}
+
+<!-- ─── CronJobs ───────────────────────────────────────────────────── -->
+@if (filteredCronjobs.length > 0) {
+<app-holo-card title="CronJobs" icon="pi pi-history" [badge]="'' + filteredCronjobs.length" glow="purple"
+  [compact]="true">
+  <div class="cj-grid">
+    @for (cj of filteredCronjobs; track cj.name) {
+    <div class="cj-card">
+      <div class="cj-top">
+        <code class="cj-name">{{ cj.name }}</code>
+        <app-action-icon icon="pi pi-play" tooltip="Trigger now" accent="green" (clicked)="trigger(cj)" />
+      </div>
+      <div class="cj-schedule">
+        <span class="cj-human">{{ humanSchedule(cj.schedule) }}</span>
+        <code class="cj-cron">{{ cj.schedule }}</code>
+      </div>
+      @if (nextRun(cj)) {
+      <span class="cj-next">Next: {{ nextRun(cj) }}</span>
+      }
+      @if (cj.last_schedule) {
+      <span class="cj-last">Last: {{ cj.last_schedule }}</span>
+      }
+      @if (cj.triggered) {
+      <span class="cj-triggered">✓ Triggered</span>
+      }
+    </div>
+    }
+  </div>
+</app-holo-card>
+} @else if (!loading && searchQuery) {
+<div class="empty-state">
+  <div class="empty-icon"><i class="pi pi-history"></i></div><span>No cronjobs match "{{ searchQuery }}"</span>
+</div>
+}
+
+<!-- ─── Completed Jobs ─────────────────────────────────────────────── -->
+@if (completedList.length > 0) {
+<app-holo-card title="Completed" icon="pi pi-check" [badge]="'' + completedList.length" glow="green" [compact]="true">
+  <div class="job-list">
+    @for (j of completedList; track j.name) {
+    <div class="job-card">
+      <app-status-beacon [status]="'ok'" size="md" />
       <div class="job-body">
         <div class="job-top">
           <code class="job-name">{{ j.name }}</code>
-          <p-tag [value]="j.state || j.status || 'Unknown'" [severity]="jobSeverity(j)" [rounded]="true" />
+          <p-tag value="Complete" severity="success" [rounded]="true" />
         </div>
-        @if (j.duration) {
-          <span class="job-duration">⏱ {{ j.duration }}</span>
-        }
-        @if (j.reason || j.message) {
-          <div class="job-failure">
-            @if (j.reason) { <span class="jf-reason">{{ j.reason }}</span> }
-            @if (j.message) { <span class="jf-msg">{{ j.message }}</span> }
-          </div>
-        }
+        @if (j.duration) { <span class="job-duration">⏱ {{ j.duration }}</span> }
       </div>
-      <!-- Progress steps -->
       <div class="job-progress">
         <span class="jp-dot jp-done"></span>
-        <span class="jp-line" [class.jp-line-done]="jobStatus(j) !== 'pending'"></span>
-        <span class="jp-dot" [class.jp-done]="jobStatus(j) !== 'pending'"></span>
-        <span class="jp-line" [class.jp-line-done]="jobStatus(j) === 'complete' || jobStatus(j) === 'failed'"></span>
-        <span class="jp-dot" [class.jp-done]="jobStatus(j) === 'complete'" [class.jp-fail]="jobStatus(j) === 'failed'"></span>
+        <span class="jp-line jp-line-done"></span>
+        <span class="jp-dot jp-done"></span>
+        <span class="jp-line jp-line-done"></span>
+        <span class="jp-dot jp-done"></span>
       </div>
     </div>
-  }
-
-  @if (sortedJobs.length === 0 && !loading) {
-    <div class="empty-state"><div class="empty-icon"><i class="pi pi-clock"></i></div><span>No jobs found</span></div>
-  }
+    }
+  </div>
+</app-holo-card>
+} @else if (!loading && jobs.length === 0) {
+<div class="empty-state">
+  <div class="empty-icon"><i class="pi pi-clock"></i></div><span>No jobs found</span><span class="empty-hint">Jobs will
+    appear when CronJobs trigger or manual jobs are created</span>
 </div>
+}

@@ -2,177 +2,98 @@
   subtitle="Track and document production issues">
 </app-intel-header>
 
-    <!-- Resolved Summary -->
-    @if (resolved) {
-      <div class="resolved-container">
-        <div class="resolved-hero">
-          <div class="resolved-icon"><i class="pi pi-check-circle"></i></div>
-          <h2>Incident Resolved</h2>
-          <p>{{ resolved.title }}</p>
-        </div>
+<!-- ═══════════════ RESOLVED STATE ═══════════════ -->
+@if (resolved) {
+  <div class="resolved-container">
+    <div class="resolved-hero">
+      <div class="resolved-icon"><i class="pi pi-check-circle"></i></div>
+      <h2>Incident Resolved</h2>
+      <p>{{ resolved.title }}</p>
+    </div>
 
-        <div class="resolved-stats">
-          <div class="stat-card">
-            <span class="stat-val">{{ resolvedDuration }}</span>
-            <span class="stat-label">Duration</span>
-          </div>
-          <div class="stat-card">
-            <span class="stat-val">{{ (resolved.notes || []).length }}</span>
-            <span class="stat-label">Notes</span>
-          </div>
-          <div class="stat-card">
-            <span class="stat-val">{{ (resolved.snapshots || []).length }}</span>
-            <span class="stat-label">Snapshots</span>
-          </div>
-          <div class="stat-card">
-            <span class="stat-val">{{ (resolved.timeline || []).length }}</span>
-            <span class="stat-label">Events</span>
-          </div>
-        </div>
+    <div class="resolved-stats">
+      <div class="stat-card">
+        <span class="stat-val">{{ mttr }}</span>
+        <span class="stat-label">MTTR</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-val">{{ resolvedDuration }}</span>
+        <span class="stat-label">Duration</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-val">{{ (resolved.notes || []).length }}</span>
+        <span class="stat-label">Notes</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-val">{{ (resolved.snapshots || []).length }}</span>
+        <span class="stat-label">Snapshots</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-val">{{ (resolved.timeline || []).length }}</span>
+        <span class="stat-label">Events</span>
+      </div>
+    </div>
 
-        @if (resolvedExportPath) {
-          <div class="export-info" (click)="loadReport()">
-            <i class="pi pi-file"></i>
-            <span>Exported to: <code>{{ resolvedExportPath }}</code></span>
-            <i class="pi pi-external-link export-link"></i>
-          </div>
-        }
-
-        @if (resolved.root_cause) {
-          <div class="root-cause-card">
-            <div class="rc-header"><i class="pi pi-search"></i> Root Cause</div>
-            <p class="rc-text">{{ resolved.root_cause }}</p>
-            @if (resolved.resolution) {
-              <p class="rc-resolution"><strong>Resolution:</strong> {{ resolved.resolution }}</p>
-            }
-          </div>
-        }
-
-        <!-- Full Report View -->
-        @if (reportData) {
-          <div class="report-section">
-            <div class="report-header">
-              <h3>Full Report</h3>
-              <button pButton icon="pi pi-times" class="p-button-text p-button-sm p-button-rounded" (click)="reportData = null"></button>
-            </div>
-
-            @if (reportData.snapshots?.length > 0) {
-              <div class="report-block">
-                <h4>Snapshots ({{ reportData.snapshots.length }})</h4>
-                @for (snap of reportData.snapshots; track $index) {
-                  <div class="snapshot-card">
-                    <div class="snap-header">
-                      <span class="snap-time">{{ snap.time | slice:11:19 }}</span>
-                      <span class="snap-ctx">{{ snap.context }} / {{ snap.namespace }}</span>
-                    </div>
-                    <div class="snap-pods">
-                      @for (pod of snap.pods || []; track pod.name) {
-                        <span class="snap-pod" [class.snap-pod-bad]="pod.status !== 'Running'">{{ pod.name }} ({{ pod.status }})</span>
-                      }
-                      @if ((snap.pods || []).length === 0) {
-                        <span class="snap-empty">No pods captured</span>
-                      }
-                    </div>
-                    @if ((snap.events || []).length > 0) {
-                      <div class="snap-events">
-                        @for (ev of snap.events.slice(0, 5); track $index) {
-                          <div class="snap-ev"><span class="snap-ev-type" [class.snap-ev-warn]="ev.type === 'Warning'">{{ ev.type }}</span> {{ ev.reason }}: {{ ev.message }}</div>
-                        }
-                      </div>
-                    }
-                  </div>
-                }
-              </div>
-            }
-
-            @if (reportData.notes?.length > 0) {
-              <div class="report-block">
-                <h4>Notes ({{ reportData.notes.length }})</h4>
-                @for (note of reportData.notes; track $index) {
-                  <div class="report-note">
-                    <span class="note-time">{{ note.time | slice:11:19 }}</span>
-                    <span>{{ note.text }}</span>
-                  </div>
-                }
-              </div>
-            }
-          </div>
-        }
-
-        <!-- Timeline Review -->
-        @if ((resolved.timeline || []).length > 0) {
-          <div class="resolved-timeline">
-            <h3>Timeline</h3>
-            <div class="notes-timeline">
-              @for (entry of resolved.timeline; track $index) {
-                <div class="tl-entry">
-                  <div class="tl-marker">
-                    <div class="tl-dot" [class.tl-dot-start]="entry.event === 'Incident started'" [class.tl-dot-end]="entry.event === 'Incident closed'"></div>
-                    @if ($index < resolved.timeline.length - 1) {
-                      <div class="tl-line"></div>
-                    }
-                  </div>
-                  <div class="tl-content">
-                    <span class="tl-time">{{ entry.time | slice:11:19 }}</span>
-                    <span class="tl-text"><strong>{{ entry.event }}</strong>@if (entry.detail) { — {{ entry.detail }}}</span>
-                  </div>
-                </div>
-              }
-            </div>
-          </div>
-        }
-
-        <button pButton label="Done" icon="pi pi-arrow-left" class="p-button-outlined dismiss-btn" (click)="dismissResolved()"></button>
+    @if (resolvedExportPath) {
+      <div class="export-info" (click)="loadReport()">
+        <i class="pi pi-file"></i>
+        <span>Exported to: <code>{{ resolvedExportPath }}</code></span>
+        <i class="pi pi-external-link export-link"></i>
       </div>
     }
 
-    <!-- No Active Incident -->
-    @if (!active && !resolved) {
-      <div class="start-container">
-        <div class="start-hero">
-          <div class="start-icon"><i class="pi pi-exclamation-circle"></i></div>
-          <h2>Start Incident Tracking</h2>
-          <p>Begin recording a timeline of observations, snapshots, and actions during an incident.</p>
-        </div>
+    @if (resolved.root_cause) {
+      <div class="root-cause-card">
+        <div class="rc-header"><i class="pi pi-search"></i> Root Cause</div>
+        <p class="rc-text">{{ resolved.root_cause }}</p>
+        @if (resolved.resolution) {
+          <p class="rc-resolution"><strong>Resolution:</strong> {{ resolved.resolution }}</p>
+        }
+      </div>
+    }
 
-        <div class="start-form">
-          <div class="form-field">
-            <label>Incident Title</label>
-            <input pInputText [(ngModel)]="title" placeholder="e.g. Payment API 5xx spike" />
-          </div>
-          <div class="form-field">
-            <label>Severity</label>
-            <div class="severity-options">
-              @for (sev of severities; track sev.value) {
-                <button class="sev-btn" [class.active]="severity === sev.value" [class]="'sev-' + sev.value" (click)="severity = sev.value">
-                  {{ sev.label }}
-                </button>
-              }
-            </div>
-          </div>
-          <button pButton label="Start Incident" icon="pi pi-play" class="p-button-danger start-btn" (click)="start()" [disabled]="!title.trim()"></button>
+    <!-- Full Report View -->
+    @if (reportData) {
+      <div class="report-section">
+        <div class="report-header">
+          <h3>Full Report</h3>
+          <button pButton icon="pi pi-times" class="p-button-text p-button-sm p-button-rounded" (click)="reportData = null"></button>
         </div>
-
-        <!-- Past Incidents -->
-        @if (history.length > 0) {
-          <div class="history-section">
-            <h3>Past Incidents</h3>
-            @for (item of history; track item.id) {
-              <div class="history-card" (click)="viewHistoryReport(item)">
-                <div class="history-top">
-                  <span class="history-title">{{ item.title }}</span>
-                  <span class="history-date">{{ item.started | slice:0:10 }}</span>
+        @if (reportData.snapshots?.length > 0) {
+          <div class="report-block">
+            <h4>Snapshots ({{ reportData.snapshots.length }})</h4>
+            @for (snap of reportData.snapshots; track $index) {
+              <div class="snapshot-card">
+                <div class="snap-header">
+                  <span class="snap-time">{{ snap.time | slice:11:19 }}</span>
+                  <span class="snap-ctx">{{ snap.context }} / {{ snap.namespace }}</span>
                 </div>
-                <div class="history-meta">
-                  <span>{{ item.notes_count }} notes</span>
-                  <span>{{ item.snapshots_count }} snapshots</span>
-                  @if (item.ended) {
-                    <span>{{ calcDuration({started: item.started, ended: item.ended}) }}</span>
+                <div class="snap-pods">
+                  @for (pod of snap.pods || []; track pod.name) {
+                    <span class="snap-pod" [class.snap-pod-bad]="pod.status !== 'Running'">{{ pod.name }} ({{ pod.status }})</span>
+                  }
+                  @if ((snap.pods || []).length === 0) {
+                    <span class="snap-empty">No pods captured</span>
                   }
                 </div>
-                @if (item.root_cause) {
-                  <div class="history-rc">{{ item.root_cause }}</div>
+                @if ((snap.events || []).length > 0) {
+                  <div class="snap-events">
+                    @for (ev of snap.events.slice(0, 5); track $index) {
+                      <div class="snap-ev"><span class="snap-ev-type" [class.snap-ev-warn]="ev.type === 'Warning'">{{ ev.type }}</span> {{ ev.reason }}: {{ ev.message }}</div>
+                    }
+                  </div>
                 }
+              </div>
+            }
+          </div>
+        }
+        @if (reportData.notes?.length > 0) {
+          <div class="report-block">
+            <h4>Notes ({{ reportData.notes.length }})</h4>
+            @for (note of reportData.notes; track $index) {
+              <div class="report-note">
+                <span class="note-time">{{ note.time | slice:11:19 }}</span>
+                <span>{{ note.text }}</span>
               </div>
             }
           </div>
@@ -180,230 +101,330 @@
       </div>
     }
 
-    <!-- Active Incident -->
-    @if (active && !resolved) {
-      <!-- Urgency Banner -->
-      <div class="incident-banner" [class]="'banner-' + (active.severity || severity)">
-        <div class="banner-pulse"></div>
-        <div class="banner-content">
-          <div class="banner-left">
-            <p-tag value="ACTIVE INCIDENT" severity="danger" />
-            <p-tag [value]="(active.severity || severity).toUpperCase()" [severity]="(active.severity || severity) === 'critical' ? 'danger' : (active.severity || severity) === 'high' ? 'warn' : 'info'" [rounded]="true" />
-            <span class="banner-title">{{ active.title }}</span>
-          </div>
-          <div class="banner-right">
-            <div class="elapsed">
-              <i class="pi pi-clock"></i>
-              <span>{{ elapsedTime }}</span>
-            </div>
-            <button pButton label="Resolve" icon="pi pi-check" class="p-button-sm p-button-outlined" (click)="showResolveForm = true"></button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Affected Resources -->
-      <div class="affected-section">
-        <div class="affected-header">
-          <span class="affected-title"><i class="pi pi-exclamation-triangle"></i> Affected Resources</span>
-          <div class="affected-input">
-            <input pInputText [(ngModel)]="affectedInput" placeholder="Add pod or deployment..." (keyup.enter)="addAffected()" />
-            <button pButton icon="pi pi-plus" class="p-button-sm p-button-rounded" (click)="addAffected()" [disabled]="!affectedInput.trim()"></button>
-          </div>
-        </div>
-        @if ((active.affected || affectedResources).length > 0) {
-          <div class="affected-tags">
-            @for (res of (active.affected || affectedResources); track res) {
-              <span class="affected-chip">
-                <i class="pi pi-box"></i> {{ res }}
-                <i class="pi pi-times chip-remove" (click)="removeAffected(res)" (keydown.enter)="removeAffected(res)" (keydown.space)="$event.preventDefault(); removeAffected(res)" tabindex="0" role="button" aria-label="Remove resource"></i>
-              </span>
-            }
-          </div>
-        } @else {
-          <span class="affected-empty">No resources tagged yet</span>
-        }
-      </div>
-
-      <!-- AI Insights & Findings -->
-      <div class="ai-insight-row">
-        <div class="insight-card glass-accent">
-           <div class="card-header">
-              <i class="pi pi-sparkles"></i>
-              <span>Probable Cause</span>
-           </div>
-           <p class="card-val">{{ probableCause || 'Analyzing cluster signals...' }}</p>
-        </div>
-        <div class="insight-card glass">
-           <div class="card-header">
-              <i class="pi pi-map"></i>
-              <span>Blast Radius</span>
-           </div>
-           <p class="card-val">{{ blastRadius || 'Calculating impact...' }}</p>
-        </div>
-        <div class="insight-card glass">
-           <div class="card-header">
-              <i class="pi pi-info-circle"></i>
-              <span>Health Score</span>
-           </div>
-           <div class="health-meter">
-              <div class="meter-bar" [style.width.%]="healthScore" [class.bar-bad]="healthScore < 50" [class.bar-warn]="healthScore >= 50 && healthScore < 80"></div>
-              <span class="meter-val">{{ healthScore }}%</span>
-           </div>
-        </div>
-      </div>
-
-      <!-- Quick Actions -->
-      <div class="quick-actions">
-        <button pButton icon="pi pi-sparkles" label="AI Analysis" class="p-button-sm p-button-warning" (click)="runAiAnalysis()" [loading]="analyzing"></button>
-        <button pButton icon="pi pi-camera" label="Snapshot" class="p-button-sm p-button-outlined" (click)="snapshot()" pTooltip="Capture cluster state"></button>
-        <button pButton icon="pi pi-share-alt" label="Share" class="p-button-sm p-button-outlined" (click)="shareIncident()" pTooltip="Share via webhook" [loading]="sharing"></button>
-        <button pButton icon="pi pi-wrench" label="Log Action" class="p-button-sm p-button-outlined" (click)="showActionInput = !showActionInput" pTooltip="Record remediation action"></button>
-        <button pButton icon="pi pi-box" label="Pods" class="p-button-sm p-button-outlined" (click)="router.navigate(['/pods'])"></button>
-        <button pButton icon="pi pi-bolt" label="Events" class="p-button-sm p-button-outlined" (click)="router.navigate(['/events'])"></button>
-        @if (snapshotTaken) {
-          <span class="snapshot-feedback"><i class="pi pi-check"></i> Snapshot captured</span>
-        }
-      </div>
-
-      <!-- Action Input -->
-      @if (showActionInput) {
-        <div class="action-input-card">
-          <div class="action-input-row">
-            <select class="action-select" [(ngModel)]="actionType">
-              <option value="restart">Restart</option>
-              <option value="scale">Scale</option>
-              <option value="rollback">Rollback</option>
-              <option value="config_change">Config Change</option>
-              <option value="manual_fix">Manual Fix</option>
-              <option value="other">Other</option>
-            </select>
-            <input pInputText [(ngModel)]="actionTarget" placeholder="Target (e.g. payment-api)" />
-            <input pInputText [(ngModel)]="actionResult" placeholder="Result (e.g. pods restarted)" />
-            <button pButton icon="pi pi-plus" class="p-button-sm" (click)="logAction()" [disabled]="!actionTarget.trim()"></button>
-          </div>
-        </div>
-      }
-
-      <div class="incident-grid">
-        <!-- Resolve Form -->
-        @if (showResolveForm) {
-          <div class="resolve-card">
-            <h3><i class="pi pi-check-circle"></i> Resolve Incident</h3>
-            <div class="resolve-form">
-              <div class="form-field">
-                <label>Root Cause</label>
-                <select class="action-select full" [(ngModel)]="rootCauseCategory">
-                  <option value="">Select category...</option>
-                  <option value="OOM">Out of Memory (OOM)</option>
-                  <option value="config_error">Configuration Error</option>
-                  <option value="deployment_failure">Deployment Failure</option>
-                  <option value="network">Network Issue</option>
-                  <option value="resource_exhaustion">Resource Exhaustion</option>
-                  <option value="dependency">Dependency Failure</option>
-                  <option value="scaling">Scaling Issue</option>
-                  <option value="unknown">Unknown / Investigating</option>
-                </select>
-              </div>
-              <div class="form-field">
-                <label>Details</label>
-                <input pInputText [(ngModel)]="rootCauseDetail" placeholder="Brief description of what caused it..." />
-              </div>
-              <div class="form-field">
-                <label>Resolution</label>
-                <input pInputText [(ngModel)]="resolutionText" placeholder="What fixed it..." />
-              </div>
-              <div class="resolve-actions">
-                <button pButton label="Cancel" class="p-button-text p-button-sm" (click)="showResolveForm = false"></button>
-                <button pButton label="Resolve & Export" icon="pi pi-check" class="p-button-sm p-button-success" (click)="stop()"></button>
-              </div>
-            </div>
-          </div>
-        }
-
-      <!-- Snapshot Diff -->
-      @if ((active.snapshots || []).length >= 2) {
-        <div class="snap-diff-section">
-          <div class="notes-header">
-            <h3><i class="pi pi-arrows-h"></i> Snapshot Changes</h3>
-            <span class="notes-count">{{ (active.snapshots || []).length }} snapshots</span>
-          </div>
-          <div class="snap-diff-content">
-            @for (change of snapshotDiff; track $index) {
-              <div class="diff-entry" [class]="'diff-' + change.type">
-                <span class="diff-icon">
-                  @if (change.type === 'added') { <i class="pi pi-plus-circle"></i> }
-                  @else if (change.type === 'removed') { <i class="pi pi-minus-circle"></i> }
-                  @else { <i class="pi pi-sync"></i> }
-                </span>
-                <span class="diff-text">{{ change.message }}</span>
-              </div>
-            }
-            @if (snapshotDiff.length === 0) {
-              <span class="diff-empty">No changes between snapshots</span>
-            }
-          </div>
-        </div>
-      }
-
-        <!-- Actions Log -->
-        @if ((active.actions || []).length > 0) {
-          <div class="actions-section">
-            <div class="notes-header">
-              <h3>Actions Taken</h3>
-              <span class="notes-count">{{ (active.actions || []).length }}</span>
-            </div>
-            <div class="actions-list">
-              @for (a of (active.actions || []).slice().reverse(); track $index) {
-                <div class="action-entry">
-                  <div class="action-badge">{{ a.action }}</div>
-                  <div class="action-detail">
-                    <span class="action-target">{{ a.target }}</span>
-                    @if (a.result) { <span class="action-result">→ {{ a.result }}</span> }
-                  </div>
-                  <span class="action-time">{{ a.time | slice:11:19 }}</span>
-                </div>
-              }
-            </div>
-          </div>
-        }
-
-        <!-- Notes Timeline -->
-        <div class="notes-section">
-        <div class="notes-header">
-          <h3>Timeline</h3>
-          <span class="notes-count">{{ (active.notes || []).length }} entries</span>
-        </div>
-
-        <!-- Add Note -->
-        <div class="note-input">
-          <div class="note-input-dot"></div>
-          <input pInputText [(ngModel)]="noteText" placeholder="What's happening now..." (keyup.enter)="addNote()" />
-          <button pButton icon="pi pi-plus" class="p-button-sm" (click)="addNote()" [disabled]="!noteText.trim()"></button>
-        </div>
-
-        <!-- Notes List -->
+    <!-- Timeline Review -->
+    @if ((resolved.timeline || []).length > 0) {
+      <div class="resolved-timeline">
+        <h3>Timeline</h3>
         <div class="notes-timeline">
-          @for (note of (active.notes || []).slice().reverse(); track $index) {
+          @for (entry of resolved.timeline; track $index) {
             <div class="tl-entry">
               <div class="tl-marker">
-                <div class="tl-dot"></div>
-                @if ($index < (active.notes || []).length - 1) {
-                  <div class="tl-line"></div>
-                }
+                <div class="tl-dot" [class.tl-dot-start]="entry.event === 'Incident started'" [class.tl-dot-end]="entry.event === 'Incident closed'"></div>
+                @if ($index < resolved.timeline.length - 1) { <div class="tl-line"></div> }
               </div>
               <div class="tl-content">
-                <span class="tl-time">{{ note.time }}</span>
-                <span class="tl-text">{{ note.text }}</span>
+                <span class="tl-time">{{ entry.time | slice:11:19 }}</span>
+                <span class="tl-text"><strong>{{ entry.event }}</strong>@if (entry.detail) { — {{ entry.detail }}}</span>
               </div>
-            </div>
-          }
-          @if ((active.notes || []).length === 0) {
-            <div class="notes-empty">
-              <i class="pi pi-pencil"></i>
-              <span>No notes yet — add observations as you investigate</span>
             </div>
           }
         </div>
       </div>
+    }
+
+    <button pButton label="Done" icon="pi pi-arrow-left" class="p-button-outlined dismiss-btn" (click)="dismissResolved()"></button>
+  </div>
+}
+
+<!-- ═══════════════ NO ACTIVE INCIDENT ═══════════════ -->
+@if (!active && !resolved) {
+  <div class="start-container">
+    <div class="start-hero">
+      <div class="start-icon"><i class="pi pi-exclamation-circle"></i></div>
+      <h2>Start Incident Tracking</h2>
+      <p>Begin recording a timeline of observations, snapshots, and actions.</p>
+    </div>
+
+    <div class="start-form">
+      <div class="form-field">
+        <label>Incident Title</label>
+        <input pInputText [(ngModel)]="title" placeholder="e.g. Payment API 5xx spike" />
+      </div>
+      <div class="form-field">
+        <label>Incident Commander</label>
+        <input pInputText [(ngModel)]="commander" placeholder="e.g. Aloke" />
+      </div>
+      <div class="form-field">
+        <label>Severity</label>
+        <div class="severity-options">
+          @for (sev of severities; track sev.value) {
+            <button class="sev-btn" [class.active]="severity === sev.value" [class]="'sev-' + sev.value" (click)="severity = sev.value">
+              {{ sev.label }}
+            </button>
+          }
+        </div>
+      </div>
+      <button pButton label="Start Incident" icon="pi pi-play" class="p-button-danger start-btn" (click)="start()" [disabled]="!title.trim()"></button>
+    </div>
+
+    <!-- Past Incidents -->
+    @if (history.length > 0) {
+      <div class="history-section">
+        <h3>Past Incidents</h3>
+        @for (item of history; track item.id) {
+          <div class="history-card" (click)="viewHistoryReport(item)">
+            <div class="history-top">
+              <span class="history-title">{{ item.title }}</span>
+              <span class="history-date">{{ item.started | slice:0:10 }}</span>
+            </div>
+            <div class="history-meta">
+              <span>{{ item.notes_count }} notes</span>
+              <span>{{ item.snapshots_count }} snapshots</span>
+              @if (item.ended) { <span>{{ calcDuration({started: item.started, ended: item.ended}) }}</span> }
+            </div>
+            @if (item.root_cause) { <div class="history-rc">{{ item.root_cause }}</div> }
+          </div>
+        }
       </div>
     }
+  </div>
+}
+
+<!-- ═══════════════ ACTIVE INCIDENT ═══════════════ -->
+@if (active && !resolved) {
+  <!-- Banner — no pulsing gradient, just severity accent -->
+  <div class="incident-banner" [class]="'banner-' + (active.severity || severity)">
+    <div class="banner-content">
+      <div class="banner-left">
+        <p-tag value="ACTIVE" severity="danger" />
+        <p-tag [value]="(active.severity || severity).toUpperCase()" [severity]="(active.severity || severity) === 'critical' ? 'danger' : (active.severity || severity) === 'high' ? 'warn' : 'info'" [rounded]="true" />
+        <span class="banner-title">{{ active.title }}</span>
+      </div>
+      <div class="banner-right">
+        <div class="elapsed"><i class="pi pi-clock"></i><span>{{ elapsedTime }}</span></div>
+      </div>
+    </div>
+    <!-- Commander + metadata row -->
+    <div class="banner-meta">
+      <span class="meta-item"><strong>Commander:</strong> {{ commander || '—' }}</span>
+      <span class="meta-item"><strong>Started:</strong> {{ (active.started_at || '') | slice:11:16 }}</span>
+      @if (lastUpdateTime) { <span class="meta-item"><strong>Last Update:</strong> {{ lastUpdateTime }}</span> }
+      <!-- Severity change inline -->
+      <div class="sev-change">
+        @for (sev of severities; track sev.value) {
+          <button class="sev-mini" [class.sev-mini-active]="(active.severity || severity) === sev.value"
+                  [class]="'sev-mini-' + sev.value" (click)="changeSeverity(sev.value)">{{ sev.label[0] }}</button>
+        }
+      </div>
+    </div>
+  </div>
+
+  <!-- Affected Resources -->
+  <div class="affected-section">
+    <div class="affected-header">
+      <span class="affected-title"><i class="pi pi-exclamation-triangle"></i> Affected Resources</span>
+      <div class="affected-input">
+        <input pInputText [(ngModel)]="affectedInput" placeholder="Add resource..." (keyup.enter)="addAffected()" />
+        <button pButton icon="pi pi-plus" class="p-button-sm p-button-rounded" (click)="addAffected()" [disabled]="!affectedInput.trim()"></button>
+      </div>
+    </div>
+    @if ((active.affected || affectedResources).length > 0) {
+      <div class="affected-tags">
+        @for (res of (active.affected || affectedResources); track res) {
+          <span class="affected-chip">
+            <i class="pi pi-box"></i> {{ res }}
+            <i class="pi pi-times chip-remove" (click)="removeAffected(res)" tabindex="0" role="button" aria-label="Remove resource"></i>
+          </span>
+        }
+      </div>
+    } @else {
+      <span class="affected-empty">No resources tagged yet</span>
+    }
+  </div>
+
+  <div class="incident-grid">
+    <!-- Timeline + Note Input (FIRST — humans first) -->
+    <div class="notes-section">
+      <div class="notes-header">
+        <h3>Timeline</h3>
+        <span class="notes-count">{{ (active.notes || []).length }} entries</span>
+      </div>
+      <div class="note-input">
+        <div class="note-input-dot"></div>
+        <input pInputText [(ngModel)]="noteText" placeholder="What's happening now..." (keyup.enter)="addNote()" />
+        <button pButton icon="pi pi-plus" class="p-button-sm" (click)="addNote()" [disabled]="!noteText.trim()"></button>
+      </div>
+      <div class="notes-timeline">
+        @for (note of (active.notes || []).slice().reverse(); track $index) {
+          <div class="tl-entry">
+            <div class="tl-marker">
+              <div class="tl-dot"></div>
+              @if ($index < (active.notes || []).length - 1) { <div class="tl-line"></div> }
+            </div>
+            <div class="tl-content">
+              <span class="tl-time">{{ note.time }}</span>
+              <span class="tl-text">{{ note.text }}</span>
+            </div>
+          </div>
+        }
+        @if ((active.notes || []).length === 0) {
+          <div class="notes-empty"><i class="pi pi-pencil"></i><span>No notes yet — add observations as you investigate</span></div>
+        }
+      </div>
+    </div>
+
+    <!-- Actions Taken -->
+    @if ((active.actions || []).length > 0) {
+      <div class="actions-section">
+        <div class="notes-header">
+          <h3>Actions Taken</h3>
+          <span class="notes-count">{{ (active.actions || []).length }}</span>
+        </div>
+        <div class="actions-list">
+          @for (a of (active.actions || []).slice().reverse(); track $index) {
+            <div class="action-entry">
+              <div class="action-badge">{{ a.action }}</div>
+              <div class="action-detail">
+                <span class="action-target">{{ a.target }}</span>
+                @if (a.result) { <span class="action-result">→ {{ a.result }}</span> }
+              </div>
+              <span class="action-time">{{ a.time | slice:11:19 }}</span>
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- Snapshot Diff -->
+    @if ((active.snapshots || []).length >= 2) {
+      <div class="snap-diff-section">
+        <div class="notes-header">
+          <h3><i class="pi pi-arrows-h"></i> Snapshot Changes</h3>
+          <span class="notes-count">{{ (active.snapshots || []).length }} snapshots</span>
+        </div>
+        <div class="snap-diff-content">
+          @for (change of snapshotDiff; track $index) {
+            <div class="diff-entry" [class]="'diff-' + change.type">
+              <span class="diff-icon">
+                @if (change.type === 'added') { <i class="pi pi-plus-circle"></i> }
+                @else if (change.type === 'removed') { <i class="pi pi-minus-circle"></i> }
+                @else { <i class="pi pi-sync"></i> }
+              </span>
+              <span class="diff-text">{{ change.message }}</span>
+            </div>
+          }
+          @if (snapshotDiff.length === 0) {
+            <span class="diff-empty">No changes between snapshots</span>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- Related Alerts -->
+    @if (relatedAlerts.length > 0) {
+      <div class="alerts-section">
+        <div class="notes-header">
+          <h3><i class="pi pi-bell"></i> Related Alerts</h3>
+          <span class="notes-count">{{ relatedAlerts.length }}</span>
+        </div>
+        <div class="alerts-list">
+          @for (alert of relatedAlerts; track $index) {
+            <div class="alert-entry">
+              <span class="alert-sev" [class.alert-warn]="alert.severity === 'warning'" [class.alert-crit]="alert.severity === 'critical'">{{ alert.severity || 'info' }}</span>
+              <span class="alert-msg">{{ alert.message }}</span>
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- AI Insights (below human data) -->
+    <div class="ai-insight-row">
+      <div class="insight-card">
+        <div class="card-header"><i class="pi pi-sparkles"></i><span>Probable Cause</span></div>
+        <p class="card-val">{{ probableCause || 'Run AI Analysis to identify cause' }}</p>
+      </div>
+      <div class="insight-card">
+        <div class="card-header"><i class="pi pi-map"></i><span>Blast Radius</span></div>
+        <p class="card-val">{{ blastRadius || '—' }}</p>
+      </div>
+      <div class="insight-card">
+        <div class="card-header"><i class="pi pi-heart"></i><span>Health Score</span></div>
+        <div class="health-meter">
+          <div class="meter-bar" [style.width.%]="healthScore" [class.bar-bad]="healthScore < 50" [class.bar-warn]="healthScore >= 50 && healthScore < 80"></div>
+          <span class="meter-val">{{ healthScore }}%</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Severity History -->
+    @if (severityHistory.length > 0) {
+      <div class="sev-history">
+        <span class="sev-history-label">Severity changes:</span>
+        @for (sh of severityHistory; track $index) {
+          <span class="sev-history-item">{{ sh.from }} → {{ sh.to }} <span class="sev-history-time">({{ sh.time | slice:11:16 }})</span></span>
+        }
+      </div>
+    }
+
+    <!-- Quick Actions (after data, before resolve) -->
+    <div class="quick-actions">
+      <button pButton icon="pi pi-camera" label="Snapshot" class="p-button-sm" (click)="snapshot()" pTooltip="Capture cluster state"></button>
+      <button pButton icon="pi pi-wrench" label="Log Action" class="p-button-sm p-button-outlined" (click)="showActionInput = !showActionInput"></button>
+      <button pButton icon="pi pi-box" label="Pods" class="p-button-sm p-button-outlined" (click)="router.navigate(['/pods'])"></button>
+      <button pButton icon="pi pi-bolt" label="Events" class="p-button-sm p-button-outlined" (click)="router.navigate(['/events'])"></button>
+      <button pButton icon="pi pi-sparkles" label="AI Analysis" class="p-button-sm p-button-outlined" (click)="runAiAnalysis()" [loading]="analyzing"></button>
+      <button pButton icon="pi pi-share-alt" label="Share" class="p-button-sm p-button-outlined" (click)="shareIncident()" [loading]="sharing"></button>
+      @if (snapshotTaken) { <span class="snapshot-feedback">✓ Captured</span> }
+      @if (shareMsg) { <span class="snapshot-feedback">{{ shareMsg }}</span> }
+    </div>
+
+    <!-- Action Input -->
+    @if (showActionInput) {
+      <div class="action-input-card">
+        <div class="action-input-row">
+          <select class="action-select" [(ngModel)]="actionType">
+            <option value="restart">Restart</option>
+            <option value="scale">Scale</option>
+            <option value="rollback">Rollback</option>
+            <option value="config_change">Config Change</option>
+            <option value="manual_fix">Manual Fix</option>
+            <option value="other">Other</option>
+          </select>
+          <input pInputText [(ngModel)]="actionTarget" placeholder="Target (e.g. payment-api)" />
+          <input pInputText [(ngModel)]="actionResult" placeholder="Result (e.g. pods restarted)" />
+          <button pButton icon="pi pi-plus" class="p-button-sm" (click)="logAction()" [disabled]="!actionTarget.trim()"></button>
+        </div>
+      </div>
+    }
+
+    <!-- Resolve Form (last — intentional friction) -->
+    <div class="resolve-section">
+      @if (!showResolveForm) {
+        <button pButton label="Resolve Incident" icon="pi pi-check" class="p-button-sm p-button-outlined p-button-success" (click)="showResolveForm = true"></button>
+      } @else {
+        <div class="resolve-card">
+          <h3><i class="pi pi-check-circle"></i> Resolve Incident</h3>
+          <div class="resolve-form">
+            <div class="form-field">
+              <label>Root Cause <span class="required">*</span></label>
+              <select class="action-select full" [(ngModel)]="rootCauseCategory">
+                <option value="">Select category...</option>
+                <option value="OOM">Out of Memory (OOM)</option>
+                <option value="config_error">Configuration Error</option>
+                <option value="deployment_failure">Deployment Failure</option>
+                <option value="network">Network Issue</option>
+                <option value="resource_exhaustion">Resource Exhaustion</option>
+                <option value="dependency">Dependency Failure</option>
+                <option value="scaling">Scaling Issue</option>
+                <option value="unknown">Unknown / Investigating</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label>Details</label>
+              <input pInputText [(ngModel)]="rootCauseDetail" placeholder="Brief description of what caused it..." />
+            </div>
+            <div class="form-field">
+              <label>Resolution <span class="required">*</span></label>
+              <input pInputText [(ngModel)]="resolutionText" placeholder="What fixed it..." />
+            </div>
+            <div class="resolve-actions">
+              <button pButton label="Cancel" class="p-button-text p-button-sm" (click)="showResolveForm = false"></button>
+              <button pButton label="Resolve & Export" icon="pi pi-check" class="p-button-sm p-button-success" (click)="stop()" [disabled]="resolveDisabled"></button>
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+}

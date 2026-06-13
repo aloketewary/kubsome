@@ -9,8 +9,11 @@
 <div class="metrics-strip">
   <app-metric-tile label="Total" [value]="'' + deployments.length" accent="cyan" />
   <app-metric-tile label="Healthy" [value]="'' + healthyCount" accent="green" />
-  @if (degradedCount > 0) {
-    <app-metric-tile label="Degraded" [value]="'' + degradedCount" accent="red" />
+  @if (warningCount > 0) {
+    <app-metric-tile label="Warning" [value]="'' + warningCount" accent="amber" />
+  }
+  @if (criticalCount > 0) {
+    <app-metric-tile label="Critical" [value]="'' + criticalCount" accent="red" />
   }
 </div>
 
@@ -26,12 +29,27 @@
 <!-- ─── Deployment List ────────────────────────────────────────────── -->
 <div class="dep-list">
   @for (dep of filtered; track dep.name) {
-    <div class="dep-card" [class.dep-degraded]="dep.available < dep.desired">
-      <app-status-beacon [status]="depStatus(dep)" size="md" [pulse]="dep.available < dep.desired" />
+    <div class="dep-card" [class.dep-degraded]="depSeverity(dep) !== 'healthy'">
+      <app-status-beacon [status]="depBeaconStatus(dep)" size="md" [pulse]="depSeverity(dep) === 'critical'" />
       <div class="dep-body">
         <div class="dep-top">
           <code class="dep-name">{{ dep.name }}</code>
-          <p-tag [value]="dep.available === dep.desired ? 'Healthy' : 'Degraded'" [severity]="dep.available === dep.desired ? 'success' : 'danger'" [rounded]="true" />
+          <p-tag [value]="severityLabel(dep)" [severity]="severityTag(dep)" [rounded]="true" />
+          @if (depScore(dep) !== null) {
+            <span class="dep-score" [class.score-ok]="depScore(dep)! >= 80"
+                  [class.score-warn]="depScore(dep)! >= 40 && depScore(dep)! < 80"
+                  [class.score-crit]="depScore(dep)! < 40">
+              {{ depScore(dep) }}
+            </span>
+          }
+          @if (depTrend(dep) !== null && depTrend(dep) !== 0) {
+            <span class="dep-trend" [class.trend-down]="depTrend(dep)! < 0" [class.trend-up]="depTrend(dep)! > 0">
+              {{ depTrend(dep)! > 0 ? '↑' : '↓' }}{{ Math.abs(depTrend(dep)!) }}
+            </span>
+          }
+          @if (depReason(dep)) {
+            <span class="dep-reason">{{ depReason(dep) }}</span>
+          }
         </div>
         <div class="replica-row">
           <div class="replica-dots">
@@ -43,9 +61,8 @@
         </div>
       </div>
       <div class="dep-actions">
-        <app-action-icon icon="pi pi-sparkles" tooltip="AI Diagnose" accent="amber" (clicked)="aiDiagnose(dep)" />
+        <app-action-icon icon="pi pi-search-plus" tooltip="Investigate" accent="cyan" (clicked)="investigate(dep)" />
         <app-action-icon icon="pi pi-replay" tooltip="Restart" accent="cyan" (clicked)="onRestart(dep)" />
-        <app-action-icon icon="pi pi-undo" tooltip="Rollback" accent="red" (clicked)="onRollback(dep)" />
         <app-action-icon icon="pi pi-arrows-v" tooltip="Scale" accent="green" (clicked)="onScale(dep)" />
         <app-action-icon icon="pi pi-history" tooltip="History" accent="cyan" (clicked)="viewRollout(dep)" />
         <app-action-icon icon="pi pi-box" tooltip="Pods" accent="purple" (clicked)="viewPods(dep)" />

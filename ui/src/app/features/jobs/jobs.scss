@@ -4,12 +4,37 @@
 
 .title-icon { color: #a78bfa; }
 
+/* ─── Refresh Interval Selector ──────────────────────────────────── */
+.interval-select { display: flex; gap: 2px; }
+.interval-btn {
+  padding: 3px 7px; font-size: 9px; font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
+  background: rgba(94, 84, 75, 0.04); border: 1px solid rgba(94, 84, 75, 0.1);
+  border-radius: 4px; color: var(--text-muted); cursor: pointer;
+  transition: all 0.12s;
+}
+.interval-btn:hover { color: var(--text-secondary); border-color: rgba(94, 84, 75, 0.2); }
+.interval-active {
+  background: rgba(208, 156, 96, 0.08); border-color: rgba(208, 156, 96, 0.2); color: #d09c60;
+}
+
+/* ─── Failed Banner ──────────────────────────────────────────────── */
+.failed-banner {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px; margin-bottom: 12px;
+  background: rgba(244, 63, 94, 0.04);
+  border: none; border-left: 2px solid rgba(244, 63, 94, 0.5);
+  border-radius: 0;
+  font-size: 11px; font-weight: 600; color: #f43f5e;
+}
+.failed-banner .pi { font-size: 13px; }
+.fb-names { font-weight: 400; color: var(--text-muted); font-size: 10px; margin-left: auto; font-family: 'JetBrains Mono', monospace; }
+
 /* ─── CronJob Grid ───────────────────────────────────────────────── */
 .cj-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 0; }
 
 .cj-card {
-  padding: 12px 14px;
-  border-radius: 0;
+  padding: 12px 14px; border-radius: 0;
   background: transparent;
   border: none; border-bottom: 1px solid rgba(94, 84, 75, 0.08);
   transition: all 0.15s;
@@ -20,9 +45,10 @@
 .cj-name { font-size: 11px; font-weight: 600; color: var(--text); }
 
 .cj-schedule { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
-.cj-cron { font-size: 11px; color: #a78bfa; }
-.cj-human { font-size: 9px; color: var(--text-muted); }
+.cj-human { font-size: 11px; font-weight: 500; color: var(--text-secondary); }
+.cj-cron { font-size: 9px; color: var(--text-muted); }
 
+.cj-next { font-size: 9px; color: #d09c60; font-family: 'JetBrains Mono', monospace; display: block; margin-bottom: 2px; }
 .cj-last { font-size: 9px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
 .cj-triggered { font-size: 9px; color: #4ade80; margin-top: 4px; display: block; animation: fadeIn 0.2s; }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -45,11 +71,21 @@
 .job-name { font-size: 11px; font-weight: 500; font-family: 'JetBrains Mono', monospace; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .job-duration { font-size: 9px; color: var(--text-muted); }
 
+/* ─── Collapsible Failure ────────────────────────────────────────── */
+.failure-toggle {
+  display: flex; align-items: center; gap: 4px;
+  margin-top: 4px; padding: 0; border: none; background: none;
+  font-size: 10px; font-weight: 500; color: #f43f5e; cursor: pointer;
+  font-family: 'JetBrains Mono', monospace;
+}
+.failure-toggle .pi { font-size: 8px; }
+
 .job-failure {
   margin-top: 4px; padding: 5px 8px;
   background: rgba(244, 63, 94, 0.03);
   border: none; border-left: 2px solid rgba(244, 63, 94, 0.2);
   border-radius: 0; font-size: 10px;
+  animation: fadeIn 0.15s;
 }
 .jf-reason { font-weight: 600; color: #f43f5e; display: block; }
 .jf-msg { color: var(--text-muted); display: block; margin-top: 2px; }
@@ -62,25 +98,42 @@
 .jp-line { width: 14px; height: 1px; background: rgba(94, 84, 75, 0.12); }
 .jp-line-done { background: rgba(74, 222, 128, 0.3); }
 
+/* ─── Empty States ───────────────────────────────────────────────── */
+.empty-state {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 32px 16px; color: var(--text-muted); font-size: 11px;
+}
+.empty-icon {
+  width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; border: 1px solid rgba(94, 84, 75, 0.15);
+  color: var(--text-muted); font-size: 14px; margin-bottom: 4px;
+}
+.empty-hint { font-size: 9px; color: var(--text-muted); opacity: 0.6; }
+
 /* ─── Responsive ─────────────────────────────────────────────────── */
 @media (max-width: 768px) {
   .cj-grid { grid-template-columns: 1fr; }
+  .interval-select { display: none; }
 }
 
 /* ─── Light Mode ─────────────────────────────────────────────────── */
 :host-context([data-theme="light"]) {
   .title-icon { color: #7c3aed; }
+  .interval-active { background: rgba(154, 81, 41, 0.06); border-color: rgba(154, 81, 41, 0.2); color: #9a5129; }
+  .failed-banner { background: rgba(220, 38, 38, 0.03); border-left-color: rgba(220, 38, 38, 0.4); color: #dc2626; }
   .cj-card { border-bottom-color: rgba(0, 0, 0, 0.04); }
   .cj-card:hover { background: rgba(0, 0, 0, 0.015); }
-  .cj-cron { color: #7c3aed; }
+  .cj-next { color: #9a5129; }
   .cj-triggered { color: #16a34a; }
   .job-card { border-bottom-color: rgba(0, 0, 0, 0.04); }
   .job-card:hover { background: rgba(0, 0, 0, 0.015); }
   .job-failed { border-left-color: rgba(220, 38, 38, 0.3); }
+  .failure-toggle { color: #dc2626; }
+  .job-failure { background: rgba(220, 38, 38, 0.02); border-left-color: rgba(220, 38, 38, 0.15); }
   .jp-done { background: #16a34a; box-shadow: none; }
   .jp-fail { background: #dc2626; box-shadow: none; }
   .jp-line-done { background: rgba(22, 163, 74, 0.3); }
   .jp-dot { background: rgba(0, 0, 0, 0.08); }
   .jp-line { background: rgba(0, 0, 0, 0.06); }
-  .job-failure { background: rgba(220, 38, 38, 0.02); border-left-color: rgba(220, 38, 38, 0.15); }
+  .empty-icon { border-color: rgba(0, 0, 0, 0.08); }
 }

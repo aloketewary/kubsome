@@ -6,25 +6,51 @@
 <!-- Controls -->
 <app-holo-card [compact]="true" glow="cyan">
   <div class="res-controls">
-    <p-select [options]="resourceTypes" [(ngModel)]="selectedType" placeholder="Resource type..." [style]="{ width: '180px' }" (ngModelChange)="listResources()" />
-    <input [(ngModel)]="searchName" placeholder="Filter by name..." (ngModelChange)="filterList()" (keyup.enter)="describeByName()" />
-    <button class="ctrl-btn ctrl-btn-wide" (click)="listResources()" [class.disabled]="!selectedType">List</button>
+    <p-select [options]="resourceTypes" [(ngModel)]="selectedType" placeholder="Resource type..."
+              [style]="{ width: '170px' }" (ngModelChange)="onTypeChange()" />
+    <p-select [options]="namespaces" [(ngModel)]="selectedNamespace" placeholder="All namespaces"
+              [style]="{ width: '160px' }" [showClear]="true" (ngModelChange)="onNamespaceChange()" />
+    <input [(ngModel)]="searchName" placeholder="Filter by name..." (ngModelChange)="filterList()" />
   </div>
 </app-holo-card>
 
 @if (error) { <div class="error-msg">{{ error }}</div> }
 
-<!-- List -->
-@if (filteredList.length > 0 && !describeData) {
+<!-- Metrics -->
+@if (listData.length > 0 && !describeData) {
   <div class="metrics-strip">
     <app-metric-tile label="Found" [value]="'' + filteredList.length" accent="cyan" />
+    <app-metric-tile label="Healthy" [value]="'' + healthyCount" accent="green" />
+    @if (warningCount > 0) { <app-metric-tile label="Warning" [value]="'' + warningCount" accent="amber" /> }
+    @if (failedCount > 0) { <app-metric-tile label="Failed" [value]="'' + failedCount" accent="red" /> }
   </div>
+}
+
+<!-- Recent Resources -->
+@if (!selectedType && recentResources.length > 0 && !describeData) {
+  <app-holo-card title="Recent" icon="pi pi-history" glow="none" [compact]="true">
+    <div class="recent-list">
+      @for (r of recentResources; track r.name + r.type) {
+        <div class="recent-row" (click)="describeRecent(r)">
+          <span class="recent-type">{{ r.type }}</span>
+          <code class="recent-name">{{ r.name }}</code>
+          @if (r.namespace) { <span class="recent-ns">{{ r.namespace }}</span> }
+        </div>
+      }
+    </div>
+  </app-holo-card>
+}
+
+<!-- List -->
+@if (filteredList.length > 0 && !describeData) {
   <div class="res-list">
     @for (item of filteredList; track item.name) {
       <div class="res-row" (click)="describeItem(item.name)">
         <app-status-beacon [status]="beaconStatus(item.status)" size="sm" />
-        <code class="res-name">{{ item.name }}</code>
-        @if (item.ready) { <span class="res-ready">{{ item.ready }}</span> }
+        <div class="res-row-body">
+          <code class="res-name">{{ item.name }}</code>
+          @if (item.ready) { <span class="res-ready">{{ item.ready }} Ready</span> }
+        </div>
         @if (item.status) { <p-tag [value]="item.status" [severity]="tagSeverity(item.status)" [rounded]="true" /> }
         <span class="res-age">{{ item.age }}</span>
       </div>
@@ -35,27 +61,73 @@
 <!-- Describe View -->
 @if (describeData) {
   <app-holo-card [title]="describeData.name || 'Details'" glow="cyan" [compact]="true">
-    <app-action-icon header-actions icon="pi pi-copy" tooltip="Copy raw" accent="cyan" (clicked)="copyRaw()" />
-    <app-action-icon header-actions icon="pi pi-arrow-left" tooltip="Back to list" accent="cyan" (clicked)="describeData = null" />
+    <div header-actions class="desc-actions">
+      <app-action-icon icon="pi pi-arrow-left" tooltip="Back to list" accent="cyan" (clicked)="backToList()" />
+      <app-action-icon icon="pi pi-copy" tooltip="Copy raw" accent="cyan" (clicked)="copyRaw()" />
+    </div>
 
-    @if (infoFields.length) {
-      <div class="desc-section">
-        @for (f of infoFields; track f.key) {
-          <div class="desc-row"><span class="desc-key">{{ f.key }}</span><span class="desc-val">{{ f.value }}</span></div>
-        }
+    <!-- View Tabs -->
+    <div class="desc-tabs">
+      <button class="desc-tab" [class.desc-tab-active]="describeView === 'parsed'" (click)="setView('parsed')">Parsed</button>
+      <button class="desc-tab" [class.desc-tab-active]="describeView === 'raw'" (click)="setView('raw')">Raw</button>
+      <button class="desc-tab" [class.desc-tab-active]="describeView === 'yaml'" (click)="setView('yaml')">YAML</button>
+      <div class="desc-search">
+        <i class="pi pi-search"></i>
+        <input [(ngModel)]="describeSearch" placeholder="Search output..." />
+      </div>
+    </div>
+
+    <!-- Warning Events Banner -->
+    @if (warningEvents.length > 0 && describeView === 'parsed') {
+      <div class="warning-banner">
+        <div class="wb-header">
+          <i class="pi pi-exclamation-triangle"></i>
+          <span>Warning Events ({{ warningEvents.length }})</span>
+        </div>
+        <div class="wb-list">
+          @for (e of warningEvents; track e) {
+            <span class="wb-event">{{ e }}</span>
+          }
+        </div>
       </div>
     }
-    @if (labelFields.length) {
-      <div class="desc-labels">
-        @for (l of labelFields; track l) { <span class="desc-label">{{ l }}</span> }
-      </div>
+
+    <!-- Parsed View -->
+    @if (describeView === 'parsed') {
+      @if (infoFields.length) {
+        <div class="desc-section">
+          <div class="desc-section-title">Metadata</div>
+          @for (f of infoFields; track f.key) {
+            <div class="desc-row"><span class="desc-key">{{ f.key }}</span><span class="desc-val">{{ f.value }}</span></div>
+          }
+        </div>
+      }
+      @if (labelFields.length) {
+        <div class="desc-section">
+          <div class="desc-section-title">Labels</div>
+          <div class="desc-labels">
+            @for (l of labelFields; track l) { <span class="desc-label">{{ l }}</span> }
+          </div>
+        </div>
+      }
+      @if (filteredDetailFields.length) {
+        <div class="desc-section">
+          <div class="desc-section-title">Details</div>
+          @for (f of filteredDetailFields; track f.key) {
+            <div class="desc-row"><span class="desc-key">{{ f.key }}</span><pre class="desc-pre">{{ f.value }}</pre></div>
+          }
+        </div>
+      }
     }
-    @if (detailFields.length) {
-      <div class="desc-section">
-        @for (f of detailFields; track f.key) {
-          <div class="desc-row"><span class="desc-key">{{ f.key }}</span><pre class="desc-pre">{{ f.value }}</pre></div>
-        }
-      </div>
+
+    <!-- Raw View -->
+    @if (describeView === 'raw') {
+      <pre class="desc-raw">{{ filteredDescribeRaw }}</pre>
+    }
+
+    <!-- YAML View -->
+    @if (describeView === 'yaml') {
+      <pre class="desc-raw">{{ describeData.yaml || describeData.raw || 'YAML not available' }}</pre>
     }
   </app-holo-card>
 }

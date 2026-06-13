@@ -23,40 +23,60 @@ export class JobsComponent implements OnInit, OnDestroy {
   private http = inject(HttpClient);
   cronjobs: any[] = [];
   jobs: any[] = [];
-  sortedJobs: any[] = [];
   searchQuery = '';
   loading = false;
   autoRefresh = true;
   lastUpdated = '';
   statusFilter = 'all';
+  refreshInterval = 30;
+  expandedFailures = new Set<string>();
   private refreshTimer: any;
 
   get completedCount() { return this.jobs.filter(j => this.jobStatus(j) === 'complete').length; }
   get failedCount() { return this.jobs.filter(j => this.jobStatus(j) === 'failed').length; }
   get runningCount() { return this.jobs.filter(j => this.jobStatus(j) === 'running').length; }
+  get pendingCount() { return this.jobs.filter(j => this.jobStatus(j) === 'pending').length; }
+
+  get filteredCronjobs(): any[] {
+    if (!this.searchQuery) return this.cronjobs;
+    const q = this.searchQuery.toLowerCase();
+    return this.cronjobs.filter(c => c.name.toLowerCase().includes(q));
+  }
+
+  public get failedJobs(): any[] { return this.filterJobs().filter(j => this.jobStatus(j) === 'failed'); }
+  get runningJobs(): any[] { return this.filterJobs().filter(j => this.jobStatus(j) === 'running'); }
+  get pendingJobs(): any[] { return this.filterJobs().filter(j => this.jobStatus(j) === 'pending'); }
+  get completedJobs(): any[] { return this.filterJobs().filter(j => this.jobStatus(j) === 'complete'); }
+
+  get activeJobs(): any[] {
+    if (this.statusFilter === 'failed') return this.failedJobs;
+    if (this.statusFilter === 'running') return this.runningJobs;
+    if (this.statusFilter === 'pending') return this.pendingJobs;
+    if (this.statusFilter === 'complete') return this.completedJobs;
+    return [...this.failedJobs, ...this.runningJobs, ...this.pendingJobs];
+  }
+
+  get completedList(): any[] {
+    if (this.statusFilter !== 'all') return [];
+    return this.completedJobs;
+  }
 
   get filterPills(): CommandPill[] {
     const pills: CommandPill[] = [{ label: 'All', value: 'all', count: this.jobs.length }];
-    if (this.runningCount > 0) pills.push({ label: 'Running', value: 'running', count: this.runningCount, color: 'cyan' });
-    if (this.completedCount > 0) pills.push({ label: 'Complete', value: 'complete', count: this.completedCount, color: 'green' });
     if (this.failedCount > 0) pills.push({ label: 'Failed', value: 'failed', count: this.failedCount, color: 'red' });
+    if (this.runningCount > 0) pills.push({ label: 'Running', value: 'running', count: this.runningCount, color: 'cyan' });
+    if (this.pendingCount > 0) pills.push({ label: 'Pending', value: 'pending', count: this.pendingCount, color: 'amber' });
+    if (this.completedCount > 0) pills.push({ label: 'Complete', value: 'complete', count: this.completedCount, color: 'green' });
     return pills;
   }
 
-  onFilterChange(value: string) { this.statusFilter = value; this.applyFilter(); }
-  onSearchChange(value: string) { this.searchQuery = value; this.applyFilter(); }
+  onFilterChange(value: string) { this.statusFilter = value; }
+  onSearchChange(value: string) { this.searchQuery = value; }
 
-  applyFilter() {
-    let result = this.jobs;
-    if (this.statusFilter !== 'all') result = result.filter(j => this.jobStatus(j) === this.statusFilter);
+  private filterJobs(): any[] {
     const q = this.searchQuery.toLowerCase();
-    if (q) result = result.filter(j => j.name.toLowerCase().includes(q));
-    this.sortedJobs = this.sortJobs(result);
-  }
-
-  private sortJobs(jobs: any[]): any[] {
-    const order: Record<string, number> = { failed: 0, running: 1, pending: 2, complete: 3 };
-    return [...jobs].sort((a, b) => (order[this.jobStatus(a)] ?? 4) - (order[this.jobStatus(b)] ?? 4));
+    if (!q) return this.jobs;
+    return this.jobs.filter(j => j.name.toLowerCase().includes(q));
   }
 
   load() {
@@ -64,7 +84,6 @@ export class JobsComponent implements OnInit, OnDestroy {
     this.http.get<any>('/api/cronjobs').subscribe(r => { this.cronjobs = (r.cronjobs || []).map((c: any) => ({ ...c, triggered: false })); });
     this.http.get<any>('/api/jobs').subscribe(r => {
       this.jobs = r.jobs || [];
-      this.applyFilter();
       this.loading = false;
       this.lastUpdated = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     });
@@ -73,6 +92,13 @@ export class JobsComponent implements OnInit, OnDestroy {
   trigger(cj: any) {
     this.http.post<any>(`/api/trigger/${cj.name}`, {}).subscribe(() => { cj.triggered = true; setTimeout(() => cj.triggered = false, 3000); });
   }
+
+  toggleFailure(name: string) {
+    if (this.expandedFailures.has(name)) this.expandedFailures.delete(name);
+    else this.expandedFailures.add(name);
+  }
+
+  isFailureExpanded(name: string): boolean { return this.expandedFailures.has(name); }
 
   jobStatus(j: any): string {
     const s = (j.state || j.status || '').toLowerCase();
@@ -107,12 +133,37 @@ export class JobsComponent implements OnInit, OnDestroy {
     if (cron === '0 * * * *') return 'Every hour';
     const parts = cron.split(' ');
     if (parts.length >= 5 && parts[1] !== '*' && parts[0] === '0') return `Daily at ${parts[1]}:00`;
+    return cron;
+  }
+
+  nextRun(cj: any): string {
+    if (cj.next_schedule) return cj.next_schedule;
+    if (!cj.schedule || !cj.last_schedule) return '';
     return '';
   }
 
-  toggleAutoRefresh() { this.autoRefresh = !this.autoRefresh; if (this.autoRefresh) this.startAutoRefresh(); else clearInterval(this.refreshTimer); }
-  private startAutoRefresh() { clearInterval(this.refreshTimer); this.refreshTimer = setInterval(() => this.load(), 30000); }
+  setRefreshInterval(seconds: number) {
+    this.refreshInterval = seconds;
+    this.startAutoRefresh();
+  }
+
+  toggleAutoRefresh() {
+    this.autoRefresh = !this.autoRefresh;
+    if (this.autoRefresh) this.startAutoRefresh();
+    else clearInterval(this.refreshTimer);
+  }
+
+  private startAutoRefresh() {
+    clearInterval(this.refreshTimer);
+    this.refreshTimer = setInterval(() => this.load(), this.refreshInterval * 1000);
+  }
 
   ngOnInit() { this.load(); this.startAutoRefresh(); }
   ngOnDestroy() { clearInterval(this.refreshTimer); }
+
+  get failedJobNames(): string {
+    const names = this.failedJobs.slice(0, 3).map(j => j.name).join(', ');
+    return this.failedJobs.length > 3 ? names + '…' : names;
+  }
+
 }

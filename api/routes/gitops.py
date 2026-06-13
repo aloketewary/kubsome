@@ -3,9 +3,15 @@ GitOps & Mesh API routes — ArgoCD/Flux status and
 service mesh visibility endpoints.
 """
 
+import time
+
 from fastapi import APIRouter
 
 router = APIRouter(tags=["gitops", "mesh"])
+
+# --- Rightsizing overview cache ---
+_rs_overview_cache = {"data": None, "ts": 0}
+_RS_OVERVIEW_TTL = 120
 
 
 @router.get("/gitops")
@@ -134,6 +140,38 @@ def post_collect():
 def post_maintenance():
     from core.analytics.aggregator import run_maintenance
     return run_maintenance()
+
+
+@router.get("/analytics/rightsizing/overview")
+def get_rightsizing_overview(days: int = 7, namespace: str = None):
+    """Aggregated rightsizing payload — single call for UI."""
+    now = time.time()
+    if (
+        _rs_overview_cache["data"] is not None
+        and now - _rs_overview_cache["ts"] < _RS_OVERVIEW_TTL
+    ):
+        return _rs_overview_cache["data"]
+
+    try:
+        from core.analytics.rightsizing_overview import (
+            build_rightsizing_overview,
+        )
+        overview = build_rightsizing_overview(days, namespace)
+        payload = overview.to_dict()
+        _rs_overview_cache["data"] = payload
+        _rs_overview_cache["ts"] = now
+        return payload
+    except ImportError:
+        return {
+            "deployments_analyzed": 0,
+            "empty_state_reason": "analytics_unavailable",
+        }
+    except Exception as e:
+        return {
+            "deployments_analyzed": 0,
+            "empty_state_reason": "analytics_unavailable",
+            "error": str(e),
+        }
 
 
 @router.get("/analytics/rightsizing")
