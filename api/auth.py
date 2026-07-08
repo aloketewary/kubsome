@@ -50,9 +50,9 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
         token = get_token()
         auth = request.headers.get("Authorization", "")
-        provided = auth[7:] if auth.startswith("Bearer ") else request.query_params.get("token", "")
+        provided = auth[7:] if auth.startswith("Bearer ") else None
 
-        if not secrets.compare_digest(provided, token):
+        if not provided or not secrets.compare_digest(provided, token):
             from starlette.responses import JSONResponse
             return JSONResponse(
                 status_code=401,

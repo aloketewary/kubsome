@@ -48,6 +48,7 @@ export const routes: Routes = [
   { path: 'helm', title: 'Helm — Kubsome', loadComponent: () => import('./features/helm/helm').then(m => m.HelmComponent) },
   { path: 'port-forwards', title: 'Port Forwards — Kubsome', loadComponent: () => import('./features/port-forwards/port-forwards').then(m => m.PortForwardsComponent) },
   { path: 'blast-radius', title: 'Blast Radius — Kubsome', loadComponent: () => import('./features/blast-radius/blast-radius').then(m => m.BlastRadiusComponent) },
+  { path: 'plugins', title: 'Plugins — Kubsome', loadComponent: () => import('./features/plugins/plugins').then(m => m.PluginsComponent) },
   { path: 'health-signals', title: 'Health Signals — Kubsome', loadComponent: () => import('./features/health-signals/health-signals').then(m => m.HealthSignalsComponent) },
   { path: 'chargeback', title: 'Chargeback — Kubsome', loadComponent: () => import('./features/chargeback/chargeback').then(m => m.ChargebackComponent) },
   { path: 'idle-resources', title: 'Idle Resources — Kubsome', loadComponent: () => import('./features/idle-resources/idle-resources').then(m => m.IdleResourcesComponent) },

@@ -1945,6 +1945,20 @@ def _handle_scorecard(cmd, env):
 
     console.print(Panel("\n".join(lines), title="[bold]🏆 Cluster Scorecard[/bold]", border_style=grade_color))
 
+    # Share prompt for A-grade
+    if score >= 90:
+        console.print()
+        share_input = console.input(
+            "[dim]Share this scorecard with your team? [Y/n]: [/dim]"
+        ).strip().lower()
+        if not share_input or share_input in ("y", "yes"):
+            console.print(
+                "\n[dim]Run:[/dim] kubsome export scorecard > scorecard.md"
+            )
+            console.print(
+                "[dim]Or copy the output above and share in Slack/Teams.[/dim]"
+            )
+
 
 def _handle_cost_estimate(cmd, env):
     from core.collectors.cost_estimate import estimate_costs

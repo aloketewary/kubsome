@@ -44,6 +44,7 @@ DEFAULTS = {
     },
     "danger_confirm": True,
     "theme": "default",
+    "telemetry": True,
 }
 
 
