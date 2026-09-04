@@ -425,3 +425,48 @@
   .export-card { border-color: rgba(0, 0, 0, 0.08); }
   .chart-card, .cost-summary, .sql-section, .export-card { background: rgba(0, 0, 0, 0.012); }
 }
+
+
+/* ─── Collection controls ─────────────────────────────────────────── */
+.ctrl-btn-collect {
+  border-color: rgba(var(--info-rgb), 0.34);
+  color: var(--info);
+}
+
+.ctrl-btn-collect:hover {
+  border-color: var(--info);
+  background: var(--info-subtle);
+  color: var(--info);
+}
+
+.collection-status {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0 0 20px;
+  padding: 10px 13px;
+  border: 1px solid rgba(var(--success-rgb), 0.28);
+  border-left: 3px solid var(--success);
+  border-radius: var(--radius-sm);
+  background: var(--success-subtle);
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+.collection-status > i { color: var(--success); }
+.collection-warning {
+  border-color: rgba(var(--warning-rgb), 0.3);
+  border-left-color: var(--warning);
+  background: var(--warning-subtle);
+}
+.collection-warning > i { color: var(--warning); }
+.collection-error {
+  border-color: rgba(var(--danger-rgb), 0.3);
+  border-left-color: var(--danger);
+  background: var(--danger-subtle);
+}
+.collection-error > i { color: var(--danger); }
+
+@media (max-width: 640px) {
+  .ctrl-btn-collect span { display: none; }
+}

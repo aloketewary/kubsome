@@ -1,3 +1,4 @@
+<section class="investigate-page" aria-label="Investigation workspace">
 <!-- ─── Header ─────────────────────────────────────────────────────── -->
 <app-intel-header title="Investigation" icon="pi pi-search"
   [subtitle]="report ? reportTarget + ' · ' + findings.length + ' findings' : 'evidence-backed diagnosis'">
@@ -6,8 +7,49 @@
   </button>
 </app-intel-header>
 
+  <div class="investigation-deck" aria-label="Investigation signal overview">
+    <div class="deck-primary">
+      <span class="deck-kicker"><i class="pi pi-search-plus" aria-hidden="true"></i> Root cause analysis</span>
+      <h2>Trace the signal</h2>
+      <p>Correlate runtime evidence, rank likely causes, and move from diagnosis to a safe remediation plan.</p>
+      <div class="deck-chips" aria-label="Investigation capabilities">
+        <span><i class="pi pi-sitemap" aria-hidden="true"></i> Evidence chain</span>
+        <span><i class="pi pi-directions" aria-hidden="true"></i> Action plans</span>
+      </div>
+    </div>
+    <div class="telemetry-panel" aria-label="Investigation signal telemetry">
+      <div class="telemetry-head">
+        <div>
+          <span class="telemetry-kicker">Signal coverage</span>
+          <strong>{{ report ? 'Analysis confidence' : 'Ready to investigate' }}</strong>
+        </div>
+        <span class="telemetry-total">{{ report ? overallConfidence + '%' : 'READY' }}</span>
+      </div>
+      <div class="telemetry-track" aria-hidden="true">
+        <span class="telemetry-segment segment-critical" [style.width.%]="findings.length ? criticalCount / findings.length * 100 : 0"></span>
+        <span class="telemetry-segment segment-warning" [style.width.%]="findings.length ? highCount / findings.length * 100 : 0"></span>
+        <span class="telemetry-segment segment-pending" [style.width.%]="findings.length ? mediumCount / findings.length * 100 : 0"></span>
+        <span class="telemetry-segment segment-healthy" [style.width.%]="findings.length ? lowCount / findings.length * 100 : 0"></span>
+      </div>
+      <div class="telemetry-legend">
+        <span><i class="legend-dot legend-critical" aria-hidden="true"></i> Critical <b>{{ criticalCount }}</b></span>
+        <span><i class="legend-dot legend-warning" aria-hidden="true"></i> High <b>{{ highCount }}</b></span>
+        <span><i class="legend-dot legend-pending" aria-hidden="true"></i> Medium <b>{{ mediumCount }}</b></span>
+        <span><i class="legend-dot legend-healthy" aria-hidden="true"></i> Low <b>{{ lowCount }}</b></span>
+      </div>
+    </div>
+  </div>
+
 <!-- ─── Search ─────────────────────────────────────────────────────── -->
-<div class="search-bar" role="search">
+<section class="filter-section" aria-labelledby="investigate-filter-heading">
+  <div class="filter-section-head">
+    <div>
+      <span class="section-label">Investigation target</span>
+      <strong id="investigate-filter-heading">Find a pod or service</strong>
+    </div>
+    <span class="filter-hint">Evidence-backed diagnosis</span>
+  </div>
+  <div class="search-bar" role="search">
   <div class="search-wrapper">
     <label class="search-label" for="investigation-target">Pod name</label>
     <input id="investigation-target" class="search-input" type="search" [(ngModel)]="target"
@@ -42,9 +84,9 @@
   </div>
   <button class="ctrl-btn ctrl-btn-accent" type="button" (click)="investigate()" [disabled]="loading || !target.trim()">
     <i class="pi" [class.pi-search]="!loading" [class.pi-spin]="loading" [class.pi-spinner]="loading" aria-hidden="true"></i>
-    <span>Investigate</span>
   </button>
-</div>
+  </div>
+</section>
 
 <!-- ─── Loading ────────────────────────────────────────────────────── -->
 @if (loading) {
@@ -84,18 +126,23 @@
         </div>
       }
 
-      <div class="hero-ctas">
+      <div class="hero-ctas" role="group" aria-label="Investigation actions">
         @if (topFinding.verification_commands?.length) {
-          <button class="hero-cta" (click)="copyToClipboard(topFinding.verification_commands[0])">
-            <i class="pi pi-check-circle"></i> Verify
+          <button class="hero-cta hero-cta-verify" type="button" (click)="copyToClipboard(topFinding.verification_commands[0])"
+            [class.copied]="copyFeedback === topFinding.verification_commands[0]"
+            [attr.aria-label]="copyFeedback === topFinding.verification_commands[0] ? 'Verification command copied' : 'Copy verification command'">
+            <i class="pi" [class.pi-check-circle]="copyFeedback !== topFinding.verification_commands[0]" [class.pi-check]="copyFeedback === topFinding.verification_commands[0]" aria-hidden="true"></i>
+            <span>{{ copyFeedback === topFinding.verification_commands[0] ? 'Copied' : 'Verify' }}</span>
           </button>
         }
-        <button class="hero-cta" (click)="activeTab = 'evidence'">
-          <i class="pi pi-list"></i> Evidence
+        <button class="hero-cta hero-cta-evidence" type="button" (click)="activeTab = 'evidence'">
+          <i class="pi pi-list" aria-hidden="true"></i>
+          <span>Evidence</span>
         </button>
         @if (plans.length) {
-          <button class="hero-cta" (click)="activeTab = 'plans'">
-            <i class="pi pi-directions"></i> Plan
+          <button class="hero-cta hero-cta-plan" type="button" (click)="activeTab = 'plans'">
+            <i class="pi pi-directions" aria-hidden="true"></i>
+            <span>Plan</span>
           </button>
         }
       </div>
@@ -121,6 +168,11 @@
     @if (lowCount) { <app-metric-tile label="Low" [value]="'' + lowCount" accent="cyan" /> }
     <app-metric-tile label="Confidence" [value]="overallConfidence + '%'" accent="green" />
     <app-metric-tile label="Plans" [value]="'' + plans.length" accent="green" />
+    <div class="metrics-context">
+      <span class="metrics-context-label">Mode</span>
+      <strong>{{ report ? 'ANALYZED' : 'READY' }}</strong>
+      <span>{{ report ? reportTarget : 'awaiting target' }}</span>
+    </div>
   </div>
 
   <!-- ━━━ Tabs ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
@@ -335,3 +387,5 @@
     <span class="empty-hint">Root cause → confidence → action in seconds</span>
   </div>
 }
+
+</section>

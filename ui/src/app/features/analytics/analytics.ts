@@ -31,6 +31,9 @@ export class AnalyticsComponent implements OnInit {
   overview: AnalyticsOverview | null = null;
   loading = false;
   loadError = false;
+  collecting = false;
+  collectionMessage = '';
+  collectionStatus: 'success' | 'warning' | 'error' = 'success';
   activeTab = '0';
 
   // Resources tab charts
@@ -85,12 +88,16 @@ export class AnalyticsComponent implements OnInit {
   ngOnInit() { this.refresh(); }
 
   refresh() {
+    const tabToRestore = this.activeTab;
+    this.resetLazyTabState();
     this.loading = true;
     this.http.get<AnalyticsOverview>('/api/analytics/overview').subscribe({
       next: (res) => {
         this.overview = res;
         this.loading = false;
         this.loadError = false;
+        if (tabToRestore === '1') this.loadResourcesCharts();
+        if (tabToRestore === '2') this.loadCostData();
       },
       error: () => {
         this.overview = null;
@@ -98,6 +105,48 @@ export class AnalyticsComponent implements OnInit {
         this.loadError = true;
       },
     });
+  }
+
+  collectNow() {
+    if (this.collecting) return;
+
+    this.collecting = true;
+    this.collectionMessage = '';
+    this.http.post<any>('/api/analytics/collect', {}).subscribe({
+      next: (res) => {
+        this.collecting = false;
+        if (res?.error) {
+          this.collectionStatus = 'error';
+          this.collectionMessage = res.error;
+          return;
+        }
+
+        const pods = Number(res?.pods || 0);
+        const nodes = Number(res?.nodes || 0);
+        this.collectionStatus = pods || nodes ? 'success' : 'warning';
+        this.collectionMessage = pods || nodes
+          ? `Collected ${pods} pod samples and ${nodes} node samples. Analytics refreshed.`
+          : 'Collection completed with no samples. Check the active Kubernetes context and metrics-server access.';
+        this.refresh();
+      },
+      error: (err) => {
+        this.collecting = false;
+        this.collectionStatus = 'error';
+        this.collectionMessage = err.error?.detail || 'Collection failed. Check API and cluster connectivity.';
+      },
+    });
+  }
+
+  private resetLazyTabState() {
+    this.resourcesLoaded = false;
+    this.costLoaded = false;
+    this.cpuMemChart = null;
+    this.consumersChart = null;
+    this.costData = [];
+    this.costSummary = null;
+    this.cpuMemError = false;
+    this.consumersError = false;
+    this.costError = false;
   }
 
   onTabChange(tab: string) {

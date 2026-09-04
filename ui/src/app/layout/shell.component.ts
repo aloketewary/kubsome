@@ -31,8 +31,7 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
       </div>
     </div>
 
-    <div class="nav-scroll">
-      <!-- Favorites -->
+    <!-- Favorites -->
     @if (favorites.length > 0) {
       <nav class="nav-section">
         <span class="nav-label" tabindex="-1">Favorites</span>
@@ -170,7 +169,6 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
       </a>
     </nav>
 
-    </div>
 
     <div class="nav-footer">
       <a class="nav-item" (click)="openHelp()" (keydown)="onKey($event, openHelp.bind(this))" tabindex="0" role="button">
@@ -902,30 +900,16 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
       }
     }
 
-    /* Keep Help in dedicated bottom space while navigation scrolls. */
-    :host {
-      min-height: 0;
-      overflow: hidden;
-    }
-
-    .nav-scroll {
-      min-height: 0;
-      flex: 1 1 auto;
-      overflow-x: hidden;
-      overflow-y: auto;
-      scrollbar-color: var(--border) transparent;
-      scrollbar-gutter: stable;
-    }
-
+    /* Keep Help anchored while navigation content scrolls. */
     .nav-footer {
-      position: relative;
-      bottom: auto;
+      position: sticky;
+      bottom: 0;
       z-index: 4;
       display: flex;
-      flex: 0 0 52px;
+      flex: 0 0 auto;
       min-height: 52px;
       align-items: flex-end;
-      margin-top: 0;
+      margin-top: auto;
       padding: 8px 0 4px;
       border-top: 1px solid var(--border);
       background: linear-gradient(180deg, transparent, var(--surface-card) 18%), var(--surface-card);
@@ -937,7 +921,6 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
     }
 
     :host-context(.rail) .nav-footer {
-      flex-basis: 52px;
       min-height: 52px;
       align-items: center;
       justify-content: center;

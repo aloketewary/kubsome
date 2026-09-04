@@ -52,7 +52,7 @@ export class RightsizingComponent implements OnInit, OnDestroy {
 
   refresh() {
     this.loading = true;
-    this.http.get<RightsizingOverview>('/api/cost-analytics/analytics/rightsizing/overview').subscribe({
+    this.http.get<RightsizingOverview>('/api/analytics/rightsizing/overview').subscribe({
       next: (res) => { this.data = res; this.loading = false; this.loadError = false; },
       error: () => { this.data = null; this.loading = false; this.loadError = true; },
     });
@@ -87,7 +87,7 @@ export class RightsizingComponent implements OnInit, OnDestroy {
   }
 
   exportYaml() {
-    this.http.post<any>('/api/cost-analytics/analytics/rightsizing/export', {}).subscribe({
+    this.http.post<any>('/api/analytics/rightsizing/export', {}).subscribe({
       next: (res) => { this.showToast(res.path ? `YAML: ${res.path}` : 'No recommendations', res.path ? 'success' : 'info'); },
       error: () => { this.showToast('Export failed', 'danger'); },
     });

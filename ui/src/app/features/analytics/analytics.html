@@ -1,8 +1,20 @@
 <section class="analytics-page" aria-label="Analytics workspace">
   <app-intel-header title="Analytics" icon="pi pi-chart-bar"
     [subtitle]="overview ? 'Updated ' + freshnessLabel : 'loading...'">
+    <button class="ctrl-btn ctrl-btn-collect" type="button" (click)="collectNow()" [disabled]="collecting"
+      [attr.aria-label]="collecting ? 'Collecting analytics data' : 'Collect analytics data now'" pTooltip="Collect now">
+      <i class="pi" [class.pi-database]="!collecting" [class.pi-spin]="collecting" [class.pi-spinner]="collecting" aria-hidden="true"></i>
+    </button>
     <button class="ctrl-btn" type="button" (click)="refresh()" aria-label="Refresh analytics" pTooltip="Refresh"><i class="pi pi-refresh" aria-hidden="true" [class.spinning]="loading"></i></button>
   </app-intel-header>
+
+  @if (collectionMessage) {
+    <div class="collection-status" [class.collection-warning]="collectionStatus === 'warning'" [class.collection-error]="collectionStatus === 'error'"
+      [attr.role]="collectionStatus === 'error' ? 'alert' : 'status'" aria-live="polite">
+      <i class="pi" [class.pi-check-circle]="collectionStatus === 'success'" [class.pi-exclamation-triangle]="collectionStatus !== 'success'" aria-hidden="true"></i>
+      <span>{{ collectionMessage }}</span>
+    </div>
+  }
 
   @if (loading && !overview) {
   <div class="loading"><app-skeleton variant="stats" /><app-skeleton variant="card" /></div>
@@ -22,6 +34,10 @@
     <div class="empty-icon"><i class="pi pi-database"></i></div>
     <span>No analytics data yet</span>
     <span class="empty-hint">Data will appear after the first collection cycle</span>
+    <button class="ctrl-btn ctrl-btn-accent" type="button" (click)="collectNow()" [disabled]="collecting">
+      <i class="pi" [class.pi-database]="!collecting" [class.pi-spin]="collecting" [class.pi-spinner]="collecting" aria-hidden="true"></i>
+      <span>{{ collecting ? 'Collecting...' : 'Collect now' }}</span>
+    </button>
   </div>
 }
 

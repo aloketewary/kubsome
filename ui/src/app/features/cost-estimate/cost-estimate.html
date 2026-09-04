@@ -21,7 +21,7 @@
 
       <!-- Total Banner -->
       <div class="total-banner">
-        <div class="total-amount">\${{ data.total.toFixed(2) }}</div>
+        <div class="total-amount">${{ data.total.toFixed(2) }}</div>
         <div class="total-label">estimated / month</div>
         <div class="total-note">{{ filteredDeployments.length }} deployments · {{ data.pricing.note }}</div>
       </div>
@@ -32,7 +32,7 @@
           <div class="trend-row">
             <div class="trend-item">
               <span class="trend-label">Current</span>
-              <span class="trend-val">\${{ trend.current_monthly.toFixed(0) }}/mo</span>
+              <span class="trend-val">${{ trend.current_monthly.toFixed(0) }}/mo</span>
             </div>
             <div class="trend-arrow">
               <i class="pi" [class.pi-arrow-up]="trend.trend === 'growing'" [class.pi-arrow-right]="trend.trend === 'stable'" [class.pi-arrow-down]="trend.trend === 'shrinking'"
@@ -40,11 +40,11 @@
             </div>
             <div class="trend-item">
               <span class="trend-label">Projected</span>
-              <span class="trend-val">\${{ trend.projected_monthly.toFixed(0) }}/mo</span>
+              <span class="trend-val">${{ trend.projected_monthly.toFixed(0) }}/mo</span>
             </div>
             <div class="trend-item trend-savings">
               <span class="trend-label">Savings Possible</span>
-              <span class="trend-val savings-green">\${{ trend.savings_opportunity.toFixed(0) }}/mo</span>
+              <span class="trend-val savings-green">${{ trend.savings_opportunity.toFixed(0) }}/mo</span>
             </div>
           </div>
           <div class="trend-note">{{ trend.note }}</div>
@@ -65,7 +65,7 @@
                 <div class="cb-track">
                   <div class="cb-fill" [style.width.%]="costPct(dep.cost_total)" [class.cb-high]="dep.cost_total > data.total * 0.3" [class.cb-med]="dep.cost_total > data.total * 0.15 && dep.cost_total <= data.total * 0.3"></div>
                 </div>
-                <span class="cb-value">\${{ dep.cost_total.toFixed(0) }}</span>
+                <span class="cb-value">${{ dep.cost_total.toFixed(0) }}</span>
               </div>
             }
           </div>
@@ -88,8 +88,8 @@
             <span class="col-rep">{{ dep.replicas }}</span>
             <span class="col-cpu">{{ dep.cpu_request }}</span>
             <span class="col-mem">{{ dep.memory_request }}</span>
-            <span class="col-cost">\${{ dep.cost_per_pod.toFixed(2) }}</span>
-            <span class="col-total bold">\${{ dep.cost_total.toFixed(2) }}</span>
+            <span class="col-cost">${{ dep.cost_per_pod.toFixed(2) }}</span>
+            <span class="col-total bold">${{ dep.cost_total.toFixed(2) }}</span>
           </div>
         }
         @if (filteredDeployments.length === 0) {

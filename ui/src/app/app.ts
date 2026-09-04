@@ -257,7 +257,7 @@ import { TerminalDockService } from './core/services/terminal-dock.service';
     }
 
     <!-- Status Bar -->
-    <footer class="status-bar">
+    <footer class="status-bar" [class.status-bar-sidebar-collapsed]="sidebarCollapsed">
       <div class="status-left">
         <span class="status-kicker">SCOPE</span>
         <span class="status-dot connected"></span>
@@ -1826,6 +1826,17 @@ import { TerminalDockService } from './core/services/terminal-dock.service';
     .cmd-k-btn kbd {
       min-width: auto;
       text-align: center;
+    }
+
+    /* Footer is sibling of layout, so bind collapsed state directly. */
+    .status-bar.status-bar-sidebar-collapsed {
+      left: 48px;
+    }
+
+    @media (max-width: 900px) {
+      .status-bar.status-bar-sidebar-collapsed {
+        left: 0;
+      }
     }
   `],
 })
