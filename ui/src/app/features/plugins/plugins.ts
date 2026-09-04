@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
@@ -15,7 +15,6 @@ import { MessageService } from 'primeng/api';
   selector: 'app-plugins',
   standalone: true,
   imports: [
-    CommonModule,
     FormsModule,
     RouterModule,
     CardModule,
@@ -24,7 +23,7 @@ import { MessageService } from 'primeng/api';
     TagModule,
     SkeletonModule,
     ToastModule
-  ],
+],
   providers: [MessageService],
   template: `
     <div class="p-4">
@@ -37,7 +36,7 @@ import { MessageService } from 'primeng/api';
           <i class="pi pi-cog mr-2"></i>Settings
         </a>
       </div>
-
+    
       <!-- Search -->
       <div class="mb-4">
         <span class="p-input-icon-left w-full md:w-30rem">
@@ -45,49 +44,53 @@ import { MessageService } from 'primeng/api';
           <input type="text" pInputText [(ngModel)]="searchTerm" placeholder="Search plugins..." class="w-full" />
         </span>
       </div>
-
+    
       <!-- Plugin List -->
       <div class="grid">
-        <div class="col-12 md:col-6 lg:col-4" *ngFor="let plugin of filteredPlugins">
-          <div pCard class="h-full">
-            <ng-template pTemplate="header">
-              <div class="flex justify-content-between align-items-center">
-                <span class="font-bold text-lg">{{ plugin.name }}</span>
-                <p-tag [value]="plugin.category" [severity]="getSeverity(plugin.category)" [styleClass]="'text-xs'"></p-tag>
-              </div>
-            </ng-template>
-            <ng-template pTemplate="body">
-              <p class="m-0 text-sm text-muted-color">{{ plugin.description }}</p>
-              <div class="flex flex-wrap gap-2 mt-3">
-                <span class="flex align-items-center text-xs">
-                  <i class="pi pi-star mr-1"></i>{{ plugin.rating || '0.0' }}
-                </span>
-                <span class="flex align-items-center text-xs">
-                  <i class="pi pi-download mr-1"></i>{{ plugin.downloads || 0 }} installs
-                </span>
-              </div>
-            </ng-template>
-            <ng-template pTemplate="footer">
-              <div class="flex gap-2">
-                <a [routerLink]="'/intelligence/plugins/' + plugin.id" class="p-button-text p-button-sm">
-                  <i class="pi pi-info-circle mr-2"></i>Details
-                </a>
-                <button pButton pRipple label="Install" icon="pi pi-download"
-                        class="p-button-sm p-button-outlined"
-                        (click)="installPlugin(plugin)"></button>
-              </div>
-            </ng-template>
+        @for (plugin of filteredPlugins; track plugin) {
+          <div class="col-12 md:col-6 lg:col-4">
+            <div pCard class="h-full">
+              <ng-template pTemplate="header">
+                <div class="flex justify-content-between align-items-center">
+                  <span class="font-bold text-lg">{{ plugin.name }}</span>
+                  <p-tag [value]="plugin.category" [severity]="getSeverity(plugin.category)" [styleClass]="'text-xs'"></p-tag>
+                </div>
+              </ng-template>
+              <ng-template pTemplate="body">
+                <p class="m-0 text-sm text-muted-color">{{ plugin.description }}</p>
+                <div class="flex flex-wrap gap-2 mt-3">
+                  <span class="flex align-items-center text-xs">
+                    <i class="pi pi-star mr-1"></i>{{ plugin.rating || '0.0' }}
+                  </span>
+                  <span class="flex align-items-center text-xs">
+                    <i class="pi pi-download mr-1"></i>{{ plugin.downloads || 0 }} installs
+                  </span>
+                </div>
+              </ng-template>
+              <ng-template pTemplate="footer">
+                <div class="flex gap-2">
+                  <a [routerLink]="'/intelligence/plugins/' + plugin.id" class="p-button-text p-button-sm">
+                    <i class="pi pi-info-circle mr-2"></i>Details
+                  </a>
+                  <button pButton pRipple label="Install" icon="pi pi-download"
+                    class="p-button-sm p-button-outlined"
+                  (click)="installPlugin(plugin)"></button>
+                </div>
+              </ng-template>
+            </div>
           </div>
-        </div>
+        }
       </div>
-
+    
       <!-- Empty State -->
-      <div *ngIf="filteredPlugins.length === 0" class="text-center py-8">
-        <i class="pi pi-search pi-4x mb-3 text-muted-color"></i>
-        <p class="text-muted-color">No plugins found matching your search.</p>
-      </div>
+      @if (filteredPlugins.length === 0) {
+        <div class="text-center py-8">
+          <i class="pi pi-search pi-4x mb-3 text-muted-color"></i>
+          <p class="text-muted-color">No plugins found matching your search.</p>
+        </div>
+      }
     </div>
-  `
+    `
 })
 export class PluginsComponent {
   searchTerm = '';

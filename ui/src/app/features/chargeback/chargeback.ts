@@ -1,6 +1,6 @@
 import { Component, inject, OnInit, OnDestroy } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { CommonModule } from '@angular/common';
+
 import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
 import { TabsModule } from 'primeng/tabs';
@@ -17,7 +17,7 @@ import { SkeletonComponent } from '../../shared/components/skeleton.component';
 @Component({
   selector: 'app-chargeback',
   standalone: true,
-  imports: [CommonModule, ButtonModule, TagModule, TabsModule, SelectButtonModule, TooltipModule, InputTextModule, FormsModule, IntelHeaderComponent, LiveIndicatorComponent, RelatedPagesComponent, SkeletonComponent],
+  imports: [ButtonModule, TagModule, TabsModule, SelectButtonModule, TooltipModule, InputTextModule, FormsModule, IntelHeaderComponent, LiveIndicatorComponent, RelatedPagesComponent, SkeletonComponent],
   templateUrl: './chargeback.html',
   styleUrl: './chargeback.scss',
 })
