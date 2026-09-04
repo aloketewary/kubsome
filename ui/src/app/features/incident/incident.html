@@ -366,20 +366,26 @@
 
     <!-- Related Alerts -->
     @if (relatedAlerts.length > 0) {
-      <div class="alerts-section">
+      <section class="alerts-section" aria-labelledby="related-alerts-title">
         <div class="notes-header">
-          <h3><i class="pi pi-bell"></i> Related Alerts</h3>
-          <span class="notes-count">{{ relatedAlerts.length }}</span>
+          <h3 id="related-alerts-title"><i class="pi pi-bell" aria-hidden="true"></i> Related Alerts</h3>
+          <span class="notes-count">{{ relatedAlerts.length }} signals</span>
         </div>
-        <div class="alerts-list">
+        <div class="alerts-list" role="list">
           @for (alert of relatedAlerts; track $index) {
-            <div class="alert-entry">
-              <span class="alert-sev" [class.alert-warn]="alert.severity === 'warning'" [class.alert-crit]="alert.severity === 'critical'">{{ alert.severity || 'info' }}</span>
-              <span class="alert-msg">{{ alert.message }}</span>
+            <div class="alert-entry" role="listitem"
+              [class.alert-entry-critical]="alert.severity === 'critical'"
+              [class.alert-entry-warning]="alert.severity === 'warning' || alert.severity === 'high'">
+              <span class="alert-rail" aria-hidden="true"></span>
+              <app-status-beacon [status]="alertStatus(alert.severity)" size="sm" />
+              <div class="alert-body">
+                <span class="alert-sev">{{ alert.severity || 'info' }}</span>
+                <span class="alert-msg">{{ alert.message || alert.detail || 'Alert signal received' }}</span>
+              </div>
             </div>
           }
         </div>
-      </div>
+      </section>
     }
 
     <!-- AI Insights (below human data) -->

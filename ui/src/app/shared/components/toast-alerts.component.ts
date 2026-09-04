@@ -2,6 +2,7 @@ import { Component, inject, OnInit, OnDestroy } from '@angular/core';
 import { Subscription } from 'rxjs';
 import { WsService } from '../../core/services/ws.service';
 import { Pod } from '../../core/models';
+import { StatusBeaconComponent } from './futuristic/status-beacon.component';
 
 interface Toast {
   id: number;
@@ -14,21 +15,20 @@ interface Toast {
 @Component({
   selector: 'app-toast-alerts',
   standalone: true,
+  imports: [StatusBeaconComponent],
   template: `
-    <div class="toast-container">
+    <div class="toast-container" aria-live="polite" aria-label="Pod status notifications">
       @for (toast of toasts; track toast.id) {
-        <div class="toast" [class]="'toast-' + toast.severity" (click)="dismiss(toast.id)">
-          <div class="toast-icon">
-            <i class="pi" [class.pi-exclamation-triangle]="toast.severity === 'danger'"
-               [class.pi-info-circle]="toast.severity === 'info'"
-               [class.pi-check-circle]="toast.severity === 'success'"
-               [class.pi-exclamation-circle]="toast.severity === 'warn'"></i>
-          </div>
+        <div class="toast" [class]="'toast-' + toast.severity" role="status" (click)="dismiss(toast.id)">
+          <app-status-beacon [status]="toastStatus(toast.severity)" size="sm" />
           <div class="toast-body">
+            <span class="toast-kicker">POD SIGNAL / {{ toast.severity }}</span>
             <span class="toast-title">{{ toast.title }}</span>
             <span class="toast-message">{{ toast.message }}</span>
           </div>
-          <button class="toast-dismiss"><i class="pi pi-times"></i></button>
+          <button type="button" class="toast-dismiss" (click)="$event.stopPropagation(); dismiss(toast.id)" [attr.aria-label]="'Dismiss ' + toast.title">
+            <i class="pi pi-times" aria-hidden="true"></i>
+          </button>
         </div>
       }
     </div>
@@ -40,47 +40,66 @@ interface Toast {
       right: 16px;
       z-index: 8000;
       display: flex;
+      width: min(380px, calc(100vw - 24px));
       flex-direction: column;
       gap: 8px;
-      max-width: 360px;
     }
     .toast {
+      --toast-accent: var(--info);
+      --toast-accent-rgb: var(--info-rgb);
+      position: relative;
       display: flex;
       align-items: flex-start;
-      gap: 10px;
-      padding: 12px 14px;
-      border-radius: 10px;
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+      gap: 9px;
+      min-width: 0;
+      padding: 12px 13px;
+      overflow: hidden;
+      border: 1px solid rgba(var(--toast-accent-rgb), .28);
+      border-radius: var(--radius-sm);
+      background: var(--surface-card);
+      box-shadow: var(--shadow-lg), 0 0 0 1px rgba(var(--toast-accent-rgb), .04);
       cursor: pointer;
-      animation: slideIn 0.25s ease-out;
+      animation: slideIn 0.25s var(--transition-smooth) both;
     }
+    .toast::before {
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 3px;
+      background: var(--toast-accent);
+      box-shadow: 0 0 14px rgba(var(--toast-accent-rgb), .3);
+      content: '';
+    }
+    .toast-danger { --toast-accent: var(--danger); --toast-accent-rgb: var(--danger-rgb); }
+    .toast-warn { --toast-accent: var(--warning); --toast-accent-rgb: var(--warning-rgb); }
+    .toast-info { --toast-accent: var(--info); --toast-accent-rgb: var(--info-rgb); }
+    .toast-success { --toast-accent: var(--success); --toast-accent-rgb: var(--success-rgb); }
+    .toast:hover { background: rgba(var(--toast-accent-rgb), .06); }
     @keyframes slideIn {
       from { opacity: 0; transform: translateX(20px); }
       to { opacity: 1; transform: translateX(0); }
     }
-    .toast-danger { border-left: 3px solid var(--danger); }
-    .toast-warn { border-left: 3px solid var(--warning); }
-    .toast-info { border-left: 3px solid var(--accent); }
-    .toast-success { border-left: 3px solid var(--success); }
-    .toast-icon i { font-size: 16px; }
-    .toast-danger .toast-icon i { color: var(--danger); }
-    .toast-warn .toast-icon i { color: var(--warning); }
-    .toast-info .toast-icon i { color: var(--accent); }
-    .toast-success .toast-icon i { color: var(--success); }
-    .toast-body { flex: 1; display: flex; flex-direction: column; gap: 2px; }
-    .toast-title { font-size: 12px; font-weight: 600; }
-    .toast-message { font-size: 11px; color: var(--text-secondary); }
+    .toast > app-status-beacon { margin-top: 4px; }
+    .toast-body { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: 3px; }
+    .toast-kicker { color: var(--toast-accent); font: 700 8px var(--font-mono); letter-spacing: .12em; text-transform: uppercase; }
+    .toast-title { color: var(--text); font-size: 12px; font-weight: 650; }
+    .toast-message { overflow-wrap: anywhere; color: var(--text-secondary); font: 11px/1.4 var(--font-mono); }
     .toast-dismiss {
-      background: none;
-      border: none;
+      align-self: flex-start;
+      padding: 3px;
+      border: 1px solid transparent;
+      border-radius: 3px;
+      background: transparent;
       color: var(--text-muted);
       cursor: pointer;
-      padding: 2px;
-      font-size: 11px;
+      opacity: .75;
     }
-    .toast-dismiss:hover { color: var(--text); }
+    .toast-dismiss:hover, .toast-dismiss:focus-visible { border-color: rgba(var(--toast-accent-rgb), .3); color: var(--toast-accent); opacity: 1; }
+    @media (max-width: 640px) {
+      .toast-container { top: 58px; right: 12px; left: 12px; width: auto; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .toast { animation: none; }
+    }
   `],
 })
 export class ToastAlertsComponent implements OnInit, OnDestroy {
@@ -126,6 +145,13 @@ export class ToastAlertsComponent implements OnInit, OnDestroy {
     }
   }
 
+  toastStatus(severity: Toast['severity']): 'critical' | 'warning' | 'info' | 'ok' {
+    if (severity === 'danger') return 'critical';
+    if (severity === 'warn') return 'warning';
+    if (severity === 'success') return 'ok';
+    return 'info';
+  }
+
   private addToast(severity: Toast['severity'], title: string, message: string) {
     const toast: Toast = { id: ++this.idCounter, severity, title, message, time: Date.now() };
     this.toasts.push(toast);
@@ -151,8 +177,7 @@ export class ToastAlertsComponent implements OnInit, OnDestroy {
   private sendOsNotification(title: string, body: string, severity: string) {
     if (!('Notification' in window) || Notification.permission !== 'granted') return;
 
-    const icon = severity === 'danger' ? '🔴' : severity === 'warn' ? '🟡' : '🟢';
-    const notification = new Notification(`${icon} Kubsome: ${title}`, {
+    const notification = new Notification(`Kubsome / ${title}`, {
       body,
       icon: '/favicon.ico',
       tag: title, // prevents duplicate notifications

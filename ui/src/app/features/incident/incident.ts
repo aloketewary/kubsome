@@ -9,11 +9,12 @@ import { TooltipModule } from 'primeng/tooltip';
 import { InputTextModule } from 'primeng/inputtext';
 import { ConfirmService } from '../../shared/services/confirm.service';
 import { IntelHeaderComponent } from '../../shared/components/futuristic/intel-header.component';
+import { StatusBeaconComponent } from '../../shared/components/futuristic/status-beacon.component';
 
 @Component({
   selector: 'app-incident',
   standalone: true,
-  imports: [FormsModule, SlicePipe, TagModule, ButtonModule, TooltipModule, InputTextModule, IntelHeaderComponent],
+  imports: [FormsModule, SlicePipe, TagModule, ButtonModule, TooltipModule, InputTextModule, IntelHeaderComponent, StatusBeaconComponent],
   templateUrl: './incident.html',
   styleUrl: './incident.scss',
 })
@@ -388,6 +389,12 @@ export class IncidentComponent implements OnInit, OnDestroy {
     this.http.get<any>(`${this.base}/anomalies`).subscribe(res => {
       this.relatedAlerts = (res.alerts || []).slice(0, 5);
     });
+  }
+
+  alertStatus(severity: string): 'critical' | 'warning' | 'info' {
+    if (severity === 'critical') return 'critical';
+    if (severity === 'warning' || severity === 'high') return 'warning';
+    return 'info';
   }
 
   runAiAnalysis() {

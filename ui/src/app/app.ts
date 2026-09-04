@@ -14,13 +14,14 @@ import { BreadcrumbComponent } from './shared/components/breadcrumb.component';
 import { ConnectionStatusComponent } from './shared/components/connection-status.component';
 import { ErrorToastComponent } from './shared/components/error-toast.component';
 import { ConfirmDialogComponent } from './shared/components/confirm-dialog.component';
+import { StatusBeaconComponent } from './shared/components/futuristic/status-beacon.component';
 import { ShellTerminalComponent } from './shared/components/shell-terminal.component';
 import { TerminalDockService } from './core/services/terminal-dock.service';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, Select, FormsModule, ShellComponent, ShellTerminalComponent, CommandPaletteComponent, AiFloatComponent, ToastAlertsComponent, BreadcrumbComponent, ConnectionStatusComponent, ErrorToastComponent, ConfirmDialogComponent],
+  imports: [RouterOutlet, RouterLink, Select, FormsModule, ShellComponent, ShellTerminalComponent, CommandPaletteComponent, AiFloatComponent, ToastAlertsComponent, BreadcrumbComponent, ConnectionStatusComponent, ErrorToastComponent, ConfirmDialogComponent, StatusBeaconComponent],
   template: `
     <!-- Connection Status (top-most) -->
     <app-connection-status />
@@ -118,18 +119,21 @@ import { TerminalDockService } from './core/services/terminal-dock.service';
             />
           </div>
         </div>
-        @if (anomalyCount > 0) {
-          <button type="button" class="notif-btn" title="Anomalies detected" aria-label="Open anomaly alerts" aria-controls="anomaly-panel"
-            [attr.aria-expanded]="showNotifications" (click)="showNotifications = !showNotifications">
-            <i class="pi pi-bell" aria-hidden="true"></i>
-            <span class="notif-badge" aria-hidden="true">{{ anomalyCount }}</span>
-          </button>
-        }
+        <button type="button" class="notif-btn" title="Anomaly alerts" aria-controls="anomaly-panel"
+          [attr.aria-label]="anomalyCount > 0 ? 'Open anomaly alerts' : 'Open anomaly alerts, none active'"
+          [attr.aria-expanded]="showNotifications" (click)="showNotifications = !showNotifications">
+          <i class="pi pi-bell" aria-hidden="true"></i>
+          @if (anomalyCount > 0) { <span class="notif-badge" aria-hidden="true">{{ anomalyCount }}</span> }
+        </button>
         @if (showNotifications) {
           <div class="notif-backdrop" (click)="showNotifications = false"></div>
           <div id="anomaly-panel" class="notif-panel" role="region" aria-label="Anomaly alerts">
             <div class="notif-header">
-              <span>Alerts ({{ anomalyCount }})</span>
+              <div class="notif-heading">
+                <span class="notif-kicker">ANOMALY FEED</span>
+                <strong>Alerts</strong>
+                <span class="notif-count">{{ anomalyCount }} ACTIVE</span>
+              </div>
               <div class="notif-actions">
                 @if (anomalies.length > 0) {
                   <button type="button" class="notif-clear" (click)="clearAllNotifications()">Clear all</button>
@@ -137,19 +141,22 @@ import { TerminalDockService } from './core/services/terminal-dock.service';
                 <button type="button" class="notif-close" (click)="showNotifications = false" aria-label="Close anomaly alerts"><i class="pi pi-times" aria-hidden="true"></i></button>
               </div>
             </div>
-            <div class="notif-list">
+            <div class="notif-list" role="list" aria-live="polite">
               @for (alert of anomalies; track $index) {
-                <div class="notif-item">
-                  <i class="pi pi-exclamation-triangle notif-icon"></i>
+                <div class="notif-item" role="listitem"
+                  [class.notif-critical]="alert.severity === 'critical'"
+                  [class.notif-warning]="alert.severity === 'warning'">
+                  <app-status-beacon [status]="alertStatus(alert.severity)" size="sm" />
                   <div class="notif-body">
                     <span class="notif-title">{{ alert.title || alert.type || 'Alert' }}</span>
                     <span class="notif-desc">{{ alert.message || alert.detail || '' }}</span>
+                    <span class="notif-severity">{{ alert.severity || 'info' }}</span>
                   </div>
                   <button type="button" class="notif-dismiss" (click)="dismissNotification($index)" aria-label="Dismiss alert"><i class="pi pi-times" aria-hidden="true"></i></button>
                 </div>
               }
               @if (anomalies.length === 0) {
-                <div class="notif-empty"><i class="pi pi-check-circle"></i> All clear — no alerts</div>
+                <div class="notif-empty" role="status"><i class="pi pi-check-circle" aria-hidden="true"></i><span>ALL CLEAR / NO ACTIVE ALERTS</span></div>
               }
             </div>
           </div>
@@ -527,79 +534,100 @@ import { TerminalDockService } from './core/services/terminal-dock.service';
     /* Notification bell */
     .notif-btn {
       position: relative;
-      background: none;
-      border: none;
+      padding: 6px;
+      border: 1px solid transparent;
+      border-radius: var(--radius-sm);
+      background: transparent;
       color: var(--text-muted);
       font-size: 16px;
       cursor: pointer;
-      padding: 6px;
-      border-radius: 6px;
-      transition: all 0.15s;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
     }
-    .notif-btn:hover { background: var(--bg-hover); color: var(--text); }
+    .notif-btn:hover,
+    .notif-btn:focus-visible { background: var(--danger-subtle); border-color: rgba(var(--danger-rgb), .3); color: var(--danger); }
     .notif-badge {
       position: absolute;
-      top: 0;
-      right: 0;
-      font-size: 9px;
-      font-weight: 700;
+      top: -2px;
+      right: -3px;
+      min-width: 16px;
+      height: 16px;
+      padding: 0 3px;
+      border: 1px solid var(--bg);
+      border-radius: 4px;
       background: var(--danger);
       color: #fff;
-      width: 15px;
-      height: 15px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      font: 700 9px/14px var(--font-mono);
+      text-align: center;
     }
-
-    .notif-backdrop {
-      position: fixed; inset: 0; z-index: 1999;
-    }
+    .notif-backdrop { position: fixed; inset: 0; z-index: 1999; }
     .notif-panel {
-      position: absolute; top: 48px; right: 12px;
-      width: 320px; max-height: 400px;
-      background: var(--bg-card); border: 1px solid var(--border);
-      border-radius: var(--radius); box-shadow: 0 12px 40px rgba(0,0,0,0.5);
-      z-index: 2000; display: flex; flex-direction: column; overflow: hidden;
+      position: absolute;
+      top: 50px;
+      right: 12px;
+      width: min(380px, calc(100vw - 24px));
+      max-height: min(460px, calc(100vh - 76px));
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      z-index: 2000;
+      border: 1px solid rgba(var(--accent-rgb), .28);
+      border-radius: var(--radius-sm);
+      background: var(--surface-card);
+      box-shadow: var(--shadow-lg), 0 0 0 1px rgba(var(--accent-rgb), .04);
+    }
+    .notif-panel::before {
+      height: 2px;
+      flex-shrink: 0;
+      background: linear-gradient(90deg, var(--accent), transparent 78%);
+      content: '';
     }
     .notif-header {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 12px 16px; border-bottom: 1px solid var(--border);
-      font-size: 13px; font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface-elevated);
     }
-    .notif-close { background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px; border-radius: 4px; }
-    .notif-close:hover { background: var(--bg-hover); color: var(--text); }
-    .notif-list { overflow-y: auto; max-height: 340px; }
+    .notif-heading { display: flex; min-width: 0; align-items: baseline; gap: 8px; }
+    .notif-kicker { color: var(--accent); font: 700 8px var(--font-mono); letter-spacing: .14em; }
+    .notif-heading strong { color: var(--text); font-size: 13px; }
+    .notif-count { color: var(--text-muted); font: 9px var(--font-mono); letter-spacing: .06em; }
+    .notif-close { padding: 4px; border: 1px solid transparent; border-radius: 4px; background: transparent; color: var(--text-muted); cursor: pointer; }
+    .notif-close:hover, .notif-close:focus-visible { border-color: var(--border-hover); background: var(--surface-hover); color: var(--text); }
+    .notif-list { max-height: 400px; overflow-y: auto; }
     .notif-item {
-      display: flex; align-items: flex-start; gap: 10px;
-      padding: 10px 16px; border-bottom: 1px solid var(--border);
-      transition: background 0.1s;
+      --notif-accent: var(--info);
+      --notif-accent-rgb: var(--info-rgb);
+      position: relative;
+      display: flex;
+      align-items: flex-start;
+      gap: 9px;
+      min-width: 0;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border-subtle);
+      background: transparent;
+      transition: background 0.15s;
     }
-    .notif-item:hover { background: var(--bg-hover); }
+    .notif-item::before { position: absolute; inset: 0 auto 0 0; width: 2px; background: var(--notif-accent); box-shadow: 0 0 12px rgba(var(--notif-accent-rgb), .25); content: ''; }
+    .notif-item.notif-warning { --notif-accent: var(--warning); --notif-accent-rgb: var(--warning-rgb); }
+    .notif-item.notif-critical { --notif-accent: var(--danger); --notif-accent-rgb: var(--danger-rgb); }
+    .notif-item:hover { background: rgba(var(--notif-accent-rgb), .05); }
     .notif-item:last-child { border-bottom: none; }
-    .notif-icon { color: var(--warning); font-size: 14px; margin-top: 2px; }
-    .notif-body { flex: 1; display: flex; flex-direction: column; gap: 2px; }
-    .notif-title { font-size: 12px; font-weight: 500; }
-    .notif-desc { font-size: 11px; color: var(--text-muted); }
+    .notif-item app-status-beacon { margin-top: 4px; }
+    .notif-body { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: 4px; }
+    .notif-title { color: var(--text); font-size: 12px; font-weight: 600; }
+    .notif-desc { overflow-wrap: anywhere; color: var(--text-secondary); font-size: 11px; line-height: 1.4; }
+    .notif-severity { color: var(--notif-accent); font: 700 8px var(--font-mono); letter-spacing: .12em; text-transform: uppercase; }
     .notif-actions { display: flex; align-items: center; gap: 6px; }
-    .notif-clear {
-      background: none; border: none; color: var(--accent); font-size: 11px;
-      cursor: pointer; padding: 2px 6px; border-radius: 4px;
-    }
-    .notif-clear:hover { background: var(--accent-subtle); }
-    .notif-dismiss {
-      background: none; border: none; color: var(--text-muted); cursor: pointer;
-      padding: 2px; border-radius: 3px; font-size: 10px; opacity: 0;
-      transition: opacity 0.1s;
-    }
-    .notif-item:hover .notif-dismiss { opacity: 1; }
-    .notif-dismiss:hover { color: var(--danger); }
-    .notif-empty {
-      padding: 24px; text-align: center; color: var(--text-muted); font-size: 12px;
-      display: flex; align-items: center; justify-content: center; gap: 6px;
-    }
+    .notif-clear { padding: 3px 6px; border: 1px solid transparent; border-radius: 4px; background: transparent; color: var(--accent); font: 10px var(--font-mono); cursor: pointer; }
+    .notif-clear:hover, .notif-clear:focus-visible { border-color: rgba(var(--accent-rgb), .25); background: var(--accent-subtle); }
+    .notif-dismiss { align-self: flex-start; padding: 3px; border: 1px solid transparent; border-radius: 3px; background: transparent; color: var(--text-muted); font-size: 10px; cursor: pointer; opacity: .7; }
+    .notif-dismiss:hover, .notif-dismiss:focus-visible { border-color: rgba(var(--danger-rgb), .25); color: var(--danger); opacity: 1; }
+    .notif-empty { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 28px 18px; color: var(--text-muted); font: 10px var(--font-mono); letter-spacing: .08em; text-align: center; }
     .notif-empty i { color: var(--success); }
+    @media (max-width: 640px) { .notif-panel { top: 46px; right: 12px; } .notif-heading { flex-wrap: wrap; gap: 4px 8px; } .notif-kicker { flex-basis: 100%; } }
     .layout {
       display: flex;
       height: 100vh;
@@ -1586,7 +1614,7 @@ import { TerminalDockService } from './core/services/terminal-dock.service';
     }
 
     .notif-header {
-      background: var(--bg-elevated);
+      background: var(--surface-elevated);
     }
 
     .notif-close,
@@ -1915,6 +1943,12 @@ export class AppComponent implements OnInit, OnDestroy {
       this.anomalies = res.alerts || [];
       this.anomalyCount = this.anomalies.length;
     });
+  }
+
+  alertStatus(severity: string): 'critical' | 'warning' | 'info' {
+    if (severity === 'critical') return 'critical';
+    if (severity === 'warning' || severity === 'high') return 'warning';
+    return 'info';
   }
 
   onNamespaceChange(ns: string) {
