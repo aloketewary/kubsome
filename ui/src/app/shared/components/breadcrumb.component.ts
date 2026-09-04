@@ -42,37 +42,60 @@ export class BreadcrumbComponent {
   trail: { label: string; path: string }[] = [];
 
   private labels: Record<string, string> = {
-    '/dashboard': 'Dashboard',
-    '/pods': 'Pods',
-    '/events': 'Events',
-    '/metrics': 'Metrics',
-    '/deployments': 'Deployments',
-    '/logs': 'Logs',
-    '/jobs': 'Jobs',
-    '/rbac': 'RBAC',
-    '/network': 'Network',
-    '/incident': 'Incident',
-    '/namespace': 'Namespace',
-    '/ai': 'AI Assistant',
-    '/terminal': 'Terminal',
-    '/search': 'Search',
-    '/settings': 'Settings',
-    '/runbooks': 'Runbooks',
-    '/cost': 'Cost',
-    '/cost-estimate': 'Cost Estimate',
-    '/secrets': 'Secrets',
-    '/scorecard': 'Scorecard',
-    '/compare': 'Compare',
-    '/graph': 'Graph',
-    '/monitor': 'Monitor',
-    '/timeline': 'Timeline',
-    '/contexts': 'Contexts',
-    '/pins': 'Pins',
-    '/watch-manager': 'Watch Manager',
-    '/yaml-diff': 'YAML Diff',
-    '/yaml-editor': 'YAML Editor',
-    '/log-correlation': 'Log Correlation',
-    '/resources': 'Resources',
+    '/monitor/dashboard': 'Dashboard',
+    '/monitor/overview': 'Monitor',
+    '/monitor/investigate': 'Investigate',
+    '/monitor/metrics': 'Metrics',
+    '/monitor/events': 'Events',
+    '/monitor/logs': 'Logs',
+    '/monitor/health-signals': 'Health Signals',
+    '/monitor/scorecard': 'Scorecard',
+    '/monitor/timeline': 'Timeline',
+    '/monitor/doctor': 'Health Check',
+    '/monitor/log-correlation': 'Log Correlation',
+    '/monitor/my-dashboard': 'Custom Dashboard',
+    '/operations/pods': 'Pods',
+    '/operations/deployments': 'Deployments',
+    '/operations/jobs': 'Jobs',
+    '/operations/namespace': 'Namespace',
+    '/operations/rbac': 'RBAC',
+    '/operations/resources': 'Resources',
+    '/operations/secrets': 'Secrets',
+    '/operations/incident': 'Incident',
+    '/operations/terminal': 'Terminal',
+    '/operations/runbooks': 'Runbooks',
+    '/operations/yaml': 'YAML Editor',
+    '/operations/yaml-diff': 'YAML Diff',
+    '/operations/audit': 'Audit',
+    '/operations/schedule': 'Schedules',
+    '/infrastructure/network': 'Network',
+    '/infrastructure/graph': 'Service Map',
+    '/infrastructure/gateway-monitor': 'Gateway',
+    '/infrastructure/gitops': 'GitOps',
+    '/infrastructure/policy': 'Policy',
+    '/infrastructure/mesh': 'Service Mesh',
+    '/infrastructure/integrations': 'Integrations',
+    '/infrastructure/compare': 'Compare',
+    '/infrastructure/helm': 'Helm',
+    '/infrastructure/port-forwards': 'Port Forwards',
+    '/infrastructure/blast-radius': 'Blast Radius',
+    '/infrastructure/taints': 'Node Taints',
+    '/infrastructure/node-ops': 'Node Operations',
+    '/infrastructure/resource-ops': 'Resource Operations',
+    '/cost-analytics/analytics': 'Analytics',
+    '/cost-analytics/cost': 'Optimization',
+    '/cost-analytics/cost-estimate': 'Cost Estimate',
+    '/cost-analytics/rightsizing': 'Right-Sizing',
+    '/cost-analytics/stats': 'Usage Analytics',
+    '/cost-analytics/chargeback': 'Chargeback',
+    '/cost-analytics/idle-resources': 'Idle Resources',
+    '/intelligence/ai': 'AI Assistant',
+    '/intelligence/search': 'Search',
+    '/intelligence/pins': 'Pins',
+    '/intelligence/watches': 'Watches',
+    '/intelligence/profiles': 'Profiles',
+    '/intelligence/plugins': 'Plugins',
+    '/intelligence/settings': 'Settings',
   };
 
   constructor() {
@@ -80,12 +103,14 @@ export class BreadcrumbComponent {
       filter(e => e instanceof NavigationEnd)
     ).subscribe((e: any) => {
       const path = e.urlAfterRedirects || e.url;
-      const basePath = '/' + path.split('/')[1]?.split('?')[0];
-      const label = this.labels[basePath] || this.titleCase(basePath);
+      const routePath = '/' + path.split('?')[0].split('/').filter(Boolean).join('/');
+      const segments = routePath.split('/').filter(Boolean);
+      const pagePath = '/' + segments.slice(0, 2).join('/');
+      const label = this.labels[pagePath] || this.titleCase(segments[1] || segments[0] || 'Home');
 
       // Keep last 3 in trail, avoid duplicates at end
-      if (this.trail.length === 0 || this.trail[this.trail.length - 1].path !== basePath) {
-        this.trail.push({ label, path: basePath });
+      if (this.trail.length === 0 || this.trail[this.trail.length - 1].path !== pagePath) {
+        this.trail.push({ label, path: pagePath });
         if (this.trail.length > 3) this.trail.shift();
       }
     });

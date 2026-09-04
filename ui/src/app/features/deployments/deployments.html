@@ -1,115 +1,246 @@
-<!-- ─── Header ─────────────────────────────────────────────────────── -->
-<app-intel-header title="Deployments" icon="pi pi-send"
-  [subtitle]="deployments.length + ' deployments · ' + (lastUpdated || 'loading...')">
-  <app-live-indicator [active]="autoRefresh" label="AUTO" offLabel="PAUSED" (click)="toggleAutoRefresh()" />
-  <button class="ctrl-btn" (click)="refresh()" pTooltip="Refresh"><i class="pi pi-refresh" [class.spinning]="loading"></i></button>
-</app-intel-header>
+<section class="deployments-page" aria-label="Deployment operations">
+  <app-intel-header title="Deployments" icon="pi pi-send"
+    [subtitle]="deployments.length + ' workloads / ' + (lastUpdated || 'syncing')">
+    <button class="live-toggle" type="button" [attr.aria-pressed]="autoRefresh"
+      [attr.aria-label]="autoRefresh ? 'Pause automatic refresh' : 'Enable automatic refresh'"
+      (click)="toggleAutoRefresh()">
+      <app-live-indicator [active]="autoRefresh" label="AUTO" offLabel="PAUSED" />
+    </button>
+    <button class="ctrl-btn" type="button" (click)="refresh()" aria-label="Refresh deployments" pTooltip="Refresh">
+      <i class="pi pi-refresh" aria-hidden="true" [class.spinning]="loading"></i>
+    </button>
+  </app-intel-header>
 
-<!-- ─── Metrics ────────────────────────────────────────────────────── -->
-<div class="metrics-strip">
-  <app-metric-tile label="Total" [value]="'' + deployments.length" accent="cyan" />
-  <app-metric-tile label="Healthy" [value]="'' + healthyCount" accent="green" />
-  @if (warningCount > 0) {
-    <app-metric-tile label="Warning" [value]="'' + warningCount" accent="amber" />
-  }
-  @if (criticalCount > 0) {
-    <app-metric-tile label="Critical" [value]="'' + criticalCount" accent="red" />
-  }
-</div>
-
-<!-- ─── Filter Bar ─────────────────────────────────────────────────── -->
-<app-command-bar
-  [pills]="filterPills"
-  [activePill]="statusFilter"
-  [search]="searchQuery"
-  placeholder="Filter deployments..."
-  (pillChange)="onFilterChange($event)"
-  (searchChange)="onSearchChange($event)" />
-
-<!-- ─── Deployment List ────────────────────────────────────────────── -->
-<div class="dep-list">
-  @for (dep of filtered; track dep.name) {
-    <div class="dep-card" [class.dep-degraded]="depSeverity(dep) !== 'healthy'">
-      <app-status-beacon [status]="depBeaconStatus(dep)" size="md" [pulse]="depSeverity(dep) === 'critical'" />
-      <div class="dep-body">
-        <div class="dep-top">
-          <code class="dep-name">{{ dep.name }}</code>
-          <p-tag [value]="severityLabel(dep)" [severity]="severityTag(dep)" [rounded]="true" />
-          @if (depScore(dep) !== null) {
-            <span class="dep-score" [class.score-ok]="depScore(dep)! >= 80"
-                  [class.score-warn]="depScore(dep)! >= 40 && depScore(dep)! < 80"
-                  [class.score-crit]="depScore(dep)! < 40">
-              {{ depScore(dep) }}
-            </span>
-          }
-          @if (depTrend(dep) !== null && depTrend(dep) !== 0) {
-            <span class="dep-trend" [class.trend-down]="depTrend(dep)! < 0" [class.trend-up]="depTrend(dep)! > 0">
-              {{ depTrend(dep)! > 0 ? '↑' : '↓' }}{{ Math.abs(depTrend(dep)!) }}
-            </span>
-          }
-          @if (depReason(dep)) {
-            <span class="dep-reason">{{ depReason(dep) }}</span>
-          }
+  <div class="deployment-deck" aria-label="Deployment control overview">
+    <div class="deck-primary">
+      <span class="deck-kicker"><i class="pi pi-sliders-h" aria-hidden="true"></i> Runtime inventory</span>
+      <h2>Workload fleet</h2>
+      <p>Observe readiness, health signals, and rollout control from one operational surface.</p>
+      <div class="deck-chips" aria-label="Deployment surface capabilities">
+        <span><i class="pi pi-chart-line" aria-hidden="true"></i> Replica health</span>
+        <span><i class="pi pi-history" aria-hidden="true"></i> Rollout history</span>
+      </div>
+    </div>
+    <div class="deck-readout" aria-label="Deployment health telemetry">
+      <div class="telemetry-head">
+        <div>
+          <span class="telemetry-kicker">Health signal</span>
+          <strong>Deployment telemetry</strong>
         </div>
-        <div class="replica-row">
-          <div class="replica-dots">
-            @for (i of replicaArray(dep.desired); track i) {
-              <span class="replica-dot" [class.filled]="i < dep.available" [class.missing]="i >= dep.available"></span>
-            }
-          </div>
-          <span class="replica-label">{{ dep.available }}/{{ dep.desired }}</span>
+        <span class="telemetry-total">{{ healthyCount }}/{{ deployments.length }}</span>
+      </div>
+      <div class="telemetry-track" aria-hidden="true">
+        <span class="telemetry-segment segment-critical" [style.width.%]="deployments.length ? criticalCount / deployments.length * 100 : 0"></span>
+        <span class="telemetry-segment segment-warning" [style.width.%]="deployments.length ? warningCount / deployments.length * 100 : 0"></span>
+        <span class="telemetry-segment segment-healthy" [style.width.%]="deployments.length ? healthyCount / deployments.length * 100 : 0"></span>
+      </div>
+      <div class="telemetry-legend">
+        <span><i class="legend-dot legend-critical" aria-hidden="true"></i> Critical <b>{{ criticalCount }}</b></span>
+        <span><i class="legend-dot legend-warning" aria-hidden="true"></i> Warning <b>{{ warningCount }}</b></span>
+        <span><i class="legend-dot legend-healthy" aria-hidden="true"></i> Healthy <b>{{ healthyCount }}</b></span>
+      </div>
+      <div class="readout-grid">
+        <div class="readout-item">
+          <span>Sync mode</span>
+          <strong [class.readout-live]="autoRefresh">{{ autoRefresh ? 'LIVE' : 'PAUSED' }}</strong>
+          <small>{{ autoRefresh ? '30 second polling' : 'manual refresh' }}</small>
+        </div>
+        <div class="readout-item">
+          <span>Last signal</span>
+          <strong class="readout-time">{{ lastUpdated || 'Pending' }}</strong>
+          <small>{{ healthError ? 'replica fallback' : 'health telemetry' }}</small>
         </div>
       </div>
-      <div class="dep-actions">
-        <app-action-icon icon="pi pi-search-plus" tooltip="Investigate" accent="cyan" (clicked)="investigate(dep)" />
-        <app-action-icon icon="pi pi-replay" tooltip="Restart" accent="cyan" (clicked)="onRestart(dep)" />
-        <app-action-icon icon="pi pi-arrows-v" tooltip="Scale" accent="green" (clicked)="onScale(dep)" />
-        <app-action-icon icon="pi pi-history" tooltip="History" accent="cyan" (clicked)="viewRollout(dep)" />
-        <app-action-icon icon="pi pi-box" tooltip="Pods" accent="purple" (clicked)="viewPods(dep)" />
-      </div>
+    </div>
+  </div>
+
+  <div class="metrics-strip" aria-label="Deployment health summary">
+    <app-metric-tile label="Workloads" [value]="'' + deployments.length" accent="cyan" />
+    <app-metric-tile label="Healthy" [value]="'' + healthyCount" accent="green" />
+    @if (warningCount > 0) { <app-metric-tile label="Warning" [value]="'' + warningCount" accent="amber" /> }
+    @if (criticalCount > 0) { <app-metric-tile label="Critical" [value]="'' + criticalCount" accent="red" /> }
+    <div class="metrics-context">
+      <span class="metrics-context-label">Signal mode</span>
+      <strong>{{ statusFilter === 'all' ? 'FLEET' : statusFilter.toUpperCase() }}</strong>
+      <span>{{ healthError ? 'replica fallback' : 'health telemetry' }}</span>
+    </div>
+  </div>
+
+  @if (healthError && deployments.length > 0) {
+    <div class="health-notice" role="status">
+      <i class="pi pi-chart-line" aria-hidden="true"></i>
+      <span>Health analytics unavailable. Replica status is still live.</span>
+      <button class="text-button" type="button" (click)="refresh()">Retry health check</button>
     </div>
   }
 
-  @if (filtered.length === 0 && searchQuery) {
-    <div class="empty-state"><div class="empty-icon"><i class="pi pi-search"></i></div><span>No deployments matching "{{ searchQuery }}"</span></div>
-  }
-  @if (filtered.length === 0 && !searchQuery && !loadError) {
-    <div class="empty-state"><div class="empty-icon"><i class="pi pi-send"></i></div><span>No deployments in this namespace</span></div>
-  }
-  @if (loadError) {
-    <div class="empty-state"><div class="empty-icon"><i class="pi pi-exclamation-triangle"></i></div><span>Failed to load</span><button class="ctrl-btn ctrl-btn-wide" (click)="refresh()">Retry</button></div>
-  }
-</div>
+  <div class="filter-section">
+    <div class="filter-section-head">
+      <div>
+        <span class="section-label">Fleet filter</span>
+        <strong>Find a workload target</strong>
+      </div>
+      <span class="filter-hint">{{ filtered.length }} of {{ deployments.length }} shown</span>
+    </div>
+    <app-command-bar
+      [pills]="filterPills"
+      [activePill]="statusFilter"
+      [search]="searchQuery"
+      placeholder="Filter deployments..."
+      (pillChange)="onFilterChange($event)"
+      (searchChange)="onSearchChange($event)" />
+  </div>
 
-<!-- ─── AI Drawer ──────────────────────────────────────────────────── -->
+  <section class="deployment-section" aria-labelledby="deployment-list-heading">
+    <div class="section-heading">
+      <div>
+        <span class="section-label">Deployment topology</span>
+        <h3 id="deployment-list-heading">Workload targets</h3>
+      </div>
+      <span class="section-count">{{ filtered.length }} visible</span>
+    </div>
+
+  @if (filtered.length > 0) {
+    <div class="dep-list-header" aria-hidden="true">
+      <span>Target</span>
+      <span>Replica health</span>
+      <span>Controls</span>
+    </div>
+  }
+
+  <div class="dep-list" aria-live="polite">
+    @for (dep of filtered; track dep.name) {
+      <article class="dep-card" [class.dep-degraded]="depSeverity(dep) !== 'healthy'" [attr.data-severity]="depSeverity(dep)">
+        <div class="dep-status-rail" aria-hidden="true"></div>
+        <app-status-beacon [status]="depBeaconStatus(dep)" size="md" [pulse]="depSeverity(dep) === 'critical'" />
+        <div class="dep-body">
+          <div class="dep-top">
+            <code class="dep-name">{{ dep.name }}</code>
+            <p-tag [value]="severityLabel(dep)" [severity]="severityTag(dep)" [rounded]="true" />
+            @if (depScore(dep) !== null) {
+              <span class="dep-score" [class.score-ok]="depScore(dep)! >= 80"
+                [class.score-warn]="depScore(dep)! >= 40 && depScore(dep)! < 80"
+                [class.score-crit]="depScore(dep)! < 40" [attr.aria-label]="'Health score ' + depScore(dep)">
+                {{ depScore(dep) }}<small>/100</small>
+              </span>
+            }
+            @if (depTrend(dep) !== null && depTrend(dep) !== 0) {
+              <span class="dep-trend" [class.trend-down]="depTrend(dep)! < 0" [class.trend-up]="depTrend(dep)! > 0">
+                {{ depTrend(dep)! > 0 ? '↑' : '↓' }}{{ Math.abs(depTrend(dep)!) }}<span>1h</span>
+              </span>
+            }
+          </div>
+          <div class="dep-replica-meta">
+            <span class="replica-label">{{ replicaStatus(dep) }}</span>
+            @if (depReason(dep)) { <span class="dep-reason">{{ depReason(dep) }}</span> }
+          </div>
+        </div>
+        <div class="dep-readiness" [attr.aria-label]="dep.available + ' of ' + dep.desired + ' replicas ready'">
+          <div class="replica-track" aria-hidden="true">
+            <span class="replica-progress" [style.width.%]="replicaProgress(dep)"></span>
+          </div>
+          <span class="replica-count">{{ dep.available }}/{{ dep.desired }}</span>
+        </div>
+        <div class="dep-actions" role="group" [attr.aria-label]="'Actions for ' + dep.name">
+          <app-action-icon icon="pi pi-search-plus" tooltip="Investigate" accent="cyan" (clicked)="investigate(dep)" />
+          <app-action-icon icon="pi pi-replay" tooltip="Restart" accent="cyan" (clicked)="onRestart(dep)" />
+          <app-action-icon icon="pi pi-arrows-v" tooltip="Scale" accent="green" (clicked)="onScale(dep)" />
+          <app-action-icon icon="pi pi-history" tooltip="History" accent="cyan" (clicked)="viewRollout(dep)" />
+          <app-action-icon icon="pi pi-box" tooltip="Pods" accent="purple" (clicked)="viewPods(dep)" />
+        </div>
+      </article>
+    }
+
+    @if (loading && deployments.length === 0) {
+      @for (row of [1, 2, 3]; track row) {
+        <div class="dep-skeleton" aria-hidden="true">
+          <span class="skeleton-rail"></span>
+          <span class="skeleton-dot"></span>
+          <span class="skeleton-line skeleton-name"></span>
+          <span class="skeleton-line skeleton-status"></span>
+          <span class="skeleton-line skeleton-actions"></span>
+        </div>
+      }
+      <div class="loading-caption" role="status"><i class="pi pi-spin pi-spinner" aria-hidden="true"></i> Loading deployments...</div>
+    }
+
+    @if (filtered.length === 0 && searchQuery && !loading) {
+      <div class="empty-state" role="status"><i class="pi pi-search empty-icon" aria-hidden="true"></i><strong>No deployments match this search</strong><span>Try a different name or clear the search.</span></div>
+    }
+    @if (filtered.length === 0 && !searchQuery && deployments.length === 0 && !loading && !loadError) {
+      <div class="empty-state" role="status"><i class="pi pi-send empty-icon" aria-hidden="true"></i><strong>No deployments in this namespace</strong><span>Deployments will appear here when workloads are applied.</span></div>
+    }
+    @if (loadError && deployments.length === 0) {
+      <div class="error-state" role="alert"><i class="pi pi-exclamation-triangle" aria-hidden="true"></i><span>Failed to load deployments. Check cluster connectivity.</span><button class="text-button" type="button" (click)="refresh()">Retry</button></div>
+    }
+  </div>
+  </section>
+</section>
+
 <app-ai-insight-drawer [visible]="aiDrawerVisible" [loading]="aiLoading" [resourceName]="selectedDepName" [summary]="aiSummary" [findings]="aiFindings" [reasoning]="aiReasoning" (closed)="aiDrawerVisible = false" />
 
-<!-- ─── Rollout Dialog ─────────────────────────────────────────────── -->
-<p-dialog [(visible)]="rolloutVisible" [header]="'Rollout — ' + rolloutName" [modal]="true" [maximizable]="true" styleClass="fullscreen-dialog" [appendTo]="'body'">
-  @if (rolloutData) {
-    <div class="rollout-section"><h4>Status</h4><pre class="rollout-pre">{{ rolloutData.status }}</pre></div>
-    <div class="rollout-section"><h4>History</h4><pre class="rollout-pre">{{ rolloutData.history }}</pre></div>
-  } @else {
-    <div class="dialog-loading"><div class="loader-ring"></div></div>
+<p-dialog [(visible)]="rolloutVisible" [header]="'Rollout - ' + rolloutName" [modal]="true" [maximizable]="true" styleClass="fullscreen-dialog" [appendTo]="'body'">
+  @if (rolloutLoading) {
+    <div class="dialog-loading" role="status"><div class="loader-ring"></div><span>Loading rollout history...</span></div>
+  } @else if (rolloutError) {
+    <div class="rollout-error" role="alert">
+      <i class="pi pi-exclamation-triangle" aria-hidden="true"></i>
+      <strong>{{ rolloutError }}</strong>
+      <button class="text-button" type="button" (click)="retryRollout()">Retry</button>
+    </div>
+  } @else if (rolloutData) {
+    @if (rolloutData.status; as status) {
+      <div class="rollout-section">
+        <h4>Status</h4>
+        <div class="rollout-status-grid">
+          <div><span>Desired</span><strong>{{ status.desired }}</strong></div>
+          <div><span>Ready</span><strong>{{ status.ready }}</strong></div>
+          <div><span>Available</span><strong>{{ status.available }}</strong></div>
+          <div><span>Updated</span><strong>{{ status.updated }}</strong></div>
+        </div>
+        <div class="rollout-meta">
+          <span>Strategy: <strong>{{ status.strategy }}</strong></span>
+          @if (status.image) { <code>{{ status.image }}</code> }
+        </div>
+        @if (status.stuck) {
+          <div class="rollout-warning"><i class="pi pi-exclamation-triangle" aria-hidden="true"></i> Rollout has exceeded its progress deadline.</div>
+        }
+        @if (status.conditions.length > 0) {
+          <div class="rollout-conditions">
+            @for (condition of status.conditions; track condition.type) {
+              <div class="rollout-condition">
+                <span class="condition-status" [class.condition-good]="condition.status === 'True'">{{ condition.status }}</span>
+                <div><strong>{{ condition.type }}</strong><span>{{ condition.reason || condition.message || 'No additional details' }}</span></div>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    } @else {
+      <div class="rollout-empty" role="status"><i class="pi pi-info-circle" aria-hidden="true"></i><span>Rollout status is unavailable.</span></div>
+    }
+    <div class="rollout-section">
+      <h4>History</h4>
+      <pre class="rollout-pre">{{ rolloutData.history || 'No rollout history available.' }}</pre>
+    </div>
   }
 </p-dialog>
 
-<!-- ─── Scale Dialog ───────────────────────────────────────────────── -->
 <p-dialog [(visible)]="scaleVisible" header="Scale Deployment" [modal]="true" [style]="{ width: '400px' }" [appendTo]="'body'">
   <div class="scale-form">
     <div class="scale-header"><code>{{ scaleName }}</code><span class="scale-current">Current: {{ scaleCurrentReplicas }}</span></div>
     <div class="scale-visual">
-      <button class="scale-btn" (click)="scaleReplicas = Math.max(0, scaleReplicas - 1)">−</button>
+      <button class="scale-btn" type="button" (click)="scaleReplicas = Math.max(0, scaleReplicas - 1)" aria-label="Decrease replicas">-</button>
       <span class="scale-number">{{ scaleReplicas }}</span>
-      <button class="scale-btn" (click)="scaleReplicas = scaleReplicas + 1">+</button>
+      <button class="scale-btn" type="button" (click)="scaleReplicas = scaleReplicas + 1" aria-label="Increase replicas">+</button>
     </div>
     <div class="scale-dots">
       @for (i of replicaArray(scaleReplicas); track i) { <span class="replica-dot filled"></span> }
-      @if (scaleReplicas === 0) { <span class="scale-zero">⚠ Scale to zero</span> }
+      @if (scaleReplicas === 0) { <span class="scale-zero"><i class="pi pi-exclamation-triangle" aria-hidden="true"></i> Scale to zero</span> }
     </div>
     <div class="scale-actions">
-      <button class="ctrl-btn ctrl-btn-wide" (click)="scaleVisible = false">Cancel</button>
-      <button class="ctrl-btn ctrl-btn-wide scale-apply" (click)="confirmScale()" [disabled]="scaleReplicas === scaleCurrentReplicas">Apply</button>
+      <button class="ctrl-btn ctrl-btn-wide" type="button" (click)="scaleVisible = false">Cancel</button>
+      <button class="ctrl-btn ctrl-btn-wide scale-apply" type="button" (click)="confirmScale()" [disabled]="scaleReplicas === scaleCurrentReplicas">Apply</button>
     </div>
   </div>
 </p-dialog>

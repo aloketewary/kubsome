@@ -25,11 +25,15 @@ def get_raw_resources(kind, context_name, namespace=None, selector=None, field_s
     if sort_by:
         command.extend(["--sort-by", sort_by])
 
-    result = subprocess.run(
-        command,
-        capture_output=True,
-        text=True
-    )
+    try:
+        result = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
+    except subprocess.TimeoutExpired:
+        return {"items": []}
 
     if result.returncode != 0 or not result.stdout.strip():
         return {"items": []}
@@ -91,9 +95,12 @@ def get_pod_names():
         "-o", "jsonpath={.items[*].metadata.name}"
     ])
 
-    result = subprocess.run(
-        command, capture_output=True, text=True
-    )
+    try:
+        result = subprocess.run(
+            command, capture_output=True, text=True, timeout=15
+        )
+    except subprocess.TimeoutExpired:
+        return []
 
     if result.returncode != 0:
         return []

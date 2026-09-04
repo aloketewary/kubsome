@@ -29,15 +29,19 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
     return next(req);
   }
 
-  // Always go through fetchToken() — it returns immediately if cached
   return from(fetchToken()).pipe(
     switchMap(token => {
-      if (token) {
-        return next(req.clone({
-          setHeaders: { Authorization: `Bearer ${token}` },
-        }));
-      }
-      return next(req);
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const context = sessionStorage.getItem('kubsome_context');
+      const namespace = sessionStorage.getItem('kubsome_namespace');
+      if (context) headers['X-Kubsome-Context'] = context;
+      if (namespace) headers['X-Kubsome-Namespace'] = namespace;
+
+      return next(Object.keys(headers).length
+        ? req.clone({ setHeaders: headers })
+        : req);
     })
   );
 };

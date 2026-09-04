@@ -181,7 +181,7 @@ def get_revision_diff(name: str):
         "kubectl", "--context", kctx,
         "rollout", "history", f"deployment/{name}", "-n", ns
     ]
-    r = subprocess.run(cmd, capture_output=True, text=True)
+    r = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
     if r.returncode != 0:
         return {"error": r.stderr.strip(), "revisions": []}
 
@@ -211,8 +211,8 @@ def get_revision_diff(name: str):
             "rollout", "history", f"deployment/{name}",
             f"--revision={rev_b}", "-n", ns
         ]
-        ra = subprocess.run(cmd_a, capture_output=True, text=True)
-        rb = subprocess.run(cmd_b, capture_output=True, text=True)
+        ra = subprocess.run(cmd_a, capture_output=True, text=True, timeout=15)
+        rb = subprocess.run(cmd_b, capture_output=True, text=True, timeout=15)
 
         if ra.returncode == 0 and rb.returncode == 0:
             # Simple line diff

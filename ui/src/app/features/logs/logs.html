@@ -1,92 +1,273 @@
+<section class="logs-page" aria-label="Kubernetes logs workspace">
 <app-intel-header title="Logs" icon="pi pi-align-left"
-  [subtitle]="(selectedPod || 'select a pod') + ' · ' + lines.length + ' lines'">
-  <app-live-indicator [active]="streaming" label="LIVE" offLabel="STREAM" (click)="toggleLive()" />
+  [subtitle]="(selectedPod || 'select a pod') + ' · ' + lines.length + ' lines' + (loadingLogs ? ' · loading' : '')">
+  <button class="watch-control" type="button" (click)="toggleLive()"
+    [attr.aria-label]="streaming ? 'Stop live log stream' : 'Start live log stream'">
+    <app-live-indicator [active]="streaming" label="LIVE" offLabel="STREAM" />
+  </button>
 </app-intel-header>
 
-<!-- Controls -->
-<div class="log-controls">
-  <p-select [options]="podOptions" [(ngModel)]="selectedPod" placeholder="Select pod..." [style]="{ width: '220px' }" [filter]="true" optionLabel="label" optionValue="value" (ngModelChange)="onPodChange()" />
-  @if (containerOptions.length > 1) {
-    <p-select [options]="containerOptions" [(ngModel)]="selectedContainer" placeholder="All containers" [style]="{ width: '160px' }" optionLabel="label" optionValue="value" [showClear]="true" />
-  }
-  <div class="tail-group">
-    @for (t of tailOptions; track t) {
-      <button class="tail-btn" [class.tail-active]="tailSize === t" (click)="tailSize = t">{{ t }}</button>
+<div class="logs-deck" aria-label="Log telemetry overview">
+  <div class="deck-primary">
+    <span class="deck-kicker"><i class="pi pi-align-left" aria-hidden="true"></i> Log telemetry</span>
+    <h2>Workload output</h2>
+    <p>Inspect container output, isolate signal, and follow live workload activity.</p>
+    <div class="deck-chips" aria-label="Log viewer capabilities">
+      <span><i class="pi pi-search" aria-hidden="true"></i> Searchable output</span>
+      <span><i class="pi pi-copy" aria-hidden="true"></i> Export controls</span>
+    </div>
+  </div>
+  <div class="telemetry-panel" aria-label="Current log telemetry">
+    <div class="telemetry-head">
+      <div>
+        <span class="telemetry-kicker">Stream status</span>
+        <strong>{{ selectedPod || 'No pod selected' }}</strong>
+      </div>
+      <span class="telemetry-total">{{ lines.length }} lines</span>
+    </div>
+    <div class="log-balance">
+      <div class="balance-row">
+        <span>Errors</span>
+        <div class="balance-track" aria-hidden="true"><span class="balance-error" [style.width.%]="lines.length ? errorCount / lines.length * 100 : 0"></span></div>
+        <strong>{{ errorCount }}</strong>
+      </div>
+      <div class="balance-row">
+        <span>Warnings</span>
+        <div class="balance-track" aria-hidden="true"><span class="balance-warning" [style.width.%]="lines.length ? warnCount / lines.length * 100 : 0"></span></div>
+        <strong>{{ warnCount }}</strong>
+      </div>
+    </div>
+    <div class="telemetry-legend">
+      <span><i class="legend-stream" aria-hidden="true"></i> {{ streaming ? 'Live stream' : 'Snapshot' }}</span>
+      <span><i class="legend-context" aria-hidden="true"></i> {{ filteredLines.length }} shown</span>
+    </div>
+  </div>
+</div>
+
+<section class="command-deck filter-section" aria-labelledby="source-title">
+  <div class="deck-context">
+    <div class="deck-heading">
+      <span class="section-kicker">Source</span>
+      <h2 id="source-title" class="deck-title">Workload output</h2>
+    </div>
+    <div class="source-state">
+      <app-status-beacon [status]="streaming ? 'ok' : selectedPod ? 'info' : 'idle'" size="sm" [pulse]="streaming" />
+      <span>{{ streaming ? 'Live stream' : selectedPod ? 'Ready' : 'No source' }}</span>
+    </div>
+  </div>
+
+  <div class="log-controls">
+    <div class="control-field control-field-pod">
+      <label for="log-pod">Pod</label>
+      <p-select inputId="log-pod" [options]="podOptions" [(ngModel)]="selectedPod" placeholder="Select pod..."
+        [style]="{ width: '100%' }" [filter]="true" optionLabel="label" optionValue="value" [disabled]="loadingPods"
+        (ngModelChange)="onPodChange()" />
+      @if (loadingPods) {
+      <span class="control-status"><i class="pi pi-spin pi-spinner" aria-hidden="true"></i> Loading pods</span>
+      }
+    </div>
+
+    @if (containerOptions.length > 1) {
+    <div class="control-field control-field-container">
+      <label for="log-container">Container</label>
+      <p-select inputId="log-container" [options]="containerOptions" [(ngModel)]="selectedContainer"
+        placeholder="All containers" [style]="{ width: '100%' }" optionLabel="label" optionValue="value"
+        [showClear]="true" [disabled]="loadingContainers" />
+      @if (loadingContainers) {
+      <span class="control-status"><i class="pi pi-spin pi-spinner" aria-hidden="true"></i> Loading</span>
+      }
+    </div>
+    }
+
+    <div class="control-field control-field-tail">
+      <span class="field-label">Tail lines</span>
+      <div class="tail-group" role="group" aria-label="Number of lines to fetch">
+        @for (t of tailOptions; track t) {
+        <button type="button" class="tail-btn" [class.tail-active]="tailSize === t" [attr.aria-pressed]="tailSize === t"
+          (click)="tailSize = t">{{ t }}</button>
+        }
+      </div>
+    </div>
+
+    <div class="source-actions" aria-label="Log actions">
+      <button type="button" class="ctrl-btn ctrl-btn-wide fetch-btn" (click)="fetchLogs()"
+        [disabled]="!selectedPod || loadingLogs">
+        <i class="pi" [class.pi-download]="!loadingLogs" [class.pi-spin]="loadingLogs" [class.pi-spinner]="loadingLogs"
+          aria-hidden="true"></i>
+        {{ loadingLogs ? 'Fetching' : 'Fetch logs' }}
+      </button>
+      <button type="button" class="ctrl-btn ctrl-btn-wide" [class.ctrl-btn-warn]="watching" (click)="toggleWatch()"
+        [disabled]="!selectedPod">
+        <i class="pi" [class.pi-sync]="!watching" [class.pi-stop-circle]="watching" aria-hidden="true"></i>
+        {{ watching ? 'Unwatch' : 'Watch' }}
+      </button>
+    </div>
+  </div>
+</section>
+
+@if (errorMessage) {
+<div class="log-alert" role="alert">
+  <i class="pi pi-exclamation-triangle" aria-hidden="true"></i>
+  <span>{{ errorMessage }}</span>
+  <button type="button" class="ctrl-btn ctrl-btn-wide" (click)="retry()">
+    <i class="pi pi-refresh" aria-hidden="true"></i> Retry
+  </button>
+</div>
+}
+
+@if (fetched && errorSummary.length > 0) {
+<section class="error-rail" aria-labelledby="error-summary-title">
+  <div class="error-rail-heading">
+    <app-status-beacon status="critical" size="sm" />
+    <div>
+      <span class="section-kicker">Failure patterns</span>
+      <h2 id="error-summary-title" class="error-summary-title">{{ errorCount }} errors found</h2>
+    </div>
+  </div>
+  <div class="error-summary-items">
+    @for (item of errorSummary; track item.pattern) {
+    <button type="button" class="error-summary-row" (click)="jumpToErrorAt(item.firstIndex)"
+      [attr.aria-label]="'Jump to error: ' + item.pattern">
+      <span class="error-pattern" [pTooltip]="item.pattern">{{ item.pattern }}</span>
+      <span class="error-pattern-count">{{ item.count }}×</span>
+      <span class="error-jump-affordance"><i class="pi pi-arrow-down" aria-hidden="true"></i> Jump</span>
+    </button>
     }
   </div>
-  <button class="ctrl-btn ctrl-btn-wide" (click)="fetchLogs()" [class.disabled]="!selectedPod"><i class="pi pi-download"></i> Fetch</button>
-  <button class="ctrl-btn ctrl-btn-wide" [class.ctrl-btn-warn]="watching" (click)="toggleWatch()" [class.disabled]="!selectedPod"><i class="pi" [class.pi-sync]="!watching" [class.pi-stop-circle]="watching"></i> {{ watching ? 'Unwatch' : 'Watch' }}</button>
-</div>
-
-<!-- ━━━ P0: Error Summary ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
-@if (fetched && errorSummary.length > 0) {
-  <div class="error-summary">
-    <div class="error-summary-header">
-      <span class="error-summary-title">Errors Found</span>
-      <span class="error-summary-count">{{ errorCount }}</span>
-    </div>
-    <div class="error-summary-items">
-      @for (item of errorSummary; track item.pattern) {
-        <div class="error-summary-row">
-          <span class="error-pattern">{{ item.pattern }}</span>
-          <span class="error-pattern-count">{{ item.count }}×</span>
-          <button class="error-jump-btn" (click)="jumpToErrorAt(item.firstIndex)">Jump</button>
-        </div>
-      }
-    </div>
-    <div class="error-nav">
-      <button class="ctrl-btn ctrl-btn-sm" (click)="jumpToFirstError()"><i class="pi pi-step-backward"></i> First</button>
-      <button class="ctrl-btn ctrl-btn-sm" (click)="jumpToPrevError()"><i class="pi pi-chevron-left"></i> Prev</button>
-      <button class="ctrl-btn ctrl-btn-sm" (click)="jumpToNextError()">Next <i class="pi pi-chevron-right"></i></button>
-      @if (selectedPod) {
-        <button class="ctrl-btn ctrl-btn-sm error-action" (click)="router.navigate(['/investigate'], { queryParams: { target: selectedPod } })"><i class="pi pi-search"></i> Investigate</button>
-      }
-    </div>
+  <div class="error-nav" role="group" aria-label="Error navigation">
+    <button type="button" class="ctrl-btn ctrl-btn-sm" (click)="jumpToFirstError()" [disabled]="errorCount === 0">
+      <i class="pi pi-angle-double-left" aria-hidden="true"></i>
+    </button>
+    <button type="button" class="ctrl-btn ctrl-btn-sm" (click)="jumpToPrevError()" [disabled]="errorCount === 0">
+      <i class="pi pi-angle-left" aria-hidden="true"></i>
+    </button>
+    <button type="button" class="ctrl-btn ctrl-btn-sm" (click)="jumpToNextError()" [disabled]="errorCount === 0">
+      <i class="pi pi-angle-right" aria-hidden="true"></i>
+    </button>
+    @if (selectedPod) {
+    <button type="button" class="ctrl-btn ctrl-btn-sm error-action"
+      (click)="router.navigate(['/monitor/investigate'], { queryParams: { target: selectedPod } })">
+      <i class="pi pi-search" aria-hidden="true"></i>
+    </button>
+    }
   </div>
+</section>
 }
 
-<!-- Toolbar -->
-@if (lines.length > 0 || streaming) {
-  <div class="log-toolbar">
-    <div class="tb-left">
-      <app-metric-tile label="Lines" [value]="'' + lines.length" accent="cyan" />
-      @if (errorCount > 0) { <app-metric-tile label="Errors" [value]="'' + errorCount" accent="red" /> }
-      @if (streaming) { <app-status-beacon status="ok" size="sm" [pulse]="true" /> <span class="tb-streaming">Streaming</span> }
-    </div>
-    <div class="tb-right">
-      <app-command-bar [pills]="filterPills" [activePill]="levelFilter" [search]="searchQuery" placeholder="Search logs..." [showSearch]="true" (pillChange)="onLevelChange($event)" (searchChange)="searchQuery = $event; filterLines()" />
-    </div>
+@if (lines.length > 0 || streaming || loadingLogs) {
+<section class="signal-strip" aria-labelledby="signal-title">
+  <div class="signal-label">
+    <span class="section-kicker">Signal</span>
+    <h2 id="signal-title">Current output</h2>
   </div>
+  <div class="signal-metrics">
+    <app-metric-tile label="Lines" [value]="'' + lines.length" accent="cyan" />
+    <app-metric-tile label="Shown" [value]="'' + filteredLines.length" accent="purple" />
+    @if (errorCount > 0) { <app-metric-tile label="Errors" [value]="'' + errorCount" accent="red" /> }
+    @if (warnCount > 0) { <app-metric-tile label="Warnings" [value]="'' + warnCount" accent="amber" /> }
+    @if (streaming) {
+    <span class="streaming-state"><app-status-beacon status="ok" size="sm" [pulse]="true" /> Streaming</span>
+    }
+  </div>
+  <div class="signal-filter">
+    <span class="filter-label">Filter output</span>
+    <app-command-bar [pills]="filterPills" [activePill]="levelFilter" [search]="searchQuery"
+      placeholder="Search logs..." [showSearch]="true" (pillChange)="onLevelChange($event)"
+      (searchChange)="onSearchChange($event)" />
+  </div>
+</section>
 }
 
-<!-- Log Viewer -->
 <div class="log-container" [class.log-fs]="fullscreen" #logEl>
-  @if (filteredLines.length > 0) {
-    <div class="log-viewer">
-      @for (line of filteredLines; track $index) {
-        <div class="log-line" [class]="lineClass(line)">
-          <span class="ln">{{ $index + 1 }}</span>
-          <span class="ll">{{ lineLevel(line) }}</span>
-          <span class="lt">{{ line }}</span>
-        </div>
-      }
+  <div class="viewer-head">
+    <div class="viewer-title-block">
+      <span class="section-kicker">Terminal output</span>
+      <h2 class="viewer-title">{{ selectedPod || 'Select a pod to begin' }}</h2>
     </div>
+    <div class="viewer-status">
+      @if (streaming) {
+      <app-status-beacon status="ok" size="sm" [pulse]="true" />
+      <span>Live</span>
+      } @else if (loadingLogs) {
+      <app-status-beacon status="warning" size="sm" [pulse]="true" />
+      <span>Fetching</span>
+      } @else {
+      <app-status-beacon [status]="lines.length > 0 ? 'info' : 'idle'" size="sm" />
+      <span>{{ lines.length > 0 ? 'Snapshot' : 'Waiting' }}</span>
+      }
+      <span class="viewer-count">{{ filteredLines.length }} / {{ lines.length }} lines</span>
+    </div>
+  </div>
+
+  @if (loadingLogs) {
+  <div class="log-loading" role="status" aria-live="polite">
+    <i class="pi pi-spin pi-spinner" aria-hidden="true"></i>
+    <span>{{ selectedPod ? 'Fetching logs...' : 'Loading logs...' }}</span>
+  </div>
+  }
+
+  @if (filteredLines.length > 0) {
+  <div class="log-viewer" aria-label="Log output">
+    @for (line of filteredLines; track $index) {
+    <div class="log-line" [class]="lineClass(line)">
+      <span class="ln">{{ $index + 1 }}</span>
+      <span class="ll">{{ lineLevel(line) }}</span>
+      <span class="lt">{{ line }}</span>
+    </div>
+    }
+  </div>
+  } @else if (loadingLogs) {
+  <div class="empty-state">
+    <div class="empty-icon"><i class="pi pi-spin pi-spinner" aria-hidden="true"></i></div><span>Waiting for log
+      output...</span>
+  </div>
   } @else if (lines.length > 0 && searchQuery) {
-    <div class="empty-state"><div class="empty-icon"><i class="pi pi-search"></i></div><span>No lines matching "{{ searchQuery }}"</span></div>
+  <div class="empty-state">
+    <div class="empty-icon"><i class="pi pi-search" aria-hidden="true"></i></div>
+    <span>No lines matching "{{ searchQuery }}"</span>
+    <button type="button" class="ctrl-btn ctrl-btn-wide" (click)="clearFilters()">Clear filters</button>
+  </div>
+  } @else if (errorMessage && lines.length === 0) {
+  <div class="empty-state">
+    <div class="empty-icon"><i class="pi pi-exclamation-triangle" aria-hidden="true"></i></div><span>Log request
+      failed</span>
+  </div>
   } @else if (fetched && lines.length === 0) {
-    <div class="empty-state"><div class="empty-icon"><i class="pi pi-inbox"></i></div><span>No log output</span></div>
+  <div class="empty-state">
+    <div class="empty-icon"><i class="pi pi-inbox" aria-hidden="true"></i></div><span>No log output</span>
+  </div>
   } @else if (!fetched && !streaming) {
-    <div class="empty-state"><div class="empty-icon"><i class="pi pi-terminal"></i></div><span>Select a pod and fetch or stream logs</span></div>
+  <div class="empty-state">
+    <div class="empty-icon"><i class="pi pi-terminal" aria-hidden="true"></i></div><span>Select a pod and fetch or
+      stream logs</span>
+  </div>
+  }
+
+  @if (lines.length > 0) {
+  <div class="log-actions">
+    @if (streaming) {
+    <button type="button" class="ctrl-btn ctrl-btn-wide" (click)="toggleFollow()" [attr.aria-pressed]="followStream">
+      <i class="pi" [class.pi-arrow-down]="followStream" [class.pi-pause]="!followStream" aria-hidden="true"></i>
+      {{ followStream ? 'Following' : 'Follow' }}
+    </button>
+    }
+    <button type="button" class="ctrl-btn ctrl-btn-wide" (click)="scrollBottom()"><i class="pi pi-arrow-down"
+        aria-hidden="true"></i> Bottom</button>
+    <button type="button" class="ctrl-btn ctrl-btn-wide" (click)="copyLogs()"><i class="pi pi-copy"
+        aria-hidden="true"></i> Copy</button>
+    <button type="button" class="ctrl-btn ctrl-btn-wide" (click)="downloadLogs()"><i class="pi pi-download"
+        aria-hidden="true"></i> .log</button>
+    <button type="button" class="ctrl-btn ctrl-btn-wide" (click)="wordWrap = !wordWrap" [attr.aria-pressed]="wordWrap">
+      <i class="pi" [class.pi-align-justify]="wordWrap" [class.pi-arrows-h]="!wordWrap" aria-hidden="true"></i> Wrap
+    </button>
+    <button type="button" class="ctrl-btn ctrl-btn-wide" (click)="fullscreen = !fullscreen"
+      [attr.aria-pressed]="fullscreen">
+      <i class="pi" [class.pi-window-maximize]="!fullscreen" [class.pi-window-minimize]="fullscreen"
+        aria-hidden="true"></i>
+      {{ fullscreen ? 'Exit' : 'Full' }}
+    </button>
+    @if (actionNotice) { <span class="action-notice" role="status" aria-live="polite">{{ actionNotice }}</span> }
+  </div>
   }
 </div>
-
-<!-- Bottom actions -->
-@if (lines.length > 0) {
-  <div class="log-actions">
-    <button class="ctrl-btn ctrl-btn-wide" (click)="scrollBottom()"><i class="pi pi-arrow-down"></i> Bottom</button>
-    <button class="ctrl-btn ctrl-btn-wide" (click)="copyLogs()"><i class="pi pi-copy"></i> Copy</button>
-    <button class="ctrl-btn ctrl-btn-wide" (click)="downloadLogs()"><i class="pi pi-download"></i> .log</button>
-    <button class="ctrl-btn ctrl-btn-wide" (click)="wordWrap = !wordWrap"><i class="pi" [class.pi-align-justify]="wordWrap" [class.pi-arrows-h]="!wordWrap"></i> Wrap</button>
-    <button class="ctrl-btn ctrl-btn-wide" (click)="fullscreen = !fullscreen"><i class="pi" [class.pi-window-maximize]="!fullscreen" [class.pi-window-minimize]="fullscreen"></i></button>
-  </div>
-}
+</section>

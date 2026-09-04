@@ -33,7 +33,7 @@ import { MessageService } from 'primeng/api';
           <h1 class="text-2xl font-bold">Plugins</h1>
           <p class="text-muted-color">Discover and install community extensions</p>
         </div>
-        <a routerLink="/settings" class="p-button-text">
+        <a routerLink="/intelligence/settings" class="p-button-text">
           <i class="pi pi-cog mr-2"></i>Settings
         </a>
       </div>
@@ -69,7 +69,7 @@ import { MessageService } from 'primeng/api';
             </ng-template>
             <ng-template pTemplate="footer">
               <div class="flex gap-2">
-                <a [routerLink]="'/plugins/' + plugin.id" class="p-button-text p-button-sm">
+                <a [routerLink]="'/intelligence/plugins/' + plugin.id" class="p-button-text p-button-sm">
                   <i class="pi pi-info-circle mr-2"></i>Details
                 </a>
                 <button pButton pRipple label="Install" icon="pi pi-download"

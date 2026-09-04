@@ -7,7 +7,6 @@ import { FormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
 import { ApiService } from '../../core/services/api.service';
 import { WsService } from '../../core/services/ws.service';
-import { HoloCardComponent } from '../../shared/components/futuristic/holo-card.component';
 import { MetricTileComponent } from '../../shared/components/futuristic/metric-tile.component';
 import { StatusBeaconComponent } from '../../shared/components/futuristic/status-beacon.component';
 import { CommandBarComponent } from '../../shared/components/futuristic/command-bar.component';
@@ -24,7 +23,7 @@ interface ErrorSummaryItem {
 @Component({
   selector: 'app-logs',
   standalone: true,
-  imports: [Select, ButtonModule, TooltipModule, FormsModule, HoloCardComponent, MetricTileComponent, StatusBeaconComponent, CommandBarComponent, LiveIndicatorComponent, IntelHeaderComponent],
+  imports: [Select, ButtonModule, TooltipModule, FormsModule, MetricTileComponent, StatusBeaconComponent, CommandBarComponent, LiveIndicatorComponent, IntelHeaderComponent],
   host: { '[class.logs-nowrap]': '!wordWrap' },
   templateUrl: './logs.html',
   styleUrl: './logs.scss',
@@ -41,29 +40,38 @@ export class LogsComponent implements OnInit, OnDestroy {
   selectedPod = '';
   selectedContainer: string | null = null;
   tailSize = 200;
-  tailOptions = [50, 100, 200, 500];
+  tailOptions = [50, 100, 200, 500, 1000, 5000];
   lines: string[] = [];
   filteredLines: string[] = [];
+  private filteredLineIndices: number[] = [];
   fetched = false;
   streaming = false;
   watching = false;
+  followStream = true;
   watchInterval = 5;
   searchQuery = '';
   levelFilter: 'all' | 'error' | 'warn' | 'context' = 'all';
   fullscreen = false;
   wordWrap = true;
   contextLines = 10;
+  loadingPods = false;
+  loadingContainers = false;
+  loadingLogs = false;
+  errorMessage = '';
+  actionNotice = '';
   private streamSub: Subscription | null = null;
   private streamClose: (() => void) | null = null;
   private watchTimer: any = null;
+  private noticeTimer: any = null;
 
   // Error navigation
   private currentErrorNavIndex = -1;
 
   get errorCount() { return this.lines.filter(l => this.isError(l)).length; }
   get warnCount() { return this.lines.filter(l => this.isWarn(l)).length; }
+  get contextCount() { return this.buildContextView().filter(line => line !== '--- gap ---').length; }
 
-  /** Error summary — group error lines by pattern */
+  /** Error summary - group error lines by pattern */
   get errorSummary(): ErrorSummaryItem[] {
     const map = new Map<string, { count: number; firstIndex: number }>();
     for (let i = 0; i < this.lines.length; i++) {
@@ -97,96 +105,196 @@ export class LogsComponent implements OnInit, OnDestroy {
       { label: 'All', value: 'all', count: this.lines.length },
       { label: 'Errors', value: 'error', count: this.errorCount, color: 'red' },
       { label: 'Warn', value: 'warn', count: this.warnCount, color: 'amber' },
-      { label: 'Context', value: 'context', count: this.errorCount, color: 'purple' },
+      { label: 'Context', value: 'context', count: this.contextCount, color: 'purple' },
     ];
   }
 
-  onLevelChange(v: string) { this.levelFilter = v as any; this.filterLines(); }
+  get hasActiveFilters(): boolean {
+    return this.levelFilter !== 'all' || !!this.searchQuery;
+  }
 
   ngOnInit() {
-    this.api.getPods().subscribe(res => {
-      this.podOptions = res.pods.map(p => ({ label: `${p.status === 'Running' ? '●' : '○'} ${p.name}`, value: p.name }));
+    this.loadPods();
+  }
 
-      // P0: Auto-load from query param
-      this.route.queryParams.subscribe(params => {
-        const target = params['pod'] || params['target'];
-        if (target) {
-          // Fuzzy match: find pod that starts with or contains target
+  ngOnDestroy() {
+    this.stopStream();
+    this.stopWatch();
+    clearTimeout(this.noticeTimer);
+  }
+
+  private loadPods() {
+    this.loadingPods = true;
+    this.errorMessage = '';
+    this.api.getPods().subscribe({
+      next: res => {
+        this.podOptions = res.pods.map(p => ({ label: `${p.status === 'Running' ? '●' : '○'} ${p.name}`, value: p.name }));
+        this.loadingPods = false;
+        this.route.queryParams.subscribe(params => {
+          const target = params['pod'] || params['target'];
+          const requestedContainer = params['container'] || null;
+          if (!target) return;
+
           const match = this.podOptions.find(p => p.value === target)
             || this.podOptions.find(p => p.value.startsWith(target))
             || this.podOptions.find(p => p.value.includes(target));
           if (match) {
             this.selectedPod = match.value;
-            this.onPodChange();
-            this.fetchLogs();
+            this.onPodChange(requestedContainer, true);
           }
-        }
-      });
+        });
+      },
+      error: () => {
+        this.loadingPods = false;
+        this.errorMessage = 'Unable to load pods. Check cluster connectivity and retry.';
+      },
     });
   }
 
-  ngOnDestroy() { this.stopStream(); this.stopWatch(); }
-
-  onPodChange() {
+  onPodChange(requestedContainer: string | null = null, autoFetch = false) {
     this.selectedContainer = null;
     this.containerOptions = [];
+    this.lines = [];
+    this.filteredLines = [];
+    this.filteredLineIndices = [];
+    this.fetched = false;
+    this.currentErrorNavIndex = -1;
+    this.errorMessage = '';
     if (!this.selectedPod) return;
-    this.api.getContainers(this.selectedPod).subscribe(res => {
-      this.containerOptions = res.containers.map(c => ({ label: c, value: c }));
+
+    this.loadingContainers = true;
+    this.api.getContainers(this.selectedPod).subscribe({
+      next: res => {
+        this.containerOptions = res.containers.map(c => ({ label: c, value: c }));
+        if (requestedContainer && this.containerOptions.some(c => c.value === requestedContainer)) {
+          this.selectedContainer = requestedContainer;
+        }
+        this.loadingContainers = false;
+        if (autoFetch) this.fetchLogs();
+      },
+      error: () => {
+        this.loadingContainers = false;
+        this.errorMessage = 'Unable to load container list. Logs can still be fetched for all containers.';
+        if (autoFetch) this.fetchLogs();
+      },
     });
+  }
+
+  onLevelChange(v: string) {
+    this.levelFilter = v as 'all' | 'error' | 'warn' | 'context';
+    this.filterLines();
+  }
+
+  onSearchChange(value: string) {
+    this.searchQuery = value;
+    this.filterLines();
+  }
+
+  clearFilters() {
+    this.levelFilter = 'all';
+    this.searchQuery = '';
+    this.filterLines();
+  }
+
+  retry() {
+    if (this.podOptions.length === 0) {
+      this.loadPods();
+    } else if (this.selectedPod) {
+      this.fetchLogs();
+    }
   }
 
   fetchLogs() {
     if (!this.selectedPod) return;
     this.stopStream();
     this.currentErrorNavIndex = -1;
-    this.api.getLogs(this.selectedPod, this.tailSize, false, this.selectedContainer || undefined).subscribe(res => {
-      this.lines = res.lines;
-      this.fetched = true;
-      this.filterLines();
+    this.loadingLogs = true;
+    this.errorMessage = '';
+    this.api.getLogs(this.selectedPod, this.tailSize, false, this.selectedContainer || undefined).subscribe({
+      next: res => {
+        this.lines = res.lines;
+        this.fetched = true;
+        this.loadingLogs = false;
+        this.filterLines();
+      },
+      error: () => {
+        this.loadingLogs = false;
+        this.fetched = true;
+        this.errorMessage = `Unable to fetch logs for ${this.selectedPod}. Retry the request or choose another pod.`;
+      },
     });
   }
 
   toggleLive() {
     if (this.streaming) { this.stopStream(); return; }
     if (!this.selectedPod) return;
-    this.stopWatch(); this.streaming = true; this.lines = []; this.filteredLines = [];
-    const cp = this.selectedContainer ? `?container=${this.selectedContainer}` : '';
+    this.stopWatch();
+    this.streaming = true;
+    this.followStream = true;
+    this.fetched = true;
+    this.errorMessage = '';
+    this.lines = [];
+    this.filteredLines = [];
+    this.filteredLineIndices = [];
+    const cp = this.selectedContainer ? `?container=${encodeURIComponent(this.selectedContainer)}` : '';
     const conn = this.ws.connect(`/ws/logs/${this.selectedPod}${cp}`);
     this.streamClose = conn.close;
-    this.streamSub = conn.messages$.subscribe(line => {
-      this.lines.push(line);
-      if (this.matchesFilter(line)) this.filteredLines = [...this.filteredLines, line];
-      setTimeout(() => this.scrollBottom(), 30);
+    this.streamSub = conn.messages$.subscribe({
+      next: line => {
+        this.lines.push(line);
+        this.filterLines();
+        if (this.followStream) setTimeout(() => this.scrollBottom(), 30);
+      },
+      error: () => {
+        this.streaming = false;
+        this.errorMessage = 'Live log stream disconnected. Fetch logs or start the stream again.';
+      },
     });
   }
 
   toggleWatch() {
     if (this.watching) { this.stopWatch(); return; }
     if (!this.selectedPod) return;
-    this.stopStream(); this.watching = true; this.fetchLogs();
+    this.stopStream();
+    this.watching = true;
+    this.fetchLogs();
     this.watchTimer = setInterval(() => this.fetchLogs(), this.watchInterval * 1000);
   }
 
-  filterLines() {
-    let result = this.lines;
-    if (this.levelFilter === 'error') {
-      result = result.filter(l => this.isError(l));
-    } else if (this.levelFilter === 'warn') {
-      result = result.filter(l => this.isWarn(l));
-    } else if (this.levelFilter === 'context') {
-      result = this.buildContextView();
-    }
-    if (this.searchQuery) {
-      const q = this.searchQuery.toLowerCase();
-      result = result.filter(l => l.toLowerCase().includes(q));
-    }
-    this.filteredLines = result;
+  toggleFollow() {
+    this.followStream = !this.followStream;
+    if (this.followStream) this.scrollBottom();
   }
 
-  /** P1: Context mode — show N lines before/after each error */
+  filterLines() {
+    let indices = this.lines.map((_, index) => index);
+    if (this.levelFilter === 'error') {
+      indices = indices.filter(index => this.isError(this.lines[index]));
+    } else if (this.levelFilter === 'warn') {
+      indices = indices.filter(index => this.isWarn(this.lines[index]));
+    } else if (this.levelFilter === 'context') {
+      indices = this.buildContextIndices();
+    }
+
+    let result = indices.map(index => index < 0 ? '--- gap ---' : this.lines[index]);
+    if (this.searchQuery) {
+      const q = this.searchQuery.toLowerCase();
+      const matching = result.map((line, index) => ({ line, index }))
+        .filter(item => item.line.toLowerCase().includes(q));
+      result = matching.map(item => item.line);
+      indices = matching.map(item => indices[item.index]);
+    }
+
+    this.filteredLines = result;
+    this.filteredLineIndices = indices;
+  }
+
+  /** Context mode - show N lines before/after each error */
   private buildContextView(): string[] {
-    const result: string[] = [];
+    return this.buildContextIndices().map(index => index < 0 ? '--- gap ---' : this.lines[index]);
+  }
+
+  private buildContextIndices(): number[] {
     const included = new Set<number>();
     for (let i = 0; i < this.lines.length; i++) {
       if (this.isError(this.lines[i])) {
@@ -195,31 +303,31 @@ export class LogsComponent implements OnInit, OnDestroy {
         for (let j = start; j <= end; j++) included.add(j);
       }
     }
+
+    const result: number[] = [];
     let lastIncluded = -2;
-    for (const idx of [...included].sort((a, b) => a - b)) {
-      if (idx > lastIncluded + 1 && lastIncluded >= 0) {
-        result.push('--- gap ---');
-      }
-      result.push(this.lines[idx]);
-      lastIncluded = idx;
+    for (const index of [...included].sort((a, b) => a - b)) {
+      if (index > lastIncluded + 1 && lastIncluded >= 0) result.push(-1);
+      result.push(index);
+      lastIncluded = index;
     }
     return result;
   }
 
-  /** P0: Jump to first error */
+  /** Jump to first error */
   jumpToFirstError() {
     this.currentErrorNavIndex = 0;
     this.scrollToError(0);
   }
 
-  /** P0: Jump to next error */
+  /** Jump to next error */
   jumpToNextError() {
     if (this.errorIndices.length === 0) return;
     this.currentErrorNavIndex = (this.currentErrorNavIndex + 1) % this.errorIndices.length;
     this.scrollToError(this.currentErrorNavIndex);
   }
 
-  /** P0: Jump to prev error */
+  /** Jump to prev error */
   jumpToPrevError() {
     if (this.errorIndices.length === 0) return;
     this.currentErrorNavIndex = this.currentErrorNavIndex <= 0
@@ -233,44 +341,60 @@ export class LogsComponent implements OnInit, OnDestroy {
     if (lineIdx === undefined) return;
     setTimeout(() => {
       const viewer = this.logEl?.nativeElement?.querySelector('.log-viewer');
-      const lines = viewer?.querySelectorAll('.log-line');
-      if (lines?.[lineIdx]) {
-        lines[lineIdx].scrollIntoView({ block: 'center', behavior: 'smooth' });
-        lines[lineIdx].classList.add('line-highlight');
-        setTimeout(() => lines[lineIdx].classList.remove('line-highlight'), 2000);
+      const lineElements = viewer?.querySelectorAll('.log-line');
+      const target = lineElements?.[lineIdx] as HTMLElement | undefined;
+      if (target) {
+        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        target.scrollIntoView({ block: 'center', behavior: reduceMotion ? 'auto' : 'smooth' });
+        target.classList.add('line-highlight');
+        setTimeout(() => target.classList.remove('line-highlight'), 2000);
       }
     }, 50);
   }
 
   /** Jump to specific error from summary */
   jumpToErrorAt(originalIndex: number) {
-    // Find this line in filteredLines
-    const line = this.lines[originalIndex];
-    const filteredIdx = this.filteredLines.indexOf(line);
-    if (filteredIdx >= 0) {
-      const navIdx = this.errorIndices.indexOf(filteredIdx);
-      if (navIdx >= 0) {
-        this.currentErrorNavIndex = navIdx;
-        this.scrollToError(navIdx);
-      }
+    const filteredIdx = this.filteredLineIndices.indexOf(originalIndex);
+    if (filteredIdx < 0) return;
+    const navIdx = this.errorIndices.indexOf(filteredIdx);
+    if (navIdx >= 0) {
+      this.currentErrorNavIndex = navIdx;
+      this.scrollToError(navIdx);
     }
   }
 
-  private matchesFilter(line: string): boolean {
-    if (this.levelFilter === 'error' && !this.isError(line)) return false;
-    if (this.levelFilter === 'warn' && !this.isWarn(line)) return false;
-    if (this.searchQuery && !line.toLowerCase().includes(this.searchQuery.toLowerCase())) return false;
-    return true;
+  scrollBottom() {
+    const viewer = this.logEl?.nativeElement?.querySelector('.log-viewer');
+    if (viewer) viewer.scrollTop = viewer.scrollHeight;
   }
 
-  scrollBottom() { const v = this.logEl?.nativeElement?.querySelector('.log-viewer'); if (v) v.scrollTop = v.scrollHeight; }
-  copyLogs() { navigator.clipboard.writeText(this.filteredLines.join('\n')); }
+  async copyLogs() {
+    if (!this.filteredLines.length) return;
+    try {
+      if (!navigator.clipboard) throw new Error('Clipboard unavailable');
+      await navigator.clipboard.writeText(this.filteredLines.join('\n'));
+      this.showNotice(`${this.filteredLines.length} lines copied`);
+    } catch {
+      this.showNotice('Clipboard unavailable. Select and copy the log text manually.');
+    }
+  }
+
   downloadLogs() {
+    if (!this.filteredLines.length) return;
     const blob = new Blob([this.filteredLines.join('\n')], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url;
+    const a = document.createElement('a');
+    a.href = url;
     a.download = `${this.selectedPod || 'logs'}-${new Date().toISOString().slice(0, 19)}.log`;
-    a.click(); URL.revokeObjectURL(url);
+    a.click();
+    URL.revokeObjectURL(url);
+    this.showNotice(`${this.filteredLines.length} lines downloaded`);
+  }
+
+  private showNotice(message: string) {
+    this.actionNotice = message;
+    clearTimeout(this.noticeTimer);
+    this.noticeTimer = setTimeout(() => this.actionNotice = '', 3500);
   }
 
   lineClass(line: string): string {
@@ -304,21 +428,31 @@ export class LogsComponent implements OnInit, OnDestroy {
 
   /** Extract a short pattern from error line for grouping */
   private extractErrorPattern(line: string): string {
-    // Try to extract meaningful error message after level indicator
     const lower = line.toLowerCase();
     const markers = ['error:', 'fatal:', 'panic:', 'err ', 'error ', 'exception:'];
-    for (const m of markers) {
-      const idx = lower.indexOf(m);
-      if (idx >= 0) {
-        const rest = line.substring(idx + m.length).trim();
-        // Take first ~60 chars as pattern
+    for (const marker of markers) {
+      const index = lower.indexOf(marker);
+      if (index >= 0) {
+        const rest = line.substring(index + marker.length).trim();
         return rest.length > 60 ? rest.substring(0, 60) + '...' : rest;
       }
     }
-    // Fallback: take last portion of line
     return line.length > 60 ? line.substring(line.length - 60) : line;
   }
 
-  private stopStream() { this.streaming = false; this.streamSub?.unsubscribe(); this.streamClose?.(); this.streamSub = null; this.streamClose = null; }
-  private stopWatch() { this.watching = false; if (this.watchTimer) { clearInterval(this.watchTimer); this.watchTimer = null; } }
+  private stopStream() {
+    this.streaming = false;
+    this.streamSub?.unsubscribe();
+    this.streamClose?.();
+    this.streamSub = null;
+    this.streamClose = null;
+  }
+
+  private stopWatch() {
+    this.watching = false;
+    if (this.watchTimer) {
+      clearInterval(this.watchTimer);
+      this.watchTimer = null;
+    }
+  }
 }

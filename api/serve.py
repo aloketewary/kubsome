@@ -33,7 +33,7 @@ def _release_port(port: int):
     import subprocess
     result = subprocess.run(
         ["lsof", "-ti", f":{port}"],
-        capture_output=True, text=True
+        capture_output=True, text=True, timeout=5
     )
     pids = result.stdout.strip().split()
     if pids:

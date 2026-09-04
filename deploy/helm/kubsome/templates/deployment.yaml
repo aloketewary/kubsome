@@ -15,10 +15,17 @@ spec:
         app: kubsome
     spec:
       serviceAccountName: {{ .Values.serviceAccount.name }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
         - name: kubsome
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          env:
+            - name: HOME
+              value: /home/kubsome
           ports:
             - containerPort: 8000
               protocol: TCP
@@ -36,6 +43,16 @@ spec:
             periodSeconds: 10
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: kubsome-state
+              mountPath: /home/kubsome/.kubsome
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: kubsome-state
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

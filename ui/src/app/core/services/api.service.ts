@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { HttpClient, HttpParams } from '@angular/common/http';
+import { Observable, tap } from 'rxjs';
 import {
   PodsResponse,
   OverviewResponse,
@@ -11,6 +11,9 @@ import {
   NodeWorkloadsResponse,
   NamespacesResponse,
   DeploymentsResponse,
+  ResourceListResponse,
+  ResourceDescribeResponse,
+  RolloutResponse,
   LogsResponse,
   DiagnoseResponse,
   AiResponse,
@@ -39,20 +42,39 @@ export class ApiService {
 
   // Contexts
   getContexts(): Observable<ContextsResponse> {
-    return this.http.get<ContextsResponse>(`${this.base}/contexts`);
+    return this.http.get<ContextsResponse>(`${this.base}/contexts`).pipe(
+      tap(response => {
+        if (response.current) sessionStorage.setItem('kubsome_context', response.current);
+        if (response.namespace) sessionStorage.setItem('kubsome_namespace', response.namespace);
+      })
+    );
   }
 
   switchContext(name: string): Observable<any> {
-    return this.http.post(`${this.base}/switch-context`, { name });
+    return this.http.post<any>(`${this.base}/switch-context`, { name }).pipe(
+      tap(response => {
+        sessionStorage.setItem('kubsome_context', response.context || response.switched_to || name);
+        if (response.namespace) sessionStorage.setItem('kubsome_namespace', response.namespace);
+      })
+    );
   }
 
   // Namespaces
   getNamespaces(): Observable<NamespacesResponse> {
-    return this.http.get<NamespacesResponse>(`${this.base}/namespaces`);
+    return this.http.get<NamespacesResponse>(`${this.base}/namespaces`).pipe(
+      tap(response => {
+        if (response.current) sessionStorage.setItem('kubsome_namespace', response.current);
+      })
+    );
   }
 
   switchNamespace(namespace: string): Observable<any> {
-    return this.http.post(`${this.base}/switch-namespace`, { namespace });
+    return this.http.post<any>(`${this.base}/switch-namespace`, { namespace }).pipe(
+      tap(response => {
+        sessionStorage.setItem('kubsome_namespace', response.namespace || namespace);
+        if (response.context) sessionStorage.setItem('kubsome_context', response.context);
+      })
+    );
   }
 
   // Events
@@ -73,13 +95,26 @@ export class ApiService {
     return this.http.get<NodeWorkloadsResponse>(`${this.base}/nodes/workloads`);
   }
 
+  // Generic resources
+  getResource(resource: string, namespace = ''): Observable<ResourceListResponse> {
+    let params = new HttpParams();
+    if (namespace) params = params.set('namespace', namespace);
+    return this.http.get<ResourceListResponse>(`${this.base}/get/${encodeURIComponent(resource)}`, { params });
+  }
+
+  describeResource(resource: string, name: string, namespace = ''): Observable<ResourceDescribeResponse> {
+    let params = new HttpParams();
+    if (namespace) params = params.set('namespace', namespace);
+    return this.http.get<ResourceDescribeResponse>(`${this.base}/describe/${encodeURIComponent(resource)}/${encodeURIComponent(name)}`, { params });
+  }
+
   // Deployments
   getDeployments(): Observable<DeploymentsResponse> {
     return this.http.get<DeploymentsResponse>(`${this.base}/deployments`);
   }
 
-  getRollout(name: string): Observable<any> {
-    return this.http.get(`${this.base}/rollout/${name}`);
+  getRollout(name: string): Observable<RolloutResponse> {
+    return this.http.get<RolloutResponse>(`${this.base}/rollout/${encodeURIComponent(name)}`);
   }
 
   restart(name: string): Observable<any> {
@@ -115,7 +150,7 @@ export class ApiService {
   }
 
   investigate(name: string): Observable<any> {
-    return this.http.get<any>(`${this.base}/investigate/${name}`);
+    return this.http.get<any>(`${this.base}/investigate/${encodeURIComponent(name)}`);
   }
 
   getBenchmark(): Observable<any> {

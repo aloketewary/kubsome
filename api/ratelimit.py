@@ -6,15 +6,20 @@ Protects sensitive endpoints from abuse:
 - /api/generate: 10 req/min
 - /api/explain: 10 req/min
 - All other /api/*: 120 req/min
+
+This limiter is process-local. Deployments with multiple workers or replicas
+should put a shared limiter at the ingress or API gateway.
 """
 
 import time
 from collections import defaultdict
+from threading import Lock
+
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import JSONResponse
 
 
-# Rate limits: path prefix → (max_requests, window_seconds)
 RATE_LIMITS = {
     "/api/exec": (30, 60),
     "/api/generate": (10, 60),
@@ -25,7 +30,6 @@ RATE_LIMITS = {
     "/api/snap": (10, 60),
 }
 
-# Default limit for all other API paths
 DEFAULT_LIMIT = (120, 60)
 
 
@@ -34,11 +38,11 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         # client_ip → {path_key → [timestamps]}
         self._requests = defaultdict(lambda: defaultdict(list))
+        self._lock = Lock()
 
     async def dispatch(self, request: Request, call_next):
         path = request.url.path
 
-        # Only rate-limit API paths
         if not path.startswith("/api"):
             return await call_next(request)
 
@@ -48,32 +52,35 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         limit, window = self._get_limit(path)
-
-        # Sliding window check
         now = time.time()
         key = self._path_key(path)
-        timestamps = self._requests[client][key]
 
-        # Remove expired entries
-        cutoff = now - window
-        self._requests[client][key] = [
-            t for t in timestamps if t > cutoff
-        ]
-        timestamps = self._requests[client][key]
+        with self._lock:
+            timestamps = self._requests[client][key]
+            cutoff = now - window
+            timestamps[:] = [timestamp for timestamp in timestamps if timestamp > cutoff]
 
-        if len(timestamps) >= limit:
-            from starlette.responses import JSONResponse
-            return JSONResponse(
-                status_code=429,
-                content={"detail": f"Rate limit exceeded ({limit} req/{window}s). Try again later."},
-            )
+            if len(timestamps) >= limit:
+                return JSONResponse(
+                    status_code=429,
+                    headers={"Retry-After": str(window)},
+                    content={
+                        "detail": (
+                            f"Rate limit exceeded ({limit} req/{window}s). "
+                            "Try again later."
+                        )
+                    },
+                )
 
-        timestamps.append(now)
+            timestamps.append(now)
 
         try:
             return await call_next(request)
         except Exception:
-            return await call_next(request)
+            return JSONResponse(
+                status_code=500,
+                content={"detail": "Internal server error"},
+            )
 
     def _get_limit(self, path):
         """Find the most specific rate limit for a path."""

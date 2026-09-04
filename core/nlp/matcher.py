@@ -102,6 +102,8 @@ REGEX_INTENTS = {
 
 # Module-level constants for performance
 PRIORITY_CHECK = [
+    ("summarize cluster health", "summarize"),
+    ("summarise cluster health", "summarize"),
     ("unhealthy", "unhealthy"),
     ("how many", "count_pods"),
     ("count ", "count_pods"),

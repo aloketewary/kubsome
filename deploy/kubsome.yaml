@@ -40,9 +40,25 @@ spec:
         app: kubsome
     spec:
       serviceAccountName: kubsome
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: kubsome
-          image: kubsome:latest
+          image: kubsome:1.13.33
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          env:
+            - name: HOME
+              value: /home/kubsome
           ports:
             - containerPort: 8000
           resources:
@@ -64,6 +80,16 @@ spec:
               port: 8000
             initialDelaySeconds: 3
             periodSeconds: 10
+          volumeMounts:
+            - name: kubsome-state
+              mountPath: /home/kubsome/.kubsome
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: kubsome-state
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service

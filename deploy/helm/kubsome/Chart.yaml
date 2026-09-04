@@ -2,8 +2,8 @@ apiVersion: v2
 name: kubsome
 description: AI-native Kubernetes Operations Workspace
 type: application
-version: 1.5.0
-appVersion: "1.5.0"
+version: 1.13.33
+appVersion: "1.13.33"
 keywords:
   - kubernetes
   - operations

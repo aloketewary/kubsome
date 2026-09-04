@@ -1,148 +1,247 @@
-<!-- ─── Header ─────────────────────────────────────────────────────── -->
-<app-intel-header title="Jobs & CronJobs" icon="pi pi-clock"
-  [subtitle]="cronjobs.length + ' cronjobs · ' + jobs.length + ' jobs · ' + (lastUpdated || 'loading...')">
-  <app-live-indicator [active]="autoRefresh" label="AUTO" offLabel="PAUSED" (click)="toggleAutoRefresh()" />
-  <div class="interval-select">
-    @for (s of [10, 30, 60]; track s) {
-    <button class="interval-btn" [class.interval-active]="refreshInterval === s" (click)="setRefreshInterval(s)">{{ s
-      }}s</button>
-    }
+<section class="jobs-page" aria-label="Jobs and CronJobs operations">
+  <app-intel-header title="Jobs & CronJobs" icon="pi pi-clock"
+    [subtitle]="cronjobs.length + ' cronjobs · ' + jobs.length + ' jobs · ' + (lastUpdated || 'loading...')">
+    <button class="live-toggle" type="button" [attr.aria-pressed]="autoRefresh"
+      [attr.aria-label]="autoRefresh ? 'Pause automatic refresh' : 'Enable automatic refresh'"
+      (click)="toggleAutoRefresh()">
+      <app-live-indicator [active]="autoRefresh" label="AUTO" offLabel="PAUSED" />
+    </button>
+    <div class="interval-select" aria-label="Refresh interval">
+      @for (s of [10, 30, 60]; track s) {
+      <button class="interval-btn" type="button" [class.interval-active]="refreshInterval === s"
+        [attr.aria-pressed]="refreshInterval === s" (click)="setRefreshInterval(s)">{{ s }}s</button>
+      }
+    </div>
+    <button class="ctrl-btn" type="button" (click)="load()" aria-label="Refresh jobs and CronJobs" pTooltip="Refresh">
+      <i class="pi pi-refresh" aria-hidden="true" [class.spinning]="loading"></i>
+    </button>
+  </app-intel-header>
+
+  <div class="jobs-deck" aria-label="Jobs control overview">
+    <div class="deck-primary">
+      <span class="deck-kicker"><i class="pi pi-bolt" aria-hidden="true"></i> Execution control</span>
+      <h2>Schedules and runs</h2>
+      <p>Command scheduled workloads, inspect active execution, and surface failure signals before they spread.</p>
+      <div class="deck-chips" aria-label="Jobs surface capabilities">
+        <span><i class="pi pi-sync" aria-hidden="true"></i> Live queue</span>
+        <span><i class="pi pi-history" aria-hidden="true"></i> Schedule registry</span>
+      </div>
+    </div>
+    <div class="telemetry-panel" aria-label="Job queue telemetry">
+      <div class="telemetry-head">
+        <div>
+          <span class="telemetry-kicker">Queue signal</span>
+          <strong>Execution telemetry</strong>
+        </div>
+        <span class="telemetry-total">{{ activeJobs.length }}/{{ jobs.length }}</span>
+      </div>
+      <div class="telemetry-track" aria-hidden="true">
+        <span class="telemetry-segment segment-failed" [style.width.%]="jobs.length ? failedCount / jobs.length * 100 : 0"></span>
+        <span class="telemetry-segment segment-running" [style.width.%]="jobs.length ? runningCount / jobs.length * 100 : 0"></span>
+        <span class="telemetry-segment segment-pending" [style.width.%]="jobs.length ? pendingCount / jobs.length * 100 : 0"></span>
+        <span class="telemetry-segment segment-complete" [style.width.%]="jobs.length ? completedCount / jobs.length * 100 : 0"></span>
+      </div>
+      <div class="telemetry-legend">
+        <span><i class="legend-dot legend-failed" aria-hidden="true"></i> Failed <b>{{ failedCount }}</b></span>
+        <span><i class="legend-dot legend-running" aria-hidden="true"></i> Running <b>{{ runningCount }}</b></span>
+        <span><i class="legend-dot legend-pending" aria-hidden="true"></i> Pending <b>{{ pendingCount }}</b></span>
+        <span><i class="legend-dot legend-complete" aria-hidden="true"></i> Complete <b>{{ completedCount }}</b></span>
+      </div>
+    </div>
   </div>
-  <button class="ctrl-btn" (click)="load()" pTooltip="Refresh"><i class="pi pi-refresh"
-      [class.spinning]="loading"></i></button>
-</app-intel-header>
 
-<!-- ─── Metrics ────────────────────────────────────────────────────── -->
-<div class="metrics-strip">
-  <app-metric-tile label="CronJobs" [value]="'' + cronjobs.length" accent="purple" />
-  <app-metric-tile label="Jobs" [value]="'' + jobs.length" accent="cyan" />
-  @if (failedCount > 0) { <app-metric-tile label="Failed" [value]="'' + failedCount" accent="red" /> }
-  @if (runningCount > 0) { <app-metric-tile label="Running" [value]="'' + runningCount" accent="cyan" /> }
-  @if (pendingCount > 0) { <app-metric-tile label="Pending" [value]="'' + pendingCount" accent="amber" /> }
-  @if (completedCount > 0) { <app-metric-tile label="Complete" [value]="'' + completedCount" accent="green" /> }
-</div>
-
-<!-- ─── Failed Banner ──────────────────────────────────────────────── -->
-@if (failedJobs.length > 0) {
-<div class="failed-banner">
-  <i class="pi pi-exclamation-triangle"></i>
-  <span>{{ failedJobs.length }} job{{ failedJobs.length > 1 ? 's' : '' }} failed</span>
-  <span class="fb-names">{{ failedJobNames }}</span>
-</div>
-}
-
-<!-- ─── Filters / Search (unified) ─────────────────────────────────── -->
-<app-command-bar [pills]="filterPills" [activePill]="statusFilter" [search]="searchQuery"
-  placeholder="Filter jobs & cronjobs..." (pillChange)="onFilterChange($event)"
-  (searchChange)="onSearchChange($event)" />
-
-<!-- ─── Running + Failed Jobs ──────────────────────────────────────── -->
-@if (activeJobs.length > 0) {
-<div class="job-list">
-  @for (j of activeJobs; track j.name) {
-  <div class="job-card" [class.job-failed]="jobStatus(j) === 'failed'">
-    <app-status-beacon [status]="jobBeacon(j)" size="md" [pulse]="jobStatus(j) === 'running'" />
-    <div class="job-body">
-      <div class="job-top">
-        <code class="job-name">{{ j.name }}</code>
-        <p-tag [value]="j.state || j.status || 'Unknown'" [severity]="jobSeverity(j)" [rounded]="true" />
-      </div>
-      @if (j.duration) {
-      <span class="job-duration">⏱ {{ j.duration }}</span>
-      }
-      @if ((j.reason || j.message) && jobStatus(j) === 'failed') {
-      <button class="failure-toggle" (click)="toggleFailure(j.name)">
-        <i class="pi" [class.pi-chevron-right]="!isFailureExpanded(j.name)"
-          [class.pi-chevron-down]="isFailureExpanded(j.name)"></i>
-        {{ j.reason || 'Details' }}
-      </button>
-      @if (isFailureExpanded(j.name)) {
-      <div class="job-failure">
-        @if (j.reason) { <span class="jf-reason">{{ j.reason }}</span> }
-        @if (j.message) { <span class="jf-msg">{{ j.message }}</span> }
-      </div>
-      }
-      }
+  <div class="metrics-strip" aria-label="Job status summary">
+    <app-metric-tile label="CronJobs" [value]="'' + cronjobs.length" accent="purple" />
+    <app-metric-tile label="Jobs" [value]="'' + jobs.length" accent="cyan" />
+    @if (failedCount > 0) { <app-metric-tile label="Failed" [value]="'' + failedCount" accent="red" /> }
+    @if (runningCount > 0) { <app-metric-tile label="Running" [value]="'' + runningCount" accent="cyan" /> }
+    @if (pendingCount > 0) { <app-metric-tile label="Pending" [value]="'' + pendingCount" accent="amber" /> }
+    @if (completedCount > 0) { <app-metric-tile label="Complete" [value]="'' + completedCount" accent="green" /> }
+    <div class="metrics-context">
+      <span class="metrics-context-label">Mode</span>
+      <strong>{{ statusFilter === 'all' ? 'QUEUE' : statusFilter.toUpperCase() }}</strong>
+      <span>{{ searchQuery ? 'filtered view' : 'full namespace' }}</span>
     </div>
-    <div class="job-progress">
-      <span class="jp-dot jp-done"></span>
-      <span class="jp-line" [class.jp-line-done]="jobStatus(j) !== 'pending'"></span>
-      <span class="jp-dot" [class.jp-done]="jobStatus(j) !== 'pending'"></span>
-      <span class="jp-line" [class.jp-line-done]="jobStatus(j) === 'complete' || jobStatus(j) === 'failed'"></span>
-      <span class="jp-dot" [class.jp-done]="jobStatus(j) === 'complete'"
-        [class.jp-fail]="jobStatus(j) === 'failed'"></span>
+  </div>
+
+  @if (failedJobs.length > 0) {
+  <div class="failed-banner" role="alert" aria-label="Failed jobs attention notice">
+    <span class="attention-mark"><i class="pi pi-exclamation-triangle" aria-hidden="true"></i></span>
+    <div class="failed-copy">
+      <strong>{{ failedJobs.length }} job{{ failedJobs.length > 1 ? 's' : '' }} failed</strong>
+      <span>Execution attention required</span>
     </div>
+    <span class="fb-names">{{ failedJobNames }}</span>
   </div>
   }
-</div>
-} @else if (!loading && statusFilter !== 'all') {
-<div class="empty-state">
-  <div class="empty-icon"><i class="pi pi-check-circle"></i></div><span>No {{ statusFilter }} jobs</span>
-</div>
-}
 
-<!-- ─── CronJobs ───────────────────────────────────────────────────── -->
-@if (filteredCronjobs.length > 0) {
-<app-holo-card title="CronJobs" icon="pi pi-history" [badge]="'' + filteredCronjobs.length" glow="purple"
-  [compact]="true">
-  <div class="cj-grid">
-    @for (cj of filteredCronjobs; track cj.name) {
-    <div class="cj-card">
-      <div class="cj-top">
-        <code class="cj-name">{{ cj.name }}</code>
-        <app-action-icon icon="pi pi-play" tooltip="Trigger now" accent="green" (clicked)="trigger(cj)" />
+  <div class="filter-section">
+    <div class="filter-section-head">
+      <div>
+        <span class="section-label">Command filter</span>
+        <strong>Find a run or schedule</strong>
       </div>
-      <div class="cj-schedule">
-        <span class="cj-human">{{ humanSchedule(cj.schedule) }}</span>
-        <code class="cj-cron">{{ cj.schedule }}</code>
-      </div>
-      @if (nextRun(cj)) {
-      <span class="cj-next">Next: {{ nextRun(cj) }}</span>
-      }
-      @if (cj.last_schedule) {
-      <span class="cj-last">Last: {{ cj.last_schedule }}</span>
-      }
-      @if (cj.triggered) {
-      <span class="cj-triggered">✓ Triggered</span>
-      }
+      <span class="filter-hint">{{ activeJobs.length }} active / {{ jobs.length }} total</span>
     </div>
-    }
+    <app-command-bar [pills]="filterPills" [activePill]="statusFilter" [search]="searchQuery"
+      placeholder="Filter jobs & cronjobs..." (pillChange)="onFilterChange($event)"
+      (searchChange)="onSearchChange($event)" />
   </div>
-</app-holo-card>
-} @else if (!loading && searchQuery) {
-<div class="empty-state">
-  <div class="empty-icon"><i class="pi pi-history"></i></div><span>No cronjobs match "{{ searchQuery }}"</span>
-</div>
-}
 
-<!-- ─── Completed Jobs ─────────────────────────────────────────────── -->
-@if (completedList.length > 0) {
-<app-holo-card title="Completed" icon="pi pi-check" [badge]="'' + completedList.length" glow="green" [compact]="true">
-  <div class="job-list">
-    @for (j of completedList; track j.name) {
-    <div class="job-card">
-      <app-status-beacon [status]="'ok'" size="md" />
-      <div class="job-body">
-        <div class="job-top">
-          <code class="job-name">{{ j.name }}</code>
-          <p-tag value="Complete" severity="success" [rounded]="true" />
+  <div class="operations-grid">
+    <section class="jobs-section execution-section" aria-labelledby="execution-heading">
+      <div class="section-heading">
+        <div>
+          <span class="section-label">01 / Execution queue</span>
+          <h3 id="execution-heading">Active runs</h3>
         </div>
-        @if (j.duration) { <span class="job-duration">⏱ {{ j.duration }}</span> }
+        <span class="section-count">{{ activeJobs.length }} visible</span>
       </div>
-      <div class="job-progress">
-        <span class="jp-dot jp-done"></span>
-        <span class="jp-line jp-line-done"></span>
-        <span class="jp-dot jp-done"></span>
-        <span class="jp-line jp-line-done"></span>
-        <span class="jp-dot jp-done"></span>
+
+      @if (activeJobs.length > 0) {
+      <div class="job-list" aria-live="polite">
+        @for (j of activeJobs; track j.name) {
+        <div class="job-card" [class.job-failed]="jobStatus(j) === 'failed'" [attr.data-status]="jobStatus(j)">
+          <div class="job-status-rail" aria-hidden="true"></div>
+          <app-status-beacon [status]="jobBeacon(j)" size="md" [pulse]="jobStatus(j) === 'running'" />
+          <div class="job-body">
+            <div class="job-top">
+              <code class="job-name">{{ j.name }}</code>
+              <p-tag [value]="j.state || j.status || 'Unknown'" [severity]="jobSeverity(j)" [rounded]="true" />
+            </div>
+            @if (j.duration) {
+            <span class="job-duration"><i class="pi pi-stopwatch" aria-hidden="true"></i> {{ j.duration }}</span>
+            }
+            @if ((j.reason || j.message) && jobStatus(j) === 'failed') {
+            <button class="failure-toggle" type="button" [attr.aria-expanded]="isFailureExpanded(j.name)"
+              (click)="toggleFailure(j.name)">
+              <i class="pi" aria-hidden="true" [class.pi-chevron-right]="!isFailureExpanded(j.name)"
+                [class.pi-chevron-down]="isFailureExpanded(j.name)"></i>
+              {{ j.reason || 'Details' }}
+            </button>
+            @if (isFailureExpanded(j.name)) {
+            <div class="job-failure" role="region" aria-label="Failure details">
+              @if (j.reason) { <span class="jf-reason">{{ j.reason }}</span> }
+              @if (j.message) { <span class="jf-msg">{{ j.message }}</span> }
+            </div>
+            }
+            }
+          </div>
+          <div class="job-progress" [attr.aria-label]="'Job progress: ' + jobStatus(j)" role="img">
+            <span class="jp-dot jp-done"></span>
+            <span class="jp-line" [class.jp-line-done]="jobStatus(j) !== 'pending'"></span>
+            <span class="jp-dot" [class.jp-done]="jobStatus(j) !== 'pending'"></span>
+            <span class="jp-line" [class.jp-line-done]="jobStatus(j) === 'complete' || jobStatus(j) === 'failed'"></span>
+            <span class="jp-dot" [class.jp-done]="jobStatus(j) === 'complete'"
+              [class.jp-fail]="jobStatus(j) === 'failed'"></span>
+          </div>
+        </div>
+        }
       </div>
-    </div>
-    }
+      } @else if (loading && jobs.length === 0) {
+      @for (row of [1, 2, 3]; track row) {
+      <div class="job-skeleton" aria-hidden="true">
+        <span class="skeleton-rail"></span><span class="skeleton-dot"></span>
+        <span class="skeleton-line skeleton-name"></span><span class="skeleton-line skeleton-state"></span>
+        <span class="skeleton-line skeleton-progress"></span>
+      </div>
+      }
+      <div class="loading-caption" role="status"><i class="pi pi-spin pi-spinner" aria-hidden="true"></i> Loading execution queue...</div>
+      } @else if (statusFilter !== 'all') {
+      <div class="empty-state">
+        <div class="empty-icon"><i class="pi pi-check-circle" aria-hidden="true"></i></div>
+        <strong>No {{ statusFilter }} jobs</strong>
+        <span>Try another status filter or clear the search.</span>
+      </div>
+      }
+    </section>
+
+    <section class="jobs-section schedule-section" aria-labelledby="schedule-heading">
+      <div class="section-heading">
+        <div>
+          <span class="section-label">02 / Schedule registry</span>
+          <h3 id="schedule-heading">CronJobs</h3>
+        </div>
+        <span class="section-count">{{ filteredCronjobs.length }} visible</span>
+      </div>
+      @if (filteredCronjobs.length > 0) {
+      <app-holo-card title="CronJobs" icon="pi pi-history" [badge]="'' + filteredCronjobs.length" glow="purple" [compact]="true">
+        <div class="cj-grid">
+          @for (cj of filteredCronjobs; track cj.name) {
+          <div class="cj-card" [attr.data-suspended]="cj.suspended ? 'true' : 'false'">
+            <div class="cj-top">
+              <div class="cj-title-stack">
+                <span class="cj-kind">CRONJOB TARGET</span>
+                <code class="cj-name">{{ cj.name }}</code>
+              </div>
+              <app-action-icon icon="pi pi-play" tooltip="Trigger now" accent="green" (clicked)="trigger(cj)" />
+            </div>
+            <div class="cj-schedule">
+              <span class="cj-human">{{ humanSchedule(cj.schedule) }}</span>
+              <code class="cj-cron">{{ cj.schedule }}</code>
+            </div>
+            <div class="cj-meta">
+              @if (cj.suspended) { <span class="cj-state cj-suspended">Suspended</span> }
+              @if (cj.active) { <span class="cj-state cj-active">{{ cj.active }} active</span> }
+              @if (nextRun(cj)) { <span class="cj-next">Next {{ nextRun(cj) }}</span> }
+              @if (cj.last_schedule) { <span class="cj-last">Last {{ cj.last_schedule }}</span> }
+            </div>
+            @if (cj.triggered) {
+            <span class="cj-triggered"><i class="pi pi-check" aria-hidden="true"></i> Triggered</span>
+            }
+          </div>
+          }
+        </div>
+      </app-holo-card>
+      } @else if (!loading && searchQuery) {
+      <div class="empty-state">
+        <div class="empty-icon"><i class="pi pi-history" aria-hidden="true"></i></div>
+        <strong>No CronJobs match this search</strong>
+        <span>Try a different name or clear the search.</span>
+      </div>
+      }
+    </section>
   </div>
-</app-holo-card>
-} @else if (!loading && jobs.length === 0) {
-<div class="empty-state">
-  <div class="empty-icon"><i class="pi pi-clock"></i></div><span>No jobs found</span><span class="empty-hint">Jobs will
-    appear when CronJobs trigger or manual jobs are created</span>
-</div>
-}
+
+  @if (completedList.length > 0) {
+  <section class="jobs-section completed-section" aria-labelledby="completed-heading">
+    <div class="section-heading section-heading-inline">
+      <div>
+        <span class="section-label">03 / Execution history</span>
+        <h3 id="completed-heading">Completed jobs</h3>
+      </div>
+      <span class="section-count">{{ completedList.length }} retained</span>
+    </div>
+    <app-holo-card title="Completed" icon="pi pi-check" [badge]="'' + completedList.length" glow="green" [compact]="true">
+      <div class="job-list">
+        @for (j of completedList; track j.name) {
+        <div class="job-card" data-status="complete">
+          <div class="job-status-rail"></div>
+          <app-status-beacon [status]="'ok'" size="md" />
+          <div class="job-body">
+            <div class="job-top">
+              <code class="job-name">{{ j.name }}</code>
+              <p-tag value="Complete" severity="success" [rounded]="true" />
+            </div>
+            @if (j.duration) { <span class="job-duration"><i class="pi pi-stopwatch" aria-hidden="true"></i> {{ j.duration }}</span> }
+          </div>
+          <div class="job-progress" aria-label="Job progress: complete" role="img">
+            <span class="jp-dot jp-done"></span>
+            <span class="jp-line jp-line-done"></span>
+            <span class="jp-dot jp-done"></span>
+            <span class="jp-line jp-line-done"></span>
+            <span class="jp-dot jp-done"></span>
+          </div>
+        </div>
+        }
+      </div>
+    </app-holo-card>
+  </section>
+  } @else if (!loading && jobs.length === 0) {
+  <div class="empty-state page-empty-state">
+    <div class="empty-icon"><i class="pi pi-clock" aria-hidden="true"></i></div>
+    <strong>No jobs found</strong>
+    <span>Jobs appear when CronJobs trigger or manual jobs are created.</span>
+  </div>
+  }
+</section>

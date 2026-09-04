@@ -4,7 +4,7 @@ Kubsome API — FastAPI backend exposing the Kubernetes engine.
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request, Response, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
@@ -12,6 +12,8 @@ from pathlib import Path
 from api.routes import pods, overview, contexts, events, metrics, logs, deployments, diagnostics, intelligence, terminal, operations, ws, describe, gateway, gitops, analytics, monitor
 from api.auth import AuthMiddleware, generate_token
 from api.ratelimit import RateLimitMiddleware
+from core.context import ContextMiddleware
+from core.version import __version__
 
 
 @asynccontextmanager
@@ -42,17 +44,43 @@ async def lifespan(app: FastAPI):
 
     # Start DuckDB analytics collector
     try:
+        from core.context import context
+        if not context.current_context:
+            import subprocess
+            result = subprocess.run(
+                ["kubectl", "config", "current-context"],
+                capture_output=True, text=True, timeout=10,
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                context.current_context = result.stdout.strip()
+
         from core.analytics.collector import start_collector
         start_collector()
     except ImportError:
         pass
+    except (OSError, subprocess.SubprocessError):
+        # Collector will remain idle until a context is selected.
+        pass
 
-    yield
+    try:
+        yield
+    finally:
+        # Stop analytics workers before closing DuckDB. If a collector is
+        # still inside kubectl, leave the connection open until process exit
+        # rather than risking a native use-after-close.
+        from core.analytics.collector import stop_collector
+        from core.analytics.queue import stop_drain_loop
+
+        collector_stopped = stop_collector()
+        drain_stopped = stop_drain_loop()
+        if collector_stopped and drain_stopped:
+            from core.analytics.engine import close
+            close()
 
 
 app = FastAPI(
     title="Kubsome API",
-    version="1.0.0",
+    version=__version__,
     description="Kubernetes Operations Engine API",
     lifespan=lifespan,
 )
@@ -72,6 +100,7 @@ app.add_middleware(
 
 app.add_middleware(AuthMiddleware)
 app.add_middleware(RateLimitMiddleware)
+app.add_middleware(ContextMiddleware)
 
 
 app.include_router(pods.router, prefix="/api")
@@ -88,8 +117,8 @@ app.include_router(terminal.router, prefix="/api")
 app.include_router(operations.router, prefix="/api")
 app.include_router(describe.router, prefix="/api")
 app.include_router(gateway.router, prefix="/api")
-app.include_router(gitops.router, prefix="/api")
 app.include_router(analytics.router, prefix="/api")
+app.include_router(gitops.router, prefix="/api")
 app.include_router(ws.router)
 
 
@@ -104,9 +133,8 @@ def health():
 
 
 @app.get("/api/token")
-def get_api_token(request: Request):
-    """Return the session token for the Web UI.
-    Only accessible from localhost."""
+def get_api_token(request: Request, response: Response):
+    """Return the UI token and establish an HttpOnly WebSocket cookie."""
     # Strict check: only allow local access to the token
     if not request.client or request.client.host not in ("127.0.0.1", "::1"):
         raise HTTPException(
@@ -114,7 +142,17 @@ def get_api_token(request: Request):
         )
 
     from api.auth import get_token
-    return {"token": get_token()}
+    token = get_token()
+    response.set_cookie(
+        "kubsome_token",
+        token,
+        httponly=True,
+        secure=request.url.scheme == "https",
+        samesite="lax",
+        max_age=3600,
+        path="/",
+    )
+    return {"token": token}
 
 
 @app.get("/api/version")
@@ -123,42 +161,11 @@ def version():
     return {"version": __version__}
 
 
-# Serve Angular build in production
-# Priority: 1) dev build (ui/dist/ui/browser) — always freshest
-#           2) bundled in package (api/ui_dist)
-#           3) bundled via importlib (pip install from wheel)
+# Serve prebuilt Angular static resources in production.
+# Build and release scripts must replace api/ui_dist before starting the server.
+# Runtime serving stays read-only and deterministic.
 _api_dir = Path(__file__).parent
-_project_dir = _api_dir.parent
-
-_dev_build = _project_dir / "ui" / "dist" / "ui" / "browser"
-_bundled = _api_dir / "ui_dist"
-
-# Only sync dev build to bundled if index.html is newer (avoid expensive copy on every reload)
-if _dev_build.exists() and (_dev_build / "index.html").exists():
-    dev_mtime = (_dev_build / "index.html").stat().st_mtime
-    bundled_mtime = (_bundled / "index.html").stat().st_mtime if (_bundled / "index.html").exists() else 0
-    if dev_mtime > bundled_mtime:
-        import shutil
-        if _bundled.exists():
-            shutil.rmtree(_bundled)
-        shutil.copytree(_dev_build, _bundled)
-
-# Resolve final ui_dist path
-if _bundled.exists() and (_bundled / "index.html").exists():
-    ui_dist = _bundled
-elif _dev_build.exists() and (_dev_build / "index.html").exists():
-    ui_dist = _dev_build
-else:
-    # Fallback: try to find via importlib (installed wheel)
-    try:
-        import importlib.resources as _res
-        _pkg_path = Path(str(_res.files("api"))) / "ui_dist"
-        if _pkg_path.exists() and (_pkg_path / "index.html").exists():
-            ui_dist = _pkg_path
-        else:
-            ui_dist = _bundled  # will fail exists() check below
-    except Exception:
-        ui_dist = _bundled
+ui_dist = _api_dir / "ui_dist"
 
 if ui_dist.exists():
     from fastapi.responses import FileResponse

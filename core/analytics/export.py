@@ -5,11 +5,33 @@ for integration with external tools.
 
 from pathlib import Path
 from datetime import datetime
+from contextlib import contextmanager
+import threading
 
 from core.analytics.engine import get_conn, ANALYTICS_DIR
 
 
 EXPORT_DIR = ANALYTICS_DIR / "exports"
+_QUERY_SLOTS = threading.BoundedSemaphore(2)
+_QUERY_WAIT_SECONDS = 0.5
+
+
+@contextmanager
+def _query_slot():
+    """Limit concurrent expensive reads competing with analytics writes."""
+    acquired = _QUERY_SLOTS.acquire(timeout=_QUERY_WAIT_SECONDS)
+    if not acquired:
+        raise RuntimeError("Analytics busy; retry query shortly")
+    try:
+        yield
+    finally:
+        _QUERY_SLOTS.release()
+
+
+def _execute_bounded(conn, sql, params=None):
+    """Execute one potentially large read/export under the query gate."""
+    with _query_slot():
+        return conn.execute(sql, params)
 
 
 def export_csv(query_name="raw_pods", days=7, output=None):
@@ -73,7 +95,8 @@ def export_csv(query_name="raw_pods", days=7, output=None):
         return None
 
     # 🛡️ Sentinel: Use parameterized queries to prevent SQLi
-    conn.execute(
+    _execute_bounded(
+        conn,
         f"COPY ({sql}) TO '{path}' (HEADER, DELIMITER ',')",
         [days] if "(?)" in sql else None
     )
@@ -107,7 +130,8 @@ def export_parquet(query_name="hourly", days=30, output=None):
         return None
 
     # 🛡️ Sentinel: Use parameterized queries to prevent SQLi
-    conn.execute(
+    _execute_bounded(
+        conn,
         f"COPY ({sql}) TO '{path}' (FORMAT PARQUET)",
         [days] if "(?)" in sql else None
     )
@@ -140,7 +164,7 @@ def run_custom_query(sql):
     """
     conn = get_conn()
     try:
-        result = conn.execute(sql)
+        result = _execute_bounded(conn, sql)
         cols = [desc[0] for desc in result.description]
         rows = result.fetchall()
         return {

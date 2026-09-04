@@ -1,55 +1,140 @@
-<app-intel-header title="Network" icon="pi pi-globe"
-  [subtitle]="'ingress · endpoints · DNS · ' + (lastUpdated || '...')">
-  <app-live-indicator [active]="autoRefresh" label="AUTO" offLabel="PAUSED" (click)="toggleAutoRefresh()" />
-  <button class="ctrl-btn" (click)="load()" pTooltip="Refresh"><i class="pi pi-refresh" [class.spinning]="loading"></i></button>
-</app-intel-header>
+<section class="network-page" aria-label="Network operations">
+  <app-intel-header title="Network" icon="pi pi-globe"
+    [subtitle]="'ingress · endpoints · DNS · ' + (lastUpdated || '...')">
+    <button class="live-toggle" type="button" [attr.aria-pressed]="autoRefresh"
+      [attr.aria-label]="autoRefresh ? 'Pause automatic network refresh' : 'Enable automatic network refresh'"
+      (click)="toggleAutoRefresh()">
+      <app-live-indicator [active]="autoRefresh" label="AUTO" offLabel="PAUSED" />
+    </button>
+    <button class="ctrl-btn" type="button" (click)="load()" aria-label="Refresh network data" pTooltip="Refresh">
+      <i class="pi pi-refresh" aria-hidden="true" [class.spinning]="loading"></i>
+    </button>
+  </app-intel-header>
 
-<div class="metrics-strip">
-  <app-metric-tile label="Ingresses" [value]="'' + ingresses.length" accent="cyan" />
-  <app-metric-tile label="Endpoints" [value]="'' + endpoints.length" accent="green" />
-  @if (unhealthyEndpoints > 0) { <app-metric-tile label="Unhealthy" [value]="'' + unhealthyEndpoints" accent="red" /> }
-  <app-metric-tile label="Net Policies" [value]="'' + netPolicies" accent="purple" />
-  @if (meshDetected) { <app-metric-tile label="Mesh" [value]="meshType" accent="cyan" /> }
-</div>
-
-<!-- Ingresses -->
-@if (ingresses.length > 0) {
-  <app-holo-card title="Ingresses" icon="pi pi-link" glow="cyan" [compact]="true">
-    @for (ing of ingresses; track $index) {
-      <div class="ing-row">
-        <app-status-beacon status="ok" size="sm" />
-        <code class="ing-name">{{ ing.name }}</code>
-        <span class="ing-host">{{ ing.host || '*' }}</span>
-        <span class="ing-path">{{ ing.path || '/' }}</span>
-        <span class="ing-backend">→ {{ ing.backend }}</span>
+  <div class="network-overview" aria-label="Network health overview">
+    <div class="deck-primary">
+      <span class="deck-kicker"><i class="pi pi-globe" aria-hidden="true"></i> Traffic surface</span>
+      <h2>Ingress routes and service reachability.</h2>
+      <p>Inspect cluster entry points, endpoint health, network policy coverage, and DNS resolution from one operator surface.</p>
+      <div class="deck-chips" aria-label="Network capabilities">
+        <span><i class="pi pi-link" aria-hidden="true"></i> Ingress routes</span>
+        <span><i class="pi pi-server" aria-hidden="true"></i> Endpoint health</span>
+        <span><i class="pi pi-search" aria-hidden="true"></i> DNS diagnostics</span>
       </div>
-    }
-  </app-holo-card>
-}
-
-<!-- DNS Lookup -->
-<app-holo-card title="DNS Lookup" icon="pi pi-globe" [compact]="true">
-  <div class="dns-bar">
-    <input [(ngModel)]="dnsQuery" placeholder="service-name" (keyup.enter)="lookupDns()" />
-    <button class="ctrl-btn ctrl-btn-wide" (click)="lookupDns()">Resolve</button>
-  </div>
-  @if (dnsResult) {
-    <pre class="dns-result">{{ dnsResult | json }}</pre>
-  }
-</app-holo-card>
-
-<!-- Endpoints -->
-<app-command-bar [pills]="filterPills" [activePill]="epFilter" [search]="epSearch" placeholder="Filter endpoints..." (pillChange)="onEpFilter($event)" (searchChange)="onEpSearch($event)" />
-
-<div class="ep-list">
-  @for (ep of filteredEndpoints; track ep.name) {
-    <div class="ep-row" [class.ep-unhealthy]="!ep.healthy">
-      <app-status-beacon [status]="ep.healthy ? 'ok' : 'critical'" size="sm" />
-      <code class="ep-name">{{ ep.name }}</code>
-      <span class="ep-type">{{ ep.type || 'ClusterIP' }}</span>
-      <span class="ep-ports">{{ ep.ports || '' }}</span>
-      @if (!ep.healthy) { <p-tag value="No endpoints" severity="danger" [rounded]="true" /> }
     </div>
-  }
-  @if (filteredEndpoints.length === 0) { <div class="empty-state"><div class="empty-icon"><i class="pi pi-globe"></i></div><span>No endpoints</span></div> }
-</div>
+    <div class="network-readout" aria-label="Network telemetry">
+      <div class="readout-head">
+        <div>
+          <span class="readout-kicker">Reachability signal</span>
+          <strong>{{ unhealthyEndpoints > 0 ? 'Attention required' : 'Network surface ready' }}</strong>
+        </div>
+        <span class="readout-total" [class.readout-total-danger]="unhealthyEndpoints > 0">{{ unhealthyEndpoints }}/{{ endpoints.length }}</span>
+      </div>
+      <div class="telemetry-track" aria-hidden="true">
+        <span class="telemetry-healthy" [style.width.%]="endpoints.length ? (endpoints.length - unhealthyEndpoints) / endpoints.length * 100 : 0"></span>
+        <span class="telemetry-unhealthy" [style.width.%]="endpoints.length ? unhealthyEndpoints / endpoints.length * 100 : 0"></span>
+      </div>
+      <div class="telemetry-legend">
+        <span><i class="legend-dot legend-healthy" aria-hidden="true"></i> Ready <b>{{ endpoints.length - unhealthyEndpoints }}</b></span>
+        <span><i class="legend-dot legend-unhealthy" aria-hidden="true"></i> Unhealthy <b>{{ unhealthyEndpoints }}</b></span>
+      </div>
+      <div class="readout-grid">
+        <div><span>Mesh</span><strong>{{ meshDetected ? meshType : 'Not detected' }}</strong></div>
+        <div><span>Policies</span><strong>{{ netPolicies }}</strong></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="metrics-strip" aria-label="Network summary">
+    <app-metric-tile label="Ingresses" [value]="'' + ingresses.length" accent="cyan" />
+    <app-metric-tile label="Endpoints" [value]="'' + endpoints.length" accent="green" />
+    @if (unhealthyEndpoints > 0) { <app-metric-tile label="Unhealthy" [value]="'' + unhealthyEndpoints" accent="red" /> }
+    <app-metric-tile label="Net Policies" [value]="'' + netPolicies" accent="purple" />
+    @if (meshDetected) { <app-metric-tile label="Mesh" [value]="meshType" accent="cyan" /> }
+    <div class="metrics-context">
+      <span class="metrics-context-label">Refresh</span>
+      <strong>{{ autoRefresh ? 'AUTO' : 'PAUSED' }}</strong>
+      <span>{{ lastUpdated || 'awaiting first sync' }}</span>
+    </div>
+  </div>
+
+  <div class="network-grid">
+    <section class="network-section ingress-section" aria-labelledby="ingress-title">
+      <div class="section-heading">
+        <div><span class="section-label">Traffic entry</span><h2 id="ingress-title">Ingress routes</h2></div>
+        <span class="section-count">{{ ingresses.length }} routes</span>
+      </div>
+      @if (ingresses.length > 0) {
+        <div class="network-surface ingress-surface">
+          @for (ing of ingresses; track $index) {
+            <div class="ing-row">
+              <span class="network-status-rail" aria-hidden="true"></span>
+              <app-status-beacon status="ok" size="sm" />
+              <div class="ing-info">
+                <code class="ing-name">{{ ing.name }}</code>
+                <span class="ing-route"><span class="ing-host">{{ ing.host || '*' }}</span><span class="ing-path">{{ ing.path || '/' }}</span></span>
+              </div>
+              <span class="ing-backend">{{ ing.service || ing.backend || 'unresolved' }}{{ ing.port ? ':' + ing.port : '' }}</span>
+            </div>
+          }
+        </div>
+      } @else if (loading) {
+        <div class="network-state" role="status"><i class="pi pi-spin pi-spinner" aria-hidden="true"></i> Loading ingress routes...</div>
+      } @else {
+        <div class="network-state"><i class="pi pi-link" aria-hidden="true"></i><strong>No ingress routes</strong><span>No external entry points reported.</span></div>
+      }
+    </section>
+
+    <section class="network-section dns-section" aria-labelledby="dns-title">
+      <div class="section-heading">
+        <div><span class="section-label">Service diagnostics</span><h2 id="dns-title">DNS lookup</h2></div>
+        <span class="section-count">Cluster resolver</span>
+      </div>
+      <div class="network-surface dns-surface">
+        <label class="sr-only" for="dns-query">Service name</label>
+        <div class="dns-bar">
+          <input id="dns-query" [(ngModel)]="dnsQuery" aria-label="Service name" placeholder="service-name" (keyup.enter)="lookupDns()" />
+          <button class="ctrl-btn ctrl-btn-wide" type="button" (click)="lookupDns()" aria-label="Resolve service DNS">Resolve</button>
+        </div>
+        @if (dnsResult) {
+          <pre class="dns-result" tabindex="0" aria-label="DNS lookup result">{{ dnsResult | json }}</pre>
+        } @else {
+          <div class="dns-empty"><i class="pi pi-search" aria-hidden="true"></i><span>Enter a service name to inspect its cluster address.</span></div>
+        }
+      </div>
+    </section>
+  </div>
+
+  <section class="network-section endpoint-section" aria-labelledby="endpoint-title">
+    <div class="section-heading">
+      <div><span class="section-label">Service reachability</span><h2 id="endpoint-title">Endpoint inventory</h2></div>
+      <span class="section-count">{{ filteredEndpoints.length }} / {{ endpoints.length }} visible</span>
+    </div>
+    <div class="filter-section">
+      <div class="filter-section-head">
+        <div><span class="section-label">Command filter</span><strong>Find endpoint health signals</strong></div>
+        <span class="filter-hint">Filter by state or service name</span>
+      </div>
+      <app-command-bar [pills]="filterPills" [activePill]="epFilter" [search]="epSearch" placeholder="Filter endpoints..." (pillChange)="onEpFilter($event)" (searchChange)="onEpSearch($event)" />
+    </div>
+    <div class="network-surface ep-list">
+      @for (ep of filteredEndpoints; track ep.name) {
+        <div class="ep-row" [class.ep-unhealthy]="!ep.healthy" [attr.data-health]="ep.healthy ? 'healthy' : 'unhealthy'">
+          <span class="network-status-rail" aria-hidden="true"></span>
+          <app-status-beacon [status]="ep.healthy ? 'ok' : 'critical'" size="sm" />
+          <code class="ep-name">{{ ep.name }}</code>
+          <span class="ep-type">{{ ep.type || 'ClusterIP' }}</span>
+          <span class="ep-ports">{{ ep.ports || 'ports unavailable' }}</span>
+          @if (!ep.healthy) { <p-tag value="No endpoints" severity="danger" [rounded]="true" /> }
+        </div>
+      }
+      @if (filteredEndpoints.length === 0) {
+        <div class="empty-state" role="status">
+          <div class="empty-icon"><i class="pi pi-globe" aria-hidden="true"></i></div>
+          <strong>{{ epSearch || epFilter !== 'all' ? 'No endpoints match this filter' : 'No endpoint services reported' }}</strong>
+          <span>{{ epSearch || epFilter !== 'all' ? 'Try another state or service name.' : 'The current cluster returned no endpoint records.' }}</span>
+        </div>
+      }
+    </div>
+  </section>
+</section>

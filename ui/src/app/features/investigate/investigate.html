@@ -1,45 +1,62 @@
 <!-- ─── Header ─────────────────────────────────────────────────────── -->
 <app-intel-header title="Investigation" icon="pi pi-search"
-  [subtitle]="report ? target + ' · ' + findings.length + ' findings' : 'evidence-backed diagnosis'">
-  <button class="ctrl-btn" (click)="loadBenchmark()" pTooltip="Trust & Accuracy">
-    <i class="pi pi-shield"></i>
+  [subtitle]="report ? reportTarget + ' · ' + findings.length + ' findings' : 'evidence-backed diagnosis'">
+  <button class="ctrl-btn" type="button" (click)="loadBenchmark()" pTooltip="Trust & Accuracy" aria-label="Open trust and accuracy">
+    <i class="pi pi-shield" aria-hidden="true"></i>
   </button>
 </app-intel-header>
 
 <!-- ─── Search ─────────────────────────────────────────────────────── -->
- <!-- ─── Search with Dropdown ───────────────────────────────────────── -->
-<div class="search-bar">
+<div class="search-bar" role="search">
   <div class="search-wrapper">
-    <input class="search-input" type="text" [(ngModel)]="target"
-      placeholder="Pod or service name..."
+    <label class="search-label" for="investigation-target">Pod name</label>
+    <input id="investigation-target" class="search-input" type="search" [(ngModel)]="target"
+      placeholder="Enter a pod name..."
+      autocomplete="off"
+      aria-describedby="investigation-help"
+      [attr.aria-expanded]="showSuggestions"
+      aria-controls="investigation-suggestions"
       (input)="onSearchInput()"
       (keydown.enter)="investigate()"
       (blur)="hideSuggestions()"
       (focus)="onSearchInput()" />
-    @if (showSuggestions && suggestions.length > 0) {
-      <div class="search-dropdown">
-        @for (s of suggestions; track s) {
-          <button class="search-option" (mousedown)="selectSuggestion(s)">
-            <i class="pi pi-box"></i>
-            <span class="search-option-name">{{ s }}</span>
-          </button>
+    <span id="investigation-help" class="search-help">Search pod names, then inspect evidence and remediation.</span>
+    @if (showSuggestions) {
+      <div id="investigation-suggestions" class="search-dropdown" role="listbox" aria-label="Pod suggestions">
+        @if (autocompleteLoading) {
+          <div class="search-status"><i class="pi pi-spin pi-spinner" aria-hidden="true"></i> Searching pods...</div>
+        } @else if (autocompleteError) {
+          <div class="search-status search-status-error" role="alert">{{ autocompleteError }}</div>
+        } @else if (suggestions.length > 0) {
+          @for (s of suggestions; track s) {
+            <button class="search-option" type="button" role="option" (mousedown)="selectSuggestion(s)">
+              <i class="pi pi-box" aria-hidden="true"></i>
+              <span class="search-option-name">{{ s }}</span>
+            </button>
+          }
+        } @else if (target.trim().length >= 2) {
+          <div class="search-status">No matching pods.</div>
         }
       </div>
     }
   </div>
-  <button class="ctrl-btn ctrl-btn-accent" (click)="investigate()" [disabled]="loading">
-    <i class="pi" [class.pi-search]="!loading" [class.pi-spin]="loading" [class.pi-spinner]="loading"></i>
+  <button class="ctrl-btn ctrl-btn-accent" type="button" (click)="investigate()" [disabled]="loading || !target.trim()">
+    <i class="pi" [class.pi-search]="!loading" [class.pi-spin]="loading" [class.pi-spinner]="loading" aria-hidden="true"></i>
     <span>Investigate</span>
   </button>
 </div>
 
 <!-- ─── Loading ────────────────────────────────────────────────────── -->
 @if (loading) {
-  <div class="loading-state"><div class="loader-ring"></div><span>Investigating {{ target }}...</span></div>
+  <div class="loading-state" role="status" aria-live="polite"><div class="loader-ring"></div><span>Investigating {{ target }}...</span></div>
 }
 
 @if (loadError) {
-  <div class="empty-state"><div class="empty-icon"><i class="pi pi-exclamation-triangle"></i></div><span>{{ loadError }}</span></div>
+  <div class="empty-state error-state" role="alert">
+    <div class="empty-icon"><i class="pi pi-exclamation-triangle" aria-hidden="true"></i></div>
+    <strong>{{ loadError }}</strong>
+    <button class="ctrl-btn" type="button" (click)="investigate()">Retry</button>
+  </div>
 }
 
 <!-- ─── Report ─────────────────────────────────────────────────────── -->
@@ -85,6 +102,16 @@
     </div>
   }
 
+  @if (isHealthyReport) {
+    <div class="healthy-state" role="status" aria-live="polite">
+      <div class="healthy-icon"><i class="pi pi-check-circle" aria-hidden="true"></i></div>
+      <div>
+        <strong>No issues detected</strong>
+        <p>Investigation completed for {{ reportTarget }}. No actionable findings were returned.</p>
+      </div>
+    </div>
+  }
+
   <!-- ━━━ Metrics Strip ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
   <div class="metrics-strip">
     <app-metric-tile label="Findings" [value]="'' + findings.length" accent="cyan" />
@@ -97,12 +124,12 @@
   </div>
 
   <!-- ━━━ Tabs ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
-  <div class="tab-bar">
-    <button class="tab-btn" [class.active]="activeTab === 'findings'" (click)="activeTab = 'findings'">Findings</button>
-    <button class="tab-btn" [class.active]="activeTab === 'timeline'" (click)="activeTab = 'timeline'">Timeline</button>
-    <button class="tab-btn" [class.active]="activeTab === 'evidence'" (click)="activeTab = 'evidence'">Evidence</button>
-    <button class="tab-btn" [class.active]="activeTab === 'plans'" (click)="activeTab = 'plans'">Plans</button>
-    <button class="tab-btn tab-btn-muted" [class.active]="activeTab === 'trust'" (click)="loadBenchmark()">Trust & Accuracy</button>
+  <div class="tab-bar" role="tablist" aria-label="Investigation details">
+    <button class="tab-btn" type="button" role="tab" [attr.aria-selected]="activeTab === 'findings'" [class.active]="activeTab === 'findings'" (click)="activeTab = 'findings'">Findings</button>
+    <button class="tab-btn" type="button" role="tab" [attr.aria-selected]="activeTab === 'timeline'" [class.active]="activeTab === 'timeline'" (click)="activeTab = 'timeline'">Timeline</button>
+    <button class="tab-btn" type="button" role="tab" [attr.aria-selected]="activeTab === 'evidence'" [class.active]="activeTab === 'evidence'" (click)="activeTab = 'evidence'">Evidence</button>
+    <button class="tab-btn" type="button" role="tab" [attr.aria-selected]="activeTab === 'plans'" [class.active]="activeTab === 'plans'" (click)="activeTab = 'plans'">Plans</button>
+    <button class="tab-btn tab-btn-muted" type="button" role="tab" [attr.aria-selected]="activeTab === 'trust'" [class.active]="activeTab === 'trust'" (click)="loadBenchmark()">Trust & Accuracy</button>
   </div>
 
   <!-- ━━━ Findings Tab ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
@@ -149,8 +176,8 @@
               @for (cmd of f.verification_commands; track cmd) {
                 <div class="verify-cmd-row">
                   <code class="verify-cmd">{{ cmd }}</code>
-                  <button class="copy-btn" (click)="copyToClipboard(cmd)" [class.copied]="copyFeedback === cmd">
-                    {{ copyFeedback === cmd ? '✓' : '📋' }}
+                  <button class="copy-btn" type="button" (click)="copyToClipboard(cmd)" [class.copied]="copyFeedback === cmd" [attr.aria-label]="copyFeedback === cmd ? 'Copied verification command' : 'Copy verification command'">
+                    <i class="pi" [class.pi-check]="copyFeedback === cmd" [class.pi-copy]="copyFeedback !== cmd" aria-hidden="true"></i>
                   </button>
                 </div>
               }
@@ -171,10 +198,12 @@
           }
 
           <!-- 7. Feedback -->
-          <div class="feedback-row">
-            <button class="fb-btn fb-correct" (click)="submitFeedback(f.finding_type, 'correct')" pTooltip="Correct">✓</button>
-            <button class="fb-btn fb-partial" (click)="submitFeedback(f.finding_type, 'partial')" pTooltip="Partially correct">~</button>
-            <button class="fb-btn fb-wrong" (click)="submitFeedback(f.finding_type, 'wrong')" pTooltip="Wrong">✗</button>
+          <div class="feedback-row" aria-label="Finding feedback">
+            <button class="fb-btn fb-correct" type="button" (click)="submitFeedback(f.finding_type, 'correct')" [disabled]="feedbackState === 'submitting'" pTooltip="Correct" aria-label="Mark finding correct">✓</button>
+            <button class="fb-btn fb-partial" type="button" (click)="submitFeedback(f.finding_type, 'partial')" [disabled]="feedbackState === 'submitting'" pTooltip="Partially correct" aria-label="Mark finding partially correct">~</button>
+            <button class="fb-btn fb-wrong" type="button" (click)="submitFeedback(f.finding_type, 'wrong')" [disabled]="feedbackState === 'submitting'" pTooltip="Wrong" aria-label="Mark finding wrong">✗</button>
+            @if (feedbackState === 'submitting') { <span class="feedback-status" role="status">Saving...</span> }
+            @if (feedbackMessage) { <span class="feedback-status" [class.feedback-status-error]="feedbackState === 'error'" role="status">{{ feedbackMessage }}</span> }
           </div>
         </div>
       }
@@ -243,8 +272,8 @@
           @for (step of plan.steps; track step) {
             <li>
               <span class="step-text">{{ step }}</span>
-              <button class="copy-btn copy-btn-inline" (click)="copyToClipboard(step)" [class.copied]="copyFeedback === step">
-                {{ copyFeedback === step ? '✓' : '📋' }}
+              <button class="copy-btn copy-btn-inline" type="button" (click)="copyToClipboard(step)" [class.copied]="copyFeedback === step" [attr.aria-label]="copyFeedback === step ? 'Copied plan step' : 'Copy plan step'">
+                <i class="pi" [class.pi-check]="copyFeedback === step" [class.pi-copy]="copyFeedback !== step" aria-hidden="true"></i>
               </button>
             </li>
           }
@@ -257,7 +286,11 @@
   @if (activeTab === 'trust') {
     <app-holo-card [compact]="true">
       <div class="benchmark-header">Model Performance</div>
-      @if (benchmarkData) {
+      @if (benchmarkLoading) {
+        <div class="loading-state" role="status"><div class="loader-ring"></div><span>Running benchmark...</span></div>
+      } @else if (benchmarkError) {
+        <div class="empty-state error-state" role="alert"><span>{{ benchmarkError }}</span><button class="ctrl-btn" type="button" (click)="loadBenchmark()">Retry</button></div>
+      } @else if (benchmarkData) {
         @if (benchmarkData.total === 0) {
           <div class="empty-state"><span>{{ benchmarkData.message || 'No corpus entries yet.' }}</span></div>
         } @else {
@@ -269,7 +302,7 @@
           </div>
         }
       } @else {
-        <div class="loading-state"><div class="loader-ring"></div><span>Running benchmark...</span></div>
+        <div class="empty-state"><span>Benchmark has not run yet.</span><button class="ctrl-btn" type="button" (click)="loadBenchmark()">Run benchmark</button></div>
       }
     </app-holo-card>
 
@@ -289,6 +322,10 @@
     }
   }
 }
+
+  @if (copyError) {
+    <div class="inline-status error-state" role="alert">{{ copyError }}</div>
+  }
 
 <!-- ─── Empty State ────────────────────────────────────────────────── -->
 @if (!report && !loading && !loadError) {

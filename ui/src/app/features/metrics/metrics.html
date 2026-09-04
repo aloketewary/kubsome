@@ -1,204 +1,326 @@
-<!-- ─── Header ─────────────────────────────────────────────────────── -->
-<app-intel-header title="Resource Metrics" icon="pi pi-chart-line"
-  [subtitle]="topNodes.length + ' nodes · ' + topPods.length + ' pods · ' + (lastUpdated || 'loading...')">
-  <app-live-indicator [active]="autoRefresh" label="AUTO" offLabel="PAUSED" (click)="toggleAutoRefresh()" />
-  <button class="ctrl-btn" (click)="refresh()" pTooltip="Refresh">
-    <i class="pi pi-refresh" [class.spinning]="loading"></i>
-  </button>
-</app-intel-header>
+<section class="metrics-page" aria-label="Resource metrics workspace">
+  <app-intel-header title="Resource Metrics" icon="pi pi-chart-line"
+    [subtitle]="topNodes.length + ' nodes · ' + topPods.length + ' pods · ' + (lastUpdated || 'loading...')">
+    <button class="live-toggle" type="button" [attr.aria-pressed]="autoRefresh"
+      [attr.aria-label]="autoRefresh ? 'Pause automatic refresh' : 'Enable automatic refresh'"
+      (click)="toggleAutoRefresh()">
+      <app-live-indicator [active]="autoRefresh" label="AUTO" offLabel="PAUSED" />
+    </button>
+    <button class="ctrl-btn" type="button" (click)="refresh()" aria-label="Refresh metrics" pTooltip="Refresh">
+      <i class="pi pi-refresh" [class.spinning]="loading" aria-hidden="true"></i>
+    </button>
+  </app-intel-header>
 
-<!-- ━━━ P0: Attention Needed ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
-@if (hotNodes.length > 0 || hotPods.length > 0) {
-  <div class="attention-section">
-    <div class="attention-header">
-      <span class="attention-title">🔥 Attention Needed</span>
+  <div class="metrics-deck" aria-label="Resource utilization overview">
+    <div class="deck-primary">
+      <span class="deck-kicker"><i class="pi pi-chart-line" aria-hidden="true"></i> Resource telemetry</span>
+      <h2>Cluster pressure</h2>
+      <p>Track node capacity and pod consumption from one operational view.</p>
+      <div class="deck-chips" aria-label="Metrics surface capabilities">
+        <span><i class="pi pi-server" aria-hidden="true"></i> Node capacity</span>
+        <span><i class="pi pi-box" aria-hidden="true"></i> Pod consumption</span>
+      </div>
+    </div>
+    <div class="telemetry-panel" aria-label="Resource utilization telemetry">
+      <div class="telemetry-head">
+        <div>
+          <span class="telemetry-kicker">Utilization signal</span>
+          <strong>Current sample</strong>
+        </div>
+        <span class="telemetry-total">{{ hotNodes.length + hotPods.length }} hot</span>
+      </div>
+      <div class="utilization-readout">
+        <div class="utilization-row">
+          <span>CPU average</span>
+          <div class="utilization-track" aria-hidden="true"><span class="utilization-cpu"
+              [style.width.%]="avgCpu"></span></div>
+          <strong>{{ avgCpu }}%</strong>
+        </div>
+        <div class="utilization-row">
+          <span>Memory average</span>
+          <div class="utilization-track" aria-hidden="true"><span class="utilization-memory"
+              [style.width.%]="avgMem"></span></div>
+          <strong>{{ avgMem }}%</strong>
+        </div>
+      </div>
+      <div class="telemetry-legend">
+        <span><i class="legend-dot legend-nodes" aria-hidden="true"></i> Nodes <b>{{ topNodes.length }}</b></span>
+        <span><i class="legend-dot legend-pods" aria-hidden="true"></i> Pods <b>{{ topPods.length }}</b></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ━━━ P0: Signal Queue ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+  @if (hotNodes.length > 0 || hotPods.length > 0) {
+  <section class="attention-section" aria-labelledby="attention-title">
+    <div class="metrics-section-head attention-header">
+      <div>
+        <span class="section-kicker">Signal queue</span>
+        <h2 id="attention-title" class="attention-title"><app-status-beacon status="critical" size="sm" /> Attention
+          needed</h2>
+      </div>
+      <span class="section-count">{{ hotNodes.length + hotPods.length }} active</span>
     </div>
 
     @if (hotNodes.length > 0) {
-      <div class="attention-group">
-        <span class="attention-group-label">Nodes</span>
-        @for (node of hotNodes; track node.name) {
-          <div class="attention-row" (click)="toggleNode(node.name)">
-            <app-status-beacon status="critical" size="sm" />
-            <span class="attention-name">{{ node.name }}</span>
-            <span class="attention-metric" [class.metric-crit]="node.cpu_pct_val > 80">
-              CPU {{ node.cpu_percent }}
-              @if (nodeCpuDelta(node.name)) {
-                <span class="delta" [class.delta-up]="nodeCpuDelta(node.name).startsWith('↑')">{{ nodeCpuDelta(node.name) }}</span>
-              }
-            </span>
-            <span class="attention-metric" [class.metric-crit]="node.mem_pct_val > 80">
-              MEM {{ node.memory_percent }}
-              @if (nodeMemDelta(node.name)) {
-                <span class="delta" [class.delta-up]="nodeMemDelta(node.name).startsWith('↑')">{{ nodeMemDelta(node.name) }}</span>
-              }
-            </span>
-            <button class="attention-action" (click)="$event.stopPropagation(); router.navigate(['/investigate'], { queryParams: { target: node.name } })">Investigate</button>
-          </div>
-        }
+    <div class="attention-group">
+      <span class="attention-group-label">Nodes</span>
+      @for (node of hotNodes; track node.name) {
+      <div class="attention-row" role="button" tabindex="0" (click)="toggleNode(node.name)"
+        (keydown.enter)="toggleNode(node.name)" (keydown.space)="$event.preventDefault(); toggleNode(node.name)">
+        <app-status-beacon status="critical" size="sm" />
+        <span class="attention-name">{{ node.name }}</span>
+        <span class="attention-metric" [class.metric-crit]="node.cpu_pct_val > 80">
+          CPU {{ node.cpu_percent }}
+          @if (nodeCpuDelta(node.name)) {
+          <span class="delta" [class.delta-up]="nodeCpuDelta(node.name).startsWith('↑')">{{ nodeCpuDelta(node.name)
+            }}</span>
+          }
+        </span>
+        <span class="attention-metric" [class.metric-crit]="node.mem_pct_val > 80">
+          MEM {{ node.memory_percent }}
+          @if (nodeMemDelta(node.name)) {
+          <span class="delta" [class.delta-up]="nodeMemDelta(node.name).startsWith('↑')">{{ nodeMemDelta(node.name)
+            }}</span>
+          }
+        </span>
+        <button type="button" class="attention-action ctrl-btn ctrl-btn-wide"
+          (click)="$event.stopPropagation(); router.navigate(['/infrastructure/node-ops'], { queryParams: { node: node.name } })">Node details</button>
       </div>
+      }
+    </div>
     }
 
     @if (hotPods.length > 0) {
-      <div class="attention-group">
-        <span class="attention-group-label">Pods</span>
-        @for (pod of hotPods; track pod.name) {
-          <div class="attention-row">
-            <app-status-beacon status="critical" size="sm" />
-            <span class="attention-name">{{ pod.name }}</span>
-            <span class="attention-metric" [class.metric-crit]="cpuPct(pod) > 80">CPU {{ pod.cpu }}</span>
-            <span class="attention-metric" [class.metric-crit]="memPct(pod) > 80">MEM {{ pod.memory }}</span>
-            <button class="attention-action" (click)="router.navigate(['/investigate'], { queryParams: { target: pod.name } })">Investigate</button>
-            <button class="attention-action" (click)="router.navigate(['/logs'], { queryParams: { pod: pod.name } })">Logs</button>
-          </div>
-        }
+    <div class="attention-group">
+      <span class="attention-group-label">Pods</span>
+      @for (pod of hotPods; track pod.name) {
+      <div class="attention-row">
+        <app-status-beacon status="critical" size="sm" />
+        <span class="attention-name">{{ pod.name }}</span>
+        <span class="attention-metric" [class.metric-crit]="cpuPct(pod) > 80">CPU {{ pod.cpu }}</span>
+        <span class="attention-metric" [class.metric-crit]="memPct(pod) > 80">MEM {{ pod.memory }}</span>
+        <button type="button" class="attention-action ctrl-btn ctrl-btn-wide"
+          (click)="router.navigate(['/monitor/investigate'], { queryParams: { target: pod.name } })">Investigate</button>
+        <button type="button" class="attention-action ctrl-btn ctrl-btn-wide"
+          (click)="router.navigate(['/monitor/logs'], { queryParams: { pod: pod.name } })">Logs</button>
       </div>
+      }
+    </div>
     }
-  </div>
-}
+  </section>
+  }
 
-<!-- ━━━ Cluster Summary ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
-<div class="metrics-strip">
-  <app-metric-tile label="Nodes" [value]="'' + topNodes.length" accent="cyan" />
-  <app-metric-tile label="Avg CPU" [value]="avgCpu + '%'" [accent]="avgCpu > 80 ? 'red' : avgCpu > 50 ? 'amber' : 'green'" />
-  <app-metric-tile label="Avg MEM" [value]="avgMem + '%'" [accent]="avgMem > 80 ? 'red' : avgMem > 50 ? 'amber' : 'green'" />
-  <app-metric-tile label="Pods" [value]="'' + topPods.length" accent="purple" />
-  <app-metric-tile label="HOT" [value]="'' + (hotNodes.length + hotPods.length)" [accent]="(hotNodes.length + hotPods.length) > 0 ? 'red' : 'green'" />
-</div>
+  <!-- ━━━ Cluster Summary ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+  <section class="metrics-overview" aria-labelledby="overview-title">
+    <div class="metrics-section-head">
+      <div>
+        <span class="section-kicker">Cluster overview</span>
+        <h2 id="overview-title" class="section-title">Resource posture</h2>
+      </div>
+      <span class="section-count">live snapshot</span>
+    </div>
+    <div class="metrics-strip">
+      <app-metric-tile label="Nodes" [value]="'' + topNodes.length" accent="cyan" />
+      <app-metric-tile label="Avg CPU" [value]="avgCpu + '%'"
+        [accent]="avgCpu > 80 ? 'red' : avgCpu > 50 ? 'amber' : 'green'" />
+      <app-metric-tile label="Avg MEM" [value]="avgMem + '%'"
+        [accent]="avgMem > 80 ? 'red' : avgMem > 50 ? 'amber' : 'green'" />
+      <app-metric-tile label="Pods" [value]="'' + topPods.length" accent="purple" />
+      <app-metric-tile label="HOT" [value]="'' + (hotNodes.length + hotPods.length)"
+        [accent]="(hotNodes.length + hotPods.length) > 0 ? 'red' : 'green'" />
+    </div>
+  </section>
 
-<!-- ━━━ P1: Top Consumers ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
-<div class="top-consumers">
-  <div class="consumer-tile">
-    <span class="consumer-label">Top CPU</span>
-    <span class="consumer-value">{{ topCpuPod }}</span>
-  </div>
-  <div class="consumer-tile">
-    <span class="consumer-label">Top Memory</span>
-    <span class="consumer-value">{{ topMemPod }}</span>
-  </div>
-</div>
+  <!-- ━━━ P1: Top Consumers ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+  <section class="consumer-section" aria-labelledby="consumer-title">
+    <div class="metrics-section-head">
+      <div>
+        <span class="section-kicker">Resource leaders</span>
+        <h2 id="consumer-title" class="section-title">Top consumers</h2>
+      </div>
+      <span class="section-count">current sample</span>
+    </div>
+    <div class="top-consumers">
+      <div class="consumer-tile">
+        <span class="consumer-label">Top CPU</span>
+        <span class="consumer-value">{{ topCpuPod }}</span>
+      </div>
+      <div class="consumer-tile">
+        <span class="consumer-label">Top Memory</span>
+        <span class="consumer-value">{{ topMemPod }}</span>
+      </div>
+    </div>
+  </section>
 
-<!-- ━━━ Node Cards ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
-@if (topNodes.length > 0) {
-  <div class="nodes-grid">
-    @for (node of topNodes; track node.name) {
-      <app-holo-card [glow]="nodeStatus(node) === 'critical' ? 'red' : nodeStatus(node) === 'warning' ? 'amber' : 'none'" [compact]="true" [interactive]="true">
+  <!-- ━━━ Node Cards ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+  @if (topNodes.length > 0) {
+  <section class="node-section" aria-labelledby="node-title">
+    <div class="metrics-section-head">
+      <div>
+        <span class="section-kicker">Capacity map</span>
+        <h2 id="node-title" class="section-title">Node pressure</h2>
+      </div>
+      <span class="section-count">{{ topNodes.length }} nodes</span>
+    </div>
+    <div class="nodes-grid">
+      @for (node of topNodes; track node.name) {
+      <app-holo-card
+        [glow]="nodeStatus(node) === 'critical' ? 'red' : nodeStatus(node) === 'warning' ? 'amber' : 'none'"
+        [compact]="true" [interactive]="true">
         <div class="node-card-inner">
-          <div class="node-head" (click)="toggleNode(node.name)">
+          <button class="node-head" type="button" (click)="toggleNode(node.name)">
             <app-status-beacon [status]="nodeStatus(node)" size="sm" />
             <span class="node-name" [pTooltip]="node.name">{{ node.name }}</span>
             @if (nodeStatus(node) === 'critical') {
-              <span class="node-hot">HOT</span>
+            <span class="node-hot">HOT</span>
             }
             <span class="node-pod-count">{{ getNodePods(node.name).length }} pods</span>
-          </div>
+          </button>
           <div class="node-gauges">
             <div class="gauge-block">
-              <svg class="gauge-svg" viewBox="0 0 36 36">
-                <path class="gauge-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                <path [class]="'gauge-fill ' + cpuColor(node.cpu_pct_val)" [attr.stroke-dasharray]="node.cpu_pct_val + ', 100'" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-              </svg>
-              <span class="gauge-val">{{ node.cpu_percent }}</span>
-              <span class="gauge-lbl">CPU</span>
-              @if (nodeCpuDelta(node.name)) {
+              <div class="gauge-visual">
+                <svg class="gauge-svg" viewBox="0 0 36 36">
+                  <path class="gauge-bg"
+                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                  <path [class]="'gauge-fill ' + cpuColor(node.cpu_pct_val)"
+                    [attr.stroke-dasharray]="node.cpu_pct_val + ', 100'"
+                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                </svg>
+                <span class="gauge-readout">
+                  <span class="gauge-val">{{ node.cpu_percent }}</span>
+                </span>
+              </div>
+              <div class="gauge-meta">
+                <span class="gauge-lbl">CPU</span>
+                @if (nodeCpuDelta(node.name)) {
                 <span class="gauge-delta" [class.delta-up]="nodeCpuDelta(node.name).startsWith('↑')">{{ nodeCpuDelta(node.name) }}</span>
-              }
+                }
+              </div>
             </div>
             <div class="gauge-block">
-              <svg class="gauge-svg" viewBox="0 0 36 36">
-                <path class="gauge-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                <path [class]="'gauge-fill ' + memColor(node.mem_pct_val)" [attr.stroke-dasharray]="node.mem_pct_val + ', 100'" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-              </svg>
-              <span class="gauge-val">{{ node.memory_percent }}</span>
-              <span class="gauge-lbl">MEM</span>
-              @if (nodeMemDelta(node.name)) {
+              <div class="gauge-visual">
+                <svg class="gauge-svg" viewBox="0 0 36 36">
+                  <path class="gauge-bg"
+                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                  <path [class]="'gauge-fill ' + memColor(node.mem_pct_val)"
+                    [attr.stroke-dasharray]="node.mem_pct_val + ', 100'"
+                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                </svg>
+                <span class="gauge-readout">
+                  <span class="gauge-val">{{ node.memory_percent }}</span>
+                </span>
+              </div>
+              <div class="gauge-meta">
+                <span class="gauge-lbl">MEM</span>
+                @if (nodeMemDelta(node.name)) {
                 <span class="gauge-delta" [class.delta-up]="nodeMemDelta(node.name).startsWith('↑')">{{ nodeMemDelta(node.name) }}</span>
-              }
+                }
+              </div>
             </div>
           </div>
 
           @if (expandedNode === node.name) {
-            <div class="node-pods-list">
-              @for (pod of getNodePods(node.name); track pod.name) {
-                <div class="node-pod-row">
-                  <app-status-beacon [status]="pod.status === 'Running' ? 'ok' : pod.status === 'Pending' ? 'warning' : 'critical'" size="sm" />
-                  <span class="node-pod-name">{{ pod.name }}</span>
-                  <span class="node-pod-status">{{ pod.status }}</span>
-                </div>
-              }
-              @if (getNodePods(node.name).length === 0) {
-                <span class="node-pods-empty">No pods on this node</span>
-              }
+          <div class="node-pods-list">
+            @for (pod of getNodePods(node.name); track pod.name) {
+            <div class="node-pod-row">
+              <app-status-beacon
+                [status]="pod.status === 'Running' ? 'ok' : pod.status === 'Pending' ? 'warning' : 'critical'"
+                size="sm" />
+              <span class="node-pod-name">{{ pod.name }}</span>
+              <span class="node-pod-status">{{ pod.status }}</span>
             </div>
+            }
+            @if (getNodePods(node.name).length === 0) {
+            <span class="node-pods-empty">No pods on this node</span>
+            }
+          </div>
           }
 
-          <button class="node-expand-btn" (click)="toggleNode(node.name)">
-            <i class="pi" [class.pi-chevron-down]="expandedNode === node.name" [class.pi-chevron-right]="expandedNode !== node.name"></i>
+          <button class="node-expand-btn ctrl-btn ctrl-btn-wide" type="button" (click)="toggleNode(node.name)">
+            <i class="pi" [class.pi-chevron-down]="expandedNode === node.name"
+              [class.pi-chevron-right]="expandedNode !== node.name"></i>
             {{ expandedNode === node.name ? 'Hide' : 'Show' }} pods
           </button>
         </div>
       </app-holo-card>
-    }
-  </div>
-}
-
-<!-- ━━━ Pod Resources ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
-<app-holo-card title="Pod Resources" icon="pi pi-box" glow="cyan">
-  <div header-actions>
-    <app-command-bar
-      [pills]="filterPills"
-      [activePill]="sortBy"
-      [search]="searchQuery"
-      placeholder="Filter pods..."
-      (pillChange)="onSortChange($event)"
-      (searchChange)="onSearchChange($event)"
-      [showSearch]="true" />
-  </div>
-
-  @if (loading && sortedPods.length === 0) {
-    <div class="loading-state">
-      <div class="loader-ring"></div>
-      <span>Loading metrics...</span>
+      }
     </div>
+  </section>
   }
 
-  <div class="pod-list">
-    @for (pod of sortedPods; track pod.name; let i = $index) {
-      <div class="pod-row" [class.pod-top3]="i < 3" [class.pod-hot]="cpuPct(pod) > 80 || memPct(pod) > 80">
-        <span class="pod-rank" [class.rank-1]="i === 0" [class.rank-2]="i === 1" [class.rank-3]="i === 2">{{ i + 1 }}</span>
-        <div class="pod-info">
-          <div class="pod-name-row">
-            <code class="pod-name" [pTooltip]="pod.name">{{ pod.name }}</code>
-            @if (cpuPct(pod) > 80 || memPct(pod) > 80) {
-              <button class="pod-action" (click)="router.navigate(['/investigate'], { queryParams: { target: pod.name } })">Investigate</button>
-              <button class="pod-action" (click)="router.navigate(['/logs'], { queryParams: { pod: pod.name } })">Logs</button>
-            }
-          </div>
-          <div class="pod-bars">
-            <div class="bar-row">
-              <span class="bar-lbl">CPU</span>
-              <div class="bar-track">
-                <div class="bar-fill" [class]="cpuColor(cpuPct(pod))" [style.width.%]="cpuPct(pod)"></div>
-              </div>
-              <span class="bar-val">{{ pod.cpu }}</span>
+  <!-- ━━━ Pod Resources ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+  <div class="filter-section">
+    <div class="filter-section-head">
+      <div>
+        <span class="section-label">Resource filter</span>
+        <strong>Sort and find pod metrics</strong>
+      </div>
+      <span class="filter-hint">{{ sortedPods.length }} pods shown</span>
+    </div>
+    <app-command-bar [pills]="filterPills" [activePill]="sortBy" [search]="searchQuery" placeholder="Filter pods..."
+      (pillChange)="onSortChange($event)" (searchChange)="onSearchChange($event)" [showSearch]="true" />
+  </div>
+
+  <section class="pod-resources-section" aria-labelledby="pod-resources-title">
+    <div class="metrics-section-head">
+      <div>
+        <span class="section-label">Workload ranking</span>
+        <h2 id="pod-resources-title" class="section-title">Pod resources</h2>
+      </div>
+      <span class="section-count">{{ sortedPods.length }} pods</span>
+    </div>
+    <app-holo-card title="Pod Resources" icon="pi pi-box" glow="cyan">
+
+      @if (loading && sortedPods.length === 0) {
+      <div class="loading-state" role="status" aria-live="polite">
+        <div class="loader-ring" aria-hidden="true"></div>
+        <span>Loading metrics...</span>
+      </div>
+      }
+
+      <div class="pod-list">
+        @for (pod of sortedPods; track pod.name; let i = $index) {
+        <div class="pod-row" [class.pod-top3]="i < 3" [class.pod-hot]="cpuPct(pod) > 80 || memPct(pod) > 80">
+          <span class="pod-rank" [class.rank-1]="i === 0" [class.rank-2]="i === 1" [class.rank-3]="i === 2">{{ i + 1
+            }}</span>
+          <div class="pod-info">
+            <div class="pod-name-row">
+              <code class="pod-name" [pTooltip]="pod.name">{{ pod.name }}</code>
+              @if (cpuPct(pod) > 80 || memPct(pod) > 80) {
+              <button type="button" class="pod-action ctrl-btn ctrl-btn-wide ctrl-btn-investigate"
+                (click)="router.navigate(['/monitor/investigate'], { queryParams: { target: pod.name } })">Investigate</button>
+              <button type="button" class="pod-action ctrl-btn ctrl-btn-wide"
+                (click)="router.navigate(['/monitor/logs'], { queryParams: { pod: pod.name } })">Logs</button>
+              }
             </div>
-            <div class="bar-row">
-              <span class="bar-lbl">MEM</span>
-              <div class="bar-track">
-                <div class="bar-fill" [class]="memColor(memPct(pod))" [style.width.%]="memPct(pod)"></div>
+            <div class="pod-bars">
+              <div class="bar-row">
+                <span class="bar-lbl">CPU</span>
+                <div class="bar-track">
+                  <div class="bar-fill" [class]="cpuColor(cpuPct(pod))" [style.width.%]="cpuPct(pod)"></div>
+                </div>
+                <span class="bar-val">{{ pod.cpu }}</span>
               </div>
-              <span class="bar-val">{{ pod.memory }}</span>
+              <div class="bar-row">
+                <span class="bar-lbl">MEM</span>
+                <div class="bar-track">
+                  <div class="bar-fill" [class]="memColor(memPct(pod))" [style.width.%]="memPct(pod)"></div>
+                </div>
+                <span class="bar-val">{{ pod.memory }}</span>
+              </div>
             </div>
           </div>
         </div>
+        }
+        @if (sortedPods.length === 0 && !loading) {
+        <div class="empty-state" role="status">
+          <div class="empty-icon" aria-hidden="true"><i class="pi pi-chart-bar"></i></div>
+          <strong>{{ searchQuery ? 'No pods match filter' : 'No metrics available' }}</strong>
+          <span>{{ searchQuery ? 'Try a different search' : 'Requires metrics-server' }}</span>
+        </div>
+        }
       </div>
-    }
-    @if (sortedPods.length === 0 && !loading) {
-      <div class="empty-state">
-        <div class="empty-icon"><i class="pi pi-chart-bar"></i></div>
-        <span>{{ searchQuery ? 'No pods match filter' : 'No metrics available' }}</span>
-        <span class="empty-hint">{{ searchQuery ? 'Try a different search' : 'Requires metrics-server' }}</span>
-      </div>
-    }
-  </div>
-</app-holo-card>
+    </app-holo-card>
+  </section>
+</section>

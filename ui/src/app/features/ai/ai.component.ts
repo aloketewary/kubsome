@@ -33,413 +33,900 @@ interface Message {
   standalone: true,
   imports: [ButtonModule, TooltipModule, FormsModule, IntelHeaderComponent, SafeHtmlPipe],
   template: `
-    <app-intel-header title="AI Assistant" icon="pi pi-sparkles"
-      subtitle="Natural language cluster intelligence">
-      @if (messages.length > 0) {
-        <button class="ctrl-btn ctrl-btn-wide" (click)="clearHistory()" pTooltip="Clear"><i class="pi pi-trash"></i> Clear</button>
-      }
-    </app-intel-header>
-
-    <div class="chat-layout">
-      <!-- Messages Area -->
-      <div class="messages-area" #messagesEl>
-        @if (messages.length === 0 && !loading) {
-          <!-- Rich Empty State -->
-          <div class="welcome">
-            <div class="welcome-icon">
-              <i class="pi pi-sparkles"></i>
-            </div>
-            <h2>What can I help you with?</h2>
-            <p>I can analyze your cluster, diagnose issues, and explain Kubernetes concepts.</p>
-
-            <div class="suggestion-categories">
-              <div class="sug-category">
-                <span class="sug-cat-label"><i class="pi pi-exclamation-triangle"></i> Diagnose</span>
-                <div class="sug-items">
-                  @for (s of diagnoseSuggestions; track s) {
-                    <button class="sug-btn" (click)="query = s; ask()">{{ s }}</button>
-                  }
-                </div>
-              </div>
-              <div class="sug-category">
-                <span class="sug-cat-label"><i class="pi pi-chart-bar"></i> Analyze</span>
-                <div class="sug-items">
-                  @for (s of analyzeSuggestions; track s) {
-                    <button class="sug-btn" (click)="query = s; ask()">{{ s }}</button>
-                  }
-                </div>
-              </div>
-              <div class="sug-category">
-                <span class="sug-cat-label"><i class="pi pi-history"></i> Investigate</span>
-                <div class="sug-items">
-                  @for (s of investigateSuggestions; track s) {
-                    <button class="sug-btn" (click)="query = s; ask()">{{ s }}</button>
-                  }
-                </div>
-              </div>
-            </div>
-          </div>
-        }
-
-        <!-- Messages -->
-        @for (msg of messages; track $index) {
-          <div class="msg-row" [class.msg-row-user]="msg.role === 'user'">
-            <div class="msg-avatar" [class]="'avatar-' + msg.role">
-              <i class="pi" [class]="msg.role === 'user' ? 'pi-user' : 'pi-sparkles'"></i>
-            </div>
-            <div class="msg-bubble" [class]="'bubble-' + msg.role">
-              <button class="copy-btn" [class.copied]="msg.copied" (click)="copyMessage(msg)" [pTooltip]="msg.copied ? 'Copied!' : 'Copy'" tooltipPosition="top">
-                <i class="pi" [class]="msg.copied ? 'pi-check' : 'pi-copy'"></i>
-              </button>
-              <div class="msg-header">
-                <span class="msg-name">{{ msg.role === 'user' ? 'You' : 'Kubsome AI' }}</span>
-                @if (msg.role === 'ai' && msg.severity && msg.severity !== 'info') {
-                  <span class="severity-badge" [class]="'sev-' + msg.severity">{{ msg.severity }}</span>
-                }
-                <span class="msg-time">{{ msg.time }}</span>
-              </div>
-              @if (msg.role === 'ai' && msg.title) {
-                <div class="msg-title">{{ msg.title }}</div>
-              }
-              @if (msg.html) {
-                <div class="msg-content" [innerHTML]="msg.html | safeHtml"></div>
-              } @else {
-                <div class="msg-content">{{ msg.text }}</div>
-              }
-              @if (msg.options && msg.options.length > 0) {
-                <div class="msg-options">
-                  @for (opt of msg.options; track opt) {
-                    <button class="opt-btn" (click)="selectOption(opt, msg)">{{ opt }}</button>
-                  }
-                </div>
-              }
-              @if (msg.followUps && msg.followUps.length > 0) {
-                <div class="msg-followups">
-                  <span class="followup-label">Follow up:</span>
-                  @for (fu of msg.followUps; track fu) {
-                    <button class="followup-btn" (click)="query = fu; ask()">{{ fu }}</button>
-                  }
-                </div>
-              }
-            </div>
-          </div>
-        }
-
-        <!-- Typing Indicator -->
-        @if (loading) {
-          <div class="msg-row">
-            <div class="msg-avatar avatar-ai"><i class="pi pi-sparkles"></i></div>
-            <div class="msg-bubble bubble-ai">
-              <div class="typing-indicator">
-                <span class="typing-dot"></span>
-                <span class="typing-dot"></span>
-                <span class="typing-dot"></span>
-              </div>
-            </div>
-          </div>
-        }
-      </div>
-
-      <!-- Input Area -->
-      <div class="input-area">
-        <div class="input-container">
-          <input [(ngModel)]="query" placeholder="Ask about your cluster..."
-                 (keyup.enter)="ask()" [disabled]="loading" />
-          <button class="send-btn" (click)="ask()" [disabled]="!query.trim() || loading">
-            <i class="pi pi-send"></i>
+    <section class="ai-page" aria-label="AI Assistant">
+      <app-intel-header title="AI Assistant" icon="pi pi-sparkles"
+        subtitle="Natural language cluster intelligence">
+        @if (messages.length > 0) {
+          <button class="ctrl-btn ctrl-btn-wide" type="button" (click)="clearHistory()" aria-label="Clear conversation" pTooltip="Clear">
+            <i class="pi pi-trash" aria-hidden="true"></i> Clear
           </button>
+        }
+      </app-intel-header>
+
+      <div class="ai-overview" aria-label="AI session overview">
+        <div class="ai-deck">
+          <span class="deck-kicker"><i class="pi pi-sparkles" aria-hidden="true"></i> Cluster intelligence</span>
+          <h2>Ask questions in operator language.</h2>
+          <p>Diagnose failures, summarize health, and investigate changes with context from your active cluster.</p>
         </div>
-        <span class="input-hint">Press Enter to send · Try "why is X failing" or "summarize health"</span>
+        <div class="ai-readout">
+          <span class="readout-kicker">Session state</span>
+          <strong>{{ loading ? 'Processing request' : messages.length ? 'Conversation active' : 'Ready for a query' }}</strong>
+          <div class="readout-meta">
+            <span><i class="pi pi-comments" aria-hidden="true"></i> {{ messages.length }} messages</span>
+            <span><i class="pi pi-keyboard" aria-hidden="true"></i> Enter to send</span>
+          </div>
+        </div>
       </div>
-    </div>
+
+      <main class="chat-layout">
+        <div class="messages-area" #messagesEl role="log" aria-live="polite" aria-label="AI conversation">
+          @if (messages.length === 0 && !loading) {
+            <div class="welcome">
+              <div class="welcome-icon"><i class="pi pi-sparkles" aria-hidden="true"></i></div>
+              <span class="welcome-kicker">Operator assistant</span>
+              <h3>What can I help you with?</h3>
+              <p>I can analyze your cluster, diagnose issues, and explain Kubernetes concepts.</p>
+
+              <div class="suggestion-categories" aria-label="Suggested queries">
+                <div class="sug-category">
+                  <span class="sug-cat-label"><i class="pi pi-exclamation-triangle" aria-hidden="true"></i> Diagnose</span>
+                  <div class="sug-items">
+                    @for (s of diagnoseSuggestions; track s) {
+                      <button class="sug-btn" type="button" (click)="query = s; ask()">{{ s }}</button>
+                    }
+                  </div>
+                </div>
+                <div class="sug-category">
+                  <span class="sug-cat-label"><i class="pi pi-chart-bar" aria-hidden="true"></i> Analyze</span>
+                  <div class="sug-items">
+                    @for (s of analyzeSuggestions; track s) {
+                      <button class="sug-btn" type="button" (click)="query = s; ask()">{{ s }}</button>
+                    }
+                  </div>
+                </div>
+                <div class="sug-category">
+                  <span class="sug-cat-label"><i class="pi pi-history" aria-hidden="true"></i> Investigate</span>
+                  <div class="sug-items">
+                    @for (s of investigateSuggestions; track s) {
+                      <button class="sug-btn" type="button" (click)="query = s; ask()">{{ s }}</button>
+                    }
+                  </div>
+                </div>
+              </div>
+            </div>
+          }
+
+          @for (msg of messages; track $index) {
+            <div class="msg-row" [class.msg-row-user]="msg.role === 'user'">
+              <div class="msg-avatar" [class]="'avatar-' + msg.role" aria-hidden="true">
+                <i class="pi" [class]="msg.role === 'user' ? 'pi-user' : 'pi-sparkles'"></i>
+              </div>
+              <div class="msg-bubble" [class]="'bubble-' + msg.role">
+                <button class="copy-btn" type="button" [class.copied]="msg.copied" (click)="copyMessage(msg)" [attr.aria-label]="msg.copied ? 'Copied response' : 'Copy response'" [pTooltip]="msg.copied ? 'Copied!' : 'Copy'" tooltipPosition="top">
+                  <i class="pi" [class]="msg.copied ? 'pi-check' : 'pi-copy'" aria-hidden="true"></i>
+                </button>
+                <div class="msg-header">
+                  <span class="msg-name">{{ msg.role === 'user' ? 'You' : 'Kubsome AI' }}</span>
+                  @if (msg.role === 'ai' && msg.severity && msg.severity !== 'info') {
+                    <span class="severity-badge" [class]="'sev-' + msg.severity">{{ msg.severity }}</span>
+                  }
+                  <span class="msg-time">{{ msg.time }}</span>
+                </div>
+                @if (msg.role === 'ai' && msg.title) {
+                  <div class="msg-title">{{ msg.title }}</div>
+                }
+                @if (msg.html) {
+                  <div class="msg-content" [innerHTML]="msg.html | safeHtml"></div>
+                } @else {
+                  <div class="msg-content">{{ msg.text }}</div>
+                }
+                @if (msg.options && msg.options.length > 0) {
+                  <div class="msg-options" aria-label="Clarification options">
+                    @for (opt of msg.options; track opt) {
+                      <button class="opt-btn" type="button" (click)="selectOption(opt, msg)">{{ opt }}</button>
+                    }
+                  </div>
+                }
+                @if (msg.followUps && msg.followUps.length > 0) {
+                  <div class="msg-followups" aria-label="Follow-up queries">
+                    <span class="followup-label">Follow up:</span>
+                    @for (fu of msg.followUps; track fu) {
+                      <button class="followup-btn" type="button" (click)="query = fu; ask()">{{ fu }}</button>
+                    }
+                  </div>
+                }
+              </div>
+            </div>
+          }
+
+          @if (loading) {
+            <div class="msg-row" role="status" aria-label="AI is processing">
+              <div class="msg-avatar avatar-ai" aria-hidden="true"><i class="pi pi-sparkles"></i></div>
+              <div class="msg-bubble bubble-ai">
+                <div class="typing-indicator" aria-hidden="true">
+                  <span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+
+        <div class="input-area">
+          <div class="input-label"><span>Query console</span><span>Cluster context enabled</span></div>
+          <div class="input-container">
+            <label class="sr-only" for="ai-query">Ask about your cluster</label>
+            <input id="ai-query" [(ngModel)]="query" placeholder="Ask about your cluster..."
+                   (keyup.enter)="ask()" [disabled]="loading" />
+            <button class="send-btn" type="button" (click)="ask()" [disabled]="!query.trim() || loading" aria-label="Send query">
+              <i class="pi pi-send" aria-hidden="true"></i>
+            </button>
+          </div>
+          <span class="input-hint">Press Enter to send · Try "why is X failing" or "summarize health"</span>
+        </div>
+      </main>
+    </section>
   `,
   styles: [`
-    /* Layout */
+    :host {
+      display: block;
+      width: 100%;
+    }
+
+    .ai-page {
+      max-width: 1520px;
+      margin: 0 auto;
+      padding: 0 22px 30px;
+    }
+
+    .ctrl-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 30px;
+      gap: 6px;
+      padding: 0 10px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      background: var(--surface-elevated);
+      cursor: pointer;
+      font: 10px var(--font-mono);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+    }
+
+    .ctrl-btn-wide {
+      color: var(--surface-card);
+      background: var(--accent);
+      border-color: var(--accent);
+      font-weight: 700;
+    }
+
+    .ctrl-btn:hover,
+    .ctrl-btn:focus-visible {
+      border-color: var(--info);
+      color: var(--info);
+      outline: none;
+    }
+
+    .ctrl-btn-wide:hover,
+    .ctrl-btn-wide:focus-visible {
+      color: var(--surface-card);
+      background: var(--info);
+      border-color: var(--info);
+    }
+
+    .ctrl-btn:active,
+    .send-btn:active,
+    .sug-btn:active,
+    .opt-btn:active,
+    .followup-btn:active {
+      transform: translateY(1px);
+    }
+
+    .ai-overview {
+      display: grid;
+      grid-template-columns: minmax(0, 1.5fr) minmax(280px, 0.8fr);
+      gap: 1px;
+      margin-top: 18px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--border);
+    }
+
+    .ai-deck,
+    .ai-readout {
+      min-width: 0;
+      background: var(--surface-card);
+    }
+
+    .ai-deck {
+      position: relative;
+      padding: 24px 30px 21px;
+      background:
+        linear-gradient(120deg, rgba(139, 92, 246, 0.08), transparent 47%),
+        var(--surface-card);
+    }
+
+    .ai-deck::after {
+      position: absolute;
+      right: 24px;
+      bottom: 19px;
+      width: 105px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--info));
+      content: '';
+      opacity: 0.7;
+    }
+
+    .deck-kicker,
+    .readout-kicker,
+    .welcome-kicker {
+      display: block;
+      color: var(--info);
+      font-size: 9px;
+      font-family: var(--font-mono);
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .deck-kicker i {
+      margin-right: 6px;
+    }
+
+    .ai-deck h2 {
+      max-width: 650px;
+      margin: 11px 0 8px;
+      color: var(--text);
+      font-size: clamp(23px, 3vw, 37px);
+      font-weight: 600;
+      letter-spacing: -0.045em;
+      line-height: 1.04;
+    }
+
+    .ai-deck p {
+      max-width: 620px;
+      margin: 0;
+      color: var(--text-secondary);
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    .ai-readout {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      min-height: 150px;
+      padding: 22px 24px;
+      background: var(--surface-elevated);
+    }
+
+    .ai-readout > strong {
+      margin-top: 8px;
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .readout-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 14px;
+      margin-top: 20px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border-subtle);
+      color: var(--text-muted);
+      font-size: 10px;
+      font-family: var(--font-mono);
+    }
+
+    .readout-meta span {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .readout-meta i {
+      color: var(--accent);
+    }
+
     .chat-layout {
       display: flex;
+      height: clamp(560px, calc(100dvh - 330px), 780px);
+      min-height: 560px;
       flex-direction: column;
-      height: calc(100vh - 200px);
-      background: transparent;
-      border: none;
-      border-top: 1px solid rgba(94, 84, 75, 0.08);
+      margin-top: 14px;
       overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface-card);
     }
 
-    /* Messages */
     .messages-area {
-      flex: 1;
-      overflow-y: auto;
-      padding: 24px;
       display: flex;
+      flex: 1 1 auto;
+      min-height: 0;
       flex-direction: column;
       gap: 16px;
+      overflow-y: auto;
+      padding: 24px;
+      background:
+        linear-gradient(rgba(127, 145, 160, 0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(127, 145, 160, 0.025) 1px, transparent 1px),
+        var(--surface-card);
+      background-size: 28px 28px;
     }
 
-    /* Welcome */
     .welcome {
       display: flex;
+      max-width: 760px;
       flex-direction: column;
       align-items: center;
+      margin: auto;
+      padding: 22px 20px;
       text-align: center;
-      padding: 32px 20px;
     }
+
     .welcome-icon {
-      width: 48px; height: 48px; border-radius: 50%;
-      border: 1px solid rgba(208, 156, 96, 0.2);
-      background: transparent;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 20px; color: var(--accent); margin-bottom: 16px;
+      display: grid;
+      place-items: center;
+      width: 52px;
+      height: 52px;
+      margin-bottom: 14px;
+      border: 1px solid color-mix(in srgb, var(--info) 35%, var(--border));
+      border-radius: var(--radius);
+      color: var(--info);
+      background: color-mix(in srgb, var(--info) 8%, var(--surface-elevated));
+      font-size: 20px;
     }
-    .welcome h2 { font-size: 18px; font-weight: 300; margin: 0 0 8px; color: var(--text); }
-    .welcome p { font-size: 12px; color: var(--text-muted); margin: 0 0 28px; max-width: 400px; }
+
+    .welcome-kicker {
+      margin-bottom: 8px;
+    }
+
+    .welcome h3 {
+      margin: 0 0 8px;
+      color: var(--text);
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+
+    .welcome p {
+      max-width: 430px;
+      margin: 0 0 24px;
+      color: var(--text-muted);
+      font-size: 12px;
+      line-height: 1.6;
+    }
 
     .suggestion-categories {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 0;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       width: 100%;
-      max-width: 600px;
-    }
-    .sug-category {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      padding: 12px;
-      border-right: 1px solid rgba(94, 84, 75, 0.06);
-    }
-    .sug-category:last-child { border-right: none; }
-    .sug-cat-label {
-      font-size: 9px;
-      font-weight: 700;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      margin-bottom: 4px;
-    }
-    .sug-cat-label i { font-size: 10px; }
-    .sug-items { display: flex; flex-direction: column; gap: 3px; }
-    .sug-btn {
-      padding: 7px 10px;
-      background: transparent;
-      border: none;
-      border-bottom: 1px solid rgba(94, 84, 75, 0.04);
-      color: var(--text-secondary);
-      font-size: 11px;
+      max-width: 760px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--surface-elevated);
       text-align: left;
-      cursor: pointer;
-      transition: all 0.12s;
-    }
-    .sug-btn:hover {
-      color: var(--accent);
-      background: rgba(208, 156, 96, 0.02);
     }
 
-    /* Message Rows */
+    .sug-category {
+      display: flex;
+      min-width: 0;
+      flex-direction: column;
+      gap: 5px;
+      padding: 13px;
+      border-right: 1px solid var(--border-subtle);
+    }
+
+    .sug-category:last-child {
+      border-right: 0;
+    }
+
+    .sug-cat-label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 4px;
+      color: var(--text-muted);
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .sug-cat-label i {
+      color: var(--accent);
+      font-size: 10px;
+    }
+
+    .sug-items {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .sug-btn {
+      padding: 7px 8px;
+      border: 1px solid transparent;
+      border-bottom-color: var(--border-subtle);
+      color: var(--text-secondary);
+      background: transparent;
+      cursor: pointer;
+      font: 10px var(--font-sans);
+      line-height: 1.35;
+      text-align: left;
+      transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+    }
+
+    .sug-btn:last-child {
+      border-bottom-color: transparent;
+    }
+
+    .sug-btn:hover,
+    .sug-btn:focus-visible {
+      border-color: color-mix(in srgb, var(--info) 30%, var(--border));
+      color: var(--info);
+      background: color-mix(in srgb, var(--info) 5%, var(--surface-card));
+      outline: none;
+    }
+
     .msg-row {
       display: flex;
-      gap: 10px;
       align-items: flex-start;
+      gap: 10px;
+      width: min(100%, 940px);
+      margin: 0 auto;
     }
+
     .msg-row-user {
       flex-direction: row-reverse;
     }
+
     .msg-avatar {
-      width: 24px; height: 24px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 11px; flex-shrink: 0;
+      display: grid;
+      place-items: center;
+      width: 26px;
+      height: 26px;
+      flex: 0 0 26px;
+      border: 1px solid var(--border);
+      border-radius: 50%;
+      color: var(--accent);
+      background: var(--surface-elevated);
+      font-size: 10px;
     }
-    .avatar-user { color: var(--accent); }
-    .avatar-ai { color: var(--accent); }
+
+    .bubble-user .msg-avatar,
+    .avatar-user {
+      color: var(--accent);
+    }
 
     .msg-bubble {
-      max-width: 80%;
-      padding: 12px 16px;
-      overflow: visible;
       position: relative;
+      max-width: min(86%, 760px);
+      min-width: 0;
+      padding: 13px 16px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--surface-elevated);
     }
+
+    .bubble-user {
+      border-color: color-mix(in srgb, var(--accent) 32%, var(--border));
+      background: color-mix(in srgb, var(--accent) 5%, var(--surface-card));
+    }
+
+    .bubble-ai {
+      border-left: 2px solid var(--info);
+    }
+
     .copy-btn {
       position: absolute;
       top: 8px;
       right: 8px;
-      width: 22px; height: 22px;
-      border: none;
-      background: transparent;
+      display: grid;
+      place-items: center;
+      width: 24px;
+      height: 24px;
+      border: 1px solid transparent;
+      border-radius: var(--radius-sm);
       color: var(--text-muted);
-      display: flex; align-items: center; justify-content: center;
+      background: transparent;
       cursor: pointer;
-      font-size: 11px;
+      font-size: 10px;
       opacity: 0;
-      transition: opacity 0.12s;
+      transition: opacity 0.15s ease, border-color 0.15s ease, color 0.15s ease;
     }
-    .msg-bubble:hover .copy-btn { opacity: 1; }
-    .copy-btn:hover { color: var(--text); }
-    .copy-btn.copied { opacity: 1; color: var(--success); }
-    .bubble-user .copy-btn { color: rgba(245, 240, 235, 0.5); }
-    .bubble-user .copy-btn.copied { color: var(--success); }
-    .bubble-user {
-      background: transparent;
-      border-left: 2px solid var(--accent);
-      color: var(--text);
+
+    .msg-bubble:hover .copy-btn,
+    .copy-btn:focus-visible,
+    .copy-btn.copied {
+      opacity: 1;
     }
-    .bubble-ai {
-      background: transparent;
-      border-left: 2px solid rgba(94, 84, 75, 0.15);
-      max-width: 90%;
+
+    .copy-btn:hover,
+    .copy-btn:focus-visible {
+      border-color: var(--border);
+      color: var(--info);
+      outline: none;
     }
-    .bubble-ai::after { display: none; }
+
+    .copy-btn.copied {
+      color: var(--success);
+    }
+
     .msg-header {
       display: flex;
       align-items: center;
+      flex-wrap: wrap;
       gap: 8px;
-      margin-bottom: 4px;
+      margin-bottom: 6px;
+      padding-right: 26px;
     }
-    .msg-name { font-size: 9px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
-    .msg-time { font-size: 9px; color: var(--text-muted); opacity: 0.5; font-family: 'JetBrains Mono', monospace; }
+
+    .msg-name {
+      color: var(--text-muted);
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .msg-time {
+      color: var(--text-muted);
+      font-size: 9px;
+      font-family: var(--font-mono);
+      opacity: 0.65;
+    }
+
     .msg-title {
+      margin: 5px 0 9px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border-subtle);
+      color: var(--text);
       font-size: 13px;
       font-weight: 600;
-      margin: 4px 0 8px;
-      padding-bottom: 8px;
-      border-bottom: 1px solid rgba(94, 84, 75, 0.06);
-      color: var(--text);
     }
+
     .severity-badge {
-      font-size: 8px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
       padding: 2px 6px;
       border: 1px solid;
+      font-size: 8px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
     }
-    .sev-critical { border-color: rgba(244, 63, 94, 0.25); color: var(--danger); }
-    .sev-warning { border-color: rgba(245, 158, 11, 0.25); color: var(--warning); }
-    .sev-healthy { border-color: rgba(74, 222, 128, 0.25); color: var(--success); }
+
+    .sev-critical { border-color: color-mix(in srgb, var(--danger) 35%, transparent); color: var(--danger); }
+    .sev-warning { border-color: color-mix(in srgb, var(--warning) 35%, transparent); color: var(--warning); }
+    .sev-healthy { border-color: color-mix(in srgb, var(--success) 35%, transparent); color: var(--success); }
+
     .msg-content {
+      color: var(--text-secondary);
       font-size: 12px;
       line-height: 1.7;
-      word-break: break-word;
-      color: var(--text-secondary);
+      overflow-wrap: anywhere;
     }
+
     .msg-content :is(.clr-red) { color: var(--danger); }
     .msg-content :is(.clr-green) { color: var(--success); }
     .msg-content :is(.clr-yellow) { color: var(--warning); }
-    .msg-content :is(.clr-cyan) { color: var(--accent); font-family: 'JetBrains Mono', monospace; font-size: 11px; }
-    .msg-content :is(.clr-dim) { opacity: 0.5; font-size: 11px; }
-    .msg-options {
-      display: flex; flex-wrap: wrap; gap: 4px; margin-top: 10px;
-      padding-top: 10px; border-top: 1px solid rgba(94, 84, 75, 0.06);
-    }
-    .opt-btn {
-      padding: 5px 10px;
-      background: transparent; border: 1px solid rgba(208, 156, 96, 0.2);
-      color: var(--accent); font-size: 10px;
-      font-family: 'JetBrains Mono', monospace;
-      cursor: pointer; transition: all 0.12s;
-      white-space: nowrap; overflow: hidden;
-      text-overflow: ellipsis; max-width: 100%;
-    }
-    .opt-btn:hover { border-color: var(--accent); background: rgba(208, 156, 96, 0.04); }
+    .msg-content :is(.clr-cyan) { color: var(--accent); font-family: var(--font-mono); font-size: 11px; }
+    .msg-content :is(.clr-dim) { opacity: 0.55; font-size: 11px; }
 
-    /* Follow-ups */
+    .msg-options,
     .msg-followups {
-      display: flex; flex-wrap: wrap; gap: 4px; align-items: center;
-      margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(94, 84, 75, 0.06);
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-top: 11px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border-subtle);
     }
-    .followup-label { font-size: 9px; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
+
+    .followup-label {
+      color: var(--text-muted);
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+    }
+
+    .opt-btn,
+    .followup-btn {
+      max-width: 100%;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+    }
+
+    .opt-btn {
+      padding: 5px 9px;
+      color: var(--accent);
+      background: transparent;
+      font: 10px var(--font-mono);
+    }
+
     .followup-btn {
       padding: 4px 8px;
-      background: transparent; border: 1px solid rgba(94, 84, 75, 0.12);
-      color: var(--text-muted); font-size: 10px;
-      cursor: pointer; transition: all 0.12s;
+      color: var(--text-muted);
+      background: transparent;
+      font: 10px var(--font-sans);
     }
-    .followup-btn:hover { border-color: var(--accent); color: var(--accent); }
 
-    /* Typing Indicator */
-    .typing-indicator { display: flex; gap: 4px; padding: 4px 0; }
+    .opt-btn:hover,
+    .opt-btn:focus-visible,
+    .followup-btn:hover,
+    .followup-btn:focus-visible {
+      border-color: var(--info);
+      color: var(--info);
+      background: color-mix(in srgb, var(--info) 5%, var(--surface-card));
+      outline: none;
+    }
+
+    .typing-indicator {
+      display: flex;
+      gap: 4px;
+      padding: 3px 0;
+    }
+
     .typing-dot {
-      width: 5px; height: 5px; border-radius: 50%;
-      background: var(--text-muted);
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--info);
       animation: typingBounce 1.4s infinite;
     }
+
     .typing-dot:nth-child(2) { animation-delay: 0.2s; }
     .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
     @keyframes typingBounce {
       0%, 60%, 100% { transform: translateY(0); opacity: 0.3; }
       30% { transform: translateY(-3px); opacity: 1; }
     }
 
-    /* Input */
     .input-area {
-      padding: 16px 24px;
-      border-top: 1px solid rgba(94, 84, 75, 0.08);
+      flex: 0 0 auto;
+      padding: 14px 20px 16px;
+      border-top: 1px solid var(--border);
+      background: var(--surface-elevated);
     }
+
+    .input-label {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 7px;
+      color: var(--text-muted);
+      font-size: 9px;
+      font-family: var(--font-mono);
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+    }
+
+    .input-label span:last-child {
+      color: var(--success);
+    }
+
     .input-container {
       display: flex;
-      gap: 8px;
       align-items: center;
+      gap: 8px;
     }
+
     .input-container input {
-      flex: 1;
-      padding: 12px 16px;
-      background: transparent !important;
-      border: 1px solid rgba(94, 84, 75, 0.15) !important;
-      border-bottom: 1px solid rgba(94, 84, 75, 0.15) !important;
+      min-width: 0;
+      flex: 1 1 auto;
+      padding: 11px 13px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
       color: var(--text);
-      font-size: 13px;
-      font-family: 'JetBrains Mono', monospace;
+      background: var(--surface-card) !important;
       outline: none;
-      transition: border-color 0.15s;
+      font-size: 12px;
+      font-family: var(--font-mono);
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
     }
+
     .input-container input:focus {
-      border-color: var(--accent) !important;
-      box-shadow: none !important;
+      border-color: var(--info) !important;
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--info) 18%, transparent) !important;
     }
-    .input-container input::placeholder { color: var(--text-muted); opacity: 0.5; }
+
+    .input-container input::placeholder {
+      color: var(--text-muted);
+      opacity: 0.75;
+    }
+
     .send-btn {
-      width: 36px; height: 36px;
-      background: transparent; border: 1px solid var(--accent);
+      display: grid;
+      place-items: center;
+      width: 36px;
+      height: 36px;
+      flex: 0 0 36px;
+      border: 1px solid var(--accent);
+      border-radius: var(--radius-sm);
       color: var(--accent);
-      display: flex; align-items: center; justify-content: center;
-      cursor: pointer; transition: all 0.12s; font-size: 13px;
+      background: transparent;
+      cursor: pointer;
+      font-size: 13px;
+      transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease, transform 0.15s ease;
     }
-    .send-btn:hover { background: var(--accent); color: #0B0908; }
-    .send-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+    .send-btn:hover,
+    .send-btn:focus-visible {
+      color: var(--surface-card);
+      background: var(--accent);
+      outline: none;
+    }
+
+    .send-btn:disabled {
+      cursor: not-allowed;
+      opacity: 0.35;
+    }
+
     .input-hint {
       display: block;
-      font-size: 9px;
+      margin-top: 7px;
       color: var(--text-muted);
-      margin-top: 6px;
+      font-size: 9px;
       text-align: center;
-      opacity: 0.5;
+      opacity: 0.7;
     }
 
-    /* Light Mode */
-    :host-context([data-theme="light"]) .chat-layout { border-top-color: rgba(0, 0, 0, 0.06); }
-    :host-context([data-theme="light"]) .welcome-icon { border-color: rgba(154, 81, 41, 0.15); color: #9a5129; }
-    :host-context([data-theme="light"]) .sug-category { border-right-color: rgba(0, 0, 0, 0.04); }
-    :host-context([data-theme="light"]) .sug-btn { border-bottom-color: rgba(0, 0, 0, 0.03); }
-    :host-context([data-theme="light"]) .sug-btn:hover { color: #9a5129; background: rgba(0, 0, 0, 0.015); }
-    :host-context([data-theme="light"]) .bubble-user { border-left-color: #9a5129; }
-    :host-context([data-theme="light"]) .bubble-ai { border-left-color: rgba(0, 0, 0, 0.08); }
-    :host-context([data-theme="light"]) .opt-btn { border-color: rgba(154, 81, 41, 0.15); color: #9a5129; }
-    :host-context([data-theme="light"]) .opt-btn:hover { border-color: #9a5129; }
-    :host-context([data-theme="light"]) .followup-btn { border-color: rgba(0, 0, 0, 0.06); }
-    :host-context([data-theme="light"]) .followup-btn:hover { border-color: #9a5129; color: #9a5129; }
-    :host-context([data-theme="light"]) .input-area { border-top-color: rgba(0, 0, 0, 0.06); }
-    :host-context([data-theme="light"]) .input-container input { border-color: rgba(0, 0, 0, 0.1) !important; }
-    :host-context([data-theme="light"]) .input-container input:focus { border-color: #9a5129 !important; }
-    :host-context([data-theme="light"]) .send-btn { border-color: #9a5129; color: #9a5129; }
-    :host-context([data-theme="light"]) .send-btn:hover { background: #9a5129; color: #fff; }
-    :host-context([data-theme="light"]) .msg-title { border-bottom-color: rgba(0, 0, 0, 0.04); }
-    :host-context([data-theme="light"]) .msg-options { border-top-color: rgba(0, 0, 0, 0.04); }
-    :host-context([data-theme="light"]) .msg-followups { border-top-color: rgba(0, 0, 0, 0.04); }
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    @media (max-width: 900px) {
+      .ai-overview {
+        grid-template-columns: 1fr;
+      }
+
+      .ai-readout {
+        min-height: 0;
+      }
+
+      .chat-layout {
+        height: clamp(540px, calc(100dvh - 390px), 700px);
+        min-height: 540px;
+      }
+    }
 
     @media (max-width: 768px) {
-      .suggestion-categories { grid-template-columns: 1fr; }
-      .sug-category { border-right: none; border-bottom: 1px solid rgba(94, 84, 75, 0.04); }
+      .ai-page {
+        padding-right: 15px;
+        padding-left: 15px;
+      }
+
+      .ai-deck {
+        padding: 22px;
+      }
+
+      .ai-deck h2 {
+        font-size: clamp(23px, 7vw, 32px);
+      }
+
+      .ai-readout {
+        padding: 18px 22px;
+      }
+
+      .suggestion-categories {
+        grid-template-columns: 1fr;
+      }
+
+      .sug-category {
+        border-right: 0;
+        border-bottom: 1px solid var(--border-subtle);
+      }
+
+      .sug-category:last-child {
+        border-bottom: 0;
+      }
+
+      .messages-area {
+        padding: 18px 14px;
+      }
+
+      .msg-bubble {
+        max-width: 90%;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .ai-deck,
+      .ai-readout {
+        padding: 18px;
+      }
+
+      .chat-layout {
+        min-height: 500px;
+        height: 68dvh;
+      }
+
+      .input-area {
+        padding: 12px 13px 14px;
+      }
+
+      .input-label {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .input-hint {
+        text-align: left;
+      }
+
+      .msg-row {
+        width: 100%;
+      }
+
+      .msg-bubble {
+        max-width: calc(100% - 36px);
+        padding: 12px 13px;
+      }
+    }
+
+    @media (max-width: 520px) {
+      .readout-meta {
+        display: grid;
+        gap: 8px;
+      }
+
+      .welcome {
+        padding: 14px 4px;
+      }
+
+      .chat-layout {
+        min-height: 470px;
+        height: 66dvh;
+      }
+    }
+
+    :host-context([data-theme='light']) {
+      .ai-deck {
+        background:
+          linear-gradient(120deg, rgba(20, 116, 143, 0.07), transparent 47%),
+          var(--surface-card);
+      }
+
+      .messages-area {
+        background:
+          linear-gradient(rgba(44, 62, 80, 0.035) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(44, 62, 80, 0.035) 1px, transparent 1px),
+          var(--surface-card);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+      }
     }
   `],
 })

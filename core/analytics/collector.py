@@ -20,6 +20,8 @@ from core.context import context
 
 _collector_thread = None
 _running = False
+_stop_event = threading.Event()
+_collection_lock = threading.Lock()
 INTERVAL = 300  # 5 minutes default
 
 
@@ -59,6 +61,7 @@ def start_collector(interval=None):
         return
 
     _running = True
+    _stop_event.clear()
     _collector_thread = threading.Thread(
         target=_collection_loop, daemon=True
     )
@@ -75,53 +78,75 @@ def start_collector(interval=None):
 
 
 def stop_collector():
-    """Stop background collection."""
-    global _running
+    """Stop background collection and wait for its thread to exit."""
+    global _collector_thread, _running
     _running = False
+    _stop_event.set()
+    thread = _collector_thread
+    if thread and thread is not threading.current_thread():
+        thread.join(timeout=5)
+    _collector_thread = None
+    return not thread or not thread.is_alive()
 
 
 def collect_now():
     """Run a single collection cycle and drain queue. Returns stats."""
     result = _collect_cycle()
-    # Drain immediately so data is visible right away
+    # Drain immediately so data is visible right away, then aggregate only
+    # after a successful bounded drain.
+    _drain_and_aggregate()
+    return result
+
+
+def _drain_and_aggregate():
+    """Drain bounded queue work before running potentially heavy rollups."""
     try:
-        from core.analytics.queue import drain
         from core.analytics.engine import is_writable
-        if is_writable():
-            drain()
-            # Aggregate raw → hourly/daily after drain
+        if not is_writable():
+            return 0
+        from core.analytics.queue import drain
+        drained = drain()
+        if drained:
             from core.analytics.aggregator import (
                 aggregate_hourly, aggregate_daily,
             )
             aggregate_hourly()
             aggregate_daily()
+        return drained
     except Exception:
-        pass
-    return result
+        return 0
 
 
 def _collection_loop():
     """Background loop — collect every INTERVAL seconds."""
-    # Wait for cluster connection on startup
-    time.sleep(15)
-    while _running:
+    # Wait for cluster connection on startup, but wake immediately on stop.
+    if _stop_event.wait(15):
+        return
+    while _running and not _stop_event.is_set():
         try:
             _collect_cycle()
-            # Aggregate after each cycle
-            from core.analytics.aggregator import (
-                aggregate_hourly, aggregate_daily,
-            )
-            aggregate_hourly()
-            aggregate_daily()
+            # Drain first so aggregation sees the newest bounded batch.
+            _drain_and_aggregate()
         except ImportError:
             # DuckDB not installed — stop trying
             break
         except Exception:
             pass
-        time.sleep(INTERVAL)
+        if _stop_event.wait(INTERVAL):
+            break
 
 
 def _collect_cycle():
+    """Coalesce overlapping manual and scheduled collection requests."""
+    if not _collection_lock.acquire(blocking=False):
+        return {"pods": 0, "nodes": 0, "skipped": True}
+    try:
+        return _collect_cycle_unlocked()
+    finally:
+        _collection_lock.release()
+
+
+def _collect_cycle_unlocked():
     """
     Single collection: pods + nodes → DuckDB.
     Respects config:

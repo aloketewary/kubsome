@@ -25,6 +25,7 @@ interface MonitorCard {
   app: string;
   loading: boolean;
   data: any;
+  error: string;
   events: any[];
   activityBars: number[];
   expanded: boolean;
@@ -59,7 +60,7 @@ export class MonitorComponent implements OnInit, OnDestroy {
   fsCard: MonitorCard | null = null;
   private idCounter = 0;
   private cardTimers = new Map<number, any>();
-  private dragIndex = -1;
+  private dragCardId = -1;
 
   get loadedCards() { return this.cards.filter(c => c.data).length; }
   get totalHealthy() { return this.cards.reduce((s, c) => s + (c.data?.pods?.healthy || 0), 0); }
@@ -120,7 +121,7 @@ export class MonitorComponent implements OnInit, OnDestroy {
   addCard() {
     const card: MonitorCard = {
       id: ++this.idCounter, context: '', namespace: '', app: '',
-      loading: false, data: null, events: [], activityBars: [],
+      loading: false, data: null, error: '', events: [], activityBars: [],
       expanded: true, configuring: true, fullscreen: false, refreshInterval: 60,
       lastUpdated: '', namespaces: [], apps: [], order: this.cards.length,
       alertEnabled: false, alertThreshold: 70, actionLog: [],
@@ -133,6 +134,7 @@ export class MonitorComponent implements OnInit, OnDestroy {
   removeCard(id: number) {
     this.cards = this.cards.filter(c => c.id !== id);
     this.saveCards();
+    this.startCardTimers();
   }
 
   refreshAll() {
@@ -169,24 +171,34 @@ export class MonitorComponent implements OnInit, OnDestroy {
     card.apps = [];
     card.namespaces = [];
     card.data = null;
+    card.error = '';
     this.http.get<any>('/api/ns-for-context', { params: { ctx: card.context } }).subscribe({
       next: (res) => {
         card.namespaces = res.namespaces || [];
-        if (res.error) { card.data = { error: res.error }; }
+        card.error = res.error || '';
       },
-      error: () => { card.namespaces = []; },
+      error: () => {
+        card.namespaces = [];
+        card.error = 'Unable to load namespaces for this cluster.';
+      },
     });
   }
 
   onNamespaceSelect(card: MonitorCard) {
     card.app = '';
     card.apps = [];
+    card.data = null;
+    card.error = '';
     if (!card.context || !card.namespace) return;
     this.http.get<any>('/api/monitor/apps', { params: { ctx: card.context, ns: card.namespace } }).subscribe({
       next: (res) => {
         card.apps = (res.deployments || []).map((d: any) => d.name);
+        card.error = res.error || '';
       },
-      error: () => { card.apps = []; },
+      error: () => {
+        card.apps = [];
+        card.error = 'Unable to load apps for this namespace.';
+      },
     });
   }
 
@@ -199,36 +211,46 @@ export class MonitorComponent implements OnInit, OnDestroy {
 
   fetchCardData(card: MonitorCard) {
     if (!card.context || !card.namespace) return;
-    // P2: Store previous health before fetching new data
+    // Store previous health before fetching new data.
     if (card.data) {
       card.prevHealthPct = this.healthPct(card);
     }
     card.loading = true;
+    card.error = '';
     const params: any = { ctx: card.context, ns: card.namespace };
     if (card.app) params.app = card.app;
     this.http.get<any>('/api/monitor/overview', { params }).subscribe({
       next: (res) => {
-        card.data = res;
-        card.events = res.events || [];
-        card.activityBars = this.buildBars(card.events);
+        card.error = res.error || '';
+        card.data = res.error ? card.data : res;
+        card.events = res.error ? card.events : (res.events || []);
+        card.activityBars = res.error ? card.activityBars : this.buildBars(card.events);
         card.loading = false;
-        card.lastUpdated = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        if (card.alertEnabled && this.healthPct(card) < card.alertThreshold) {
-          this.triggerAlert(card);
+        if (!res.error) {
+          card.lastUpdated = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          if (card.alertEnabled && this.healthPct(card) < card.alertThreshold) {
+            this.triggerAlert(card);
+          }
+          this.saveCards();
         }
-        this.saveCards();
       },
-      error: () => { card.loading = false; },
+      error: () => {
+        card.loading = false;
+        card.error = 'Unable to refresh this card. Showing the last available data.';
+      },
     });
   }
 
   // Drag & Drop reorder
-  onDragStart(index: number) { this.dragIndex = index; }
-  onDragOver(event: DragEvent, index: number) { event.preventDefault(); }
-  onDrop(index: number) {
-    if (this.dragIndex === index) return;
-    const item = this.cards.splice(this.dragIndex, 1)[0];
-    this.cards.splice(index, 0, item);
+  onDragStart(cardId: number) { this.dragCardId = cardId; }
+  onDragOver(event: DragEvent, _cardId: number) { event.preventDefault(); }
+  onDrop(cardId: number) {
+    const sourceIndex = this.cards.findIndex(card => card.id === this.dragCardId);
+    const targetIndex = this.cards.findIndex(card => card.id === cardId);
+    if (sourceIndex < 0 || targetIndex < 0 || sourceIndex === targetIndex) return;
+    const item = this.cards.splice(sourceIndex, 1)[0];
+    this.cards.splice(targetIndex, 0, item);
+    this.dragCardId = -1;
     this.saveCards();
   }
 
@@ -238,10 +260,23 @@ export class MonitorComponent implements OnInit, OnDestroy {
     return t > 0 ? Math.round(((card.data.pods?.healthy || 0) / t) * 100) : 100;
   }
 
-  depPct(card: MonitorCard): number {
+  deploymentHealthy(card: MonitorCard): number {
     if (!card.data) return 0;
-    const t = (card.data.deployments?.healthy || 0) + (card.data.deployments?.unavailable || 0);
-    return t > 0 ? Math.round(((card.data.deployments?.healthy || 0) / t) * 100) : 100;
+    return card.data.mode === 'app'
+      ? (card.data.app_info?.available || 0)
+      : (card.data.deployments?.healthy || 0);
+  }
+
+  deploymentTotal(card: MonitorCard): number {
+    if (!card.data) return 0;
+    return card.data.mode === 'app'
+      ? (card.data.app_info?.desired || 0)
+      : (card.data.deployments?.healthy || 0) + (card.data.deployments?.unavailable || 0);
+  }
+
+  depPct(card: MonitorCard): number {
+    const total = this.deploymentTotal(card);
+    return total > 0 ? Math.round((this.deploymentHealthy(card) / total) * 100) : 100;
   }
 
   ringClass(card: MonitorCard): string {
@@ -323,7 +358,7 @@ export class MonitorComponent implements OnInit, OnDestroy {
   }
 
   diagnoseCard(card: MonitorCard) {
-    this.router.navigateByUrl(`/pods?filter=${card.namespace}`);
+    this.router.navigateByUrl(`/operations/pods?filter=${card.namespace}`);
   }
 
   openFsDialog(card: MonitorCard) {
@@ -365,7 +400,7 @@ export class MonitorComponent implements OnInit, OnDestroy {
         for (const s of saved) {
           const card: MonitorCard = {
             id: ++this.idCounter, context: s.context || '', namespace: s.namespace || '', app: s.app || '',
-            loading: false, data: null, events: [], activityBars: [],
+            loading: false, data: null, error: '', events: [], activityBars: [],
             expanded: s.expanded ?? true, configuring: !(s.context && s.namespace), fullscreen: false,
             refreshInterval: s.refreshInterval || 60, lastUpdated: '', namespaces: [], apps: [], order: this.cards.length,
             alertEnabled: s.alertEnabled || false, alertThreshold: s.alertThreshold || 70,
@@ -378,13 +413,21 @@ export class MonitorComponent implements OnInit, OnDestroy {
           const nsRequests = cardsToFetch.map(c =>
             this.http.get<any>('/api/ns-for-context', { params: { ctx: c.context } })
           );
-          forkJoin(nsRequests).subscribe(results => {
-            results.forEach((res, i) => {
-              const card = cardsToFetch[i];
-              card.namespaces = res.namespaces || [];
-            });
-            cardsToFetch.forEach(card => this.fetchCardData(card));
-            this.startCardTimers();
+          forkJoin(nsRequests).subscribe({
+            next: (results) => {
+              results.forEach((res, i) => {
+                const card = cardsToFetch[i];
+                card.namespaces = res.namespaces || [];
+                card.error = res.error || '';
+              });
+              cardsToFetch.forEach(card => this.fetchCardData(card));
+              this.startCardTimers();
+            },
+            error: () => {
+              cardsToFetch.forEach(card => {
+                card.error = 'Unable to restore this card. Retry to reconnect.';
+              });
+            },
           });
         }
       } else {

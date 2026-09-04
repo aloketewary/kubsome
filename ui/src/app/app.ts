@@ -14,11 +14,13 @@ import { BreadcrumbComponent } from './shared/components/breadcrumb.component';
 import { ConnectionStatusComponent } from './shared/components/connection-status.component';
 import { ErrorToastComponent } from './shared/components/error-toast.component';
 import { ConfirmDialogComponent } from './shared/components/confirm-dialog.component';
+import { ShellTerminalComponent } from './shared/components/shell-terminal.component';
+import { TerminalDockService } from './core/services/terminal-dock.service';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, Select, FormsModule, ShellComponent, CommandPaletteComponent, AiFloatComponent, ToastAlertsComponent, BreadcrumbComponent, ConnectionStatusComponent, ErrorToastComponent, ConfirmDialogComponent],
+  imports: [RouterOutlet, RouterLink, Select, FormsModule, ShellComponent, ShellTerminalComponent, CommandPaletteComponent, AiFloatComponent, ToastAlertsComponent, BreadcrumbComponent, ConnectionStatusComponent, ErrorToastComponent, ConfirmDialogComponent],
   template: `
     <!-- Connection Status (top-most) -->
     <app-connection-status />
@@ -37,9 +39,16 @@ import { ConfirmDialogComponent } from './shared/components/confirm-dialog.compo
         <div class="env-bar" [class.env-prod]="clusterEnv === 'prod'" [class.env-sit]="clusterEnv === 'sit'" [class.env-dev]="clusterEnv === 'dev'"></div>
       }
       <div class="topbar-left">
-        <a class="topbar-brand" routerLink="/dashboard">
-          <i class="pi pi-box"></i>
-          <span class="brand-text">Kubsome</span>
+        <button class="mobile-nav-toggle" type="button" (click)="toggleMobileNav()"
+          [attr.aria-expanded]="sidebarMobileOpen" aria-controls="primary-navigation" aria-label="Toggle navigation">
+          <i class="pi" [class.pi-bars]="!sidebarMobileOpen" [class.pi-times]="sidebarMobileOpen" aria-hidden="true"></i>
+        </button>
+        <a class="topbar-brand" routerLink="/monitor/dashboard" aria-label="Kubsome dashboard">
+          <i class="pi pi-box" aria-hidden="true"></i>
+          <span class="brand-stack">
+            <span class="brand-text">Kubsome</span>
+            <span class="brand-kicker">OPS CONSOLE</span>
+          </span>
         </a>
         @if (clusterEnv !== 'default') {
           <span class="env-pill" [class.env-pill-prod]="clusterEnv === 'prod'" [class.env-pill-sit]="clusterEnv === 'sit'" [class.env-pill-dev]="clusterEnv === 'dev'">{{ clusterEnv }}</span>
@@ -56,7 +65,7 @@ import { ConfirmDialogComponent } from './shared/components/confirm-dialog.compo
           <div class="dash-menu" (mouseleave)="dashMenuOpen = false" role="menu">
             @if (savedDashList.length > 0) {
               @for (d of savedDashList; track d.name) {
-                <a class="dash-menu-item" [routerLink]="'/my-dashboard'" [queryParams]="{name: d.name}" (click)="selectDash(d); dashMenuOpen = false" role="menuitem">
+                <a class="dash-menu-item" [routerLink]="'/monitor/my-dashboard'" [queryParams]="{name: d.name}" (click)="selectDash(d); dashMenuOpen = false" role="menuitem">
                   <i class="pi pi-th-large"></i>
                   <span>{{ d.name }}</span>
                   <span class="dm-count">{{ d.widgets.length }}</span>
@@ -64,7 +73,7 @@ import { ConfirmDialogComponent } from './shared/components/confirm-dialog.compo
               }
               <div class="dash-menu-divider"></div>
             }
-            <a class="dash-menu-item dash-menu-new" [routerLink]="'/my-dashboard'" (click)="dashMenuOpen = false" role="menuitem">
+            <a class="dash-menu-item dash-menu-new" [routerLink]="'/monitor/my-dashboard'" (click)="dashMenuOpen = false" role="menuitem">
               <i class="pi pi-plus"></i>
               <span>{{ savedDashList.length > 0 ? 'New Dashboard' : 'Create Custom Dashboard' }}</span>
             </a>
@@ -73,15 +82,16 @@ import { ConfirmDialogComponent } from './shared/components/confirm-dialog.compo
       </div>
 
       <div class="topbar-center">
-        <button class="cmd-k-btn" (click)="openPalette()">
-          <i class="pi pi-search"></i>
+        <button type="button" class="cmd-k-btn" (click)="openPalette()" aria-label="Open command palette">
+          <i class="pi pi-search" aria-hidden="true"></i>
           <span>Search...</span>
           <kbd>⌘K</kbd>
         </button>
       </div>
 
       <div class="topbar-right">
-        <div class="scope-selector">
+        <div class="scope-selector" aria-label="Active cluster scope">
+          <span class="scope-caption">SCOPE</span>
           <div class="scope-item">
             <span class="scope-dot" [class]="'dot-' + clusterHealth"></span>
             <span class="scope-key">cluster</span>
@@ -109,21 +119,22 @@ import { ConfirmDialogComponent } from './shared/components/confirm-dialog.compo
           </div>
         </div>
         @if (anomalyCount > 0) {
-          <button class="notif-btn" title="Anomalies detected" (click)="showNotifications = !showNotifications">
-            <i class="pi pi-bell"></i>
-            <span class="notif-badge">{{ anomalyCount }}</span>
+          <button type="button" class="notif-btn" title="Anomalies detected" aria-label="Open anomaly alerts" aria-controls="anomaly-panel"
+            [attr.aria-expanded]="showNotifications" (click)="showNotifications = !showNotifications">
+            <i class="pi pi-bell" aria-hidden="true"></i>
+            <span class="notif-badge" aria-hidden="true">{{ anomalyCount }}</span>
           </button>
         }
         @if (showNotifications) {
           <div class="notif-backdrop" (click)="showNotifications = false"></div>
-          <div class="notif-panel">
+          <div id="anomaly-panel" class="notif-panel" role="region" aria-label="Anomaly alerts">
             <div class="notif-header">
               <span>Alerts ({{ anomalyCount }})</span>
               <div class="notif-actions">
                 @if (anomalies.length > 0) {
-                  <button class="notif-clear" (click)="clearAllNotifications()">Clear all</button>
+                  <button type="button" class="notif-clear" (click)="clearAllNotifications()">Clear all</button>
                 }
-                <button class="notif-close" (click)="showNotifications = false"><i class="pi pi-times"></i></button>
+                <button type="button" class="notif-close" (click)="showNotifications = false" aria-label="Close anomaly alerts"><i class="pi pi-times" aria-hidden="true"></i></button>
               </div>
             </div>
             <div class="notif-list">
@@ -134,7 +145,7 @@ import { ConfirmDialogComponent } from './shared/components/confirm-dialog.compo
                     <span class="notif-title">{{ alert.title || alert.type || 'Alert' }}</span>
                     <span class="notif-desc">{{ alert.message || alert.detail || '' }}</span>
                   </div>
-                  <button class="notif-dismiss" (click)="dismissNotification($index)"><i class="pi pi-times"></i></button>
+                  <button type="button" class="notif-dismiss" (click)="dismissNotification($index)" aria-label="Dismiss alert"><i class="pi pi-times" aria-hidden="true"></i></button>
                 </div>
               }
               @if (anomalies.length === 0) {
@@ -159,16 +170,26 @@ import { ConfirmDialogComponent } from './shared/components/confirm-dialog.compo
     <app-ai-float />
 
     <!-- Layout -->
-    <div class="layout" [class.sidebar-collapsed]="sidebarCollapsed">
-      <aside class="sidebar" [class.rail]="sidebarCollapsed">
+    <div class="layout"
+      [class.sidebar-collapsed]="sidebarCollapsed"
+      [class.terminal-attached]="!!terminalDock.session()"
+      [class.terminal-minimized]="terminalDock.minimized()">
+      <aside id="primary-navigation" class="sidebar" [class.rail]="sidebarCollapsed" [class.mobile-open]="sidebarMobileOpen"
+        (click)="handleSidebarClick($event)">
         @if (clusterEnv !== 'default') {
           <div class="sidebar-env-strip" [class.strip-prod]="clusterEnv === 'prod'" [class.strip-sit]="clusterEnv === 'sit'" [class.strip-dev]="clusterEnv === 'dev'"></div>
         }
         <app-shell [collapsed]="sidebarCollapsed" />
-        <button class="collapse-toggle" (click)="toggleSidebar()">
-          <i class="pi" [class.pi-chevron-left]="!sidebarCollapsed" [class.pi-chevron-right]="sidebarCollapsed"></i>
+        <button type="button" class="collapse-toggle" (click)="toggleSidebar()"
+          [attr.aria-expanded]="!sidebarCollapsed"
+          [attr.aria-label]="sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'"
+          [title]="sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'">
+          <i class="pi" [class.pi-chevron-left]="!sidebarCollapsed" [class.pi-chevron-right]="sidebarCollapsed" aria-hidden="true"></i>
         </button>
       </aside>
+      @if (sidebarMobileOpen) {
+        <button class="mobile-sidebar-backdrop" type="button" (click)="sidebarMobileOpen = false" aria-label="Close navigation"></button>
+      }
       <main class="content">
         <div class="content-inner">
           <app-breadcrumb />
@@ -177,9 +198,68 @@ import { ConfirmDialogComponent } from './shared/components/confirm-dialog.compo
       </main>
     </div>
 
+    @if (terminalDock.session(); as session) {
+      <section class="terminal-dock"
+        [class.terminal-dock-minimized]="terminalDock.minimized()"
+        [class.terminal-dock-sidebar-collapsed]="sidebarCollapsed"
+        [class.terminal-dock-status-live]="terminalDock.status() === 'live'"
+        [class.terminal-dock-status-connecting]="terminalDock.status() === 'connecting'"
+        [class.terminal-dock-status-error]="terminalDock.status() === 'error'"
+        [class.terminal-dock-status-disconnected]="terminalDock.status() === 'disconnected'"
+        aria-label="Attached pod terminal">
+        <header class="terminal-dock-header">
+          <div class="terminal-dock-identity">
+            <div class="terminal-dock-glyph" aria-hidden="true">
+              <i class="pi pi-terminal"></i>
+              <span>01</span>
+            </div>
+            <div class="terminal-dock-identity-copy">
+              <span class="terminal-dock-kicker">EXEC SESSION / PERSISTENT LINK</span>
+              <div class="terminal-dock-pod-line">
+                <code>{{ session.podName }}</code>
+                <span class="terminal-dock-session-tag">pod shell</span>
+              </div>
+            </div>
+          </div>
+          <div class="terminal-dock-scope" aria-label="Current cluster scope">
+            <span class="terminal-dock-scope-label">SCOPE</span>
+            <div class="terminal-dock-scope-path">
+              <span>cluster</span><strong>{{ currentContext }}</strong>
+              <b>/</b>
+              <span>ns</span><strong>{{ currentNamespace }}</strong>
+            </div>
+          </div>
+          <div class="terminal-dock-status" aria-live="polite">
+            <span class="terminal-dock-status-mark"></span>
+            <span class="terminal-dock-status-label">{{ terminalDock.status() }}</span>
+          </div>
+          <div class="terminal-dock-actions">
+            <button type="button" class="terminal-dock-action" (click)="terminalDock.toggleMinimized()"
+              [attr.aria-label]="terminalDock.minimized() ? 'Expand terminal' : 'Minimize terminal'"
+              [title]="terminalDock.minimized() ? 'Expand terminal' : 'Minimize terminal'">
+              <i class="pi" [class.pi-chevron-up]="terminalDock.minimized()" [class.pi-chevron-down]="!terminalDock.minimized()" aria-hidden="true"></i>
+            </button>
+            <button type="button" class="terminal-dock-action terminal-dock-end" (click)="terminalDock.end()"
+              aria-label="End shell session" title="End shell session">
+              <i class="pi pi-times" aria-hidden="true"></i>
+            </button>
+          </div>
+        </header>
+        <div class="terminal-dock-ribbon" aria-label="Terminal session details">
+          <span><i class="pi pi-bolt" aria-hidden="true"></i> interactive shell</span>
+          <span><i class="pi pi-link" aria-hidden="true"></i> root attached</span>
+          <span class="terminal-dock-ribbon-note">minimize preserves session</span>
+        </div>
+        <div class="terminal-dock-body" [class.terminal-dock-body-hidden]="terminalDock.minimized()">
+          <app-shell-terminal [podName]="session.podName" />
+        </div>
+      </section>
+    }
+
     <!-- Status Bar -->
     <footer class="status-bar">
       <div class="status-left">
+        <span class="status-kicker">SCOPE</span>
         <span class="status-dot connected"></span>
         <span>{{ currentContext }}</span>
         <span class="status-sep">/</span>
@@ -725,6 +805,1028 @@ import { ConfirmDialogComponent } from './shared/components/confirm-dialog.compo
     :host-context([data-theme="light"]) .notif-header { border-bottom-color: rgba(0, 0, 0, 0.05); }
     :host-context([data-theme="light"]) .notif-item { border-bottom-color: rgba(0, 0, 0, 0.03); }
     :host-context([data-theme="light"]) .notif-item:hover { background: rgba(0, 0, 0, 0.015); }
+
+    /* SaaS Noir shell: opaque surfaces, quiet controls, responsive navigation. */
+    .mobile-nav-toggle {
+      display: none;
+      width: 34px;
+      height: 34px;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg-elevated);
+      color: var(--text-secondary);
+      cursor: pointer;
+    }
+
+    .topbar {
+      height: 60px;
+      padding: 0 20px;
+      background: var(--bg-card);
+      border-bottom-color: var(--border);
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
+
+    .topbar::after {
+      display: none;
+    }
+
+    .topbar-left {
+      min-width: 232px;
+    }
+
+    .topbar-brand {
+      padding: 6px 8px;
+      color: var(--text);
+      font-size: 15px;
+    }
+
+    .topbar-brand:hover {
+      color: var(--accent);
+    }
+
+    .topbar-brand i {
+      color: var(--accent);
+      text-shadow: none;
+    }
+
+    .workspace-label {
+      color: var(--text-secondary);
+      font-size: 12px;
+      font-weight: 550;
+      letter-spacing: 0;
+      text-transform: none;
+    }
+
+    .workspace-label:hover,
+    .cmd-k-btn:hover {
+      background: var(--bg-hover);
+      border-color: var(--border-hover);
+      color: var(--text);
+      box-shadow: none;
+    }
+
+    .env-bar.env-prod { background: var(--danger); box-shadow: none; }
+    .env-bar.env-sit { background: var(--warning); box-shadow: none; }
+    .env-bar.env-dev { background: var(--success); box-shadow: none; }
+
+    .cmd-k-btn {
+      min-height: 34px;
+      padding: 6px 10px;
+      background: var(--bg-elevated);
+      border-color: var(--border);
+      border-radius: 8px;
+      color: var(--text-muted);
+    }
+
+    .cmd-k-btn kbd {
+      background: var(--bg-card);
+      border-color: var(--border);
+      color: var(--text-muted);
+    }
+
+    .scope-key {
+      color: var(--text-muted);
+      font-size: 10px;
+      letter-spacing: 0;
+      text-transform: none;
+    }
+
+    .scope-dot.dot-healthy,
+    .scope-dot.dot-degraded,
+    .scope-dot.dot-critical,
+    .status-dot.connected {
+      box-shadow: none;
+    }
+
+    .sidebar {
+      top: 60px;
+      width: 232px;
+      height: calc(100dvh - 60px);
+      background: var(--bg-card);
+      border-right-color: var(--border);
+      padding: 8px 6px;
+    }
+
+    .sidebar-env-strip {
+      width: 2px;
+    }
+
+    .strip-prod { background: var(--danger); box-shadow: none; }
+    .strip-sit { background: var(--warning); box-shadow: none; }
+    .strip-dev { background: var(--success); box-shadow: none; }
+
+    .content {
+      min-height: 100dvh;
+      padding-top: 60px;
+      margin-left: 232px;
+    }
+
+    .content-inner {
+      max-width: 1600px;
+      margin: 0 auto;
+      padding: 24px 28px 36px;
+    }
+
+    .status-bar {
+      left: 232px;
+      background: var(--bg-card);
+      border-top-color: var(--border);
+      color: var(--text-muted);
+      backdrop-filter: none;
+    }
+
+    .status-dot.connected {
+      background: var(--success);
+    }
+
+    .sidebar-collapsed .content { margin-left: 48px; }
+    .sidebar-collapsed .status-bar { left: 48px; }
+
+    .mobile-sidebar-backdrop {
+      display: none;
+    }
+
+    :host-context([data-theme="light"]) .topbar,
+    :host-context([data-theme="light"]) .sidebar,
+    :host-context([data-theme="light"]) .status-bar {
+      background: var(--bg-card);
+      border-color: var(--border);
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
+
+    :host-context([data-theme="light"]) .cmd-k-btn {
+      background: var(--bg-elevated);
+      border-color: var(--border);
+      color: var(--text-muted);
+    }
+
+    :host-context([data-theme="light"]) .workspace-label,
+    :host-context([data-theme="light"]) .status-bar {
+      color: var(--text-secondary);
+    }
+
+    @media (max-width: 900px) {
+      .topbar {
+        padding: 0 14px;
+        gap: 10px;
+      }
+
+      .topbar-left {
+        min-width: 0;
+      }
+
+      .topbar-center {
+        max-width: none;
+      }
+
+      .scope-selector {
+        display: none;
+      }
+
+      .sidebar {
+        width: min(280px, calc(100vw - 48px));
+        transform: translateX(-100%);
+        transition: transform 0.18s var(--transition-smooth);
+        box-shadow: 12px 0 32px rgba(0, 0, 0, 0.28);
+      }
+
+      .sidebar.mobile-open {
+        transform: translateX(0);
+      }
+
+      .sidebar.mobile-open.rail {
+        width: min(280px, calc(100vw - 48px));
+      }
+
+      .sidebar.mobile-open.rail .nav-label,
+      .sidebar.mobile-open.rail .nav-item span,
+      .sidebar.mobile-open.rail .nav-item kbd {
+        display: flex;
+      }
+
+      .sidebar.mobile-open.rail .nav-item {
+        justify-content: flex-start;
+        padding: 7px 10px;
+        margin: 2px 6px;
+      }
+
+      .sidebar.mobile-open.rail .fav-remove,
+      .sidebar.mobile-open.rail .star-btn {
+        display: block;
+      }
+
+      .content,
+      .sidebar-collapsed .content {
+        margin-left: 0;
+      }
+
+      .status-bar,
+      .sidebar-collapsed .status-bar {
+        left: 0;
+      }
+
+      .mobile-nav-toggle {
+        display: inline-flex;
+      }
+
+      .mobile-sidebar-backdrop {
+        display: block;
+        position: fixed;
+        inset: 60px 0 24px;
+        z-index: 1000;
+        border: 0;
+        background: rgba(0, 0, 0, 0.42);
+      }
+
+      .content-inner {
+        padding: 20px 20px 32px;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .brand-text,
+      .topbar-divider,
+      .workspace-label {
+        display: none;
+      }
+
+      .topbar-center {
+        margin-left: auto;
+      }
+
+      .content-inner {
+        padding: 16px 14px 28px;
+      }
+
+      .status-right {
+        display: none;
+      }
+    }
+
+    .layout.terminal-attached .content {
+      padding-bottom: 360px;
+    }
+
+    .layout.terminal-attached.terminal-minimized .content {
+      padding-bottom: 72px;
+    }
+
+    .terminal-dock {
+      position: fixed;
+      right: 0;
+      bottom: 24px;
+      left: 232px;
+      z-index: 90;
+      display: flex;
+      flex-direction: column;
+      height: min(360px, 42dvh);
+      min-height: 240px;
+      border-top: 1px solid var(--accent);
+      background: var(--bg-card);
+      box-shadow: 0 -12px 32px rgba(0, 0, 0, 0.22);
+      transition: left 0.2s ease, height 0.18s var(--transition-smooth), box-shadow 0.18s ease;
+    }
+
+    .terminal-dock.terminal-dock-sidebar-collapsed {
+      left: 48px;
+    }
+
+    .terminal-dock.terminal-dock-minimized {
+      height: 40px;
+      min-height: 40px;
+      box-shadow: 0 -6px 18px rgba(0, 0, 0, 0.16);
+    }
+
+    .terminal-dock-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 40px;
+      padding: 0 12px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg-elevated);
+      color: var(--text-secondary);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      flex-shrink: 0;
+    }
+
+    .terminal-dock-title,
+    .terminal-dock-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .terminal-dock-title > i {
+      color: var(--accent);
+      font-size: 12px;
+    }
+
+    .terminal-dock-title code {
+      max-width: min(36vw, 420px);
+      overflow: hidden;
+      color: var(--text);
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .terminal-dock-separator {
+      color: var(--text-muted);
+    }
+
+    .terminal-dock-state {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      margin-left: 6px;
+      color: var(--success);
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .terminal-dock-state-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: currentColor;
+      box-shadow: 0 0 5px currentColor;
+    }
+
+    .terminal-dock-action {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      padding: 0;
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+
+    .terminal-dock-action:hover,
+    .terminal-dock-action:focus-visible {
+      border-color: var(--border-hover);
+      color: var(--text);
+      outline: none;
+    }
+
+    .terminal-dock-end:hover,
+    .terminal-dock-end:focus-visible {
+      border-color: rgba(var(--danger-rgb), 0.4);
+      color: var(--danger);
+    }
+
+    .terminal-dock-body {
+      display: flex;
+      min-height: 0;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .terminal-dock-body-hidden {
+      display: flex;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .terminal-dock-body app-shell-terminal {
+      display: block;
+      width: 100%;
+      min-height: 0;
+    }
+
+    @media (max-width: 900px) {
+      .layout.terminal-attached .content {
+        padding-bottom: 360px;
+      }
+
+      .terminal-dock,
+      .terminal-dock.terminal-dock-sidebar-collapsed {
+        left: 0;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .layout.terminal-attached .content,
+      .layout.terminal-attached.terminal-minimized .content {
+        padding-bottom: 72px;
+      }
+
+      .terminal-dock {
+        height: min(420px, 54dvh);
+        min-height: 220px;
+      }
+
+      .terminal-dock-title code {
+        max-width: 34vw;
+      }
+
+      .terminal-dock-state {
+        display: none;
+      }
+    }
+    /* Futuristic attached session bay */
+    .layout.terminal-attached {
+      --terminal-dock-height: min(390px, 44dvh);
+    }
+
+    .layout.terminal-attached.terminal-minimized {
+      --terminal-dock-height: 40px;
+    }
+
+    .layout.terminal-attached .content {
+      padding-bottom: calc(var(--terminal-dock-height) + 24px);
+    }
+
+    .terminal-dock {
+      isolation: isolate;
+      height: var(--terminal-dock-height);
+      min-height: 260px;
+      overflow: hidden;
+      border: 1px solid rgba(var(--accent-rgb), 0.34);
+      border-bottom: 0;
+      border-top: 2px solid var(--accent);
+      background: linear-gradient(135deg, var(--bg-card), var(--bg-elevated));
+      box-shadow: 0 -16px 42px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.035);
+      transition: left 0.2s ease, height 0.18s var(--transition-smooth), border-color 0.18s ease;
+    }
+
+    .terminal-dock::before {
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      background: linear-gradient(90deg, rgba(var(--accent-rgb), 0.055), transparent 22%, transparent 78%, rgba(var(--accent-rgb), 0.025));
+      content: '';
+      pointer-events: none;
+    }
+
+    .terminal-dock::after {
+      position: absolute;
+      inset: 0;
+      z-index: 3;
+      background: repeating-linear-gradient(180deg, transparent 0, transparent 4px, rgba(var(--accent-rgb), 0.012) 5px);
+      content: '';
+      pointer-events: none;
+    }
+
+    .terminal-dock-header,
+    .terminal-dock-ribbon,
+    .terminal-dock-body {
+      position: relative;
+      z-index: 4;
+    }
+
+    .terminal-dock-header {
+      min-height: 58px;
+      padding: 8px 14px;
+      border-bottom: 1px solid rgba(var(--accent-rgb), 0.12);
+      background: rgba(var(--accent-rgb), 0.025);
+      gap: 18px;
+    }
+
+    .terminal-dock-identity,
+    .terminal-dock-pod-line,
+    .terminal-dock-scope-path,
+    .terminal-dock-status,
+    .terminal-dock-ribbon,
+    .terminal-dock-ribbon span {
+      display: flex;
+      align-items: center;
+    }
+
+    .terminal-dock-identity {
+      min-width: 220px;
+      gap: 10px;
+    }
+
+    .terminal-dock-glyph {
+      display: grid;
+      width: 34px;
+      height: 34px;
+      place-items: center;
+      border: 1px solid rgba(var(--accent-rgb), 0.46);
+      background: rgba(var(--accent-rgb), 0.08);
+      color: var(--accent);
+      box-shadow: inset 0 0 16px rgba(var(--accent-rgb), 0.06);
+    }
+
+    .terminal-dock-glyph i { font-size: 14px; }
+    .terminal-dock-glyph span {
+      position: absolute;
+      margin: 24px 0 0 24px;
+      padding: 1px 3px;
+      background: var(--bg-card);
+      color: var(--accent);
+      font-size: 7px;
+      letter-spacing: 0.08em;
+    }
+
+    .terminal-dock-identity-copy {
+      display: flex;
+      min-width: 0;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .terminal-dock-kicker,
+    .terminal-dock-scope-label,
+    .terminal-dock-ribbon,
+    .terminal-dock-session-tag {
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .terminal-dock-kicker,
+    .terminal-dock-scope-label {
+      color: var(--text-muted);
+      font-size: 8px;
+      font-weight: 700;
+    }
+
+    .terminal-dock-pod-line {
+      min-width: 0;
+      gap: 8px;
+    }
+
+    .terminal-dock-pod-line code {
+      max-width: min(28vw, 340px);
+      overflow: hidden;
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 700;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .terminal-dock-session-tag {
+      padding: 2px 5px;
+      border: 1px solid rgba(var(--accent-rgb), 0.24);
+      color: var(--accent);
+      font-size: 7px;
+      white-space: nowrap;
+    }
+
+    .terminal-dock-scope {
+      display: flex;
+      min-width: 0;
+      flex-direction: column;
+      gap: 4px;
+      margin-left: auto;
+      padding-left: 18px;
+      border-left: 1px solid var(--border-subtle);
+    }
+
+    .terminal-dock-scope-path {
+      min-width: 0;
+      gap: 6px;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      font-size: 9px;
+      white-space: nowrap;
+    }
+
+    .terminal-dock-scope-path strong {
+      max-width: 140px;
+      overflow: hidden;
+      color: var(--text-secondary);
+      font-weight: 600;
+      text-overflow: ellipsis;
+    }
+
+    .terminal-dock-scope-path b {
+      color: var(--accent);
+      font-weight: 400;
+    }
+
+    .terminal-dock-status {
+      gap: 6px;
+      min-height: 24px;
+      padding: 0 8px;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      font-size: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .terminal-dock-status-mark {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .terminal-dock-status-live { color: var(--success); }
+    .terminal-dock-status-connecting { color: var(--warning); }
+    .terminal-dock-status-error { color: var(--danger); }
+    .terminal-dock-status-disconnected { color: var(--text-muted); }
+    .terminal-dock-status-live .terminal-dock-status-mark { box-shadow: 0 0 7px currentColor; }
+
+    .terminal-dock-ribbon {
+      min-height: 27px;
+      gap: 18px;
+      padding: 0 16px;
+      border-bottom: 1px solid var(--border-subtle);
+      color: var(--text-muted);
+      font-size: 8px;
+    }
+
+    .terminal-dock-ribbon span { gap: 5px; }
+    .terminal-dock-ribbon i { color: var(--accent); font-size: 9px; }
+    .terminal-dock-ribbon-note { margin-left: auto; color: var(--text-muted); }
+
+    .terminal-dock-body {
+      background: rgba(0, 0, 0, 0.12);
+    }
+
+    .terminal-dock-minimized {
+      min-height: 40px;
+    }
+
+    .terminal-dock-minimized .terminal-dock-header {
+      min-height: 40px;
+      padding-top: 3px;
+      padding-bottom: 3px;
+    }
+
+    .terminal-dock-minimized .terminal-dock-glyph {
+      width: 27px;
+      height: 27px;
+    }
+
+    .terminal-dock-minimized .terminal-dock-glyph span,
+    .terminal-dock-minimized .terminal-dock-kicker,
+    .terminal-dock-minimized .terminal-dock-scope,
+    .terminal-dock-minimized .terminal-dock-ribbon {
+      display: none;
+    }
+
+    .terminal-dock-minimized .terminal-dock-identity { min-width: 0; }
+    .terminal-dock-minimized .terminal-dock-status { margin-left: auto; }
+
+    @media (max-width: 900px) {
+      .layout.terminal-attached { --terminal-dock-height: min(390px, 48dvh); }
+      .terminal-dock-identity { min-width: 0; }
+      .terminal-dock-scope { display: none; }
+    }
+
+    @media (max-width: 560px) {
+      .layout.terminal-attached { --terminal-dock-height: min(430px, 60dvh); }
+      .terminal-dock-header { gap: 8px; padding-inline: 10px; }
+      .terminal-dock-pod-line code { max-width: 40vw; }
+      .terminal-dock-ribbon { gap: 10px; padding-inline: 10px; }
+      .terminal-dock-ribbon-note { display: none !important; }
+      .terminal-dock-status-label { display: none; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .terminal-dock { transition: none; }
+    }
+
+    /* Operational appbar finish: scope first, chrome second. */
+    .topbar {
+      border-bottom-color: var(--border);
+      box-shadow: 0 1px 0 rgba(var(--accent-rgb), 0.05);
+    }
+
+    .topbar-brand,
+    .mobile-nav-toggle,
+    .workspace-label,
+    .cmd-k-btn,
+    .notif-btn {
+      outline-offset: 2px;
+    }
+
+    .topbar-brand:focus-visible,
+    .mobile-nav-toggle:focus-visible,
+    .workspace-label:focus-visible,
+    .cmd-k-btn:focus-visible,
+    .notif-btn:focus-visible,
+    .dash-menu-item:focus-visible,
+    .notif-close:focus-visible,
+    .notif-clear:focus-visible,
+    .notif-dismiss:focus-visible {
+      outline: 2px solid var(--focus-ring);
+      outline-offset: 2px;
+    }
+
+    .workspace-label {
+      border: 1px solid transparent;
+    }
+
+    .workspace-label:hover,
+    .workspace-label:focus-visible {
+      border-color: var(--border-hover);
+    }
+
+    .cmd-k-btn {
+      border-color: var(--border);
+      background: var(--bg-elevated);
+    }
+
+    .cmd-k-btn:hover,
+    .cmd-k-btn:focus-visible {
+      border-color: rgba(var(--accent-rgb), 0.34);
+      background: var(--accent-subtle);
+    }
+
+    .cmd-k-btn i {
+      color: var(--accent);
+    }
+
+    .scope-selector {
+      gap: 2px;
+      padding: 3px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--bg-elevated);
+    }
+
+    .scope-item {
+      min-height: 27px;
+      padding: 1px 5px;
+      border: 1px solid transparent;
+      border-radius: 5px;
+    }
+
+    .scope-item:focus-within {
+      border-color: rgba(var(--accent-rgb), 0.34);
+      background: var(--accent-subtle);
+    }
+
+    .scope-sep {
+      color: var(--text-muted);
+      opacity: 0.7;
+    }
+
+    .notif-btn {
+      border: 1px solid transparent;
+    }
+
+    .notif-btn:hover,
+    .notif-btn:focus-visible {
+      border-color: rgba(var(--danger-rgb), 0.3);
+      background: var(--danger-subtle);
+      color: var(--danger);
+    }
+
+    .notif-panel {
+      border-color: rgba(var(--accent-rgb), 0.28);
+      box-shadow: var(--shadow-lg), 0 0 0 1px rgba(var(--accent-rgb), 0.04);
+    }
+
+    .notif-header {
+      background: var(--bg-elevated);
+    }
+
+    .notif-close,
+    .notif-clear,
+    .notif-dismiss {
+      outline-offset: 2px;
+    }
+
+    .notif-dismiss:focus-visible {
+      opacity: 1;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .topbar,
+      .cmd-k-btn,
+      .workspace-label,
+      .notif-btn {
+        transition: none;
+      }
+    }
+
+    /* Pods/Jobs telemetry language for appbar chrome. */
+    .topbar {
+      border-bottom-color: var(--border);
+      box-shadow: inset 0 -1px 0 rgba(var(--info-rgb), 0.08);
+    }
+
+    .topbar-brand {
+      align-items: center;
+      gap: 10px;
+      min-height: 38px;
+      border-left: 2px solid var(--accent);
+      background: linear-gradient(90deg, var(--accent-subtle), transparent 84%);
+    }
+
+    .topbar-brand i {
+      font-size: 15px;
+    }
+
+    .brand-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+      line-height: 1;
+    }
+
+    .brand-kicker,
+    .cmd-k-kicker,
+    .scope-caption,
+    .status-kicker {
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      font-size: 8px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .brand-kicker {
+      color: var(--accent);
+      font-size: 7px;
+      letter-spacing: 0.15em;
+    }
+
+    .cmd-k-btn {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      min-height: 38px;
+      padding: 5px 8px;
+      border-left: 2px solid var(--accent);
+      background: linear-gradient(90deg, var(--accent-subtle), transparent 82%), var(--surface-elevated);
+    }
+
+    .cmd-k-icon {
+      display: inline-flex;
+      width: 25px;
+      height: 25px;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid rgba(var(--accent-rgb), 0.25);
+      background: var(--accent-subtle);
+      color: var(--accent);
+    }
+
+    .cmd-k-icon i {
+      color: currentColor;
+      font-size: 11px;
+    }
+
+    .cmd-k-copy {
+      display: flex;
+      min-width: 0;
+      flex: 1;
+      flex-direction: column;
+      gap: 2px;
+      align-items: flex-start;
+    }
+
+    .cmd-k-kicker,
+    .cmd-k-placeholder {
+      flex: none;
+      text-align: left;
+    }
+
+    .cmd-k-kicker {
+      color: var(--accent);
+      font-size: 7px;
+      letter-spacing: 0.14em;
+      line-height: 1;
+    }
+
+    .cmd-k-placeholder {
+      color: var(--text-secondary);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      line-height: 1;
+    }
+
+    .cmd-k-btn kbd {
+      min-width: 28px;
+      text-align: center;
+    }
+
+    .scope-selector {
+      min-height: 38px;
+      gap: 4px;
+      padding: 3px 4px 3px 8px;
+      border-left: 2px solid var(--accent);
+      background: linear-gradient(90deg, var(--accent-subtle), transparent 74%), var(--surface-elevated);
+    }
+
+    .scope-caption {
+      padding-right: 4px;
+      color: var(--accent);
+      font-size: 7px;
+      letter-spacing: 0.14em;
+    }
+
+    .scope-item {
+      min-height: 29px;
+      padding: 1px 5px;
+    }
+
+    .scope-key {
+      font-family: var(--font-mono);
+      font-size: 8px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .scope-sep {
+      color: var(--accent);
+      font-family: var(--font-mono);
+      font-size: 11px;
+    }
+
+    .status-bar {
+      min-height: 24px;
+      border-top-color: rgba(var(--info-rgb), 0.14);
+      background: linear-gradient(90deg, var(--accent-subtle), transparent 32%), var(--surface-card);
+    }
+
+    .status-left {
+      gap: 8px;
+    }
+
+    .status-kicker {
+      color: var(--accent);
+      font-size: 7px;
+      letter-spacing: 0.14em;
+    }
+
+    .status-left > span:not(.status-kicker):not(.status-dot):not(.status-sep),
+    .status-right .shortcut-hint {
+      font-family: var(--font-mono);
+      font-size: 9px;
+    }
+
+    .status-right .shortcut-hint {
+      padding: 2px 6px;
+      border-color: var(--border);
+      background: var(--surface-elevated);
+    }
+
+    @media (max-width: 900px) {
+      .scope-caption {
+        display: none;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .brand-kicker,
+      .cmd-k-kicker {
+        display: none;
+      }
+
+      .cmd-k-btn {
+        min-height: 34px;
+      }
+
+      .cmd-k-icon {
+        width: 22px;
+        height: 22px;
+      }
+    }
+
+    /* Restore compact command-bar treatment. */
+    .cmd-k-btn {
+      min-height: 34px;
+      padding: 6px 10px;
+      border-left: 1px solid var(--border);
+      background: var(--bg-elevated);
+      border-radius: 8px;
+    }
+
+    .cmd-k-btn:hover,
+    .cmd-k-btn:focus-visible {
+      border-color: var(--border-hover);
+      background: var(--bg-hover);
+    }
+
+    .cmd-k-btn > i {
+      color: var(--text-muted);
+      font-size: 12px;
+    }
+
+    .cmd-k-btn > span {
+      flex: 1;
+      color: var(--text-muted);
+      font-family: var(--font-sans);
+      font-size: 12px;
+      text-align: left;
+    }
+
+    .cmd-k-btn kbd {
+      min-width: auto;
+      text-align: center;
+    }
   `],
 })
 export class AppComponent implements OnInit, OnDestroy {
@@ -732,6 +1834,7 @@ export class AppComponent implements OnInit, OnDestroy {
   private http = inject(HttpClient);
   loadingService = inject(LoadingService);
   private prefsService = inject(PreferencesService); // ensures prefs load on startup
+  terminalDock = inject(TerminalDockService);
 
   namespaces: string[] = [];
   contexts: string[] = [];
@@ -746,6 +1849,7 @@ export class AppComponent implements OnInit, OnDestroy {
   anomalies: any[] = [];
   private anomalyPollInterval: any;
   sidebarCollapsed = false;
+  sidebarMobileOpen = false;
   dashMenuOpen = false;
   savedDashList: { name: string; widgets: any[] }[] = [];
   activeDashName = '';
@@ -836,6 +1940,15 @@ export class AppComponent implements OnInit, OnDestroy {
   toggleSidebar() {
     this.sidebarCollapsed = !this.sidebarCollapsed;
     localStorage.setItem('sidebar_collapsed', String(this.sidebarCollapsed));
+  }
+
+  toggleMobileNav() {
+    this.sidebarMobileOpen = !this.sidebarMobileOpen;
+    if (this.sidebarMobileOpen) this.sidebarCollapsed = false;
+  }
+
+  handleSidebarClick(event: MouseEvent) {
+    if ((event.target as HTMLElement).closest('a')) this.sidebarMobileOpen = false;
   }
 
   loadDashList() {

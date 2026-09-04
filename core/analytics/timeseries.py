@@ -25,7 +25,7 @@ def _execute(conn, sql, params):
     return conn.execute(sql).fetchall()
 
 
-def cpu_memory_series(deployment=None, hours=24, interval="1 hour"):
+def cpu_memory_series(deployment=None, hours=24, interval="hour"):
     """
     Time-series CPU/memory for charting.
     Returns [{ts, cpu, mem, pods}] at given interval.

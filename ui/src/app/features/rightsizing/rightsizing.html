@@ -1,17 +1,18 @@
-<app-intel-header title="Right-Sizing" icon="pi pi-sliders-h"
-  [subtitle]="data ? 'Updated ' + freshnessLabel : 'loading...'">
-  <button class="ctrl-btn" (click)="dryRun()" pTooltip="Dry Run" [disabled]="!data?.opportunities?.length || dryRunning">
-    <i class="pi pi-check-circle" [class.spinning]="dryRunning"></i>
-  </button>
-  <button class="ctrl-btn" (click)="exportGitops()" pTooltip="GitOps" [disabled]="!data?.opportunities?.length">
-    <i class="pi pi-code"></i>
-  </button>
-  <button class="ctrl-btn" (click)="exportYaml()" pTooltip="Export YAML" [disabled]="!data?.opportunities?.length">
-    <i class="pi pi-download"></i>
-  </button>
-</app-intel-header>
+<section class="rightsizing-page" aria-label="Right-sizing workspace">
+  <app-intel-header title="Right-Sizing" icon="pi pi-sliders-h"
+    [subtitle]="data ? 'Updated ' + freshnessLabel : 'loading...'">
+    <button class="ctrl-btn" type="button" (click)="dryRun()" aria-label="Run rightsizing dry run" pTooltip="Dry Run" [disabled]="!data?.opportunities?.length || dryRunning">
+      <i class="pi pi-check-circle" aria-hidden="true" [class.spinning]="dryRunning"></i>
+    </button>
+    <button class="ctrl-btn" type="button" (click)="exportGitops()" aria-label="Export GitOps manifests" pTooltip="GitOps" [disabled]="!data?.opportunities?.length">
+      <i class="pi pi-code" aria-hidden="true"></i>
+    </button>
+    <button class="ctrl-btn" type="button" (click)="exportYaml()" aria-label="Export rightsizing YAML" pTooltip="Export YAML" [disabled]="!data?.opportunities?.length">
+      <i class="pi pi-download" aria-hidden="true"></i>
+    </button>
+  </app-intel-header>
 
-@if (loading && !data) {
+  @if (loading && !data) {
   <div class="loading"><app-skeleton variant="stats" /><app-skeleton variant="card" /></div>
 }
 
@@ -32,7 +33,43 @@
 }
 
 @if (data && !data.empty_state_reason) {
-  <!-- ─── Hero ─────────────────────────────────────────────────────── -->
+  <div class="rightsizing-deck" aria-label="Right-sizing recommendation overview">
+    <div class="deck-primary">
+      <span class="deck-kicker"><i class="pi pi-sliders-h" aria-hidden="true"></i> Resource efficiency</span>
+      <h2>Capacity with less waste</h2>
+      <p>Turn observed resource usage into safer requests, lower cost, and an execution path your team can review.</p>
+      <div class="deck-chips" aria-label="Right-sizing capabilities">
+        <span><i class="pi pi-chart-line" aria-hidden="true"></i> Usage-based sizing</span>
+        <span><i class="pi pi-shield" aria-hidden="true"></i> Risk-aware changes</span>
+        <span><i class="pi pi-code" aria-hidden="true"></i> GitOps export</span>
+      </div>
+    </div>
+    <div class="telemetry-panel" aria-label="Right-sizing recommendation posture">
+      <div class="telemetry-head">
+        <div>
+          <span class="telemetry-kicker">Recommendation posture</span>
+          <strong>Review before apply</strong>
+        </div>
+        <span class="telemetry-total">${{ data.total_savings_monthly | number:'1.0-0' }}</span>
+      </div>
+      <div class="posture-bars">
+        <div class="posture-bar">
+          <div><span>Safe to apply</span><b>{{ data.safe_to_apply }}/{{ data.deployments_analyzed }}</b></div>
+          <div class="posture-track" aria-hidden="true"><span class="posture-fill posture-safe" [style.width.%]="data.deployments_analyzed ? data.safe_to_apply / data.deployments_analyzed * 100 : 0"></span></div>
+        </div>
+        <div class="posture-bar">
+          <div><span>At risk</span><b>{{ data.at_risk_count }}/{{ data.deployments_analyzed }}</b></div>
+          <div class="posture-track" aria-hidden="true"><span class="posture-fill posture-risk" [style.width.%]="data.deployments_analyzed ? data.at_risk_count / data.deployments_analyzed * 100 : 0"></span></div>
+        </div>
+      </div>
+      <div class="telemetry-legend">
+        <span><i class="legend-dot legend-safe" aria-hidden="true"></i> Opportunities <b>{{ data.opportunities.length }}</b></span>
+        <span><i class="legend-dot legend-risk" aria-hidden="true"></i> Risks <b>{{ data.risks.length }}</b></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── Summary ───────────────────────────────────────────────────── -->
   <div class="metrics-strip">
     <app-metric-tile label="Deployments" [value]="'' + data.deployments_analyzed" accent="default" />
     <app-metric-tile label="Savings" [value]="'$' + (data.total_savings_monthly | number:'1.0-0') + '/mo'" accent="green" />
@@ -41,7 +78,7 @@
   </div>
 
   <!-- ─── Tabs ─────────────────────────────────────────────────────── -->
-  <p-tabs [value]="activeTab" (valueChange)="activeTab = '' + $event">
+  <p-tabs class="rightsizing-tabs" [value]="activeTab" (valueChange)="activeTab = '' + $event">
     <p-tablist>
       <p-tab value="0">Opportunities ({{ data.opportunities.length }})</p-tab>
       <p-tab value="1">Risks ({{ data.risks.length }})</p-tab>
@@ -172,6 +209,7 @@
 }
 
 <app-related-pages label="Related" [pages]="relatedPages" />
+</section>
 
 @if (toast) {
   <div class="inline-toast" [class.toast-success]="toast.severity === 'success'" [class.toast-danger]="toast.severity === 'danger'" [class.toast-info]="toast.severity === 'info'">

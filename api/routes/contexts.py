@@ -42,10 +42,13 @@ def post_switch_context(req: SwitchRequest):
         raise HTTPException(status_code=404, detail="No matching context")
 
     target = matches[0]
-    switch_context(target)
+    # API selection is request-scoped; CLI selection remains persisted locally.
+    if not switch_context(target, persist=False):
+        raise HTTPException(status_code=502, detail="Unable to select context")
     return {
         "switched_to": target["name"],
-        "namespace": target["namespace"],
+        "context": context.current_context,
+        "namespace": context.namespace,
         "environment": target.get("environment"),
     }
 
@@ -62,7 +65,7 @@ def get_namespaces():
             "kubectl", "--context", context.current_context,
             "get", "namespaces", "-o", "jsonpath={.items[*].metadata.name}"
         ],
-        capture_output=True, text=True,
+        capture_output=True, text=True, timeout=10,
     )
     if result.returncode != 0:
         return {"namespaces": [], "current": context.namespace}
@@ -73,12 +76,13 @@ def get_namespaces():
 
 @router.post("/switch-namespace")
 def post_switch_namespace(req: NamespaceRequest):
-    from core.state import save_state
     from core.cache import invalidate
     context.namespace = req.namespace
-    save_state(context.current_context, context.namespace)
     invalidate()
-    return {"namespace": context.namespace}
+    return {
+        "namespace": context.namespace,
+        "context": context.current_context,
+    }
 
 
 @router.get("/namespaces/{ctx}")

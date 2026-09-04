@@ -13,7 +13,7 @@ import { Pod } from '../../core/models';
 import { PodDrawerComponent } from '../../shared/components/pod-drawer.component';
 import { AiInsightDrawerComponent } from '../../shared/components/ai-insight-drawer.component';
 import { LogTerminalComponent } from '../../shared/components/log-terminal.component';
-import { ShellTerminalComponent } from '../../shared/components/shell-terminal.component';
+import { TerminalDockService } from '../../core/services/terminal-dock.service';
 import { StatusBeaconComponent } from '../../shared/components/futuristic/status-beacon.component';
 import { MetricTileComponent } from '../../shared/components/futuristic/metric-tile.component';
 import { CommandBarComponent } from '../../shared/components/futuristic/command-bar.component';
@@ -36,10 +36,9 @@ interface PodGroup {
   standalone: true,
   imports: [
     JsonPipe, FormsModule, TagModule, ButtonModule, TooltipModule, DialogModule,
-    PodDrawerComponent, AiInsightDrawerComponent, LogTerminalComponent, ShellTerminalComponent,
-    StatusBeaconComponent, MetricTileComponent,
-    CommandBarComponent, LiveIndicatorComponent, SectionGroupComponent, ActionIconComponent,
-    IntelHeaderComponent,
+    PodDrawerComponent, AiInsightDrawerComponent, LogTerminalComponent,
+    StatusBeaconComponent, MetricTileComponent, CommandBarComponent, LiveIndicatorComponent,
+    SectionGroupComponent, ActionIconComponent, IntelHeaderComponent,
   ],
   templateUrl: './pods.html',
   styleUrl: './pods.scss',
@@ -47,6 +46,7 @@ interface PodGroup {
 export class PodsComponent implements OnInit, OnDestroy {
   private api = inject(ApiService);
   private ws = inject(WsService);
+  private terminalDock = inject(TerminalDockService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private watchSub: Subscription | null = null;
@@ -80,8 +80,6 @@ export class PodsComponent implements OnInit, OnDestroy {
   activePodName = '';
   inspectVisible = false;
   inspectData: any = null;
-  shellVisible = false;
-  shellPodName = '';
   diagnoseVisible = false;
   diagnoseFindings: any[] = [];
   drawerPod = '';
@@ -94,9 +92,9 @@ export class PodsComponent implements OnInit, OnDestroy {
   aiFindings: any[] = [];
   aiReasoning = '';
 
-  get healthyCount() { return this.pods.filter(p => this.isHealthy(p)).length; }
-  get warningCount() { return this.pods.filter(p => p.status === 'Running' && p.restarts > 5).length; }
-  get criticalCount() { return this.pods.filter(p => p.status !== 'Running' && p.status !== 'Pending' && p.status !== 'Succeeded').length; }
+  get healthyCount() { return this.pods.filter(p => this.podBeaconStatus(p) === 'ok').length; }
+  get warningCount() { return this.pods.filter(p => this.podBeaconStatus(p) === 'warning' && p.status !== 'Pending').length; }
+  get criticalCount() { return this.pods.filter(p => this.podBeaconStatus(p) === 'critical').length; }
   get pendingCount() { return this.pods.filter(p => p.status === 'Pending').length; }
   get allExpanded() { return this.filteredGroups.length > 0 && this.filteredGroups.every(g => g.expanded); }
 
@@ -112,17 +110,18 @@ export class PodsComponent implements OnInit, OnDestroy {
   }
 
   statusSeverity(status: string): 'success' | 'warn' | 'danger' | 'secondary' | undefined {
-    switch (status) { case 'Running': return 'success'; case 'Succeeded': return 'secondary'; case 'Pending': return 'warn'; default: return 'danger'; }
+    switch (status) { case 'Running': case 'Succeeded': return 'success'; case 'Pending': return 'warn'; default: return 'danger'; }
   }
 
   podBeaconStatus(pod: Pod): 'ok' | 'warning' | 'critical' | 'idle' {
-    if (pod.status === 'Running' && pod.restarts <= 5) return 'ok';
+    const healthyPhase = pod.status === 'Running' || pod.status === 'Succeeded';
+    if (healthyPhase && pod.restarts <= 5) return 'ok';
     if (pod.status === 'Pending') return 'warning';
-    if (pod.status === 'Running' && pod.restarts > 5) return 'warning';
+    if (healthyPhase && pod.restarts > 5) return 'warning';
     return 'critical';
   }
 
-  isHealthy(pod: Pod): boolean { return (pod.status === 'Running' || pod.status === 'Succeeded') && pod.restarts <= 5; }
+  isHealthy(pod: Pod): boolean { return this.podBeaconStatus(pod) === 'ok'; }
   isError(line: string): boolean { const l = line.toLowerCase(); return l.includes('error') || l.includes('fatal') || l.includes('panic'); }
   isSelected(pod: Pod): boolean { return this.selected.some(p => p.name === pod.name); }
 
@@ -166,7 +165,7 @@ export class PodsComponent implements OnInit, OnDestroy {
   }
 
   quickLogs(pod: Pod) {
-    this.logsTitle = `Logs — ${pod.name}`;
+    this.logsTitle = `Logs - ${pod.name}`;
     this.logsVisible = true;
     this.logsLoading = true;
     this.logLines = [];
@@ -174,7 +173,7 @@ export class PodsComponent implements OnInit, OnDestroy {
     this.api.getLogs(pod.name, 100).subscribe(res => { this.logLines = res.lines; this.logsLoading = false; });
   }
 
-  quickShell(pod: Pod) { this.shellPodName = pod.name; this.shellVisible = true; }
+  quickShell(pod: Pod) { this.terminalDock.open(pod.name); }
 
   quickAiDiagnose(pod: Pod) {
     this.activePodName = pod.name;
@@ -198,7 +197,7 @@ export class PodsComponent implements OnInit, OnDestroy {
   viewLiveLogs() {
     const pod = this.selected[0];
     this.activePodName = pod.name;
-    this.logsTitle = `Live — ${pod.name}`;
+    this.logsTitle = `Live - ${pod.name}`;
     this.isLiveMode = true;
     this.logsVisible = true;
   }
@@ -208,7 +207,7 @@ export class PodsComponent implements OnInit, OnDestroy {
 
   viewLogcat() {
     const names = this.selected.map(p => p.name);
-    this.logsTitle = `Logcat — ${this.selectedGroup} (${names.length})`;
+    this.logsTitle = `Logcat - ${this.selectedGroup} (${names.length})`;
     this.logsVisible = true; this.logsLoading = true; this.logLines = []; this.isLiveMode = false;
     const allLines: string[] = []; let done = 0;
     for (const name of names) {
@@ -222,7 +221,6 @@ export class PodsComponent implements OnInit, OnDestroy {
   }
 
   onLogsHide() { this.isLiveMode = false; this.activePodName = ''; }
-  onShellHide() { this.shellPodName = ''; }
 
   refresh() { this.currentPage = 1; this.pods = []; this.fetchPods(); }
   loadMore() { if (!this.hasMore || this.loading) return; this.currentPage++; this.fetchPods(true); }
@@ -277,9 +275,9 @@ export class PodsComponent implements OnInit, OnDestroy {
       .map(g => {
         const filtered = g.pods.filter(p => {
           switch (this.statusFilter) {
-            case 'healthy': return this.isHealthy(p);
-            case 'warning': return p.status === 'Running' && p.restarts > 5;
-            case 'critical': return p.status !== 'Running' && p.status !== 'Pending' && p.status !== 'Succeeded';
+            case 'healthy': return this.podBeaconStatus(p) === 'ok';
+            case 'warning': return this.podBeaconStatus(p) === 'warning' && p.status !== 'Pending';
+            case 'critical': return this.podBeaconStatus(p) === 'critical';
             case 'pending': return p.status === 'Pending';
             default: return true;
           }
@@ -355,9 +353,15 @@ export class PodsComponent implements OnInit, OnDestroy {
     return this.deploymentHealth.get(group.deployment)?.reason ?? '';
   }
 
+  groupStatus(group: PodGroup): 'ok' | 'warning' | 'critical' {
+    if (group.pods.some(pod => this.podBeaconStatus(pod) === 'critical')) return 'critical';
+    if (group.pods.some(pod => this.podBeaconStatus(pod) === 'warning')) return 'warning';
+    return 'ok';
+  }
+
   navigateInvestigate(deployment: string, event: Event) {
     event.stopPropagation();
-    this.router.navigateByUrl(`/investigate?deployment=${deployment}`);
+    this.router.navigate(['/monitor/investigate'], { queryParams: { target: deployment } });
   }
 
 

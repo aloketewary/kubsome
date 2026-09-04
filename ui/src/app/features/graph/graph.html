@@ -1,128 +1,161 @@
-<app-intel-header title="Service Map" icon="pi pi-sitemap"
-  [subtitle]="'Interactive resource topology · ' + nodeCount + ' nodes · ' + edgeCount + ' edges'">
-  <p-select [options]="deployments" [(ngModel)]="selectedDep" placeholder="Select deployment..." [style]="{ width: '200px' }" [filter]="true" />
-  <button class="ctrl-btn ctrl-btn-wide" (click)="trace()" [class.disabled]="!selectedDep" pTooltip="Trace"><i class="pi pi-sitemap"></i> Trace</button>
-  <div class="layout-toggle">
-    @for (l of layouts; track l.id) {
-      <button class="layout-btn" [class.active]="currentLayout === l.id" (click)="changeLayout(l.id)" [pTooltip]="l.label">
-        <i [class]="l.icon"></i>
-      </button>
-    }
-  </div>
-  <button class="ctrl-btn" (click)="fit()" pTooltip="Fit to Screen"><i class="pi pi-expand"></i></button>
-</app-intel-header>
+<section class="graph-page" aria-label="Service Map operations">
+  <app-intel-header title="Service Map" icon="pi pi-sitemap"
+    [subtitle]="'Interactive resource topology · ' + nodeCount + ' nodes · ' + edgeCount + ' edges'">
+    <label class="map-select">
+      <span class="sr-only">Deployment to trace</span>
+      <p-select [options]="deployments" [(ngModel)]="selectedDep" placeholder="Select deployment..." [style]="{ width: '200px' }" [filter]="true" aria-label="Select deployment to trace" />
+    </label>
+    <button class="ctrl-btn ctrl-btn-wide" type="button" (click)="trace()" [class.disabled]="!selectedDep" [attr.aria-disabled]="!selectedDep" pTooltip="Trace">
+      <i class="pi pi-sitemap" aria-hidden="true"></i> Trace
+    </button>
+    <div class="layout-toggle" role="group" aria-label="Graph layout">
+      @for (l of layouts; track l.id) {
+        <button class="layout-btn" type="button" [class.active]="currentLayout === l.id" [attr.aria-pressed]="currentLayout === l.id" [attr.aria-label]="l.label + ' graph layout'" (click)="changeLayout(l.id)" [pTooltip]="l.label">
+          <i [class]="l.icon" aria-hidden="true"></i>
+        </button>
+      }
+    </div>
+    <button class="ctrl-btn" type="button" (click)="fit()" aria-label="Fit graph to screen" pTooltip="Fit to Screen">
+      <i class="pi pi-expand" aria-hidden="true"></i>
+    </button>
+  </app-intel-header>
 
-    <div class="graph-container">
-      <!-- Graph Viewport -->
-      <div class="graph-viewport">
-        <div #cyContainer class="cy-container"></div>
-
-        @if (!traceData && !loading) {
-          <div class="viewport-overlay">
-            <div class="start-state">
-              <div class="start-icon"><i class="pi pi-sitemap"></i></div>
-              <h3>Trace Resource Topology</h3>
-              <p>Select a deployment to visualize its full resource chain: Ingress → Service → Deployment → ReplicaSet → Pods</p>
-              <div class="quick-actions">
-                @for (dep of deployments.slice(0, 4); track dep) {
-                  <button class="quick-btn" (click)="selectedDep = dep; trace()">{{ shortName(dep) }}</button>
-                }
-              </div>
-            </div>
-          </div>
-        }
-
-        @if (loading) {
-          <div class="viewport-overlay">
-            <div class="loading-state">
-              <div class="spin"></div>
-              <span>Tracing {{ selectedDep }}...</span>
-            </div>
-          </div>
-        }
-
-        <!-- Legend -->
-        @if (traceData) {
-          <div class="legend">
-            <div class="legend-item"><span class="legend-dot dot-ingress"></span> Ingress</div>
-            <div class="legend-item"><span class="legend-dot dot-service"></span> Service</div>
-            <div class="legend-item"><span class="legend-dot dot-deployment"></span> Deployment</div>
-            <div class="legend-item"><span class="legend-dot dot-replicaset"></span> ReplicaSet</div>
-            <div class="legend-item"><span class="legend-dot dot-pod"></span> Pod</div>
-            <div class="legend-item"><span class="legend-dot dot-unhealthy"></span> Unhealthy</div>
-          </div>
-        }
-
-        <!-- Stats Overlay -->
-        @if (traceData) {
-          <div class="stats-overlay">
-            <div class="stat-chip"><i class="pi pi-box"></i> {{ nodeCount }}</div>
-            <div class="stat-chip"><i class="pi pi-arrows-h"></i> {{ edgeCount }}</div>
-            @if (unhealthyCount > 0) {
-              <div class="stat-chip stat-danger"><i class="pi pi-exclamation-triangle"></i> {{ unhealthyCount }}</div>
-            }
-          </div>
-        }
+  <div class="map-overview" aria-label="Topology overview">
+    <div class="map-deck">
+      <span class="deck-kicker"><i class="pi pi-sitemap" aria-hidden="true"></i> Resource topology</span>
+      <h2>Trace how services become reachable.</h2>
+      <p>Map the relationship chain from ingress through workloads and inspect selected resources without leaving the operator surface.</p>
+      <div class="map-path" aria-label="Resource chain">
+        <span>Ingress</span><i class="pi pi-angle-right" aria-hidden="true"></i>
+        <span>Service</span><i class="pi pi-angle-right" aria-hidden="true"></i>
+        <span>Deployment</span><i class="pi pi-angle-right" aria-hidden="true"></i>
+        <span>Pods</span>
       </div>
+    </div>
+    <div class="map-readout" aria-label="Topology telemetry">
+      @if (traceData) {
+        <span class="readout-state readout-state-active"><i class="pi pi-circle-fill" aria-hidden="true"></i> Trace active</span>
+        <strong class="readout-resource">{{ selectedDep }}</strong>
+      } @else {
+        <span class="readout-state"><i class="pi pi-minus-circle" aria-hidden="true"></i> Awaiting trace</span>
+        <strong class="readout-resource">Select deployment</strong>
+      }
+      <div class="readout-grid">
+        <div><span>Nodes</span><strong>{{ nodeCount }}</strong></div>
+        <div><span>Edges</span><strong>{{ edgeCount }}</strong></div>
+        <div><span>Unhealthy</span><strong [class.readout-danger]="unhealthyCount > 0">{{ unhealthyCount }}</strong></div>
+      </div>
+    </div>
+  </div>
 
-      <!-- Detail Panel -->
-      @if (selectedNode) {
-        <div class="detail-panel" [@panelAnim]>
-          <div class="dp-header">
-            <div class="dp-icon" [class]="'dp-' + selectedNode.kind.toLowerCase()">
-              <i [class]="kindIcon(selectedNode.kind)"></i>
+  <div class="graph-container">
+    <div class="graph-viewport">
+      <div #cyContainer class="cy-container"></div>
+
+      @if (!traceData && !loading) {
+        <div class="viewport-overlay">
+          <div class="start-state">
+            <div class="start-icon"><i class="pi pi-sitemap" aria-hidden="true"></i></div>
+            <span class="state-kicker">Topology explorer</span>
+            <h3>Trace resource topology</h3>
+            <p>Select a deployment to visualize its full resource chain: Ingress, Service, Deployment, ReplicaSet, and Pods.</p>
+            <div class="quick-actions" aria-label="Recent deployments">
+              @for (dep of deployments.slice(0, 4); track dep) {
+                <button class="quick-btn" type="button" (click)="selectedDep = dep; trace()">{{ shortName(dep) }}</button>
+              }
             </div>
-            <div class="dp-info">
-              <span class="dp-kind">{{ selectedNode.kind }}</span>
-              <span class="dp-name">{{ selectedNode.label }}</span>
-            </div>
-            <button class="dp-close" (click)="selectedNode = null"><i class="pi pi-times"></i></button>
-          </div>
-
-          <div class="dp-body">
-            @if (selectedNode.status) {
-              <div class="dp-row">
-                <span class="dp-label">Status</span>
-                <span class="dp-value" [class.val-healthy]="selectedNode.status === 'Running'" [class.val-unhealthy]="selectedNode.status !== 'Running'">
-                  {{ selectedNode.status }}
-                </span>
-              </div>
-            }
-            @if (selectedNode.restarts !== undefined) {
-              <div class="dp-row">
-                <span class="dp-label">Restarts</span>
-                <span class="dp-value" [class.val-unhealthy]="selectedNode.restarts >= 5">{{ selectedNode.restarts }}</span>
-              </div>
-            }
-            @if (selectedNode.replicas !== undefined) {
-              <div class="dp-row">
-                <span class="dp-label">Replicas</span>
-                <span class="dp-value">{{ selectedNode.replicas }}</span>
-              </div>
-            }
-            @if (selectedNode.image) {
-              <div class="dp-row">
-                <span class="dp-label">Image</span>
-                <code class="dp-value dp-code">{{ selectedNode.image }}</code>
-              </div>
-            }
-            @if (selectedNode.node) {
-              <div class="dp-row">
-                <span class="dp-label">Node</span>
-                <span class="dp-value">{{ selectedNode.node }}</span>
-              </div>
-            }
-          </div>
-
-          <div class="dp-actions">
-            @if (selectedNode.kind === 'Pod') {
-              <button pButton icon="pi pi-search" label="Inspect" class="p-button-sm p-button-outlined" (click)="navigateTo('/pods')"></button>
-              <button pButton icon="pi pi-align-left" label="Logs" class="p-button-sm p-button-outlined" (click)="navigateTo('/logs')"></button>
-            }
-            @if (selectedNode.kind === 'Deployment') {
-              <button pButton icon="pi pi-send" label="Rollout" class="p-button-sm p-button-outlined" (click)="navigateTo('/deployments')"></button>
-            }
           </div>
         </div>
       }
+
+      @if (loading) {
+        <div class="viewport-overlay" role="status" aria-live="polite">
+          <div class="loading-state">
+            <div class="spin" aria-hidden="true"></div>
+            <span>Tracing {{ selectedDep }}...</span>
+          </div>
+        </div>
+      }
+
+      @if (traceData) {
+        <div class="legend" aria-label="Graph legend">
+          <span class="legend-title">Resource key</span>
+          <div class="legend-item"><span class="legend-dot dot-ingress" aria-hidden="true"></span> Ingress</div>
+          <div class="legend-item"><span class="legend-dot dot-service" aria-hidden="true"></span> Service</div>
+          <div class="legend-item"><span class="legend-dot dot-deployment" aria-hidden="true"></span> Deployment</div>
+          <div class="legend-item"><span class="legend-dot dot-replicaset" aria-hidden="true"></span> ReplicaSet</div>
+          <div class="legend-item"><span class="legend-dot dot-pod" aria-hidden="true"></span> Pod</div>
+          <div class="legend-item"><span class="legend-dot dot-unhealthy" aria-hidden="true"></span> Unhealthy</div>
+        </div>
+      }
+
+      @if (traceData) {
+        <div class="stats-overlay" aria-label="Graph statistics">
+          <div class="stat-chip"><i class="pi pi-box" aria-hidden="true"></i><span>Nodes</span> {{ nodeCount }}</div>
+          <div class="stat-chip"><i class="pi pi-arrows-h" aria-hidden="true"></i><span>Edges</span> {{ edgeCount }}</div>
+          @if (unhealthyCount > 0) {
+            <div class="stat-chip stat-danger"><i class="pi pi-exclamation-triangle" aria-hidden="true"></i><span>Unhealthy</span> {{ unhealthyCount }}</div>
+          }
+        </div>
+      }
     </div>
+
+    @if (selectedNode) {
+      <aside class="detail-panel" [@panelAnim] [attr.aria-label]="'Details for ' + selectedNode.label">
+        <div class="dp-header">
+          <div class="dp-icon" [class]="'dp-' + selectedNode.kind.toLowerCase()">
+            <i [class]="kindIcon(selectedNode.kind)" aria-hidden="true"></i>
+          </div>
+          <div class="dp-info">
+            <span class="dp-kind">{{ selectedNode.kind }}</span>
+            <span class="dp-name">{{ selectedNode.label }}</span>
+          </div>
+          <button class="dp-close" type="button" aria-label="Close resource details" (click)="selectedNode = null"><i class="pi pi-times" aria-hidden="true"></i></button>
+        </div>
+
+        <div class="dp-body">
+          @if (selectedNode.status) {
+            <div class="dp-row">
+              <span class="dp-label">Status</span>
+              <span class="dp-value" [class.val-healthy]="selectedNode.status === 'Running'" [class.val-unhealthy]="selectedNode.status !== 'Running'">{{ selectedNode.status }}</span>
+            </div>
+          }
+          @if (selectedNode.restarts !== undefined) {
+            <div class="dp-row">
+              <span class="dp-label">Restarts</span>
+              <span class="dp-value" [class.val-unhealthy]="selectedNode.restarts >= 5">{{ selectedNode.restarts }}</span>
+            </div>
+          }
+          @if (selectedNode.replicas !== undefined) {
+            <div class="dp-row">
+              <span class="dp-label">Replicas</span>
+              <span class="dp-value">{{ selectedNode.replicas }}</span>
+            </div>
+          }
+          @if (selectedNode.image) {
+            <div class="dp-row">
+              <span class="dp-label">Image</span>
+              <code class="dp-value dp-code">{{ selectedNode.image }}</code>
+            </div>
+          }
+          @if (selectedNode.node) {
+            <div class="dp-row">
+              <span class="dp-label">Node</span>
+              <span class="dp-value">{{ selectedNode.node }}</span>
+            </div>
+          }
+        </div>
+
+        <div class="dp-actions">
+          @if (selectedNode.kind === 'Pod') {
+            <button pButton type="button" icon="pi pi-search" label="Inspect" class="p-button-sm p-button-outlined" (click)="navigateTo('/operations/pods')"></button>
+            <button pButton type="button" icon="pi pi-align-left" label="Logs" class="p-button-sm p-button-outlined" (click)="navigateTo('/monitor/logs')"></button>
+          }
+          @if (selectedNode.kind === 'Deployment') {
+            <button pButton type="button" icon="pi pi-send" label="Rollout" class="p-button-sm p-button-outlined" (click)="navigateTo('/operations/deployments')"></button>
+          }
+        </div>
+      </aside>
+    }
+  </div>
+</section>

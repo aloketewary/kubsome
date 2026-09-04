@@ -1,37 +1,100 @@
-<app-intel-header title="GitOps" icon="pi pi-sync"
-  [subtitle]="(data?.provider || 'detecting...') + ' · ' + (data?.apps?.length || 0) + ' apps · ' + (lastUpdated || '...')">
-  <button class="ctrl-btn" (click)="refresh()" pTooltip="Refresh"><i class="pi pi-refresh" [class.spinning]="loading"></i></button>
-</app-intel-header>
+<section class="gitops-page" aria-label="GitOps operations">
+  <app-intel-header title="GitOps" icon="pi pi-sync"
+    [subtitle]="(data?.provider || 'detecting...') + ' · ' + (data?.apps?.length || 0) + ' apps · ' + (lastUpdated || '...')">
+    <button class="ctrl-btn" type="button" (click)="refresh()" aria-label="Refresh GitOps status" pTooltip="Refresh">
+      <i class="pi pi-refresh" aria-hidden="true" [class.spinning]="loading"></i>
+    </button>
+  </app-intel-header>
 
-@if (data) {
-  <div class="metrics-strip">
-    <app-metric-tile label="Provider" [value]="data.provider || 'None'" accent="cyan" />
-    <app-metric-tile label="Apps" [value]="'' + (data.apps?.length || 0)" accent="purple" />
-  </div>
+  @if (data) {
+    <div class="gitops-overview" aria-label="GitOps provider overview">
+      <div class="gitops-deck">
+        <span class="deck-kicker"><i class="pi pi-sync" aria-hidden="true"></i> Repository delivery state</span>
+        <h2>Observe application sync from source to cluster.</h2>
+        <p>Track provider health, application revisions, and the latest synchronization state without leaving the read-only operations surface.</p>
+        <div class="gitops-meta" aria-label="GitOps provider metadata">
+          <span><i class="pi pi-server" aria-hidden="true"></i> {{ data.provider || 'No provider detected' }}</span>
+          @if (data.namespace) { <span><i class="pi pi-box" aria-hidden="true"></i> {{ data.namespace }}</span> }
+          @if (data.version) { <span><i class="pi pi-tag" aria-hidden="true"></i> {{ data.version }}</span> }
+        </div>
+      </div>
+      <div class="gitops-readout" aria-label="GitOps synchronization telemetry">
+        <span class="readout-kicker">Sync posture</span>
+        <strong>{{ data.apps?.length ? (data.out_of_sync > 0 || data.degraded > 0 ? 'Review required' : 'All applications aligned') : 'No applications reported' }}</strong>
+        <div class="sync-track" aria-hidden="true">
+          <span class="sync-ready" [style.width.%]="data.apps?.length ? (data.synced || 0) / data.apps.length * 100 : 0"></span>
+          <span class="sync-drift" [style.width.%]="data.apps?.length ? ((data.out_of_sync || 0) + (data.degraded || 0)) / data.apps.length * 100 : 0"></span>
+        </div>
+        <div class="sync-legend">
+          <span><i class="legend-dot legend-ready" aria-hidden="true"></i> Ready <b>{{ data.synced || 0 }}</b></span>
+          <span><i class="legend-dot legend-drift" aria-hidden="true"></i> Review <b>{{ (data.out_of_sync || 0) + (data.degraded || 0) }}</b></span>
+        </div>
+      </div>
+    </div>
 
-  @if (data.apps?.length > 0) {
-    <div class="app-list">
-      @for (app of data.apps; track app.name) {
-        <div class="app-row" (click)="selectApp(app.name)">
-          <app-status-beacon [status]="syncBeacon(app.sync_status || app.health)" size="md" />
-          <div class="app-body">
-            <span class="app-name">{{ app.name }}</span>
-            <span class="app-repo">{{ app.repo || '' }}</span>
-          </div>
-          <p-tag [value]="app.sync_status || 'Unknown'" [severity]="syncSev(app.sync_status)" [rounded]="true" />
-          <span class="app-time">{{ formatTime(app.last_synced) }}</span>
+    <div class="metrics-strip" aria-label="GitOps summary">
+      <app-metric-tile label="Provider" [value]="data.provider || 'None'" accent="cyan" />
+      <app-metric-tile label="Applications" [value]="'' + (data.apps?.length || 0)" accent="purple" />
+      <app-metric-tile label="Synced" [value]="'' + (data.synced || 0)" accent="green" />
+      <app-metric-tile label="Out of Sync" [value]="'' + (data.out_of_sync || 0)" accent="amber" />
+      <app-metric-tile label="Degraded" [value]="'' + (data.degraded || 0)" accent="red" />
+      <div class="metrics-context">
+        <span class="metrics-context-label">Last observation</span>
+        <strong>{{ lastUpdated || 'awaiting sync' }}</strong>
+        <span>Read-only provider telemetry</span>
+      </div>
+    </div>
+
+    <section class="gitops-section" aria-labelledby="apps-title">
+      <div class="section-heading">
+        <div><span class="section-label">Application inventory</span><h2 id="apps-title">Sync status</h2></div>
+        <span class="section-count">{{ data.apps?.length || 0 }} applications</span>
+      </div>
+
+      @if (data.apps?.length > 0) {
+        <div class="app-list" role="list">
+          @for (app of data.apps; track app.name) {
+            <div class="app-row" role="button" tabindex="0" (click)="selectApp(app.name)" (keydown.enter)="selectApp(app.name)" (keydown.space)="$event.preventDefault(); selectApp(app.name)" [attr.aria-label]="'Inspect ' + app.name + ' GitOps status'">
+              <span class="app-status-rail" [class.app-status-rail-danger]="app.sync_status === 'Degraded'" [class.app-status-rail-warning]="app.sync_status === 'OutOfSync'" aria-hidden="true"></span>
+              <app-status-beacon [status]="syncBeacon(app.sync_status || app.health)" size="md" />
+              <div class="app-body">
+                <span class="app-name">{{ app.name }}</span>
+                <span class="app-repo">{{ app.repo || 'source unavailable' }}</span>
+                <span class="app-source">{{ app.path || '/' }} <span aria-hidden="true">·</span> {{ app.target_revision || app.revision || 'revision unavailable' }}</span>
+              </div>
+              <p-tag [value]="app.sync_status || 'Unknown'" [severity]="syncSev(app.sync_status)" [rounded]="true" />
+              <div class="app-time">
+                <span>Last sync</span>
+                <strong>{{ formatTime(app.last_synced) }}</strong>
+              </div>
+              <i class="pi pi-angle-right app-chevron" aria-hidden="true"></i>
+            </div>
+          }
+        </div>
+      } @else {
+        <div class="empty-state" role="status">
+          <div class="empty-icon"><i class="pi pi-git-commit" aria-hidden="true"></i></div>
+          <strong>No GitOps apps detected</strong>
+          <span>Provider discovery returned no managed applications.</span>
         </div>
       }
-    </div>
-  } @else {
-    <div class="empty-state"><div class="empty-icon"><i class="pi pi-git-commit"></i></div><span>No GitOps apps detected</span></div>
-  }
+    </section>
 
-  @if (detail) {
-    <app-holo-card [title]="detail.name" glow="cyan" [compact]="true">
-      <pre class="detail-pre">{{ detail | json }}</pre>
-    </app-holo-card>
+    @if (detail) {
+      <section class="detail-section" aria-label="Selected GitOps application">
+        <div class="section-heading">
+          <div><span class="section-label">Selected application</span><h2>{{ detail.name }}</h2></div>
+          <span class="section-count">Raw provider detail</span>
+        </div>
+        <app-holo-card [title]="detail.name" glow="cyan" [compact]="true">
+          <pre class="detail-pre" tabindex="0" aria-label="Selected GitOps application details">{{ detail | json }}</pre>
+        </app-holo-card>
+      </section>
+    }
+  } @else {
+    <div class="loading-state" role="status" aria-live="polite">
+      <div class="loader-ring" aria-hidden="true"></div>
+      <div><span class="state-kicker">Provider discovery</span><strong>Detecting GitOps provider...</strong></div>
+    </div>
   }
-} @else {
-  <div class="loading-state"><div class="loader-ring"></div><span>Detecting GitOps provider...</span></div>
-}
+</section>

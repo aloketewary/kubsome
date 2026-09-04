@@ -156,7 +156,7 @@ def get_apps_for(ctx: str, ns: str):
     import json
     r = subprocess.run(
         ["kubectl", "--context", ctx, "get", "deployments", "-n", ns, "-o", "json"],
-        capture_output=True, text=True
+        capture_output=True, text=True, timeout=15
     )
     if r.returncode != 0:
         return {"deployments": []}
@@ -178,7 +178,7 @@ def get_monitor_apps(ctx: str = "", ns: str = ""):
         return {"deployments": []}
     r = subprocess.run(
         ["kubectl", "--context", ctx, "get", "deployments", "-n", ns, "-o", "json"],
-        capture_output=True, text=True
+        capture_output=True, text=True, timeout=15
     )
     if r.returncode != 0:
         return {"deployments": []}

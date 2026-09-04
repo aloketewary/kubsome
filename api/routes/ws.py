@@ -8,6 +8,7 @@ import json
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
+from api.auth import authenticate_websocket
 from core.context import context
 from core.collectors.pods import collect_pods
 from core.collectors.events import collect_events
@@ -18,6 +19,8 @@ router = APIRouter(tags=["websocket"])
 @router.websocket("/ws/logs/{pod}")
 async def ws_logs(websocket: WebSocket, pod: str, container: str = None):
     """Stream live logs from a pod (optionally a specific container)."""
+    if not await authenticate_websocket(websocket):
+        return
     await websocket.accept()
 
     cmd = [
@@ -35,24 +38,27 @@ async def ws_logs(websocket: WebSocket, pod: str, container: str = None):
     try:
         loop = asyncio.get_event_loop()
         while True:
-            line = await loop.run_in_executor(None, process.stdout.readline)
+            line = await asyncio.to_thread(process.stdout.readline)
             if not line:
                 break
             await websocket.send_text(line.rstrip())
     except WebSocketDisconnect:
         pass
     finally:
-        process.kill()
+        if process.poll() is None:
+            process.kill()
 
 
 @router.websocket("/ws/pods")
 async def ws_pods(websocket: WebSocket):
     """Stream pod status updates every 3 seconds."""
+    if not await authenticate_websocket(websocket):
+        return
     await websocket.accept()
 
     try:
         while True:
-            pods = await asyncio.get_event_loop().run_in_executor(None, collect_pods)
+            pods = await asyncio.to_thread(collect_pods)
             await websocket.send_text(json.dumps(pods))
             await asyncio.sleep(3)
     except WebSocketDisconnect:
@@ -62,11 +68,13 @@ async def ws_pods(websocket: WebSocket):
 @router.websocket("/ws/events")
 async def ws_events(websocket: WebSocket):
     """Stream events updates every 5 seconds."""
+    if not await authenticate_websocket(websocket):
+        return
     await websocket.accept()
 
     try:
         while True:
-            events = await asyncio.get_event_loop().run_in_executor(None, collect_events)
+            events = await asyncio.to_thread(collect_events)
             await websocket.send_text(json.dumps(events))
             await asyncio.sleep(5)
     except WebSocketDisconnect:
@@ -76,6 +84,8 @@ async def ws_events(websocket: WebSocket):
 @router.websocket("/ws/gateway-monitor")
 async def ws_gateway_monitor(websocket: WebSocket):
     """Stream gateway monitor data at client-specified interval."""
+    if not await authenticate_websocket(websocket):
+        return
     await websocket.accept()
 
     from core.collectors.gateway_monitor import collect_gateway_monitor
@@ -91,9 +101,7 @@ async def ws_gateway_monitor(websocket: WebSocket):
 
     try:
         while True:
-            entries = await asyncio.get_event_loop().run_in_executor(
-                None, collect_gateway_monitor
-            )
+            entries = await asyncio.to_thread(collect_gateway_monitor)
             await websocket.send_text(json.dumps(entries))
             # Check for interval update between sleeps
             try:
@@ -111,6 +119,8 @@ async def ws_gateway_monitor(websocket: WebSocket):
 @router.websocket("/ws/shell/{pod}")
 async def ws_shell(websocket: WebSocket, pod: str):
     """Interactive shell into a pod via WebSocket."""
+    if not await authenticate_websocket(websocket):
+        return
     await websocket.accept()
 
     cmd = [
@@ -130,7 +140,7 @@ async def ws_shell(websocket: WebSocket, pod: str):
     async def read_output():
         try:
             while True:
-                line = await loop.run_in_executor(None, process.stdout.readline)
+                line = await asyncio.to_thread(process.stdout.readline)
                 if not line:
                     break
                 await websocket.send_text(line)
@@ -148,4 +158,5 @@ async def ws_shell(websocket: WebSocket, pod: str):
         pass
     finally:
         output_task.cancel()
-        process.kill()
+        if process.poll() is None:
+            process.kill()

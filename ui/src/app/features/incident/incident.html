@@ -1,11 +1,34 @@
+<section class="incident-page" aria-label="Incident operations">
 <app-intel-header title="Incident" icon="pi pi-exclamation-circle"
   subtitle="Track and document production issues">
 </app-intel-header>
 
+@if (statusLoading) {
+  <div class="incident-state incident-loading" role="status" aria-live="polite">
+    <div class="loader-ring"></div>
+    <span>Loading incident status</span>
+  </div>
+}
+@if (!statusLoading && statusError) {
+  <div class="incident-state incident-error" role="alert">
+    <i class="pi pi-exclamation-triangle" aria-hidden="true"></i>
+    <span>{{ statusError }}</span>
+    <button type="button" class="state-retry" (click)="loadStatus()">Retry</button>
+  </div>
+}
+@if (mutationError && !statusLoading) {
+  <div class="incident-inline-error" role="alert" aria-live="polite">
+    <i class="pi pi-info-circle" aria-hidden="true"></i>
+    <span>{{ mutationError }}</span>
+    <button type="button" aria-label="Dismiss incident message" (click)="mutationError = ''">Dismiss</button>
+  </div>
+}
+
 <!-- ═══════════════ RESOLVED STATE ═══════════════ -->
-@if (resolved) {
+@if (!statusLoading && !statusError && resolved) {
   <div class="resolved-container">
     <div class="resolved-hero">
+      <div class="state-kicker"><span class="state-kicker-line"></span> POST-INCIDENT REVIEW <span class="state-kicker-line"></span></div>
       <div class="resolved-icon"><i class="pi pi-check-circle"></i></div>
       <h2>Incident Resolved</h2>
       <p>{{ resolved.title }}</p>
@@ -35,11 +58,11 @@
     </div>
 
     @if (resolvedExportPath) {
-      <div class="export-info" (click)="loadReport()">
-        <i class="pi pi-file"></i>
-        <span>Exported to: <code>{{ resolvedExportPath }}</code></span>
-        <i class="pi pi-external-link export-link"></i>
-      </div>
+      <button type="button" class="export-info" (click)="loadReport()" [disabled]="reportLoading" aria-label="Open full incident report">
+        <i class="pi pi-file" aria-hidden="true"></i>
+        <span>{{ reportLoading ? 'Loading report...' : 'Open full report' }}: <code>{{ resolvedExportPath }}</code></span>
+        <i class="pi pi-external-link export-link" aria-hidden="true"></i>
+      </button>
     }
 
     @if (resolved.root_cause) {
@@ -52,12 +75,19 @@
       </div>
     }
 
+    @if (reportError) {
+      <div class="incident-inline-error" role="alert">
+        <i class="pi pi-exclamation-triangle" aria-hidden="true"></i> {{ reportError }}
+        <button type="button" (click)="loadReport()">Retry</button>
+      </div>
+    }
+
     <!-- Full Report View -->
     @if (reportData) {
       <div class="report-section">
         <div class="report-header">
           <h3>Full Report</h3>
-          <button pButton icon="pi pi-times" class="p-button-text p-button-sm p-button-rounded" (click)="reportData = null"></button>
+          <button type="button" pButton icon="pi pi-times" class="p-button-text p-button-sm p-button-rounded" aria-label="Close full incident report" (click)="reportData = null"></button>
         </div>
         @if (reportData.snapshots?.length > 0) {
           <div class="report-block">
@@ -114,7 +144,7 @@
               </div>
               <div class="tl-content">
                 <span class="tl-time">{{ entry.time | slice:11:19 }}</span>
-                <span class="tl-text"><strong>{{ entry.event }}</strong>@if (entry.detail) { — {{ entry.detail }}}</span>
+                <span class="tl-text"><strong>{{ entry.event }}</strong>@if (entry.detail) { : {{ entry.detail }}}</span>
               </div>
             </div>
           }
@@ -122,14 +152,15 @@
       </div>
     }
 
-    <button pButton label="Done" icon="pi pi-arrow-left" class="p-button-outlined dismiss-btn" (click)="dismissResolved()"></button>
+    <button type="button" pButton label="Done" icon="pi pi-arrow-left" class="p-button-outlined dismiss-btn" (click)="dismissResolved()"></button>
   </div>
 }
 
 <!-- ═══════════════ NO ACTIVE INCIDENT ═══════════════ -->
-@if (!active && !resolved) {
+@if (!statusLoading && !statusError && !active && !resolved) {
   <div class="start-container">
     <div class="start-hero">
+      <div class="state-kicker"><span class="state-kicker-line"></span> INCIDENT CONTROL / READY <span class="state-kicker-line"></span></div>
       <div class="start-icon"><i class="pi pi-exclamation-circle"></i></div>
       <h2>Start Incident Tracking</h2>
       <p>Begin recording a timeline of observations, snapshots, and actions.</p>
@@ -137,32 +168,41 @@
 
     <div class="start-form">
       <div class="form-field">
-        <label>Incident Title</label>
-        <input pInputText [(ngModel)]="title" placeholder="e.g. Payment API 5xx spike" />
+        <label for="incident-title">Incident Title</label>
+        <input id="incident-title" pInputText [(ngModel)]="title" placeholder="e.g. Payment API 5xx spike" />
       </div>
       <div class="form-field">
-        <label>Incident Commander</label>
-        <input pInputText [(ngModel)]="commander" placeholder="e.g. Aloke" />
+        <label for="incident-commander">Incident Commander</label>
+        <input id="incident-commander" pInputText [(ngModel)]="commander" placeholder="e.g. Aloke" />
       </div>
       <div class="form-field">
         <label>Severity</label>
         <div class="severity-options">
           @for (sev of severities; track sev.value) {
-            <button class="sev-btn" [class.active]="severity === sev.value" [class]="'sev-' + sev.value" (click)="severity = sev.value">
+            <button type="button" class="sev-btn" [class.active]="severity === sev.value" [class]="'sev-' + sev.value" [attr.aria-pressed]="severity === sev.value" (click)="severity = sev.value">
               {{ sev.label }}
             </button>
           }
         </div>
       </div>
-      <button pButton label="Start Incident" icon="pi pi-play" class="p-button-danger start-btn" (click)="start()" [disabled]="!title.trim()"></button>
+      <button type="button" pButton label="Start Incident" icon="pi pi-play" class="p-button-danger start-btn" (click)="start()" [loading]="startPending" [disabled]="startPending || !title.trim()"></button>
     </div>
 
-    <!-- Past Incidents -->
-    @if (history.length > 0) {
+    @if (reportLoading) {
+      <div class="history-state" role="status">Opening incident report...</div>
+    }
+    @if (reportError && !resolved) {
+      <div class="history-state history-error" role="alert">{{ reportError }} <button type="button" (click)="reportError = ''">Dismiss</button></div>
+    }
+    @if (historyLoading) {
+      <div class="history-state" role="status">Loading past incidents...</div>
+    } @else if (historyError) {
+      <div class="history-state history-error" role="alert">{{ historyError }} <button type="button" (click)="loadHistory()">Retry</button></div>
+    } @else if (history.length > 0) {
       <div class="history-section">
         <h3>Past Incidents</h3>
         @for (item of history; track item.id) {
-          <div class="history-card" (click)="viewHistoryReport(item)">
+          <button type="button" class="history-card" (click)="viewHistoryReport(item)" [disabled]="reportLoading">
             <div class="history-top">
               <span class="history-title">{{ item.title }}</span>
               <span class="history-date">{{ item.started | slice:0:10 }}</span>
@@ -173,7 +213,7 @@
               @if (item.ended) { <span>{{ calcDuration({started: item.started, ended: item.ended}) }}</span> }
             </div>
             @if (item.root_cause) { <div class="history-rc">{{ item.root_cause }}</div> }
-          </div>
+          </button>
         }
       </div>
     }
@@ -181,9 +221,9 @@
 }
 
 <!-- ═══════════════ ACTIVE INCIDENT ═══════════════ -->
-@if (active && !resolved) {
+@if (!statusLoading && !statusError && active && !resolved) {
   <!-- Banner — no pulsing gradient, just severity accent -->
-  <div class="incident-banner" [class]="'banner-' + (active.severity || severity)">
+  <div class="incident-banner" [class]="'banner-' + (active.severity || severity)" role="status" aria-live="polite">
     <div class="banner-content">
       <div class="banner-left">
         <p-tag value="ACTIVE" severity="danger" />
@@ -196,17 +236,31 @@
     </div>
     <!-- Commander + metadata row -->
     <div class="banner-meta">
-      <span class="meta-item"><strong>Commander:</strong> {{ commander || '—' }}</span>
-      <span class="meta-item"><strong>Started:</strong> {{ (active.started_at || '') | slice:11:16 }}</span>
+      <span class="meta-item"><strong>Commander:</strong> {{ commander || 'Not assigned' }}</span>
+      <span class="meta-item"><strong>Started:</strong> {{ ((active.started || active.started_at || '') | slice:11:16) }}</span>
       @if (lastUpdateTime) { <span class="meta-item"><strong>Last Update:</strong> {{ lastUpdateTime }}</span> }
       <!-- Severity change inline -->
       <div class="sev-change">
         @for (sev of severities; track sev.value) {
-          <button class="sev-mini" [class.sev-mini-active]="(active.severity || severity) === sev.value"
-                  [class]="'sev-mini-' + sev.value" (click)="changeSeverity(sev.value)">{{ sev.label[0] }}</button>
+          <button type="button" class="sev-mini" [class.sev-mini-active]="(active.severity || severity) === sev.value"
+                  [class]="'sev-mini-' + sev.value" [attr.aria-label]="'Set severity to ' + sev.label" [attr.aria-pressed]="(active.severity || severity) === sev.value" [disabled]="severityPending" (click)="changeSeverity(sev.value)">{{ sev.label[0] }}</button>
         }
       </div>
     </div>
+    <div class="incident-signal-rail" aria-label="Incident activity summary">
+      <div class="signal-cell"><span>NOTES</span><strong>{{ (active.notes || []).length }}</strong></div>
+      <div class="signal-cell"><span>ACTIONS</span><strong>{{ (active.actions || []).length }}</strong></div>
+      <div class="signal-cell"><span>SNAPSHOTS</span><strong>{{ (active.snapshots || []).length }}</strong></div>
+      <div class="signal-cell signal-commander"><span>LEAD</span><strong>{{ commander || 'UNASSIGNED' }}</strong></div>
+    </div>
+  </div>
+
+  <div class="incident-metrics" aria-label="Incident activity summary">
+    <div class="incident-metric"><span>Notes</span><strong>{{ (active.notes || []).length }}</strong></div>
+    <div class="incident-metric"><span>Actions</span><strong>{{ (active.actions || []).length }}</strong></div>
+    <div class="incident-metric"><span>Snapshots</span><strong>{{ (active.snapshots || []).length }}</strong></div>
+    <div class="incident-metric"><span>Timeline</span><strong>{{ (active.timeline || []).length }}</strong></div>
+    <div class="incident-metric-context"><span>Current severity</span><strong>{{ (active.severity || severity).toUpperCase() }}</strong><small>{{ commander || 'No commander assigned' }}</small></div>
   </div>
 
   <!-- Affected Resources -->
@@ -214,8 +268,8 @@
     <div class="affected-header">
       <span class="affected-title"><i class="pi pi-exclamation-triangle"></i> Affected Resources</span>
       <div class="affected-input">
-        <input pInputText [(ngModel)]="affectedInput" placeholder="Add resource..." (keyup.enter)="addAffected()" />
-        <button pButton icon="pi pi-plus" class="p-button-sm p-button-rounded" (click)="addAffected()" [disabled]="!affectedInput.trim()"></button>
+        <input pInputText [(ngModel)]="affectedInput" placeholder="Add resource..." aria-label="Affected resource" (keyup.enter)="addAffected()" />
+        <button type="button" pButton icon="pi pi-plus" class="p-button-sm p-button-rounded" aria-label="Add affected resource" (click)="addAffected()" [loading]="affectedPending" [disabled]="affectedPending || !affectedInput.trim()"></button>
       </div>
     </div>
     @if ((active.affected || affectedResources).length > 0) {
@@ -223,7 +277,7 @@
         @for (res of (active.affected || affectedResources); track res) {
           <span class="affected-chip">
             <i class="pi pi-box"></i> {{ res }}
-            <i class="pi pi-times chip-remove" (click)="removeAffected(res)" tabindex="0" role="button" aria-label="Remove resource"></i>
+            <button type="button" class="chip-remove" (click)="removeAffected(res)" aria-label="Remove {{ res }}"><i class="pi pi-times" aria-hidden="true"></i></button>
           </span>
         }
       </div>
@@ -241,8 +295,8 @@
       </div>
       <div class="note-input">
         <div class="note-input-dot"></div>
-        <input pInputText [(ngModel)]="noteText" placeholder="What's happening now..." (keyup.enter)="addNote()" />
-        <button pButton icon="pi pi-plus" class="p-button-sm" (click)="addNote()" [disabled]="!noteText.trim()"></button>
+        <input pInputText [(ngModel)]="noteText" placeholder="What's happening now..." aria-label="Add incident note" (keyup.enter)="addNote()" />
+        <button type="button" pButton icon="pi pi-plus" class="p-button-sm" aria-label="Add incident note" (click)="addNote()" [loading]="notePending" [disabled]="notePending || !noteText.trim()"></button>
       </div>
       <div class="notes-timeline">
         @for (note of (active.notes || []).slice().reverse(); track $index) {
@@ -258,7 +312,7 @@
           </div>
         }
         @if ((active.notes || []).length === 0) {
-          <div class="notes-empty"><i class="pi pi-pencil"></i><span>No notes yet — add observations as you investigate</span></div>
+          <div class="notes-empty"><i class="pi pi-pencil"></i><span>No notes yet. Add observations as you investigate</span></div>
         }
       </div>
     </div>
@@ -336,7 +390,7 @@
       </div>
       <div class="insight-card">
         <div class="card-header"><i class="pi pi-map"></i><span>Blast Radius</span></div>
-        <p class="card-val">{{ blastRadius || '—' }}</p>
+          <p class="card-val">{{ blastRadius || 'Not analyzed' }}</p>
       </div>
       <div class="insight-card">
         <div class="card-header"><i class="pi pi-heart"></i><span>Health Score</span></div>
@@ -359,21 +413,21 @@
 
     <!-- Quick Actions (after data, before resolve) -->
     <div class="quick-actions">
-      <button pButton icon="pi pi-camera" label="Snapshot" class="p-button-sm" (click)="snapshot()" pTooltip="Capture cluster state"></button>
-      <button pButton icon="pi pi-wrench" label="Log Action" class="p-button-sm p-button-outlined" (click)="showActionInput = !showActionInput"></button>
-      <button pButton icon="pi pi-box" label="Pods" class="p-button-sm p-button-outlined" (click)="router.navigate(['/pods'])"></button>
-      <button pButton icon="pi pi-bolt" label="Events" class="p-button-sm p-button-outlined" (click)="router.navigate(['/events'])"></button>
-      <button pButton icon="pi pi-sparkles" label="AI Analysis" class="p-button-sm p-button-outlined" (click)="runAiAnalysis()" [loading]="analyzing"></button>
-      <button pButton icon="pi pi-share-alt" label="Share" class="p-button-sm p-button-outlined" (click)="shareIncident()" [loading]="sharing"></button>
-      @if (snapshotTaken) { <span class="snapshot-feedback">✓ Captured</span> }
-      @if (shareMsg) { <span class="snapshot-feedback">{{ shareMsg }}</span> }
+      <button type="button" pButton icon="pi pi-camera" label="Snapshot" class="p-button-sm" (click)="snapshot()" pTooltip="Capture cluster state" [loading]="snapshotPending" [disabled]="snapshotPending"></button>
+      <button type="button" pButton icon="pi pi-wrench" label="Log Action" class="p-button-sm p-button-outlined" (click)="showActionInput = !showActionInput" [disabled]="actionPending"></button>
+      <button type="button" pButton icon="pi pi-box" label="Pods" class="p-button-sm p-button-outlined" (click)="router.navigate(['/operations/pods'])"></button>
+      <button type="button" pButton icon="pi pi-bolt" label="Events" class="p-button-sm p-button-outlined" (click)="router.navigate(['/monitor/events'])"></button>
+      <button type="button" pButton icon="pi pi-sparkles" label="AI Analysis" class="p-button-sm p-button-outlined" (click)="runAiAnalysis()" [loading]="analyzing" [disabled]="analyzing"></button>
+      <button type="button" pButton icon="pi pi-share-alt" label="Share" class="p-button-sm p-button-outlined" (click)="shareIncident()" [loading]="sharing" [disabled]="sharing"></button>
+      @if (snapshotTaken) { <span class="snapshot-feedback" role="status" aria-live="polite">Captured</span> }
+      @if (shareMsg) { <span class="snapshot-feedback" role="status" aria-live="polite">{{ shareMsg }}</span> }
     </div>
 
     <!-- Action Input -->
     @if (showActionInput) {
       <div class="action-input-card">
         <div class="action-input-row">
-          <select class="action-select" [(ngModel)]="actionType">
+          <select class="action-select" [(ngModel)]="actionType" aria-label="Action type">
             <option value="restart">Restart</option>
             <option value="scale">Scale</option>
             <option value="rollback">Rollback</option>
@@ -381,9 +435,9 @@
             <option value="manual_fix">Manual Fix</option>
             <option value="other">Other</option>
           </select>
-          <input pInputText [(ngModel)]="actionTarget" placeholder="Target (e.g. payment-api)" />
-          <input pInputText [(ngModel)]="actionResult" placeholder="Result (e.g. pods restarted)" />
-          <button pButton icon="pi pi-plus" class="p-button-sm" (click)="logAction()" [disabled]="!actionTarget.trim()"></button>
+          <input pInputText [(ngModel)]="actionTarget" placeholder="Target (e.g. payment-api)" aria-label="Action target" />
+          <input pInputText [(ngModel)]="actionResult" placeholder="Result (e.g. pods restarted)" aria-label="Action result" />
+          <button type="button" pButton icon="pi pi-plus" class="p-button-sm" aria-label="Log action" (click)="logAction()" [loading]="actionPending" [disabled]="actionPending || !actionTarget.trim()"></button>
         </div>
       </div>
     }
@@ -391,14 +445,14 @@
     <!-- Resolve Form (last — intentional friction) -->
     <div class="resolve-section">
       @if (!showResolveForm) {
-        <button pButton label="Resolve Incident" icon="pi pi-check" class="p-button-sm p-button-outlined p-button-success" (click)="showResolveForm = true"></button>
+        <button type="button" pButton label="Resolve Incident" icon="pi pi-check" class="p-button-sm p-button-outlined p-button-success" (click)="showResolveForm = true"></button>
       } @else {
         <div class="resolve-card">
           <h3><i class="pi pi-check-circle"></i> Resolve Incident</h3>
           <div class="resolve-form">
             <div class="form-field">
-              <label>Root Cause <span class="required">*</span></label>
-              <select class="action-select full" [(ngModel)]="rootCauseCategory">
+              <label for="incident-root-cause">Root Cause <span class="required">*</span></label>
+              <select id="incident-root-cause" class="action-select full" [(ngModel)]="rootCauseCategory">
                 <option value="">Select category...</option>
                 <option value="OOM">Out of Memory (OOM)</option>
                 <option value="config_error">Configuration Error</option>
@@ -411,16 +465,16 @@
               </select>
             </div>
             <div class="form-field">
-              <label>Details</label>
-              <input pInputText [(ngModel)]="rootCauseDetail" placeholder="Brief description of what caused it..." />
+              <label for="incident-root-detail">Details</label>
+              <input id="incident-root-detail" pInputText [(ngModel)]="rootCauseDetail" placeholder="Brief description of what caused it..." />
             </div>
             <div class="form-field">
-              <label>Resolution <span class="required">*</span></label>
-              <input pInputText [(ngModel)]="resolutionText" placeholder="What fixed it..." />
+              <label for="incident-resolution">Resolution <span class="required">*</span></label>
+              <input id="incident-resolution" pInputText [(ngModel)]="resolutionText" placeholder="What fixed it..." />
             </div>
             <div class="resolve-actions">
-              <button pButton label="Cancel" class="p-button-text p-button-sm" (click)="showResolveForm = false"></button>
-              <button pButton label="Resolve & Export" icon="pi pi-check" class="p-button-sm p-button-success" (click)="stop()" [disabled]="resolveDisabled"></button>
+              <button type="button" pButton label="Cancel" class="p-button-text p-button-sm" (click)="showResolveForm = false"></button>
+              <button type="button" pButton label="Resolve & Export" icon="pi pi-check" class="p-button-sm p-button-success" (click)="stop()" [loading]="resolvePending" [disabled]="resolvePending || resolveDisabled"></button>
             </div>
           </div>
         </div>
@@ -428,3 +482,5 @@
     </div>
   </div>
 }
+
+</section>

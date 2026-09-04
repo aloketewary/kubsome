@@ -162,3 +162,208 @@
   .empty-icon { border-color: rgba(0, 0, 0, 0.08); }
   .inline-toast { background: #faf8f6; border-color: rgba(0, 0, 0, 0.08); box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08); }
 }
+
+/* ─── Shared operational workspace treatment ─────────────────────── */
+.rightsizing-page {
+  --rightsizing-section-gap: 28px;
+  position: relative;
+  isolation: isolate;
+  min-width: 0;
+  padding-bottom: 32px;
+}
+
+.rightsizing-page::before {
+  position: absolute;
+  z-index: -1;
+  inset: -24px -10px -32px;
+  background-image: linear-gradient(rgba(var(--info-rgb), 0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(var(--info-rgb), 0.025) 1px, transparent 1px);
+  background-size: 36px 36px;
+  content: '';
+  mask-image: linear-gradient(to bottom, black, transparent 88%);
+  pointer-events: none;
+}
+
+.rightsizing-deck {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(360px, 0.95fr);
+  min-height: 188px;
+  margin: 0 0 20px;
+  overflow: hidden;
+  border: 1px solid rgba(var(--info-rgb), 0.24);
+  border-radius: var(--radius);
+  background: linear-gradient(112deg, rgba(var(--info-rgb), 0.14), transparent 42%), linear-gradient(135deg, transparent 0 62%, rgba(var(--purple-rgb, 167, 139, 250), 0.075) 62% 62.2%, transparent 62.2%), var(--surface-card);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 16px 44px rgba(var(--info-rgb), 0.05);
+}
+
+.rightsizing-deck .deck-primary {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  justify-content: center;
+  padding: 28px 30px;
+}
+
+.rightsizing-deck .deck-kicker,
+.rightsizing-deck .telemetry-kicker {
+  color: var(--info);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.rightsizing-deck .deck-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 11px;
+}
+
+.rightsizing-deck h2 {
+  margin: 0;
+  color: var(--text);
+  font-size: clamp(28px, 4vw, 48px);
+  font-weight: 650;
+  letter-spacing: -0.065em;
+  line-height: 0.95;
+}
+
+.rightsizing-deck .deck-primary p {
+  max-width: 44ch;
+  margin: 13px 0 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.rightsizing-deck .deck-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 18px;
+}
+
+.rightsizing-deck .deck-chips span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: rgba(var(--info-rgb), 0.04);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 9px;
+}
+
+.rightsizing-deck .deck-chips i { color: var(--info); font-size: 9px; }
+
+.rightsizing-deck .telemetry-panel {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  justify-content: center;
+  padding: 26px 28px;
+  border-left: 1px solid var(--border);
+  background: linear-gradient(140deg, rgba(var(--purple-rgb, 167, 139, 250), 0.08), transparent 72%);
+}
+
+.rightsizing-deck .telemetry-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.rightsizing-deck .telemetry-head > div { display: flex; flex-direction: column; gap: 5px; }
+.rightsizing-deck .telemetry-head strong { color: var(--text); font-size: 13px; font-weight: 650; }
+.rightsizing-deck .telemetry-total { color: var(--success); font-family: var(--font-mono); font-size: 22px; font-weight: 550; letter-spacing: -0.06em; }
+.rightsizing-deck .posture-bars { display: flex; flex-direction: column; gap: 13px; margin: 21px 0 15px; }
+.rightsizing-deck .posture-bar > div:first-child { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 5px; color: var(--text-muted); font-family: var(--font-mono); font-size: 9px; }
+.rightsizing-deck .posture-bar b { color: var(--text-secondary); font-weight: 650; }
+.rightsizing-deck .posture-track { height: 8px; overflow: hidden; border: 1px solid var(--border); background: var(--surface-elevated); }
+.rightsizing-deck .posture-fill { display: block; height: 100%; transition: width 0.35s var(--transition-smooth); }
+.rightsizing-deck .posture-safe { background: var(--success); }
+.rightsizing-deck .posture-risk { background: var(--danger); }
+.rightsizing-deck .telemetry-legend { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 14px; }
+.rightsizing-deck .telemetry-legend span { display: inline-flex; align-items: center; gap: 6px; min-width: 0; color: var(--text-muted); font-family: var(--font-mono); font-size: 9px; }
+.rightsizing-deck .telemetry-legend b { margin-left: auto; color: var(--text-secondary); font-weight: 650; }
+.rightsizing-deck .legend-dot { width: 6px; height: 6px; flex: 0 0 6px; border-radius: 50%; }
+.rightsizing-deck .legend-safe { background: var(--success); }
+.rightsizing-deck .legend-risk { background: var(--danger); }
+
+.rightsizing-page > .metrics-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 0;
+  max-height: 70px;
+  margin-bottom: 20px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: rgba(var(--info-rgb), 0.018);
+}
+
+.rightsizing-page > .metrics-strip app-metric-tile { min-width: 0; border-bottom: 0; }
+
+:host ::ng-deep .rightsizing-tabs {
+  display: block;
+  margin-bottom: var(--rightsizing-section-gap);
+}
+
+:host ::ng-deep .rightsizing-tabs p-tablist {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  background: var(--surface-card);
+}
+
+:host ::ng-deep .rightsizing-tabs p-tabpanels {
+  min-height: 220px;
+  padding: 0 !important;
+  border: 1px solid var(--border);
+  border-top: 0;
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  background: var(--surface-card);
+}
+
+:host ::ng-deep .rightsizing-tabs p-tabpanel { padding: 22px !important; }
+
+.opp-summary { padding: 0 0 16px; margin-bottom: 4px; border-bottom-color: var(--border); }
+.opp-card, .risk-card { padding: 14px; border: 1px solid transparent; border-bottom-color: var(--border); }
+.opp-card:last-child, .risk-card:last-child { border-bottom: 0; }
+.opp-card:hover, .risk-card:hover { background: rgba(var(--info-rgb), 0.025); }
+.exec-phase { padding: 16px 0; border-bottom-color: var(--border); }
+.exec-item { border-bottom-color: var(--border); }
+
+@media (max-width: 1080px) {
+  .rightsizing-deck { grid-template-columns: 1fr; }
+  .rightsizing-deck .telemetry-panel { border-top: 1px solid var(--border); border-left: 0; }
+}
+
+@media (max-width: 768px) {
+  .rightsizing-deck .telemetry-panel { padding: 22px 20px; }
+  :host ::ng-deep .rightsizing-tabs p-tabpanel { padding: 18px !important; }
+}
+
+@media (max-width: 640px) {
+  .rightsizing-deck .deck-primary { padding: 24px 20px; }
+  .rightsizing-deck h2 { font-size: 32px; }
+  .rightsizing-page > .metrics-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); max-height: none; }
+  .rightsizing-deck .telemetry-legend { grid-template-columns: 1fr; }
+  :host ::ng-deep .rightsizing-tabs p-tabpanel { padding: 14px !important; }
+  .opp-header, .risk-header, .exec-phase-header { align-items: flex-start; flex-direction: column; }
+  .opp-meta-row, .exec-phase-meta { width: 100%; justify-content: space-between; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rightsizing-deck .posture-fill,
+  .opp-card,
+  .risk-card,
+  .exec-item,
+  .inline-toast { transition: none; animation: none; }
+}
+
+:host-context([data-theme="light"]) {
+  .rightsizing-page::before { background-image: linear-gradient(rgba(0, 0, 0, 0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 0, 0, 0.025) 1px, transparent 1px); }
+  .rightsizing-deck { border-color: rgba(0, 0, 0, 0.08); background: linear-gradient(112deg, rgba(154, 81, 41, 0.08), transparent 42%), var(--surface-card); }
+  .rightsizing-deck .telemetry-panel { background: linear-gradient(140deg, rgba(124, 58, 237, 0.05), transparent 72%); }
+  .rightsizing-page > .metrics-strip,
+  :host ::ng-deep .rightsizing-tabs p-tablist,
+  :host ::ng-deep .rightsizing-tabs p-tabpanels { border-color: rgba(0, 0, 0, 0.08); }
+}

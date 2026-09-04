@@ -1,5 +1,6 @@
 import subprocess
 import json
+from contextvars import copy_context
 
 from core.context import context
 from core.collectors.inspect import (
@@ -22,8 +23,12 @@ def collect_diagnosis(pod_name):
         return None
 
     with ThreadPoolExecutor(max_workers=2) as ex:
-        f_events = ex.submit(pod_events, pod_name)
-        f_logs = ex.submit(pod_logs, pod_name, 100)
+        f_events = ex.submit(
+            copy_context().run, pod_events, pod_name
+        )
+        f_logs = ex.submit(
+            copy_context().run, pod_logs, pod_name, 100
+        )
 
         events = f_events.result()
         logs = f_logs.result()

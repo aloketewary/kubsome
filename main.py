@@ -264,8 +264,8 @@ def _start_collector(args):
             "[yellow]⚠ Another process owns the DB. "
             "Data will be queued for it to drain.[/yellow]"
         )
-
-    start_drain_loop(interval=5)
+    else:
+        start_drain_loop(interval=5)
 
     console.print(
         f"[green]◆ Kubsome Collector[/green] "

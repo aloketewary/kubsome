@@ -1,153 +1,296 @@
-<!-- ─── Header ─────────────────────────────────────────────────────── -->
+<section class="events-page" aria-label="Kubernetes event workspace">
 <app-intel-header title="Event Stream" icon="pi pi-bolt"
-  [subtitle]="filteredEvents.length + ' events · ' + warningCount + ' warnings · ' + (autoRefresh ? '30s refresh' : 'paused')">
-  <button class="ctrl-btn" [class.ctrl-btn-active]="autoRefresh" (click)="toggleAutoRefresh()"
-          [pTooltip]="autoRefresh ? 'Auto-refresh on' : 'Auto-refresh off'">
+  [subtitle]="events.length + ' events · ' + warningCount + ' warnings · ' + (autoRefresh ? '30s refresh' : 'paused')">
+  <button class="ctrl-btn" type="button" [class.ctrl-btn-active]="autoRefresh" (click)="toggleAutoRefresh()"
+          [pTooltip]="autoRefresh ? 'Auto-refresh on' : 'Auto-refresh off'" [attr.aria-label]="autoRefresh ? 'Pause auto-refresh' : 'Enable auto-refresh'">
     <i class="pi" [class.pi-sync]="autoRefresh" [class.pi-pause]="!autoRefresh"
-       [class.spinning]="autoRefresh"></i>
+       [class.spinning]="autoRefresh" aria-hidden="true"></i>
   </button>
-  <app-live-indicator [active]="watching" (click)="toggleWatch()" />
-  <button class="ctrl-btn" (click)="refresh()" pTooltip="Refresh">
-    <i class="pi pi-refresh" [class.spinning]="loading"></i>
+  <button class="watch-control" type="button" (click)="toggleWatch()" [attr.aria-label]="watching ? 'Stop event watch' : 'Start event watch'">
+    <app-live-indicator [active]="watching" label="WATCH" offLabel="WATCH" />
+  </button>
+  <button class="ctrl-btn" type="button" (click)="refresh()" pTooltip="Refresh" aria-label="Refresh events">
+    <i class="pi pi-refresh" [class.spinning]="loading" aria-hidden="true"></i>
   </button>
 </app-intel-header>
 
-<!-- ━━━ Attention Required ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
-@if (attentionItems.length > 0) {
-  <div class="attention-section">
-    <div class="attention-header">
-      <span class="attention-title">Attention Required</span>
+<div class="events-deck" aria-label="Event telemetry overview">
+  <div class="deck-primary">
+    <span class="deck-kicker"><i class="pi pi-bolt" aria-hidden="true"></i> Event telemetry</span>
+    <h2>Cluster signal</h2>
+    <p>Monitor warning pressure and recent activity across Kubernetes objects.</p>
+    <div class="deck-chips" aria-label="Event stream capabilities">
+      <span><i class="pi pi-exclamation-triangle" aria-hidden="true"></i> Warning detection</span>
+      <span><i class="pi pi-list" aria-hidden="true"></i> Object grouping</span>
     </div>
-    @for (item of attentionItems; track item.object) {
-      <div class="attention-row">
-        <app-status-beacon status="warning" size="sm" [pulse]="true" />
-        <span class="attention-name">{{ item.object }}</span>
-        <span class="attention-reason">{{ item.topReason }}</span>
-        <span class="attention-count">{{ item.totalCount }}×</span>
-        @if (item.lastSeen) {
-          <span class="attention-time">{{ relativeTime(item.lastSeen) }}</span>
-        }
-        <button class="attention-action" (click)="router.navigate(['/investigate'], { queryParams: { target: item.object } })">Investigate</button>
-        <button class="attention-action" (click)="router.navigate(['/logs'], { queryParams: { pod: item.object } })">Logs</button>
-      </div>
-    }
   </div>
-}
-
-<!-- ━━━ Metrics Strip ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
-<div class="metrics-strip">
-  <app-metric-tile label="Total" [value]="'' + events.length" accent="cyan" />
-  <app-metric-tile label="Warnings" [value]="'' + warningCount" [accent]="warningCount > 0 ? 'amber' : 'green'" />
-  <app-metric-tile label="Normal" [value]="'' + normalCount" accent="green" />
-  <app-metric-tile label="Objects" [value]="'' + groupedEvents.length" accent="purple" />
+  <div class="telemetry-panel" aria-label="Event health telemetry">
+    <div class="telemetry-head">
+      <div>
+        <span class="telemetry-kicker">Signal balance</span>
+        <strong>Current sample</strong>
+      </div>
+      <span class="telemetry-total">{{ warningCount }} warn</span>
+    </div>
+    <div class="event-balance">
+      <div class="balance-row">
+        <span>Warnings</span>
+        <div class="balance-track" aria-hidden="true"><span class="balance-warning" [style.width.%]="events.length ? warningCount / events.length * 100 : 0"></span></div>
+        <strong>{{ warningCount }}</strong>
+      </div>
+      <div class="balance-row">
+        <span>Normal</span>
+        <div class="balance-track" aria-hidden="true"><span class="balance-normal" [style.width.%]="events.length ? normalCount / events.length * 100 : 0"></span></div>
+        <strong>{{ normalCount }}</strong>
+      </div>
+    </div>
+    <div class="telemetry-legend">
+      <span><i class="legend-warning" aria-hidden="true"></i> Warnings <b>{{ warningCount }}</b></span>
+      <span><i class="legend-normal" aria-hidden="true"></i> Normal <b>{{ normalCount }}</b></span>
+    </div>
+  </div>
 </div>
 
-<!-- ━━━ Recent Spikes ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
-@if (recentSpikes.length > 0) {
-  <div class="spikes-strip">
-    <span class="spikes-label">Recent Activity</span>
-    @for (spike of recentSpikes; track spike.time) {
-      <span class="spike-item" [class.spike-warn]="spike.hasWarning">
-        {{ spike.time }} <strong>+{{ spike.count }}</strong>
-        @if (spike.hasWarning) { <span class="spike-warn-dot">⚠</span> }
-      </span>
-    }
-  </div>
-}
-
-<!-- ━━━ Command Bar + Filters ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
-<app-command-bar
-  [pills]="filterPills"
-  [activePill]="filter"
-  [search]="searchQuery"
-  placeholder="Filter events..."
-  (pillChange)="onFilterChange($event)"
-  (searchChange)="onSearchChange($event)">
-</app-command-bar>
-
-<!-- ─── Reason Chips ───────────────────────────────────────────────── -->
-@if (topReasons.length > 0) {
-  <div class="reason-strip">
-    @for (r of topReasons; track r) {
-      <button class="reason-chip" [class.reason-active]="reasonFilter === r" (click)="toggleReasonFilter(r)">
-        {{ r }}
-      </button>
-    }
-  </div>
-}
-
-<!-- ━━━ Loading ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
-@if (loading && events.length === 0) {
-  <div class="loading-state">
-    <div class="loader-ring"></div>
-    <span>Scanning events...</span>
-  </div>
-}
-
-<!-- ━━━ Grouped Event Stories ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
-<div class="events-list">
-  @for (group of groupedEvents; track group.object) {
-    <div class="event-group" [class.group-warn]="group.hasWarning">
-      <div class="group-header" (click)="toggleGroup(group.object)">
-        <app-status-beacon [status]="group.hasWarning ? 'warning' : 'info'" size="sm" [pulse]="group.hasWarning && group.totalCount > 5" />
-        <code class="group-object">{{ group.object }}</code>
-        @if (group.kind) {
-          <span class="group-kind">{{ group.kind }}</span>
-        }
-        <span class="group-count">{{ group.totalCount }}×</span>
-        @if (group.lastSeen) {
-          <span class="group-time">{{ relativeTime(group.lastSeen) }}</span>
-        }
-        @if (group.hasWarning) {
-          <button class="group-action" (click)="$event.stopPropagation(); router.navigate(['/investigate'], { queryParams: { target: group.object } })">Investigate</button>
-          <button class="group-action" (click)="$event.stopPropagation(); router.navigate(['/logs'], { queryParams: { pod: group.object } })">Logs</button>
-        }
-        <i class="pi group-chevron" [class.pi-chevron-down]="isGroupExpanded(group.object)" [class.pi-chevron-right]="!isGroupExpanded(group.object)"></i>
+@if (attentionItems.length > 0) {
+  <section class="attention-section" aria-labelledby="attention-title">
+    <div class="section-head attention-head">
+      <div>
+        <span class="section-kicker">Signal queue</span>
+        <h2 id="attention-title" class="attention-title">
+          <app-status-beacon status="warning" size="sm" [pulse]="true" />
+          Attention required
+        </h2>
       </div>
+      <span class="section-count">{{ attentionItems.length }} objects</span>
+    </div>
 
-      <!-- Collapsed: show reason summary -->
-      @if (!isGroupExpanded(group.object)) {
-        <div class="group-summary">
-          @for (e of group.events.slice(0, 3); track $index) {
-            <span class="summary-reason" [class.summary-warn]="e.type === 'Warning'">{{ e.reason }}@if (e.count > 1) { <em>×{{ e.count }}</em> }</span>
+    <div class="attention-list">
+      @for (item of attentionItems; track item.object) {
+        <div class="attention-row">
+          <app-status-beacon status="warning" size="sm" [pulse]="true" />
+          <code class="attention-name">{{ item.object }}</code>
+          <span class="attention-reason">{{ item.topReason }}</span>
+          <span class="attention-count">{{ item.totalCount }}×</span>
+          @if (item.lastSeen) {
+            <span class="attention-time">{{ relativeTime(item.lastSeen) }}</span>
           }
-          @if (group.events.length > 3) {
-            <span class="summary-more">+{{ group.events.length - 3 }} more</span>
-          }
+          <div class="attention-actions">
+            <button type="button" class="attention-action ctrl-btn ctrl-btn-wide ctrl-btn-investigate"
+              (click)="router.navigate(['/monitor/investigate'], { queryParams: { target: item.object } })">Investigate</button>
+            <button type="button" class="attention-action ctrl-btn ctrl-btn-wide"
+              (click)="router.navigate(['/monitor/logs'], { queryParams: { pod: item.object } })">Logs</button>
+          </div>
         </div>
       }
+    </div>
+  </section>
+}
 
-      <!-- Expanded: show all events for this object -->
-      @if (isGroupExpanded(group.object)) {
-        <div class="group-events">
-          @for (event of group.events; track $index) {
-            <div class="ev-row" [class.ev-row-warn]="event.type === 'Warning'">
-              <span class="ev-reason">{{ event.reason }}</span>
-              @if (event.count > 1) {
-                <span class="ev-repeat">{{ event.count }}×</span>
-              }
-              <span class="ev-msg">{{ event.message }}</span>
-              @if (event.last_seen) {
-                <span class="ev-time">{{ relativeTime(event.last_seen) }}</span>
-              }
-            </div>
+<section class="events-overview" aria-labelledby="overview-title">
+  <div class="section-head">
+    <div>
+      <span class="section-kicker">Cluster signal</span>
+      <h2 id="overview-title" class="section-title">Event posture</h2>
+    </div>
+    <span class="section-count">{{ filteredEvents.length }} shown</span>
+  </div>
+  <div class="metrics-strip">
+    <app-metric-tile label="Total" [value]="'' + events.length" accent="cyan" />
+    <app-metric-tile label="Warnings" [value]="'' + warningCount" [accent]="warningCount > 0 ? 'amber' : 'green'" />
+    <app-metric-tile label="Normal" [value]="'' + normalCount" accent="green" />
+    <app-metric-tile label="Objects" [value]="'' + groupedEvents.length" accent="purple" />
+  </div>
+</section>
+@if (recentSpikes.length > 0) {
+  <section class="spikes-strip" aria-label="Recent event activity">
+    <span class="spikes-label">Recent activity</span>
+    <div class="spikes-list">
+      @for (spike of recentSpikes; track spike.time) {
+        <span class="spike-item" [class.spike-warn]="spike.hasWarning">
+          <span>{{ spike.time }}</span>
+          <strong>+{{ spike.count }}</strong>
+          @if (spike.hasWarning) {
+            <i class="pi pi-exclamation-triangle spike-warn-icon" aria-label="Includes warnings"></i>
           }
-        </div>
+        </span>
+      }
+    </div>
+  </section>
+}
+
+<div class="filter-section">
+  <div class="filter-section-head">
+    <div>
+      <span class="section-label">Event filter</span>
+      <strong>Refine event stream</strong>
+    </div>
+    <span class="filter-hint">{{ filteredEvents.length }} results</span>
+  </div>
+  <app-command-bar
+    [pills]="filterPills"
+    [activePill]="filter"
+    [search]="searchQuery"
+    placeholder="Filter events..."
+    (pillChange)="onFilterChange($event)"
+    (searchChange)="onSearchChange($event)">
+    <div class="view-switch" role="group" aria-label="Event view">
+      <button type="button" class="view-switch-btn" [class.view-switch-active]="viewMode === 'grouped'"
+        [attr.aria-pressed]="viewMode === 'grouped'" (click)="setViewMode('grouped')">
+        <i class="pi pi-list" aria-hidden="true"></i>
+        Grouped
+      </button>
+      <button type="button" class="view-switch-btn" [class.view-switch-active]="viewMode === 'flat'"
+        [attr.aria-pressed]="viewMode === 'flat'" (click)="setViewMode('flat')">
+        <i class="pi pi-align-left" aria-hidden="true"></i>
+        Flat
+      </button>
+    </div>
+    @if (hasActiveFilters) {
+      <button type="button" class="filter-clear ctrl-btn ctrl-btn-wide" (click)="clearFilters()">
+        <i class="pi pi-filter-slash" aria-hidden="true"></i>
+        Clear
+      </button>
+    }
+  </app-command-bar>
+
+  @if (topReasons.length > 0) {
+    <div class="reason-strip" aria-label="Common event reasons">
+      <span class="reason-label">Common reasons</span>
+      @for (r of topReasons; track r) {
+        <button type="button" class="reason-chip" [class.reason-active]="reasonFilter === r"
+          [attr.aria-pressed]="reasonFilter === r" (click)="toggleReasonFilter(r)">
+          {{ r }}
+        </button>
       }
     </div>
   }
 </div>
 
-<!-- ━━━ Empty State ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
-@if (filteredEvents.length === 0 && !loading) {
-  <div class="empty-state">
-    @if (searchQuery || filter !== 'warning' || reasonFilter) {
-      <div class="empty-icon"><i class="pi pi-filter-slash"></i></div>
-      <span>No events match your filter</span>
-      <button class="ctrl-btn ctrl-btn-wide" (click)="clearFilters()">Clear filters</button>
-    } @else {
-      <div class="empty-icon"><i class="pi pi-check-circle"></i></div>
-      <span>No warning events — cluster is stable</span>
-    }
+<section class="event-feed" aria-labelledby="feed-title">
+  <div class="section-head feed-head">
+    <div>
+      <span class="section-kicker">Event feed</span>
+      <h2 id="feed-title" class="section-title">{{ viewMode === 'grouped' ? 'By object' : 'All events' }}</h2>
+    </div>
+    <span class="section-count">{{ filteredEvents.length }} results</span>
   </div>
-}
+
+  @if (loading && events.length === 0) {
+    <div class="loading-state" role="status" aria-live="polite">
+      <div class="loader-ring" aria-hidden="true"></div>
+      <span>Scanning events...</span>
+    </div>
+  }
+
+  @if (viewMode === 'grouped') {
+    <div class="events-list">
+      @for (group of groupedEvents; track group.object) {
+        <article class="event-group" [class.group-warn]="group.hasWarning">
+          <div class="group-header">
+            <button class="group-toggle" type="button" (click)="toggleGroup(group.object)"
+              [attr.aria-expanded]="isGroupExpanded(group.object)" [attr.aria-label]="(isGroupExpanded(group.object) ? 'Collapse ' : 'Expand ') + group.object">
+              <app-status-beacon [status]="group.hasWarning ? 'warning' : 'info'" size="sm"
+                [pulse]="group.hasWarning && group.totalCount > 5" />
+              <span class="group-object-wrap">
+                <code class="group-object">{{ group.object }}</code>
+                @if (group.kind) {
+                  <span class="group-kind">{{ group.kind }}</span>
+                }
+              </span>
+              <span class="group-count">{{ group.totalCount }}×</span>
+              @if (group.lastSeen) {
+                <span class="group-time">{{ relativeTime(group.lastSeen) }}</span>
+              }
+              <i class="pi group-chevron" [class.pi-chevron-down]="isGroupExpanded(group.object)"
+                [class.pi-chevron-right]="!isGroupExpanded(group.object)" aria-hidden="true"></i>
+            </button>
+            @if (group.hasWarning) {
+              <div class="group-actions">
+                <button type="button" class="group-action ctrl-btn ctrl-btn-wide ctrl-btn-investigate"
+                  (click)="router.navigate(['/monitor/investigate'], { queryParams: { target: group.object } })">Investigate</button>
+                <button type="button" class="group-action ctrl-btn ctrl-btn-wide"
+                  (click)="router.navigate(['/monitor/logs'], { queryParams: { pod: group.object } })">Logs</button>
+              </div>
+            }
+          </div>
+
+          @if (!isGroupExpanded(group.object)) {
+            <div class="group-summary">
+              @for (e of group.events.slice(0, 3); track $index) {
+                <span class="summary-reason" [class.summary-warn]="e.type === 'Warning'">
+                  {{ e.reason }}@if (e.count > 1) { <em>×{{ e.count }}</em> }
+                </span>
+              }
+              @if (group.events.length > 3) {
+                <span class="summary-more">+{{ group.events.length - 3 }} more</span>
+              }
+            </div>
+          }
+
+          @if (isGroupExpanded(group.object)) {
+            <div class="group-events">
+              @for (event of group.events; track $index) {
+                <div class="ev-row" [class.ev-row-warn]="event.type === 'Warning'">
+                  <span class="ev-reason">{{ event.reason }}</span>
+                  @if (event.count > 1) {
+                    <span class="ev-repeat">{{ event.count }}×</span>
+                  }
+                  <span class="ev-msg" [pTooltip]="event.message">{{ event.message }}</span>
+                  @if (event.last_seen) {
+                    <span class="ev-time">{{ relativeTime(event.last_seen) }}</span>
+                  }
+                </div>
+              }
+            </div>
+          }
+        </article>
+      }
+    </div>
+  }
+
+  @if (viewMode === 'flat') {
+    <div class="flat-events">
+      @for (event of filteredEvents; track $index) {
+        <article class="flat-event" [class.flat-event-warn]="event.type === 'Warning'">
+          <app-status-beacon [status]="event.type === 'Warning' ? 'warning' : 'info'" size="sm" />
+          <div class="flat-event-body">
+            <div class="flat-event-head">
+              <span class="flat-event-reason">{{ event.reason }}</span>
+              @if (event.count > 1) {
+                <span class="ev-repeat">{{ event.count }}×</span>
+              }
+              <span class="flat-event-time">{{ relativeTime(event.last_seen) }}</span>
+            </div>
+            <p class="flat-event-message" [pTooltip]="event.message">{{ event.message }}</p>
+            <div class="flat-event-context">
+              <code>{{ event.object }}</code>
+              @if (event.kind) { <span>{{ event.kind }}</span> }
+            </div>
+          </div>
+          @if (event.type === 'Warning') {
+            <div class="flat-event-actions">
+              <button type="button" class="group-action ctrl-btn ctrl-btn-wide ctrl-btn-investigate"
+                (click)="router.navigate(['/monitor/investigate'], { queryParams: { target: event.object } })">Investigate</button>
+              <button type="button" class="group-action ctrl-btn ctrl-btn-wide"
+                (click)="router.navigate(['/monitor/logs'], { queryParams: { pod: event.object } })">Logs</button>
+            </div>
+          }
+        </article>
+      }
+    </div>
+  }
+
+  @if (filteredEvents.length === 0 && !loading) {
+    <div class="empty-state" role="status">
+      @if (hasActiveFilters) {
+        <div class="empty-icon"><i class="pi pi-filter-slash" aria-hidden="true"></i></div>
+        <span>No events match your filter</span>
+        <button type="button" class="ctrl-btn ctrl-btn-wide" (click)="clearFilters()">Clear filters</button>
+      } @else {
+        <div class="empty-icon"><i class="pi pi-check-circle" aria-hidden="true"></i></div>
+        <span>No warning events. Cluster is stable.</span>
+      }
+    </div>
+  }
+</section>
+</section>

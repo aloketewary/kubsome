@@ -74,7 +74,7 @@ INTENTS = {
 
     # AI / Analysis
     "summarize": [
-        "summarize", "summary", "health summary",
+        "summarize", "summarise", "summary", "health summary",
         "cluster summary", "quick status",
         "give me overview",
     ],

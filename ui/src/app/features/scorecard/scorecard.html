@@ -1,80 +1,129 @@
-<!-- ─── Header ─────────────────────────────────────────────────────── -->
-<app-intel-header title="Cluster Scorecard" icon="pi pi-trophy"
-  [subtitle]="'Health grade · ' + (lastUpdated || 'loading...')">
-  <app-live-indicator [active]="autoRefresh" label="AUTO" offLabel="PAUSED" (click)="toggleAutoRefresh()" />
-  <button class="ctrl-btn" (click)="refresh()" pTooltip="Refresh">
-    <i class="pi pi-refresh" [class.spinning]="loading"></i>
-  </button>
-</app-intel-header>
+<section class="scorecard-page" aria-label="Cluster scorecard">
+  <app-intel-header title="Cluster Scorecard" icon="pi pi-trophy"
+    [subtitle]="'Health posture / ' + (lastUpdated || 'loading...')">
+    <app-live-indicator [active]="autoRefresh" label="AUTO" offLabel="PAUSED" (click)="toggleAutoRefresh()" />
+    <button class="ctrl-btn" type="button" (click)="refresh()" pTooltip="Refresh" aria-label="Refresh scorecard">
+      <i class="pi pi-refresh" aria-hidden="true" [class.spinning]="loading"></i>
+    </button>
+  </app-intel-header>
 
-@if (data) {
-  <!-- ─── Overall Grade ──────────────────────────────────────────────── -->
-  <div class="grade-hero">
-    <app-health-ring [pct]="data.overall_score" [label]="data.overall_grade" [status]="gradeStatus(data.overall_grade)" size="lg" />
-    <div class="grade-info">
-      <span class="grade-title">{{ gradeLabel(data.overall_grade) }}</span>
-      <span class="grade-sub">{{ data.overall_score }}/100 · {{ data.summary }}</span>
+  @if (data) {
+    <section class="scorecard-overview" aria-label="Overall cluster posture">
+      <div class="scorecard-deck">
+        <span class="scorecard-kicker"><i class="pi pi-chart-line" aria-hidden="true"></i> Cluster posture</span>
+        <h2>Four dimensions. One operating picture.</h2>
+        <p>Review availability, stability, resource pressure, and operations through one evidence-based health grade.</p>
+        <div class="scorecard-meta">
+          <span><i class="pi pi-list" aria-hidden="true"></i> {{ categories.length }} dimensions</span>
+          <span><i class="pi pi-sort-amount-down" aria-hidden="true"></i> Worst signals first</span>
+        </div>
+      </div>
+      <div class="scorecard-readout">
+        <div class="readout-topline">
+          <span class="readout-kicker">Overall posture</span>
+          <span class="readout-state" [class.readout-state-warning]="gradeStatus(data.overall_grade) === 'warning'" [class.readout-state-critical]="gradeStatus(data.overall_grade) === 'critical'">
+            {{ data.overall_grade }} grade
+          </span>
+        </div>
+        <div class="score-readout">
+          <app-health-ring [pct]="data.overall_score" [label]="data.overall_grade" [status]="gradeStatus(data.overall_grade)" size="lg" />
+          <div class="grade-info">
+            <strong>{{ gradeLabel(data.overall_grade) }}</strong>
+            <span>{{ data.overall_score }}/100</span>
+            <small>{{ data.summary }}</small>
+          </div>
+        </div>
+        <div class="readout-foot"><span>Last evaluated</span><code>{{ lastUpdated || 'Pending' }}</code></div>
+      </div>
+    </section>
+
+    <div class="metrics-strip" aria-label="Scorecard category summary">
+      @for (cat of categories; track cat.key) {
+        <app-metric-tile [label]="cat.key" [value]="cat.data.grade" [accent]="gradeStatus(cat.data.grade) === 'ok' ? 'green' : gradeStatus(cat.data.grade) === 'warning' ? 'amber' : 'red'" />
+      }
     </div>
-  </div>
 
-  <!-- ─── Metrics Strip ──────────────────────────────────────────────── -->
-  <div class="metrics-strip">
-    @for (cat of categories; track cat.key) {
-      <app-metric-tile [label]="cat.key" [value]="cat.data.grade" [accent]="gradeStatus(cat.data.grade) === 'ok' ? 'green' : gradeStatus(cat.data.grade) === 'warning' ? 'amber' : 'red'" />
-    }
-  </div>
-
-  <!-- ─── Category Cards ─────────────────────────────────────────────── -->
-  <div class="cat-grid">
-    @for (cat of categories; track cat.key) {
-      <div class="cat-card" [class.cat-ok]="gradeStatus(cat.data.grade) === 'ok'" [class.cat-warn]="gradeStatus(cat.data.grade) === 'warning'" [class.cat-crit]="gradeStatus(cat.data.grade) === 'critical'">
-        <div class="cat-header">
-          <app-status-beacon [status]="gradeStatus(cat.data.grade)" size="sm" />
-          <span class="cat-grade">{{ cat.data.grade }}</span>
-          <span class="cat-name">{{ cat.key }}</span>
-          <span class="cat-score">{{ cat.data.score }}/100</span>
-        </div>
-        <div class="cat-bar">
-          <div class="cat-fill" [style.width.%]="cat.data.score" [class.fill-ok]="gradeStatus(cat.data.grade) === 'ok'" [class.fill-warn]="gradeStatus(cat.data.grade) === 'warning'" [class.fill-crit]="gradeStatus(cat.data.grade) === 'critical'"></div>
-        </div>
-        @if (cat.data.issues.length > 0) {
-          <div class="cat-issues">
-            @for (issue of cat.data.issues; track issue) {
-              <span class="cat-issue">{{ issue }}</span>
-            }
+    <div class="scorecard-workspace">
+      <section class="category-section" aria-labelledby="dimensions-title">
+        <div class="section-heading">
+          <div>
+            <span class="section-label">Score breakdown</span>
+            <h2 id="dimensions-title">Health dimensions</h2>
           </div>
+          <span class="section-count">{{ categories.length }} tracked</span>
+        </div>
+        <div class="cat-grid">
+          @for (cat of categories; track cat.key) {
+            <article class="cat-card" [class.cat-ok]="gradeStatus(cat.data.grade) === 'ok'" [class.cat-warn]="gradeStatus(cat.data.grade) === 'warning'" [class.cat-crit]="gradeStatus(cat.data.grade) === 'critical'">
+              <div class="cat-header">
+                <app-status-beacon [status]="gradeStatus(cat.data.grade)" size="sm" />
+                <span class="cat-grade">{{ cat.data.grade }}</span>
+                <span class="cat-name">{{ cat.key }}</span>
+                <span class="cat-score">{{ cat.data.score }}/100</span>
+              </div>
+              <div class="cat-bar" role="progressbar" [attr.aria-label]="cat.key + ' score'" [attr.aria-valuenow]="cat.data.score" aria-valuemin="0" aria-valuemax="100">
+                <div class="cat-fill" [style.width.%]="cat.data.score" [class.fill-ok]="gradeStatus(cat.data.grade) === 'ok'" [class.fill-warn]="gradeStatus(cat.data.grade) === 'warning'" [class.fill-crit]="gradeStatus(cat.data.grade) === 'critical'"></div>
+              </div>
+              <div class="cat-footline">
+                <span class="cat-state">{{ cat.data.issues.length ? cat.data.issues.length + ' signal(s)' : 'Clear' }}</span>
+                <span class="cat-score-label">Score index</span>
+              </div>
+              @if (cat.data.issues.length > 0) {
+                <ul class="cat-issues">
+                  @for (issue of cat.data.issues; track issue) {
+                    <li class="cat-issue">{{ issue }}</li>
+                  }
+                </ul>
+              } @else {
+                <span class="cat-ok-text"><i class="pi pi-check" aria-hidden="true"></i> No issues detected</span>
+              }
+            </article>
+          }
+        </div>
+      </section>
+
+      <aside class="scorecard-rail" aria-label="Scorecard actions and trends">
+        @if (data.recommendations.length > 0) {
+          <app-holo-card title="Recommendations" icon="pi pi-lightbulb" glow="amber">
+            <div class="rail-card-intro">Prioritized actions from current health signals.</div>
+            <div class="rec-list">
+              @for (rec of data.recommendations; track $index) {
+                <div class="rec-row">
+                  <div class="rec-topline">
+                    <p-tag [value]="rec.category" severity="warn" [rounded]="true" size="small" />
+                    <button pButton type="button" icon="pi pi-sparkles" class="p-button-text p-button-sm" pTooltip="Run with AI" [attr.aria-label]="'Run recommendation with AI: ' + rec.issue" (click)="runWithAi(rec.action)"></button>
+                  </div>
+                  <span class="rec-issue">{{ rec.issue }}</span>
+                  <code class="rec-action">{{ rec.action }}</code>
+                </div>
+              }
+            </div>
+          </app-holo-card>
         } @else {
-          <span class="cat-ok-text">No issues</span>
+          <app-holo-card title="Recommendations" icon="pi pi-check-circle" glow="green">
+            <div class="all-clear">
+              <app-status-beacon status="ok" size="md" />
+              <div><strong>No actions required</strong><span>All scorecard dimensions are within target.</span></div>
+            </div>
+          </app-holo-card>
         }
-      </div>
-    }
-  </div>
 
-  <!-- ─── Recommendations ────────────────────────────────────────────── -->
-  @if (data.recommendations.length > 0) {
-    <app-holo-card title="Recommendations" icon="pi pi-lightbulb" glow="amber">
-      <div class="rec-list">
-        @for (rec of data.recommendations; track $index) {
-          <div class="rec-row">
-            <p-tag [value]="rec.category" severity="warn" [rounded]="true" size="small" />
-            <span class="rec-issue">{{ rec.issue }}</span>
-            <code class="rec-action">{{ rec.action }}</code>
-            <button pButton icon="pi pi-sparkles" class="p-button-text p-button-sm" pTooltip="Run with AI" (click)="runWithAi(rec.action)"></button>
-          </div>
-        }
-      </div>
-    </app-holo-card>
+        <div class="trend-shell">
+          <app-trend-chart
+            endpoint="/api/analytics/series/cost?days=14"
+            title="Cost Trend (14d)"
+            chartType="bar"
+            height="140px"
+            labelField="day"
+            [labelSlice]="[5, 10]"
+            [datasets]="[{label: 'Daily Cost', field: 'cost', color: '#4ade80', fill: false}]" />
+        </div>
+      </aside>
+    </div>
+  } @else {
+    <div class="loading-state scorecard-loading" role="status" aria-live="polite">
+      <div class="loader-ring" aria-hidden="true"></div>
+      <div><span class="loading-kicker">Cluster assessment</span><strong>Loading scorecard...</strong></div>
+    </div>
   }
-
-  <!-- ─── Cost Trend ─────────────────────────────────────────────────── -->
-  <app-trend-chart
-    endpoint="/api/analytics/series/cost?days=14"
-    title="Cost Trend (14d)"
-    chartType="bar"
-    height="140px"
-    labelField="day"
-    [labelSlice]="[5, 10]"
-    [datasets]="[{label: 'Daily Cost', field: 'cost', color: '#4ade80', fill: false}]" />
-} @else {
-  <div class="loading-state"><div class="loader-ring"></div><span>Loading scorecard...</span></div>
-}
+</section>

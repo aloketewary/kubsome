@@ -1,137 +1,249 @@
-<app-intel-header title="Resources" icon="pi pi-database"
-  subtitle="browse and describe Kubernetes resources">
-  <button class="ctrl-btn" (click)="listResources()" pTooltip="Refresh"><i class="pi pi-refresh" [class.spinning]="loading"></i></button>
-</app-intel-header>
+<section class="resources-page" aria-label="Kubernetes resources">
+  <app-intel-header title="Resources" icon="pi pi-database"
+    [subtitle]="selectedType ? selectedType + ' inventory' : 'browse and describe Kubernetes resources'">
+    <button class="ctrl-btn" type="button" (click)="listResources()" [disabled]="!selectedType || loading"
+      aria-label="Refresh resources" pTooltip="Refresh">
+      <i class="pi pi-refresh" aria-hidden="true" [class.spinning]="loading"></i>
+    </button>
+  </app-intel-header>
 
-<!-- Controls -->
-<app-holo-card [compact]="true" glow="cyan">
-  <div class="res-controls">
-    <p-select [options]="resourceTypes" [(ngModel)]="selectedType" placeholder="Resource type..."
-              [style]="{ width: '170px' }" (ngModelChange)="onTypeChange()" />
-    <p-select [options]="namespaces" [(ngModel)]="selectedNamespace" placeholder="All namespaces"
-              [style]="{ width: '160px' }" [showClear]="true" (ngModelChange)="onNamespaceChange()" />
-    <input [(ngModel)]="searchName" placeholder="Filter by name..." (ngModelChange)="filterList()" />
-  </div>
-</app-holo-card>
-
-@if (error) { <div class="error-msg">{{ error }}</div> }
-
-<!-- Metrics -->
-@if (listData.length > 0 && !describeData) {
-  <div class="metrics-strip">
-    <app-metric-tile label="Found" [value]="'' + filteredList.length" accent="cyan" />
-    <app-metric-tile label="Healthy" [value]="'' + healthyCount" accent="green" />
-    @if (warningCount > 0) { <app-metric-tile label="Warning" [value]="'' + warningCount" accent="amber" /> }
-    @if (failedCount > 0) { <app-metric-tile label="Failed" [value]="'' + failedCount" accent="red" /> }
-  </div>
-}
-
-<!-- Recent Resources -->
-@if (!selectedType && recentResources.length > 0 && !describeData) {
-  <app-holo-card title="Recent" icon="pi pi-history" glow="none" [compact]="true">
-    <div class="recent-list">
-      @for (r of recentResources; track r.name + r.type) {
-        <div class="recent-row" (click)="describeRecent(r)">
-          <span class="recent-type">{{ r.type }}</span>
-          <code class="recent-name">{{ r.name }}</code>
-          @if (r.namespace) { <span class="recent-ns">{{ r.namespace }}</span> }
-        </div>
-      }
-    </div>
-  </app-holo-card>
-}
-
-<!-- List -->
-@if (filteredList.length > 0 && !describeData) {
-  <div class="res-list">
-    @for (item of filteredList; track item.name) {
-      <div class="res-row" (click)="describeItem(item.name)">
-        <app-status-beacon [status]="beaconStatus(item.status)" size="sm" />
-        <div class="res-row-body">
-          <code class="res-name">{{ item.name }}</code>
-          @if (item.ready) { <span class="res-ready">{{ item.ready }} Ready</span> }
-        </div>
-        @if (item.status) { <p-tag [value]="item.status" [severity]="tagSeverity(item.status)" [rounded]="true" /> }
-        <span class="res-age">{{ item.age }}</span>
+  <div class="resources-deck" aria-label="Resource inventory overview">
+    <div class="deck-primary">
+      <span class="deck-kicker"><i class="pi pi-database" aria-hidden="true"></i> Resource inventory</span>
+      <h2>{{ selectedType ? selectedType + ' objects' : 'Browse the cluster' }}</h2>
+      <p>{{ selectedType ? 'Inspect live object state across the selected Kubernetes scope.' : 'Choose a resource type to inspect live objects and metadata.' }}</p>
+      <div class="deck-chips" aria-label="Resource surface capabilities">
+        <span><i class="pi pi-search" aria-hidden="true"></i> Browse</span>
+        <span><i class="pi pi-file" aria-hidden="true"></i> Describe</span>
+        <span><i class="pi pi-history" aria-hidden="true"></i> History</span>
       </div>
+    </div>
+    <div class="telemetry-panel" aria-label="Resource status telemetry">
+      <div class="telemetry-head">
+        <div>
+          <span class="telemetry-kicker">Inventory signal</span>
+          <strong>{{ selectedType ? 'Object health' : 'Awaiting inventory' }}</strong>
+        </div>
+        <span class="telemetry-total">{{ selectedType ? listData.length : '--' }}</span>
+      </div>
+      @if (selectedType && listData.length > 0) {
+        <div class="telemetry-track" role="img" [attr.aria-label]="healthyCount + ' healthy, ' + warningCount + ' pending, ' + failedCount + ' failed, ' + unknownCount + ' unknown'">
+          <span class="telemetry-segment segment-failed" [style.width.%]="failedCount / listData.length * 100"></span>
+          <span class="telemetry-segment segment-healthy" [style.width.%]="healthyCount / listData.length * 100"></span>
+          <span class="telemetry-segment segment-pending" [style.width.%]="warningCount / listData.length * 100"></span>
+          <span class="telemetry-segment segment-unknown" [style.width.%]="unknownCount / listData.length * 100"></span>
+        </div>
+        <div class="telemetry-legend">
+          <span><i class="legend-dot legend-failed" aria-hidden="true"></i> Failed <b>{{ failedCount }}</b></span>
+          <span><i class="legend-dot legend-healthy" aria-hidden="true"></i> Healthy <b>{{ healthyCount }}</b></span>
+          <span><i class="legend-dot legend-pending" aria-hidden="true"></i> Pending <b>{{ warningCount }}</b></span>
+          @if (unknownCount > 0) { <span><i class="legend-dot legend-unknown" aria-hidden="true"></i> Unknown <b>{{ unknownCount }}</b></span> }
+        </div>
+      } @else {
+        <div class="telemetry-await"><i class="pi pi-arrow-down" aria-hidden="true"></i><span>Select resource type to load telemetry</span></div>
+      }
+      <div class="readout-grid">
+        <div><span>Scope</span><strong>{{ selectedNamespace || 'All namespaces' }}</strong></div>
+        <div><span>Visible</span><strong>{{ selectedType ? filteredList.length : '--' }}</strong></div>
+      </div>
+    </div>
+  </div>
+
+  @if (selectedType && listData.length > 0 && !showingDetails) {
+    <div class="metrics-strip" aria-label="Resource status summary">
+      <app-metric-tile label="Visible" [value]="'' + filteredList.length" accent="cyan" />
+      <app-metric-tile label="Healthy" [value]="'' + healthyCount" accent="green" />
+      @if (warningCount > 0) { <app-metric-tile label="Pending" [value]="'' + warningCount" accent="amber" /> }
+      @if (failedCount > 0) { <app-metric-tile label="Failed" [value]="'' + failedCount" accent="red" /> }
+      @if (unknownCount > 0) { <app-metric-tile label="Unknown" [value]="'' + unknownCount" accent="purple" /> }
+      <div class="metrics-context">
+        <span class="metrics-context-label">Scope</span>
+        <strong>{{ selectedNamespace || 'CLUSTER' }}</strong>
+        <span>{{ statusFilter === 'all' ? 'all statuses' : statusFilter }}</span>
+      </div>
+    </div>
+  }
+
+  <div class="filter-section">
+    <div class="filter-section-head">
+      <div>
+        <span class="section-label">Command filter</span>
+        <strong>Choose inventory scope</strong>
+      </div>
+      <span class="filter-hint">{{ selectedType ? (filteredList.length + ' visible') : 'No type selected' }}</span>
+    </div>
+    <div class="res-controls">
+      <div class="control-field">
+        <label for="resource-type">Resource type</label>
+        <p-select inputId="resource-type" [options]="resourceTypes" [(ngModel)]="selectedType"
+          placeholder="Select a resource" [appendTo]="'body'" [style]="{ width: '100%' }" (ngModelChange)="onTypeChange()" />
+      </div>
+      <div class="control-field">
+        <label for="resource-namespace">Namespace</label>
+        <p-select inputId="resource-namespace" [options]="namespaces" [(ngModel)]="selectedNamespace"
+          placeholder="All namespaces" [appendTo]="'body'" [style]="{ width: '100%' }" [showClear]="true" [disabled]="namespaceLoading"
+          (ngModelChange)="onNamespaceChange()" />
+      </div>
+      <div class="control-field control-field-search">
+        <label for="resource-search">Name filter</label>
+        <div class="text-control">
+          <i class="pi pi-search" aria-hidden="true"></i>
+          <input id="resource-search" [(ngModel)]="searchName" placeholder="Filter by name..." autocomplete="off"
+            (ngModelChange)="filterList()" />
+        </div>
+      </div>
+    </div>
+    @if (selectedType && listData.length > 0 && !showingDetails) {
+      <app-command-bar [pills]="filterPills" [activePill]="statusFilter" [showSearch]="false"
+        (pillChange)="onStatusFilterChange($event)" />
     }
   </div>
-}
 
-<!-- Describe View -->
-@if (describeData) {
-  <app-holo-card [title]="describeData.name || 'Details'" glow="cyan" [compact]="true">
-    <div header-actions class="desc-actions">
-      <app-action-icon icon="pi pi-arrow-left" tooltip="Back to list" accent="cyan" (clicked)="backToList()" />
-      <app-action-icon icon="pi pi-copy" tooltip="Copy raw" accent="cyan" (clicked)="copyRaw()" />
-    </div>
-
-    <!-- View Tabs -->
-    <div class="desc-tabs">
-      <button class="desc-tab" [class.desc-tab-active]="describeView === 'parsed'" (click)="setView('parsed')">Parsed</button>
-      <button class="desc-tab" [class.desc-tab-active]="describeView === 'raw'" (click)="setView('raw')">Raw</button>
-      <button class="desc-tab" [class.desc-tab-active]="describeView === 'yaml'" (click)="setView('yaml')">YAML</button>
-      <div class="desc-search">
-        <i class="pi pi-search"></i>
-        <input [(ngModel)]="describeSearch" placeholder="Search output..." />
-      </div>
-    </div>
-
-    <!-- Warning Events Banner -->
-    @if (warningEvents.length > 0 && describeView === 'parsed') {
-      <div class="warning-banner">
-        <div class="wb-header">
-          <i class="pi pi-exclamation-triangle"></i>
-          <span>Warning Events ({{ warningEvents.length }})</span>
+  @if (!selectedType && !showingDetails && recentResources.length > 0) {
+    <section class="resources-section" aria-labelledby="recent-resources-heading">
+      <div class="section-heading">
+        <div>
+          <span class="section-label">Recent inspection</span>
+          <h3 id="recent-resources-heading">Recent resources</h3>
         </div>
-        <div class="wb-list">
-          @for (e of warningEvents; track e) {
-            <span class="wb-event">{{ e }}</span>
-          }
-        </div>
+        <span class="section-count">{{ recentResources.length }} retained</span>
       </div>
-    }
+      <div class="recent-list recent-surface" role="list">
+        @for (resource of recentResources; track resource.name + resource.type) {
+          <button class="recent-row" type="button" role="listitem" (click)="describeRecent(resource)">
+            <span class="recent-type">{{ resource.type }}</span>
+            <code class="recent-name">{{ resource.name }}</code>
+            @if (resource.namespace) { <span class="recent-ns">{{ resource.namespace }}</span> }
+            <i class="pi pi-arrow-up-right recent-arrow" aria-hidden="true"></i>
+          </button>
+        }
+      </div>
+    </section>
+  }
 
-    <!-- Parsed View -->
-    @if (describeView === 'parsed') {
-      @if (infoFields.length) {
-        <div class="desc-section">
-          <div class="desc-section-title">Metadata</div>
-          @for (f of infoFields; track f.key) {
-            <div class="desc-row"><span class="desc-key">{{ f.key }}</span><span class="desc-val">{{ f.value }}</span></div>
-          }
+  @if (!selectedType && !showingDetails) {
+    <div class="resource-prompt" role="status">
+      <div class="prompt-icon"><i class="pi pi-database" aria-hidden="true"></i></div>
+      <strong>Choose a resource type to inspect</strong>
+      <span>Browse live objects in the selected namespace, then open any resource for details.</span>
+    </div>
+  }
+
+  @if (selectedType && !showingDetails) {
+    <section class="resource-section" aria-labelledby="resource-list-heading">
+      <div class="section-heading">
+        <div>
+          <span class="section-label">Resource inventory</span>
+          <h3 id="resource-list-heading">{{ selectedType }} objects</h3>
+        </div>
+        <span class="section-count">{{ filteredList.length }} visible</span>
+      </div>
+
+      @if (listError) {
+        <div class="error-msg" role="alert">
+          <i class="pi pi-exclamation-triangle" aria-hidden="true"></i>
+          <span>{{ listError }}</span>
+          <button class="text-button" type="button" (click)="listResources()">Retry</button>
         </div>
       }
-      @if (labelFields.length) {
-        <div class="desc-section">
-          <div class="desc-section-title">Labels</div>
-          <div class="desc-labels">
-            @for (l of labelFields; track l) { <span class="desc-label">{{ l }}</span> }
+
+      @if (filteredList.length > 0) {
+        <div class="res-list-header" aria-hidden="true">
+          <span>Resource</span><span>Status</span><span>Age</span>
+        </div>
+      }
+      <div class="res-list" [attr.aria-busy]="listLoading" aria-live="polite">
+        @for (item of filteredList; track item.name) {
+          <button class="res-row" type="button" [attr.data-status]="normalizeStatus(item.status)" (click)="describeItem(item.name)"
+            [attr.aria-label]="'Describe ' + item.name">
+            <span class="res-status-rail" aria-hidden="true"></span>
+            <app-status-beacon [status]="beaconStatus(item.status)" size="sm" />
+            <span class="res-row-body">
+              <code class="res-name">{{ item.name }}</code>
+              @if (item.ready) { <span class="res-ready">{{ item.ready }} ready</span> }
+            </span>
+            <span class="res-row-status">
+              @if (item.status) { <p-tag [value]="item.status" [severity]="tagSeverity(item.status)" [rounded]="true" /> }
+            </span>
+            <span class="res-age">{{ item.age || 'n/a' }}</span>
+            <i class="pi pi-chevron-right row-arrow" aria-hidden="true"></i>
+          </button>
+        }
+
+        @if (listLoading && listData.length === 0) {
+          @for (row of [1, 2, 3, 4]; track row) {
+            <div class="res-skeleton" aria-hidden="true"><span></span><i></i><i></i><i></i></div>
+          }
+          <div class="loading-state" role="status"><i class="pi pi-spin pi-spinner" aria-hidden="true"></i> Loading {{ selectedType }}...</div>
+        }
+
+        @if (!listLoading && !listError && filteredList.length === 0) {
+          <div class="empty-state" role="status">
+            <i class="pi pi-search empty-icon" aria-hidden="true"></i>
+            <strong>{{ searchName || statusFilter !== 'all' ? 'No matching resources' : 'No ' + selectedType + ' found' }}</strong>
+            <span>{{ searchName || statusFilter !== 'all' ? 'Try another filter or clear the active status.' : 'No resources are available in this namespace.' }}</span>
           </div>
+        }
+      </div>
+    </section>
+  }
+
+  @if (describeLoading) {
+    <div class="detail-loading" role="status"><i class="pi pi-spin pi-spinner" aria-hidden="true"></i><span>Loading resource details...</span></div>
+  }
+
+  @if (describeError) {
+    <div class="detail-error" role="alert">
+      <i class="pi pi-exclamation-triangle" aria-hidden="true"></i>
+      <strong>{{ describeError }}</strong>
+      <div><button class="text-button" type="button" (click)="describeItem(describeTarget)">Retry</button><button class="text-button" type="button" (click)="backToList()">Back to list</button></div>
+    </div>
+  }
+
+  @if (describeData) {
+    <app-holo-card [title]="describeData.name || 'Resource details'" glow="cyan" [compact]="true">
+      <div header-actions class="desc-actions">
+        <app-action-icon icon="pi pi-arrow-left" tooltip="Back to list" accent="cyan" (clicked)="backToList()" />
+        <app-action-icon icon="pi pi-copy" [tooltip]="copyState === 'copied' ? 'Copied' : copyState === 'failed' ? 'Copy failed' : 'Copy raw'" accent="cyan" (clicked)="copyRaw()" />
+      </div>
+
+      <div class="desc-tabs" role="tablist" aria-label="Resource detail views">
+        <button class="desc-tab" type="button" role="tab" [attr.aria-selected]="describeView === 'parsed'" [class.desc-tab-active]="describeView === 'parsed'" (click)="setView('parsed')">Parsed</button>
+        <button class="desc-tab" type="button" role="tab" [attr.aria-selected]="describeView === 'raw'" [class.desc-tab-active]="describeView === 'raw'" (click)="setView('raw')">Describe output</button>
+        <button class="desc-tab" type="button" role="tab" [attr.aria-selected]="describeView === 'yaml'" [class.desc-tab-active]="describeView === 'yaml'" (click)="setView('yaml')">YAML</button>
+        <div class="desc-search">
+          <i class="pi pi-search" aria-hidden="true"></i>
+          <label class="visually-hidden" for="describe-search">Search resource details</label>
+          <input id="describe-search" [(ngModel)]="describeSearch" placeholder="Search details..." autocomplete="off" />
+        </div>
+      </div>
+
+      @if (warningEvents.length > 0 && describeView === 'parsed') {
+        <div class="warning-banner" role="status">
+          <div class="wb-header"><i class="pi pi-exclamation-triangle" aria-hidden="true"></i><span>Warning events ({{ warningEvents.length }})</span></div>
+          <div class="wb-list">@for (event of warningEvents; track event) { <span class="wb-event">{{ event }}</span> }</div>
         </div>
       }
-      @if (filteredDetailFields.length) {
-        <div class="desc-section">
-          <div class="desc-section-title">Details</div>
-          @for (f of filteredDetailFields; track f.key) {
-            <div class="desc-row"><span class="desc-key">{{ f.key }}</span><pre class="desc-pre">{{ f.value }}</pre></div>
-          }
-        </div>
+
+      @if (describeView === 'parsed') {
+        @if (infoFields.length) {
+          <div class="desc-section"><div class="desc-section-title">Metadata</div>
+            @for (field of infoFields; track field.key) { <div class="desc-row"><span class="desc-key">{{ field.key }}</span><span class="desc-val">{{ field.value }}</span></div> }
+          </div>
+        }
+        @if (labelFields.length) {
+          <div class="desc-section"><div class="desc-section-title">Labels and annotations</div><div class="desc-labels">@for (label of labelFields; track label) { <span class="desc-label">{{ label }}</span> }</div></div>
+        }
+        @if (filteredDetailFields.length) {
+          <div class="desc-section"><div class="desc-section-title">Details</div>
+            @for (field of filteredDetailFields; track field.key) { <div class="desc-row"><span class="desc-key">{{ field.key }}</span><pre class="desc-pre">{{ field.value }}</pre></div> }
+          </div>
+        }
+        @if (!infoFields.length && !labelFields.length && !filteredDetailFields.length) { <div class="detail-empty">No details match this search.</div> }
       }
-    }
 
-    <!-- Raw View -->
-    @if (describeView === 'raw') {
-      <pre class="desc-raw">{{ filteredDescribeRaw }}</pre>
-    }
-
-    <!-- YAML View -->
-    @if (describeView === 'yaml') {
-      <pre class="desc-raw">{{ describeData.yaml || describeData.raw || 'YAML not available' }}</pre>
-    }
-  </app-holo-card>
-}
-
-@if (filteredList.length === 0 && !describeData && !loading && selectedType) {
-  <div class="empty-state"><div class="empty-icon"><i class="pi pi-database"></i></div><span>No {{ selectedType }} found</span></div>
-}
+      @if (describeView === 'raw') { <pre class="desc-raw" role="tabpanel">{{ filteredDescribeRaw || 'No matching describe output.' }}</pre> }
+      @if (describeView === 'yaml') { <pre class="desc-raw" role="tabpanel">{{ describeData.yaml || 'YAML is unavailable for this resource.' }}</pre> }
+    </app-holo-card>
+  }
+</section>

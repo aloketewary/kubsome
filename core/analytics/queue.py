@@ -17,6 +17,13 @@ from pathlib import Path
 
 QUEUE_DIR = Path.home() / ".kubsome" / "analytics" / "queue"
 _drain_running = False
+_drain_thread = None
+_drain_stop_event = threading.Event()
+_drain_lock = threading.Lock()
+_DEFAULT_BATCH_SIZE = 100
+_DEFAULT_MAX_ROWS = 2000
+_DEFAULT_MAX_BYTES = 8 * 1024 * 1024
+_CLAIM_STALE_SECONDS = 15 * 60
 
 
 def uuid7():
@@ -79,40 +86,130 @@ def enqueue(event_type, data):
     return event_id
 
 
-def drain(batch_size=100):
+def _drain_limits(batch_size, max_rows, max_bytes):
+    """Resolve optional non-destructive queue pressure limits."""
+    try:
+        from core.config import load_config
+        cfg = load_config().get("analytics", {})
+    except Exception:
+        cfg = {}
+
+    return (
+        max(1, int(batch_size if batch_size is not None else cfg.get(
+            "queue_batch_events", _DEFAULT_BATCH_SIZE
+        ))),
+        max(1, int(max_rows if max_rows is not None else cfg.get(
+            "queue_max_rows", _DEFAULT_MAX_ROWS
+        ))),
+        max(1024, int(max_bytes if max_bytes is not None else cfg.get(
+            "queue_max_bytes", _DEFAULT_MAX_BYTES
+        ))),
+    )
+
+
+def _restore_stale_claims():
+    """Make files from an interrupted drain available for retry."""
+    now = time.time()
+    for claim in QUEUE_DIR.glob(".*.processing"):
+        try:
+            if now - claim.stat().st_mtime < _CLAIM_STALE_SECONDS:
+                continue
+            parts = claim.name.split(".")
+            if len(parts) < 4:
+                continue
+            original = claim.with_name(".".join(parts[1:-2]))
+            claim.rename(original)
+        except OSError:
+            pass
+
+
+def drain(batch_size=None, max_rows=None, max_bytes=None):
     """
     Process queued events into DuckDB. Called by the writer process.
+
+    Files are atomically claimed, then removed only after the complete batch
+    commits. Row and byte limits keep one drain call from creating an
+    unbounded native write. A failed transaction restores claimed files.
     Returns number of events processed.
     """
     if not QUEUE_DIR.exists():
         return 0
 
-    # List files sorted by name (UUID7 = time-ordered)
-    files = sorted(QUEUE_DIR.glob("*.json"))[:batch_size]
-    if not files:
+    batch_size, max_rows, max_bytes = _drain_limits(
+        batch_size, max_rows, max_bytes
+    )
+    # Prevent overlapping drain calls from claiming the same work.
+    if not _drain_lock.acquire(blocking=False):
         return 0
 
-    events = []
-    for f in files:
-        try:
-            event = json.loads(f.read_text())
+    claimed = []
+    try:
+        _restore_stale_claims()
+        files = sorted(QUEUE_DIR.glob("*.json"))
+        events = []
+        row_count = 0
+        byte_count = 0
+
+        for f in files:
+            if len(claimed) >= batch_size:
+                break
+            try:
+                file_bytes = f.stat().st_size
+                event = json.loads(f.read_text())
+            except json.JSONDecodeError:
+                # A completed but malformed event cannot be replayed.
+                f.unlink(missing_ok=True)
+                continue
+            except OSError:
+                continue
+
+            data = event.get("data", {}) or {}
+            event_rows = data.get("rows", [])
+            event_row_count = (
+                len(event_rows) if isinstance(event_rows, list) else 0
+            )
+            over_rows = row_count + event_row_count > max_rows
+            over_bytes = byte_count + file_bytes > max_bytes
+            # Always allow one oversized event, otherwise it would never
+            # make progress; subsequent events wait for the next drain.
+            if claimed and (over_rows or over_bytes):
+                break
+
+            claim = f.with_name(f".{f.name}.{threading.get_ident()}.processing")
+            try:
+                f.rename(claim)
+            except OSError:
+                continue
+            claimed.append((claim, f))
             events.append(event)
-        except (json.JSONDecodeError, OSError):
-            pass
-        # Remove after read (even if parse failed — don't retry bad files)
-        f.unlink(missing_ok=True)
+            row_count += event_row_count
+            byte_count += file_bytes
 
-    if not events:
-        return 0
+        if not events:
+            return 0
 
-    # Group by type and batch-insert
-    _process_events(events)
-    return len(events)
+        try:
+            # _process_events uses one transaction, so a failed table write
+            # cannot leave a partial batch to be duplicated on retry.
+            _process_events(events)
+        except Exception:
+            for claim, original in claimed:
+                try:
+                    claim.rename(original)
+                except OSError:
+                    pass
+            raise
+
+        for claim, _ in claimed:
+            claim.unlink(missing_ok=True)
+        return len(events)
+    finally:
+        _drain_lock.release()
 
 
 def _process_events(events):
-    """Route events to appropriate DuckDB tables."""
-    from core.analytics.engine import execute_many, execute_write
+    """Route events to appropriate DuckDB tables in one transaction."""
+    from core.analytics.engine import execute_many, write_transaction
 
     pod_rows = []
     node_rows = []
@@ -135,45 +232,60 @@ def _process_events(events):
                 data.get("duration_ms", 0),
             ))
 
-    if pod_rows:
-        execute_many(
-            "INSERT INTO raw_pod_metrics VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-            pod_rows
-        )
-    if node_rows:
-        execute_many(
-            "INSERT INTO raw_node_metrics VALUES (?,?,?,?,?,?,?,?)",
-            node_rows
-        )
-    if log_rows:
-        execute_many(
-            "INSERT INTO collection_log VALUES (?,?,?,?,?)",
-            log_rows
-        )
+    # Unknown/empty events are safe to acknowledge without opening a DB
+    # transaction. Valid data events use one transaction across all tables.
+    if not pod_rows and not node_rows and not log_rows:
+        return
+
+    with write_transaction():
+        if pod_rows:
+            execute_many(
+                "INSERT INTO raw_pod_metrics VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                pod_rows
+            )
+        if node_rows:
+            execute_many(
+                "INSERT INTO raw_node_metrics VALUES (?,?,?,?,?,?,?,?)",
+                node_rows
+            )
+        if log_rows:
+            execute_many(
+                "INSERT INTO collection_log VALUES (?,?,?,?,?)",
+                log_rows
+            )
 
 
 def start_drain_loop(interval=5):
     """Start background thread that drains the queue periodically."""
-    global _drain_running
+    global _drain_running, _drain_thread
     if _drain_running:
         return
     _drain_running = True
+    _drain_stop_event.clear()
 
     def _loop():
-        while _drain_running:
+        while _drain_running and not _drain_stop_event.is_set():
             try:
                 drain()
             except Exception:
                 pass
-            time.sleep(interval)
+            if _drain_stop_event.wait(interval):
+                break
 
-    threading.Thread(target=_loop, daemon=True).start()
+    _drain_thread = threading.Thread(target=_loop, daemon=True)
+    _drain_thread.start()
 
 
 def stop_drain_loop():
-    """Stop the drain loop."""
-    global _drain_running
+    """Stop the drain loop and wait for its thread to exit."""
+    global _drain_running, _drain_thread
     _drain_running = False
+    _drain_stop_event.set()
+    thread = _drain_thread
+    if thread and thread is not threading.current_thread():
+        thread.join(timeout=5)
+    _drain_thread = None
+    return not thread or not thread.is_alive()
 
 
 def queue_stats():

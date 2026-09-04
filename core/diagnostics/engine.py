@@ -528,6 +528,7 @@ def _observe_events(events, report):
                 "type": ev["type"],
                 "count": ev.get("count", 1),
             },
+            timestamp=ev.get("last_seen") or None,
         )
 
         ft = event_type_map.get(

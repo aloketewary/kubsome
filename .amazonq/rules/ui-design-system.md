@@ -224,3 +224,73 @@ Any `.scss` or inline `styles` using:
 - `border-radius: 10-16px` on containers → replace with `0`
 - `background: rgba(13,17,28,...)` or `linear-gradient(...)` on cards → replace with `transparent`
 - Missing `:host-context([data-theme="light"])` block
+
+
+## Current Command-Center Layout Contract
+
+The rules below are the current implementation contract for dense Kubernetes operations screens. They refine older visual guidance where operational readability requires bordered surfaces, restrained fills, or small radii. Reuse the structure and rhythm, not feature-specific class names or markup.
+
+### Shell and Width
+
+- Feature hosts use `display: block; width: 100%; max-width: 100%; margin: 0`.
+- Let the application shell own outer gutters and sidebar offsets.
+- Do not use `100vw`, negative viewport math, or sidebar-specific width calculations inside feature stylesheets.
+- Keep page content `min-width: 0` so long resource names do not force horizontal overflow.
+
+### Spacing Rhythm
+
+Use an 8px-based rhythm with named page-local variables where a screen has multiple sections:
+
+```scss
+.page-root {
+  --page-section-gap: 28px;
+  --page-control-gap: 20px;
+}
+```
+
+- Use 20px between adjacent controls or summary surfaces.
+- Use 28px between major content sections or numbered operational surfaces.
+- Use 12px below section headings before their data surface.
+- Use 16px vertical padding for primary data rows when detail visibility matters.
+- Use 10px to 14px for compact controls and toolbar padding.
+- Avoid stacking unrelated margins on both parent and child. Prefer one parent-owned section gap.
+
+### Operational Surface Pattern
+
+- Keep major operational sections in a clear vertical flow unless the information architecture explicitly requires parallel comparison.
+- Full-width data surfaces are preferred for names, status, metadata, and actions that must remain readable together.
+- Use bordered or lightly tinted containers when they communicate grouping, selection, loading, or error state. Do not apply a card treatment to every nested element.
+- Use one consistent radius scale per feature. `var(--radius)` is for primary surfaces and `var(--radius-sm)` is for compact controls and row groups.
+- Use semantic state hooks such as `[data-status]`, selected classes, and warning or alert classes. State color must communicate real resource state, not decoration.
+
+### Metrics and Filters
+
+- Metrics strips sit 20px away from adjacent control surfaces.
+- Metric tiles may use feature-specific responsive columns. Do not force a fixed tile count across features.
+- Command bars should have a clear 20px separation from metrics and a 28px separation from the main resource list when no wrapper surface exists.
+- Selection toolbars use their own grouped surface and sit 28px away from the resource list. Preserve keyboard focus, `aria-pressed`, and action grouping.
+
+### Responsive Contract
+
+Responsive breakpoints are page-specific because resource rows have different column contracts. Every multi-column layout must declare its collapse behavior.
+
+- `1080px`: collapse wide hero or summary compositions and reduce metric columns where needed.
+- `860px`: collapse resource table headings and move secondary metadata or actions below the primary identity when the row requires it.
+- `768px`: simplify secondary controls and allow grouped headers to wrap.
+- `640px`: use two-column metrics, stack selection toolbars, tighten row padding, and remove nonessential context.
+- `520px`: move trailing progress or action content below the resource identity when necessary.
+
+Do not add a breakpoint only to match another page. Preserve each feature's existing interaction and grid contract.
+
+### Motion and Accessibility
+
+- Keep hover and state transitions short and limited to background, border, color, transform, or opacity.
+- Every animated state must have a `prefers-reduced-motion: reduce` override that disables transitions and nonessential animation.
+- Preserve existing button hit areas, focus-visible outlines, live regions, dialog placement, and event propagation boundaries during visual updates.
+- Loading, empty, error, retry, and pagination states are part of the layout contract and need spacing consistent with the successful state.
+
+### Adoption Rules
+
+- Start with feature-local CSS. Do not extract shared selectors or mixins until at least three features share the same DOM contract.
+- Preserve feature behavior, template bindings, status values, event handlers, and API lifecycle code during spacing work.
+- Jobs-specific telemetry, progress rails, and CronJob cards are optional treatments. Pods should keep its deployment grouping, status beacon, selection controls, and action grid.

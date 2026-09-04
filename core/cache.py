@@ -14,6 +14,8 @@ import hashlib
 import threading
 from functools import wraps
 
+from core.context import context, context_scope
+
 
 _cache = {}
 _write_lock = threading.Lock()
@@ -26,8 +28,9 @@ STALE_GRACE = 30
 
 
 def _make_key(func, args, kwargs):
-    """Fast cache key using hash for large args."""
-    base = f"{func.__qualname__}"
+    """Build a cache key that always includes Kubernetes request scope."""
+    scope = f"context={context.current_context!r};namespace={context.namespace!r}"
+    base = f"{func.__qualname__}|{scope}"
     if not args and not kwargs:
         return base
     raw = f"{args}:{sorted(kwargs.items()) if kwargs else ''}"
@@ -50,19 +53,16 @@ def cached(ttl=5, adaptive=True):
             key = _make_key(func, args, kwargs)
             now = time.time()
 
-            # Lock-free read
             entry = _cache.get(key)
             if entry:
                 if now < entry["expires"]:
                     return entry["value"]
-                # Stale but within grace — return stale, refresh bg
                 if now < entry["expires"] + STALE_GRACE:
                     _trigger_bg_refresh(
                         key, func, args, kwargs, ttl, adaptive
                     )
                     return entry["value"]
 
-            # Cache miss — fetch synchronously
             result = func(*args, **kwargs)
             _store(key, result, ttl, adaptive)
             return result
@@ -74,15 +74,19 @@ def cached(ttl=5, adaptive=True):
 
 
 def _trigger_bg_refresh(key, func, args, kwargs, ttl, adaptive):
-    """Spawn background thread to refresh a single cache entry."""
+    """Refresh one cache entry while preserving its Kubernetes scope."""
     with _refresh_lock:
         if key in _refreshing:
             return
         _refreshing.add(key)
 
+    scoped_context = context.current_context
+    scoped_namespace = context.namespace
+
     def _do():
         try:
-            result = func(*args, **kwargs)
+            with context_scope(scoped_context, scoped_namespace):
+                result = func(*args, **kwargs)
             _store(key, result, ttl, adaptive)
         finally:
             with _refresh_lock:
@@ -122,7 +126,6 @@ def _data_changed(old, new):
             return True
         if not old:
             return False
-        # Check first, last, and a middle sample
         if old[0] != new[0] or old[-1] != new[-1]:
             return True
         if len(old) > 4:
@@ -132,7 +135,6 @@ def _data_changed(old, new):
     if isinstance(old, dict):
         if len(old) != len(new):
             return True
-        # Check item count for nested "items" lists
         old_items = old.get("items")
         new_items = new.get("items")
         if isinstance(old_items, list) and isinstance(new_items, list):
@@ -148,8 +150,8 @@ def invalidate(prefix=""):
             _cache.clear()
             return
         keys = [k for k in _cache if prefix in k]
-        for k in keys:
-            del _cache[k]
+        for key in keys:
+            del _cache[key]
 
 
 def invalidate_pods():
@@ -171,7 +173,7 @@ def cache_stats():
     now = time.time()
     entries = []
     for key, entry in _cache.items():
-        name = key.split(":")[0] if ":" in key else key
+        name = key.split("|")[0]
         entries.append({
             "key": name,
             "ttl": round(entry["current_ttl"], 1),
@@ -180,30 +182,21 @@ def cache_stats():
         })
     return {
         "total_entries": len(entries),
-        "valid_entries": sum(1 for e in entries if e["valid"]),
+        "valid_entries": sum(1 for entry in entries if entry["valid"]),
         "entries": entries[:10],
     }
 
 
 def prewarm(silent=False):
-    """
-    Tiered cache prewarm:
-      1. Fetch raw resources in parallel (shared base layer)
-      2. Derived collectors read from warm cache (instant)
-
-    Total startup time ≈ slowest single kubectl call (~1-2s)
-    instead of sum of all calls.
-    """
+    """Warm raw Kubernetes resources, then derived collector caches."""
     from concurrent.futures import ThreadPoolExecutor, as_completed
     import time as _time
 
-    from core.context import context
+    from core.context import context, context_scope
     from core.k8s import get_raw_resources, get_pod_names
 
     ctx = context.current_context
     ns = context.namespace
-
-    # Tier 1: Raw resources (these are the actual kubectl calls)
     raw_tasks = [
         ("pods", lambda: get_raw_resources("pods", ctx, ns)),
         ("nodes", lambda: get_raw_resources("nodes", ctx)),
@@ -215,29 +208,27 @@ def prewarm(silent=False):
     if silent:
         def _warm():
             try:
-                with ThreadPoolExecutor(max_workers=5) as ex:
-                    futs = [ex.submit(fn) for _, fn in raw_tasks]
-                    for f in futs:
+                with ThreadPoolExecutor(max_workers=5) as executor:
+                    futures = [executor.submit(fn) for _, fn in raw_tasks]
+                    for future in futures:
                         try:
-                            f.result(timeout=10)
+                            future.result(timeout=10)
                         except Exception:
                             pass
-                # Tier 2: derived (reads from cache, instant)
                 _warm_derived()
             except Exception:
                 pass
+
         threading.Thread(target=_warm, daemon=True).start()
         return
 
-    # Interactive mode — fast progress display
     from rich.console import Console
+
     console = Console()
     start = _time.time()
-
     results = {}
-
-    with ThreadPoolExecutor(max_workers=5) as ex:
-        futures = {ex.submit(fn): name for name, fn in raw_tasks}
+    with ThreadPoolExecutor(max_workers=5) as executor:
+        futures = {executor.submit(fn): name for name, fn in raw_tasks}
         for future in as_completed(futures):
             name = futures[future]
             try:
@@ -246,20 +237,17 @@ def prewarm(silent=False):
             except Exception:
                 results[name] = False
 
-    # Tier 2: derived collectors (read from warm cache — instant)
     _warm_derived()
-
     elapsed = _time.time() - start
-    ok = sum(1 for v in results.values() if v)
+    ok = sum(1 for value in results.values() if value)
     total = len(results)
-
     if ok == total:
         console.print(
             f"[dim]✓ Cache warm:[/dim] {ok} resources "
             f"[dim]({elapsed:.1f}s)[/dim]"
         )
     else:
-        failed = [k for k, v in results.items() if not v]
+        failed = [name for name, value in results.items() if not value]
         console.print(
             f"[dim]✓ Cache:[/dim] {ok}/{total} "
             f"[dim]({elapsed:.1f}s)[/dim] "
@@ -281,13 +269,9 @@ def _warm_derived():
 
 
 def get_cached(func_name):
-    """
-    Return cached value by function name if available.
-    Does NOT trigger a fetch. Returns None if not cached.
-    """
+    """Return a cached value without triggering a fetch."""
     now = time.time()
     for key, entry in _cache.items():
-        if func_name in key:
-            if now < entry["expires"] + STALE_GRACE:
-                return entry["value"]
+        if func_name in key and now < entry["expires"] + STALE_GRACE:
+            return entry["value"]
     return None

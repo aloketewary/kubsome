@@ -1,24 +1,23 @@
 #!/bin/bash
-# Kubsome — Production build & serve on single port
+# Kubsome production build and serve on one port.
 
-set -e
+set -euo pipefail
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
 
-echo "◆ Kubsome Production Build"
-echo "───────────────────────────"
+printf 'Kubsome production build\n'
+printf '%s\n' '───────────────────────────'
 
-# Build UI
-echo "→ Building Angular UI..."
+printf 'Building Angular UI...\n'
 cd "$DIR/ui"
-npx ng build --configuration production 2>&1 | tail -3
+npm run build -- --configuration production
 
-# Start server
-echo "→ Starting server on :8000..."
+printf 'Replacing bundled UI resources...\n'
 cd "$DIR"
-source venv/bin/activate
-echo ""
-echo "  Open: http://localhost:8000"
-echo "  API:  http://localhost:8000/docs"
-echo ""
+bash "$DIR/scripts/sync-ui-dist.sh"
+
+printf 'Starting server on :8000...\n'
+source "$DIR/venv/bin/activate"
+printf '\nOpen: http://localhost:8000\n'
+printf 'API:  http://localhost:8000/docs\n\n'
 uvicorn api.app:app --host 0.0.0.0 --port 8000

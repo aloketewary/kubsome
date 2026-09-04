@@ -8,7 +8,6 @@ import { Subscription } from 'rxjs';
 import { ApiService } from '../../core/services/api.service';
 import { WsService } from '../../core/services/ws.service';
 import { KubeEvent } from '../../core/models';
-import { HoloCardComponent } from '../../shared/components/futuristic/holo-card.component';
 import { StatusBeaconComponent } from '../../shared/components/futuristic/status-beacon.component';
 import { MetricTileComponent } from '../../shared/components/futuristic/metric-tile.component';
 import { CommandBarComponent } from '../../shared/components/futuristic/command-bar.component';
@@ -37,7 +36,7 @@ interface Spike {
   standalone: true,
   imports: [IntelHeaderComponent,
     FormsModule, TagModule, ButtonModule, TooltipModule,
-    HoloCardComponent, StatusBeaconComponent, MetricTileComponent,
+    StatusBeaconComponent, MetricTileComponent,
     CommandBarComponent, LiveIndicatorComponent,
   ],
   templateUrl: './events.html',
@@ -107,6 +106,14 @@ export class EventsComponent implements OnInit, OnDestroy {
       { label: 'All', value: 'all', count: this.events.length },
       { label: 'Normal', value: 'normal', count: this.normalCount, color: 'green' },
     ];
+  }
+
+  get hasActiveFilters(): boolean {
+    return this.filter !== 'warning' || !!this.searchQuery || !!this.reasonFilter;
+  }
+
+  setViewMode(mode: 'grouped' | 'flat') {
+    this.viewMode = mode;
   }
 
   onFilterChange(value: string) {

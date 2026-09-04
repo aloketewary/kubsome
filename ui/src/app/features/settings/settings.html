@@ -1,70 +1,134 @@
-<!-- ─── Header ─────────────────────────────────────────────────────── -->
-<app-intel-header title="Settings" icon="pi pi-cog"
-  [subtitle]="'v' + appVersion">
-</app-intel-header>
+<section class="settings-page" aria-label="Settings workspace">
+  <app-intel-header title="Settings" icon="pi pi-cog"
+    [subtitle]="'v' + appVersion">
+  </app-intel-header>
 
-<!-- ─── Cluster Info ───────────────────────────────────────────────── -->
-<app-holo-card title="Cluster" icon="pi pi-server" [glow]="clusterInfo.connected ? 'green' : 'red'" [compact]="true">
-  <div class="info-grid">
-    <div class="info-row"><span class="info-key">Context</span><code class="info-val">{{ clusterInfo.context || '—' }}</code></div>
-    <div class="info-row"><span class="info-key">Namespace</span><code class="info-val">{{ clusterInfo.namespace || '—' }}</code></div>
-    <div class="info-row"><span class="info-key">Server</span><code class="info-val">{{ clusterInfo.server || '—' }}</code></div>
-    <div class="info-row">
-      <span class="info-key">Status</span>
-      <app-status-beacon [status]="clusterInfo.connected ? 'ok' : 'critical'" size="sm" />
-    </div>
-  </div>
-</app-holo-card>
-
-<!-- ─── Theme ──────────────────────────────────────────────────────── -->
-<app-holo-card title="Appearance" icon="pi pi-palette" [compact]="true">
-  <div class="theme-row">
-    @for (t of themes; track t.id) {
-      <button class="theme-btn" [class.theme-active]="prefs.get('theme') === t.id" (click)="setTheme(t.id)">{{ t.label }}</button>
-    }
-  </div>
-</app-holo-card>
-
-<!-- ─── Notifications ──────────────────────────────────────────────── -->
-<app-holo-card title="Notifications" icon="pi pi-bell" [compact]="true">
-  <div class="toggle-row">
-    <span>Desktop notifications</span>
-    <button class="toggle-btn" [class.toggle-on]="prefs.get('notifications')" (click)="toggleNotifications()">{{ prefs.get('notifications') ? 'On' : 'Off' }}</button>
-  </div>
-</app-holo-card>
-
-<!-- ─── Webhooks ───────────────────────────────────────────────────── -->
-<app-holo-card title="Webhooks" icon="pi pi-send" [compact]="true">
-  @for (wh of webhooks; track $index; let i = $index) {
-    <div class="wh-row">
-      <select [(ngModel)]="wh.type"><option value="slack">Slack</option><option value="teams">Teams</option><option value="generic">Generic</option></select>
-      <input [(ngModel)]="wh.url" placeholder="Webhook URL" />
-      <app-action-icon icon="pi pi-trash" tooltip="Remove" accent="red" (clicked)="removeWebhook(i)" />
-    </div>
-  }
-  <div class="wh-actions">
-    <button class="ctrl-btn ctrl-btn-wide" (click)="addWebhook()"><i class="pi pi-plus"></i> Add</button>
-    <button class="ctrl-btn ctrl-btn-wide" (click)="saveWebhooks()" [class.disabled]="webhookSaving">Save</button>
-    <button class="ctrl-btn ctrl-btn-wide" (click)="testWebhook()">Test</button>
-    @if (webhookMsg) { <span class="wh-msg">{{ webhookMsg }}</span> }
-  </div>
-</app-holo-card>
-
-<!-- ─── Shortcuts ──────────────────────────────────────────────────── -->
-<app-holo-card title="Keyboard Shortcuts" icon="pi pi-key" [compact]="true">
-  @for (group of shortcutGroups; track group.label) {
-    <div class="shortcut-group">
-      <span class="sg-label">{{ group.label }}</span>
-      <div class="sg-items">
-        @for (s of group.items; track s.key) {
-          <div class="shortcut-row"><kbd>{{ s.key }}</kbd><span>{{ s.action }}</span></div>
-        }
+  <section class="settings-overview" aria-label="Settings overview">
+    <div class="settings-deck">
+      <span class="settings-kicker"><i class="pi pi-sliders-h" aria-hidden="true"></i> Workspace controls</span>
+      <h2>Keep your operating surface in tune.</h2>
+      <p>Manage cluster context, display preferences, notifications, and outbound alert destinations from one place.</p>
+      <div class="settings-meta">
+        <span><i class="pi pi-globe" aria-hidden="true"></i> {{ clusterInfo.context || 'Context unavailable' }}</span>
+        <span><i class="pi pi-box" aria-hidden="true"></i> {{ clusterInfo.namespace || 'Namespace unavailable' }}</span>
       </div>
     </div>
-  }
-</app-holo-card>
+    <div class="settings-readout" aria-label="Cluster connection status">
+      <div class="readout-head">
+        <div>
+          <span class="readout-kicker">Connection state</span>
+          <strong>{{ clusterInfo.connected ? 'Connected' : 'Disconnected' }}</strong>
+        </div>
+        <app-status-beacon [status]="clusterInfo.connected ? 'ok' : 'critical'" size="lg" [pulse]="clusterInfo.connected" />
+      </div>
+      <div class="readout-line"><span>Context</span><code>{{ clusterInfo.context || 'N/A' }}</code></div>
+      <div class="readout-line"><span>Server</span><code>{{ clusterInfo.server || 'N/A' }}</code></div>
+    </div>
+  </section>
 
-<!-- ─── Danger Zone ────────────────────────────────────────────────── -->
-<app-holo-card title="Danger Zone" icon="pi pi-exclamation-triangle" glow="red" [compact]="true">
-  <button class="ctrl-btn ctrl-btn-wide danger-btn" (click)="resetAll()"><i class="pi pi-trash"></i> Reset All Settings</button>
-</app-holo-card>
+  <div class="settings-layout">
+    <main class="settings-main">
+      <app-holo-card title="Cluster connection" icon="pi pi-server" [glow]="clusterInfo.connected ? 'green' : 'red'" [compact]="true">
+        <div class="cluster-card-head">
+          <div>
+            <span class="card-kicker">Active target</span>
+            <strong>{{ clusterInfo.context || 'No context selected' }}</strong>
+          </div>
+          <span class="connection-state" [class.connection-state-offline]="!clusterInfo.connected">
+            {{ clusterInfo.connected ? 'Online' : 'Offline' }}
+          </span>
+        </div>
+        <div class="info-grid">
+          <div class="info-row"><span class="info-key">Context</span><code class="info-val">{{ clusterInfo.context || 'N/A' }}</code></div>
+          <div class="info-row"><span class="info-key">Namespace</span><code class="info-val">{{ clusterInfo.namespace || 'N/A' }}</code></div>
+          <div class="info-row"><span class="info-key">Server</span><code class="info-val">{{ clusterInfo.server || 'N/A' }}</code></div>
+        </div>
+      </app-holo-card>
+
+      <div class="settings-preferences">
+        <app-holo-card title="Appearance" icon="pi pi-palette" [compact]="true">
+          <p class="card-note">Choose the visual mode used across your workspace.</p>
+          <div class="theme-row" role="group" aria-label="Theme selection">
+            @for (t of themes; track t.id) {
+              <button class="theme-btn" type="button" [class.theme-active]="prefs.get('theme') === t.id"
+                [attr.aria-pressed]="prefs.get('theme') === t.id" (click)="setTheme(t.id)">
+                <i [class]="t.id === 'dark' ? 'pi pi-moon' : 'pi pi-sun'" aria-hidden="true"></i>{{ t.label }}
+              </button>
+            }
+          </div>
+        </app-holo-card>
+
+        <app-holo-card title="Notifications" icon="pi pi-bell" [compact]="true">
+          <p class="card-note">Allow Kubsome to surface desktop alert signals.</p>
+          <div class="toggle-row">
+            <div>
+              <span class="toggle-label">Desktop notifications</span>
+              <span class="toggle-state">{{ prefs.get('notifications') ? 'Permission enabled' : 'Permission disabled' }}</span>
+            </div>
+            <button class="toggle-btn" type="button" [class.toggle-on]="prefs.get('notifications')"
+              [attr.aria-pressed]="prefs.get('notifications')" (click)="toggleNotifications()">
+              {{ prefs.get('notifications') ? 'On' : 'Off' }}
+            </button>
+          </div>
+        </app-holo-card>
+      </div>
+
+      <app-holo-card title="Webhook destinations" icon="pi pi-send" [badge]="'' + webhooks.length" [compact]="true">
+        <div class="card-section-head">
+          <p class="card-note">Send operational alerts to your configured channels.</p>
+          @if (webhooks.length) { <span class="section-state">{{ webhooks.length }} configured</span> }
+        </div>
+        @if (!webhooks.length) {
+          <div class="webhook-empty" role="status">
+            <i class="pi pi-send" aria-hidden="true"></i>
+            <div><strong>No destinations configured</strong><span>Add a webhook to route alerts outside Kubsome.</span></div>
+          </div>
+        }
+        @for (wh of webhooks; track $index; let i = $index) {
+          <div class="wh-row">
+            <label class="field-control field-type">
+              <span>Type</span>
+              <select [(ngModel)]="wh.type" [attr.aria-label]="'Webhook ' + (i + 1) + ' type'">
+                <option value="slack">Slack</option>
+                <option value="teams">Teams</option>
+                <option value="generic">Generic</option>
+              </select>
+            </label>
+            <label class="field-control field-url">
+              <span>Destination URL</span>
+              <input [(ngModel)]="wh.url" aria-label="Webhook destination URL" placeholder="https://hooks.example.com/..." />
+            </label>
+            <app-action-icon icon="pi pi-trash" tooltip="Remove webhook" accent="red" (clicked)="removeWebhook(i)" />
+          </div>
+        }
+        <div class="wh-actions">
+          <button class="ctrl-btn ctrl-btn-wide" type="button" (click)="addWebhook()"><i class="pi pi-plus" aria-hidden="true"></i> Add</button>
+          <button class="ctrl-btn ctrl-btn-wide" type="button" (click)="saveWebhooks()" [class.disabled]="webhookSaving" [attr.aria-disabled]="webhookSaving">Save</button>
+          <button class="ctrl-btn ctrl-btn-wide" type="button" (click)="testWebhook()">Test</button>
+          @if (webhookMsg) { <span class="wh-msg" role="status">{{ webhookMsg }}</span> }
+        </div>
+      </app-holo-card>
+    </main>
+
+    <aside class="settings-side" aria-label="Settings reference">
+      <app-holo-card title="Keyboard shortcuts" icon="pi pi-key" [compact]="true">
+        <p class="card-note">Quick routes for moving through the workspace.</p>
+        @for (group of shortcutGroups; track group.label) {
+          <div class="shortcut-group">
+            <span class="sg-label">{{ group.label }}</span>
+            <div class="sg-items">
+              @for (s of group.items; track s.key) {
+                <div class="shortcut-row"><kbd>{{ s.key }}</kbd><span>{{ s.action }}</span></div>
+              }
+            </div>
+          </div>
+        }
+      </app-holo-card>
+
+      <app-holo-card title="Danger zone" icon="pi pi-exclamation-triangle" glow="red" [compact]="true">
+        <p class="card-note">Clear locally stored preferences and reload the workspace.</p>
+        <button class="ctrl-btn ctrl-btn-wide danger-btn" type="button" (click)="resetAll()"><i class="pi pi-trash" aria-hidden="true"></i> Reset all settings</button>
+      </app-holo-card>
+    </aside>
+  </div>
+</section>

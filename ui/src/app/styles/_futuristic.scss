@@ -44,43 +44,100 @@
 
 /* ─── Control Buttons ────────────────────────────────────────────── */
 .ctrl-btn {
-  width: 28px;
-  height: 28px;
-  border-radius: 0;
-  border: 1px solid rgba(94, 84, 75, 0.15);
-  background: transparent;
-  color: rgba(168, 158, 148, 0.5);
-  cursor: pointer;
-  display: flex;
+  display: inline-flex;
+  width: 30px;
+  height: 30px;
   align-items: center;
   justify-content: center;
-  transition: all 0.12s;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-elevated);
+  color: var(--text-muted);
+  cursor: pointer;
   font-size: 11px;
+  transition: border-color 120ms ease, background 120ms ease, color 120ms ease, transform 120ms ease;
 }
 
 .ctrl-btn:hover {
-  border-color: rgba(208, 156, 96, 0.25);
-  color: #d09c60;
-  background: transparent;
-  box-shadow: none;
+  border-color: var(--accent);
+  background: var(--surface-hover);
+  color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.ctrl-btn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.ctrl-btn:disabled,
+.ctrl-btn.disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+  transform: none;
+}
+
+.ctrl-btn:disabled:hover,
+.ctrl-btn.disabled:hover {
+  border-color: var(--border);
+  background: var(--surface-elevated);
+  color: var(--text-muted);
+  transform: none;
 }
 
 .ctrl-btn-active {
-  border-color: rgba(74, 222, 128, 0.2);
-  color: #4ade80;
+  border-color: rgba(var(--success-rgb), 0.45);
+  background: var(--success-subtle);
+  color: var(--success);
+}
+
+.ctrl-btn.ctrl-btn-select {
+  border-color: rgba(var(--success-rgb), 0.34);
+  background: var(--success-subtle);
+  color: var(--success);
+}
+
+.ctrl-btn.ctrl-btn-select:hover {
+  border-color: var(--success);
+  background: var(--success-subtle);
+  color: var(--success);
+}
+
+.ctrl-btn.ctrl-btn-investigate {
+  border-color: rgba(var(--info-rgb), 0.34);
+  background: var(--info-subtle);
+  color: var(--info);
+}
+
+.ctrl-btn.ctrl-btn-investigate:hover {
+  border-color: var(--info);
+  background: var(--info-subtle);
+  color: var(--info);
+}
+
+.ctrl-btn-label {
+  width: auto;
+  min-width: 94px;
+  min-height: 30px;
+  padding: 5px 9px;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 650;
+  white-space: nowrap;
 }
 
 .ctrl-btn-sm {
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   font-size: 10px;
 }
 
 .ctrl-btn-wide {
   width: auto;
+  min-height: 30px;
   padding: 5px 12px;
   font-size: 10px;
-  font-weight: 600;
+  font-weight: 650;
   gap: 4px;
   letter-spacing: 0.02em;
 }
@@ -161,18 +218,18 @@
   .title-icon { color: #9a5129; text-shadow: none; }
 
   .ctrl-btn {
-    border-color: rgba(0, 0, 0, 0.06);
-    background: transparent;
-    color: rgba(0, 0, 0, 0.35);
+    border-color: var(--border);
+    background: var(--surface-elevated);
+    color: var(--text-muted);
   }
   .ctrl-btn:hover {
-    border-color: rgba(154, 81, 41, 0.2);
-    color: #9a5129;
-    background: transparent;
-    box-shadow: none;
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--surface-hover);
   }
   .ctrl-btn-active {
-    border-color: rgba(22, 163, 74, 0.2);
+    border-color: rgba(22, 163, 74, 0.3);
+    background: rgba(22, 163, 74, 0.06);
     color: #16a34a;
   }
 

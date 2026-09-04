@@ -1,20 +1,58 @@
-<!-- ─── Header ─────────────────────────────────────────────────────── -->
-<app-intel-header title="Health Signals" icon="pi pi-wave-pulse" [subtitle]="totalIssues + ' active signals · ' + (lastUpdated || 'loading...')">
-  <app-live-indicator [active]="autoRefresh" label="LIVE" offLabel="PAUSED" (click)="toggleAutoRefresh()" />
-  <button class="ctrl-btn" (click)="refresh()" pTooltip="Refresh">
-    <i class="pi pi-refresh" [class.spinning]="loading"></i>
-  </button>
-</app-intel-header>
+<section class="health-signals-page" aria-label="Health Signals workspace">
+  <app-intel-header title="Health Signals" icon="pi pi-wave-pulse" [subtitle]="totalIssues + ' active signals · ' + (lastUpdated || 'loading...')">
+    <app-live-indicator [active]="autoRefresh" label="LIVE" offLabel="PAUSED" (click)="toggleAutoRefresh()" />
+    <button class="ctrl-btn" type="button" aria-label="Refresh health signals" (click)="refresh()" pTooltip="Refresh">
+      <i class="pi pi-refresh" aria-hidden="true" [class.spinning]="loading"></i>
+    </button>
+  </app-intel-header>
 
-<!-- ─── Metrics Strip ──────────────────────────────────────────────── -->
-@if (signals) {
-  <div class="metrics-strip">
-    <app-metric-tile label="OOMKills" [value]="'' + signals.oomkills_24h" [accent]="signals.oomkills_24h > 0 ? 'red' : 'green'" />
-    <app-metric-tile label="HPA Max" [value]="'' + signals.hpa_at_max" [accent]="signals.hpa_at_max > 0 ? 'amber' : 'green'" />
-    <app-metric-tile label="Quota" [value]="'' + signals.quota_pressure" [accent]="signals.quota_pressure > 0 ? 'amber' : 'green'" />
-    <app-metric-tile label="Stalled" [value]="'' + signals.stalled_rollouts" [accent]="signals.stalled_rollouts > 0 ? 'red' : 'green'" />
-  </div>
-}
+  @if (signals) {
+    <div class="health-deck" aria-label="Health signal overview">
+      <div class="deck-primary">
+        <span class="deck-kicker"><i class="pi pi-wave-pulse" aria-hidden="true"></i> Cluster health</span>
+        <h2>Signals in context</h2>
+        <p>Surface resource pressure, rollout risk, and runtime failures before they become incidents.</p>
+        <div class="deck-chips" aria-label="Health signal capabilities">
+          <span><i class="pi pi-exclamation-circle" aria-hidden="true"></i> Runtime failures</span>
+          <span><i class="pi pi-arrows-v" aria-hidden="true"></i> Scaling pressure</span>
+          <span><i class="pi pi-send" aria-hidden="true"></i> Rollout state</span>
+        </div>
+      </div>
+      <div class="telemetry-panel" aria-label="Current health posture">
+        <div class="telemetry-head">
+          <div>
+            <span class="telemetry-kicker">Current posture</span>
+            <strong>{{ overallStatus === 'critical' ? 'Immediate attention' : overallStatus === 'warning' ? 'Watch required' : 'Operating normally' }}</strong>
+          </div>
+          <span class="telemetry-total">{{ totalIssues }}</span>
+        </div>
+        <div class="telemetry-track" aria-hidden="true">
+          <span class="telemetry-segment segment-critical" [style.width.%]="totalIssues ? (signals.oomkills_24h + signals.stalled_rollouts) / totalIssues * 100 : 0"></span>
+          <span class="telemetry-segment segment-warning" [style.width.%]="totalIssues ? (signals.hpa_at_max + signals.quota_pressure) / totalIssues * 100 : 0"></span>
+          <span class="telemetry-segment segment-healthy" [style.width.%]="totalIssues ? 0 : 100"></span>
+        </div>
+        <div class="telemetry-legend">
+          <span><i class="legend-dot legend-critical" aria-hidden="true"></i> Critical <b>{{ signals.oomkills_24h + signals.stalled_rollouts }}</b></span>
+          <span><i class="legend-dot legend-warning" aria-hidden="true"></i> Warning <b>{{ signals.hpa_at_max + signals.quota_pressure }}</b></span>
+          <span><i class="legend-dot legend-healthy" aria-hidden="true"></i> Healthy <b>{{ totalIssues ? '0' : 'clear' }}</b></span>
+        </div>
+      </div>
+    </div>
+  } @else if (loading) {
+    <div class="loading-state" role="status" aria-live="polite">Loading health signals...</div>
+  }
+
+  <!-- ─── Metrics Strip ──────────────────────────────────────────────── -->
+  @if (signals) {
+    <div class="metrics-strip" aria-label="Health signal counts">
+      <app-metric-tile label="OOMKills" [value]="'' + signals.oomkills_24h" [accent]="signals.oomkills_24h > 0 ? 'red' : 'green'" />
+      <app-metric-tile label="HPA Max" [value]="'' + signals.hpa_at_max" [accent]="signals.hpa_at_max > 0 ? 'amber' : 'green'" />
+      <app-metric-tile label="Quota" [value]="'' + signals.quota_pressure" [accent]="signals.quota_pressure > 0 ? 'amber' : 'green'" />
+      <app-metric-tile label="Stalled" [value]="'' + signals.stalled_rollouts" [accent]="signals.stalled_rollouts > 0 ? 'red' : 'green'" />
+    </div>
+  }
+
+  <div class="signals-grid">
 
 <!-- ─── OOMKills ───────────────────────────────────────────────────── -->
 <app-holo-card title="OOMKills" icon="pi pi-exclamation-circle" [glow]="oomkills.length ? 'red' : 'green'">
@@ -121,4 +159,7 @@
   }
 </app-holo-card>
 
-<app-related-pages label="Related" [pages]="relatedPages" />
+  </div>
+
+  <app-related-pages label="Related" [pages]="relatedPages" />
+</section>

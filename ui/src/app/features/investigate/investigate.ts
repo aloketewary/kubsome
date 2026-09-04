@@ -1,11 +1,11 @@
 import { Component, inject, OnInit } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { DecimalPipe, KeyValuePipe, UpperCasePipe } from '@angular/common';
 import { TooltipModule } from 'primeng/tooltip';
 import { IntelHeaderComponent, HoloCardComponent, MetricTileComponent, StatusBeaconComponent } from '../../shared/components/futuristic';
-import { Subject, debounceTime, distinctUntilChanged, switchMap, of } from 'rxjs';
+import { ApiService } from '../../core/services/api.service';
+import { Subject, debounceTime, distinctUntilChanged, switchMap, of, catchError, finalize } from 'rxjs';
 
 @Component({
   selector: 'app-investigate',
@@ -15,29 +15,44 @@ import { Subject, debounceTime, distinctUntilChanged, switchMap, of } from 'rxjs
   styleUrl: './investigate.scss',
 })
 export class InvestigateComponent implements OnInit {
-  private http = inject(HttpClient);
+  private api = inject(ApiService);
   private route = inject(ActivatedRoute);
+  private router = inject(Router);
+  private searchSubject = new Subject<string>();
+  private investigationRequestId = 0;
 
   target = '';
   loading = false;
   loadError = '';
   report: any = null;
   benchmarkData: any = null;
+  benchmarkError = '';
+  benchmarkLoading = false;
   feedbackSummary: any = null;
+  feedbackState: 'idle' | 'submitting' | 'recorded' | 'error' = 'idle';
+  feedbackMessage = '';
   activeTab: 'findings' | 'timeline' | 'evidence' | 'plans' | 'trust' = 'findings';
   expandedSources: Set<string> = new Set();
   copyFeedback: string | null = null;
+  copyError = '';
 
-  // Dropdown suggestions
   suggestions: string[] = [];
   showSuggestions = false;
-  private searchSubject = new Subject<string>();
+  autocompleteLoading = false;
+  autocompleteError = '';
 
   get findings() { return this.report?.findings?.filter((f: any) => f.id !== 'healthy') || []; }
   get observations() { return this.report?.observations || []; }
   get recommendations() { return this.report?.recommendations || []; }
   get plans() { return this.report?.execution_plans || []; }
   get evidenceScores() { return this.report?.evidence_scores || {}; }
+  get isHealthyReport() { return !!this.report && this.findings.length === 0; }
+
+  get reportTarget(): string {
+    const target = this.report?.target;
+    if (typeof target === 'string') return target;
+    return target?.name || this.target;
+  }
 
   get criticalCount() { return this.findings.filter((f: any) => f.severity === 'critical').length; }
   get highCount() { return this.findings.filter((f: any) => f.severity === 'high').length; }
@@ -46,86 +61,95 @@ export class InvestigateComponent implements OnInit {
 
   get topFinding(): any | null {
     const order = ['critical', 'high', 'medium', 'low', 'info'];
-    for (const sev of order) {
-      const f = this.findings.find((x: any) => x.severity === sev);
-      if (f) return f;
+    for (const severity of order) {
+      const finding = this.findings.find((item: any) => item.severity === severity);
+      if (finding) return finding;
     }
     return null;
   }
 
   get overallConfidence(): number {
-    const scores = this.evidenceScores;
-    const strengthMap: Record<string, number> = { strong: 92, medium: 68, weak: 35 };
-    let max = 0;
-    for (const val of Object.values(scores)) {
-      max = Math.max(max, strengthMap[val as string] || 0);
-    }
-    return max;
+    if (!this.report) return 0;
+    if (this.topFinding) return this.confidenceForFinding(this.topFinding);
+    return 100;
   }
 
   get topRecommendation(): any | null {
     const top = this.topFinding;
     if (!top) return null;
-    return this.recommendations.find((r: any) => r.finding_id === top.id) || null;
+    return this.recommendations.find((item: any) => item.finding_id === top.id) || null;
   }
 
-  confidenceForFinding(f: any): number {
-    const score = this.evidenceScores[f.id];
+  confidenceForFinding(finding: any): number {
+    const score = this.evidenceScores[finding.id];
     const map: Record<string, number> = { strong: 92, medium: 68, weak: 35 };
     return map[score] || 0;
   }
 
   get timelineEntries(): any[] {
     return [...this.observations]
-      .filter((o: any) => o.timestamp)
+      .filter((observation: any) => observation.timestamp)
       .sort((a: any, b: any) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
   }
 
   get evidenceBySource(): { source: string; items: any[] }[] {
     const groups: Record<string, any[]> = {};
-    for (const obs of this.observations) {
-      const src = obs.source || 'unknown';
-      if (!groups[src]) groups[src] = [];
-      groups[src].push(obs);
+    for (const observation of this.observations) {
+      const source = observation.source || 'unknown';
+      if (!groups[source]) groups[source] = [];
+      groups[source].push(observation);
     }
     return Object.entries(groups).map(([source, items]) => ({ source, items }));
   }
 
   get feedbackEntries(): { key: string; accuracy: number; correct: number; wrong: number; partial: number }[] {
     if (!this.feedbackSummary?.findings) return [];
-    return Object.entries(this.feedbackSummary.findings).map(([key, val]: [string, any]) => ({
+    return Object.entries(this.feedbackSummary.findings).map(([key, value]: [string, any]) => ({
       key,
-      accuracy: val.accuracy ?? 0,
-      correct: val.correct ?? 0,
-      wrong: val.wrong ?? 0,
-      partial: val.partial ?? 0,
+      accuracy: value.accuracy ?? 0,
+      correct: value.correct ?? 0,
+      wrong: value.wrong ?? 0,
+      partial: value.partial ?? 0,
     }));
   }
 
   ngOnInit() {
-    // Setup autocomplete debounce
     this.searchSubject.pipe(
       debounceTime(250),
       distinctUntilChanged(),
-      switchMap(q => q.length >= 2
-        ? this.http.get<any>(`/api/pods`, { params: { search: q, size: 8 } })
-        : of({ pods: [] })
-      ),
-    ).subscribe(res => {
-      this.suggestions = res.pods.map((p: any) => p.name);
-      this.showSuggestions = this.suggestions.length > 0;
+      switchMap(value => {
+        const query = value.trim();
+        this.autocompleteError = '';
+        if (query.length < 2) {
+          this.autocompleteLoading = false;
+          return of({ pods: [] });
+        }
+
+        this.autocompleteLoading = true;
+        return this.api.getPods(1, 8, query).pipe(
+          catchError(() => {
+            this.autocompleteError = 'Unable to load pod suggestions.';
+            return of({ pods: [] });
+          }),
+          finalize(() => { this.autocompleteLoading = false; }),
+        );
+      }),
+    ).subscribe(response => {
+      this.suggestions = (response.pods || []).map((pod: any) => pod.name);
+      this.showSuggestions = this.target.trim().length >= 2;
     });
 
-    // Read query param and auto-investigate
     this.route.queryParams.subscribe(params => {
-      if (params['target']) {
-        this.target = params['target'];
-        this.investigate();
+      const requestedTarget = (params['target'] || params['deployment'] || '').trim();
+      if (requestedTarget && requestedTarget !== this.target) {
+        this.target = requestedTarget;
+        this.investigate(false);
       }
     });
   }
 
   onSearchInput() {
+    this.autocompleteError = '';
     this.searchSubject.next(this.target);
   }
 
@@ -136,40 +160,83 @@ export class InvestigateComponent implements OnInit {
   }
 
   hideSuggestions() {
-    // Delay to allow click on suggestion
     setTimeout(() => { this.showSuggestions = false; }, 150);
   }
 
-  investigate() {
-    if (!this.target.trim()) return;
+  investigate(updateUrl = true) {
+    const normalizedTarget = this.target.trim();
+    if (!normalizedTarget) {
+      this.loadError = 'Enter a pod name to investigate.';
+      return;
+    }
+
+    this.target = normalizedTarget;
+    if (updateUrl) {
+      this.router.navigate([], {
+        relativeTo: this.route,
+        queryParams: { target: normalizedTarget },
+        replaceUrl: true,
+      });
+    }
+
+    const requestId = ++this.investigationRequestId;
     this.loading = true;
     this.loadError = '';
     this.report = null;
     this.showSuggestions = false;
     this.activeTab = 'findings';
+    this.feedbackState = 'idle';
+    this.feedbackMessage = '';
 
-    this.http.get<any>(`/api/investigate/${this.target.trim()}`).subscribe({
-      next: (res) => { this.report = res; this.loading = false; },
-      error: (err) => { this.loading = false; this.loadError = err.error?.detail || 'Investigation failed'; },
+    this.api.investigate(normalizedTarget).subscribe({
+      next: response => {
+        if (requestId !== this.investigationRequestId) return;
+        this.report = response;
+        this.loading = false;
+      },
+      error: error => {
+        if (requestId !== this.investigationRequestId) return;
+        this.loading = false;
+        this.loadError = error.error?.detail || 'Investigation failed. Check the pod name and cluster connection.';
+      },
     });
   }
 
   loadBenchmark() {
     this.activeTab = 'trust';
-    if (this.benchmarkData) return;
-    this.http.get<any>('/api/benchmark').subscribe({
-      next: (res) => { this.benchmarkData = res; },
-      error: () => { this.benchmarkData = { total: 0, message: 'Failed to load' }; },
+    if (this.benchmarkLoading) return;
+    if (this.benchmarkData && !this.benchmarkError) return;
+
+    this.benchmarkError = '';
+    this.benchmarkLoading = true;
+    this.api.getBenchmark().subscribe({
+      next: response => { this.benchmarkData = response; this.benchmarkLoading = false; },
+      error: () => {
+        this.benchmarkData = null;
+        this.benchmarkLoading = false;
+        this.benchmarkError = 'Benchmark unavailable. Try again.';
+      },
     });
-    this.http.get<any>('/api/feedback/summary').subscribe({
-      next: (res) => { this.feedbackSummary = res; },
+
+    this.api.getFeedbackSummary().subscribe({
+      next: response => { this.feedbackSummary = response; },
     });
   }
 
   submitFeedback(findingType: string, verdict: string) {
-    this.http.post<any>('/api/feedback', null, {
-      params: { finding_type: findingType, verdict }
-    }).subscribe();
+    if (this.feedbackState === 'submitting') return;
+    this.feedbackState = 'submitting';
+    this.feedbackMessage = '';
+    this.api.submitFeedback(findingType, verdict).subscribe({
+      next: () => {
+        this.feedbackState = 'recorded';
+        this.feedbackMessage = 'Feedback recorded.';
+      },
+      error: () => {
+        this.feedbackState = 'error';
+        this.feedbackMessage = 'Feedback could not be recorded.';
+      },
+    });
   }
 
   severityBeacon(severity: string): 'ok' | 'warning' | 'critical' {
@@ -182,21 +249,18 @@ export class InvestigateComponent implements OnInit {
     return this.evidenceScores[findingId] || '';
   }
 
-  getEvidenceForFinding(f: any): any[] {
-    const ids = new Set(f.evidence_ids || []);
-    return this.observations.filter((o: any) => ids.has(o.id));
+  getEvidenceForFinding(finding: any): any[] {
+    const ids = new Set(finding.evidence_ids || []);
+    return this.observations.filter((observation: any) => ids.has(observation.id));
   }
 
-  getRecsForFinding(f: any): any[] {
-    return this.recommendations.filter((r: any) => r.finding_id === f.id);
+  getRecsForFinding(finding: any): any[] {
+    return this.recommendations.filter((recommendation: any) => recommendation.finding_id === finding.id);
   }
 
   toggleSource(source: string) {
-    if (this.expandedSources.has(source)) {
-      this.expandedSources.delete(source);
-    } else {
-      this.expandedSources.add(source);
-    }
+    if (this.expandedSources.has(source)) this.expandedSources.delete(source);
+    else this.expandedSources.add(source);
   }
 
   isSourceExpanded(source: string): boolean {
@@ -216,15 +280,24 @@ export class InvestigateComponent implements OnInit {
     return labels[source] || source;
   }
 
-  formatTime(ts: string): string {
-    if (!ts) return '';
-    const d = new Date(ts);
-    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  formatTime(timestamp: string): string {
+    if (!timestamp) return '';
+    const date = new Date(timestamp);
+    return Number.isNaN(date.getTime()) ? '' : date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   }
 
   copyToClipboard(text: string) {
-    navigator.clipboard.writeText(text);
-    this.copyFeedback = text;
-    setTimeout(() => { this.copyFeedback = null; }, 1500);
+    this.copyError = '';
+    if (!navigator.clipboard) {
+      this.copyError = 'Clipboard is unavailable in this browser.';
+      return;
+    }
+
+    navigator.clipboard.writeText(text).then(() => {
+      this.copyFeedback = text;
+      setTimeout(() => { this.copyFeedback = null; }, 1500);
+    }).catch(() => {
+      this.copyError = 'Copy failed. Select the command manually.';
+    });
   }
 }

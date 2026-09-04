@@ -1,9 +1,10 @@
-<app-intel-header title="Analytics" icon="pi pi-chart-bar"
-  [subtitle]="overview ? 'Updated ' + freshnessLabel : 'loading...'">
-  <button class="ctrl-btn" (click)="refresh()" pTooltip="Refresh"><i class="pi pi-refresh" [class.spinning]="loading"></i></button>
-</app-intel-header>
+<section class="analytics-page" aria-label="Analytics workspace">
+  <app-intel-header title="Analytics" icon="pi pi-chart-bar"
+    [subtitle]="overview ? 'Updated ' + freshnessLabel : 'loading...'">
+    <button class="ctrl-btn" type="button" (click)="refresh()" aria-label="Refresh analytics" pTooltip="Refresh"><i class="pi pi-refresh" aria-hidden="true" [class.spinning]="loading"></i></button>
+  </app-intel-header>
 
-@if (loading && !overview) {
+  @if (loading && !overview) {
   <div class="loading"><app-skeleton variant="stats" /><app-skeleton variant="card" /></div>
 }
 
@@ -25,6 +26,37 @@
 }
 
 @if (overview && !overview.empty_state_reason) {
+  <div class="analytics-deck" aria-label="Analytics intelligence overview">
+    <div class="deck-primary">
+      <span class="deck-kicker"><i class="pi pi-chart-line" aria-hidden="true"></i> Cluster intelligence</span>
+      <h2>Signals before symptoms</h2>
+      <p>Trace resource movement, cost pressure, and upcoming risk from one operational view.</p>
+      <div class="deck-chips" aria-label="Analytics surface capabilities">
+        <span><i class="pi pi-chart-bar" aria-hidden="true"></i> Resource trends</span>
+        <span><i class="pi pi-bolt" aria-hidden="true"></i> Cost signals</span>
+        <span><i class="pi pi-search" aria-hidden="true"></i> SQL investigate</span>
+      </div>
+    </div>
+    <div class="telemetry-panel" aria-label="Analytics health telemetry">
+      <div class="telemetry-head">
+        <div>
+          <span class="telemetry-kicker">Health signal</span>
+          <strong>Cluster posture</strong>
+        </div>
+        <span class="telemetry-total">{{ overview.health_score }}/100</span>
+      </div>
+      <div class="telemetry-track" aria-hidden="true">
+        <span class="telemetry-segment segment-healthy" [style.width.%]="overview.health_score"></span>
+        <span class="telemetry-segment segment-warning" [style.width.%]="100 - overview.health_score"></span>
+      </div>
+      <div class="telemetry-legend">
+        <span><i class="legend-dot legend-healthy" aria-hidden="true"></i> Health <b>{{ overview.health_score }}%</b></span>
+        <span><i class="legend-dot legend-warning" aria-hidden="true"></i> Active risks <b>{{ overview.active_risks }}</b></span>
+        <span><i class="legend-dot legend-pending" aria-hidden="true"></i> Freshness <b>{{ freshnessLabel }}</b></span>
+      </div>
+    </div>
+  </div>
+
   <!-- ─── Hero Tiles ───────────────────────────────────────────────── -->
   <div class="metrics-strip">
     <app-metric-tile
@@ -52,7 +84,7 @@
   </div>
 
   <!-- ─── Tabs ─────────────────────────────────────────────────────── -->
-  <p-tabs [value]="activeTab" (valueChange)="onTabChange('' + $event)">
+  <p-tabs class="analytics-tabs" [value]="activeTab" (valueChange)="onTabChange('' + $event)">
     <p-tablist>
       <p-tab value="0">Overview</p-tab>
       <p-tab value="1">Resources</p-tab>
@@ -144,16 +176,24 @@
             <h4>CPU & Memory (24h)</h4>
             @if (cpuMemChart) {
               <p-chart type="line" [data]="cpuMemChart" [options]="lineOptions" height="280px" />
-            } @else {
+            } @else if (resourcesLoading) {
               <p class="empty-tab">Loading chart data...</p>
+            } @else if (cpuMemError) {
+              <p class="empty-tab chart-error">CPU and memory data unavailable.</p>
+            } @else {
+              <p class="empty-tab">No CPU or memory samples collected yet.</p>
             }
           </div>
           <div class="chart-card">
             <h4>Top Consumers (6h)</h4>
             @if (consumersChart) {
               <p-chart type="bar" [data]="consumersChart" [options]="horizontalBarOptions" height="280px" />
-            } @else {
+            } @else if (resourcesLoading) {
               <p class="empty-tab">Loading chart data...</p>
+            } @else if (consumersError) {
+              <p class="empty-tab chart-error">Consumer data unavailable.</p>
+            } @else {
+              <p class="empty-tab">No top-consumer data collected yet.</p>
             }
           </div>
         </div>
@@ -161,24 +201,30 @@
 
       <!-- ═══ Cost Tab ═════════════════════════════════════════════════ -->
       <p-tabpanel value="2">
-        @if (costSummary) {
-          <div class="cost-summary">
-            <span><strong>${{ costSummary.monthly_usd?.toFixed(2) }}</strong>/mo</span>
-            <span>${{ costSummary.daily_avg_usd?.toFixed(2) }}/day</span>
-            <span>{{ costSummary.deployments }} deployments</span>
-          </div>
-        }
-        @for (item of costData; track item.deployment) {
-          <div class="cost-row">
-            <span class="cost-name"><strong>{{ item.deployment }}</strong> <span class="ns">{{ item.namespace }}</span></span>
-            <span class="cost-metrics">{{ item.avg_pods }} pods · CPU {{ item.cpu_avg_m }}m · Mem {{ item.mem_avg_mb }}Mi</span>
-            <span class="cost-value">{{ "$" + item.cost_requested_usd?.toFixed(2) }}
-              @if (item.waste_pct > 20) { <span class="waste">({{ item.waste_pct }}% waste)</span> }
-            </span>
-          </div>
-        }
-        @if (!costData.length && !costSummary) {
-          <p class="empty-tab">No cost data yet. Switch to this tab after collection runs.</p>
+        @if (costLoading) {
+          <p class="empty-tab">Loading cost data...</p>
+        } @else if (costError) {
+          <p class="empty-tab chart-error">Cost data unavailable. Try refreshing Analytics.</p>
+        } @else {
+          @if (costSummary) {
+            <div class="cost-summary">
+              <span><strong>${{ costSummary.monthly_usd?.toFixed(2) }}</strong>/mo</span>
+              <span>${{ costSummary.daily_avg_usd?.toFixed(2) }}/day</span>
+              <span>{{ costSummary.deployments }} deployments</span>
+            </div>
+          }
+          @for (item of costData; track item.deployment) {
+            <div class="cost-row">
+              <span class="cost-name"><strong>{{ item.deployment }}</strong> <span class="ns">{{ item.namespace }}</span></span>
+              <span class="cost-metrics">{{ item.avg_pods }} pods · CPU {{ item.cpu_avg_m }}m · Mem {{ item.mem_avg_mb }}Mi</span>
+              <span class="cost-value">{{ "$" + item.cost_requested_usd?.toFixed(2) }}
+                @if (item.waste_pct > 20) { <span class="waste">({{ item.waste_pct }}% waste)</span> }
+              </span>
+            </div>
+          }
+          @if (costLoaded && !costData.length && !costSummary) {
+            <p class="empty-tab">No cost data yet. Data will appear after collection runs.</p>
+          }
         }
       </p-tabpanel>
 
@@ -245,5 +291,7 @@
     </p-tabpanels>
   </p-tabs>
 }
+
+</section>
 
 <app-related-pages label="Related" [pages]="relatedPages" />

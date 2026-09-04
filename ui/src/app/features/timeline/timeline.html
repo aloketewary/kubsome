@@ -1,58 +1,130 @@
-<app-intel-header title="Timeline" icon="pi pi-history"
-  [subtitle]="events.length + ' events · last ' + selectedRange + 'm · ' + (lastUpdated || '...')">
-  <div class="range-group">
-    @for (r of ranges; track r.value) {
-      <button class="range-btn" [class.range-active]="selectedRange === r.value" (click)="setRange(r.value)">{{ r.label }}</button>
-    }
-  </div>
-  <button class="ctrl-btn" (click)="load()" pTooltip="Refresh"><i class="pi pi-refresh" [class.spinning]="loading"></i></button>
-</app-intel-header>
+<section class="timeline-page" aria-label="Timeline workspace">
+  <app-intel-header title="Timeline" icon="pi pi-history"
+    [subtitle]="events.length + ' events · last ' + selectedRange + 'm · ' + (lastUpdated || '...')">
+    <div class="range-group" role="group" aria-label="Timeline range">
+      @for (r of ranges; track r.value) {
+        <button class="range-btn" type="button" [class.range-active]="selectedRange === r.value"
+          [attr.aria-pressed]="selectedRange === r.value" (click)="setRange(r.value)">{{ r.label }}</button>
+      }
+    </div>
+    <button class="ctrl-btn" type="button" (click)="load()" aria-label="Refresh timeline" pTooltip="Refresh">
+      <i class="pi pi-refresh" aria-hidden="true" [class.spinning]="loading"></i>
+    </button>
+  </app-intel-header>
 
-<div class="metrics-strip">
-  <app-metric-tile label="Events" [value]="'' + events.length" accent="cyan" />
-  <app-metric-tile label="Warnings" [value]="'' + warningCount" accent="amber" />
-</div>
-
-<!-- Heatmap -->
-<app-holo-card title="Activity" icon="pi pi-chart-bar" glow="cyan" [compact]="true">
-  <div class="heatmap">
-    @for (bar of heatmapBars; track $index) {
-      <div class="heat-bar" [style.height.%]="bar.height" [class.heat-warn]="bar.hasWarning" [pTooltip]="bar.tooltip"></div>
-    }
-  </div>
-</app-holo-card>
-
-<!-- Filter -->
-<app-command-bar [pills]="filterPills" [activePill]="severityFilter" [showSearch]="false" (pillChange)="onFilterChange($event)" />
-
-<!-- Timeline -->
-<div class="timeline">
-  <div class="now-marker">
-    <app-status-beacon status="ok" size="md" [pulse]="true" />
-    <span class="now-label">Now</span>
-    <div class="now-line"></div>
-  </div>
-
-  @for (event of filteredEvents; track $index) {
-    <div class="tl-item" [class.tl-warning]="event.type === 'Warning'">
-      <div class="tl-rail">
-        <app-status-beacon [status]="beaconStatus(event)" size="sm" />
-        @if ($index < filteredEvents.length - 1) { <div class="tl-line"></div> }
-      </div>
-      <div class="tl-card">
-        <div class="tl-top">
-          <span class="tl-reason">{{ event.reason || 'Event' }}</span>
-          <p-tag [value]="event.type || 'Normal'" [severity]="tagSeverity(event)" [rounded]="true" />
-          <span class="tl-time">{{ formatTime(event.time || event.last_seen) }}</span>
-        </div>
-        <code class="tl-object">{{ event.object || event.name || '' }}</code>
-        <p class="tl-message">{{ event.message || '' }}</p>
-        @if (event.count > 1) { <span class="tl-repeat">{{ event.count }}×</span> }
+  <div class="timeline-deck" aria-label="Timeline activity overview">
+    <div class="deck-primary">
+      <span class="deck-kicker"><i class="pi pi-history" aria-hidden="true"></i> Cluster activity</span>
+      <h2>Events in motion</h2>
+      <p>Trace Kubernetes signals across the selected window and isolate warnings before they become incidents.</p>
+      <div class="deck-chips" aria-label="Timeline surface capabilities">
+        <span><i class="pi pi-chart-bar" aria-hidden="true"></i> Activity density</span>
+        <span><i class="pi pi-sync" aria-hidden="true"></i> 30-second refresh</span>
       </div>
     </div>
-  }
+    <div class="telemetry-panel" aria-label="Event telemetry">
+      <div class="telemetry-head">
+        <div>
+          <span class="telemetry-kicker">Window signal</span>
+          <strong>Event telemetry</strong>
+        </div>
+        <span class="telemetry-total">{{ events.length }}</span>
+      </div>
+      <div class="telemetry-track" aria-hidden="true">
+        <span class="telemetry-segment segment-warning" [style.width.%]="events.length ? warningCount / events.length * 100 : 0"></span>
+        <span class="telemetry-segment segment-healthy" [style.width.%]="events.length ? (events.length - warningCount) / events.length * 100 : 0"></span>
+      </div>
+      <div class="telemetry-legend">
+        <span><i class="legend-dot legend-warning" aria-hidden="true"></i> Warnings <b>{{ warningCount }}</b></span>
+        <span><i class="legend-dot legend-healthy" aria-hidden="true"></i> Normal <b>{{ events.length - warningCount }}</b></span>
+      </div>
+    </div>
+  </div>
 
-  @if (filteredEvents.length === 0) {
-    <div class="empty-state"><div class="empty-icon"><i class="pi pi-clock"></i></div><span>No activity in the last {{ selectedRange }}m</span></div>
-  }
-</div>
+  <div class="metrics-strip" aria-label="Timeline status summary">
+    <app-metric-tile label="Events" [value]="'' + events.length" accent="cyan" />
+    <app-metric-tile label="Warnings" [value]="'' + warningCount" accent="amber" />
+    <div class="metrics-context">
+      <span class="metrics-context-label">Window</span>
+      <strong>{{ selectedRange }} MINUTES</strong>
+      <span>{{ lastUpdated ? 'updated ' + lastUpdated : 'awaiting first refresh' }}</span>
+    </div>
+  </div>
+
+  <app-holo-card title="Activity" icon="pi pi-chart-bar" glow="cyan" [compact]="true">
+    <div class="activity-head">
+      <div>
+        <span class="section-label">Signal density</span>
+        <strong>Event distribution</strong>
+      </div>
+      <span class="activity-range">Last {{ selectedRange }}m</span>
+    </div>
+    <div class="heatmap" role="img" aria-label="Event activity density across the selected window">
+      @for (bar of heatmapBars; track $index) {
+        <div class="heat-bar" [style.height.%]="bar.height" [class.heat-warn]="bar.hasWarning"
+          [pTooltip]="bar.tooltip" aria-hidden="true"></div>
+      }
+    </div>
+  </app-holo-card>
+
+  <div class="filter-section">
+    <div class="filter-section-head">
+      <div>
+        <span class="section-label">Event filter</span>
+        <strong>Find a cluster signal</strong>
+      </div>
+      <span class="filter-hint">{{ filteredEvents.length }} visible / {{ events.length }} total</span>
+    </div>
+    <app-command-bar [pills]="filterPills" [activePill]="severityFilter" [showSearch]="false"
+      (pillChange)="onFilterChange($event)" />
+  </div>
+
+  <section class="timeline-section" aria-labelledby="timeline-heading">
+    <div class="section-heading">
+      <div>
+        <span class="section-label">Event stream</span>
+        <h3 id="timeline-heading">Recent activity</h3>
+      </div>
+      <span class="section-count">{{ filteredEvents.length }} visible</span>
+    </div>
+
+    <div class="timeline" aria-live="polite">
+      <div class="now-marker">
+        <app-status-beacon status="ok" size="md" [pulse]="true" />
+        <span class="now-label">Now</span>
+        <div class="now-line"></div>
+      </div>
+
+      @for (event of filteredEvents; track $index) {
+        <div class="tl-item" [class.tl-warning]="event.type === 'Warning'">
+          <div class="tl-rail">
+            <app-status-beacon [status]="beaconStatus(event)" size="sm" />
+            @if ($index < filteredEvents.length - 1) { <div class="tl-line"></div> }
+          </div>
+          <div class="tl-card">
+            <div class="tl-top">
+              <span class="tl-reason">{{ event.reason || 'Event' }}</span>
+              <p-tag [value]="event.type || 'Normal'" [severity]="tagSeverity(event)" [rounded]="true" />
+              <span class="tl-time">{{ formatTime(event.time || event.last_seen) }}</span>
+            </div>
+            <code class="tl-object">{{ event.object || event.name || '' }}</code>
+            <p class="tl-message">{{ event.message || '' }}</p>
+            @if (event.count > 1) { <span class="tl-repeat">{{ event.count }}× repeated</span> }
+          </div>
+        </div>
+      }
+
+      @if (filteredEvents.length === 0 && loading && events.length === 0) {
+        <div class="loading-state" role="status" aria-live="polite">
+          <i class="pi pi-spin pi-spinner" aria-hidden="true"></i><span>Loading timeline activity...</span>
+        </div>
+      } @else if (filteredEvents.length === 0) {
+        <div class="empty-state" role="status">
+          <div class="empty-icon"><i class="pi pi-clock" aria-hidden="true"></i></div>
+          <strong>No activity in the last {{ selectedRange }}m</strong>
+          <span>Try another range or clear the active filter.</span>
+        </div>
+      }
+    </div>
+  </section>
+</section>

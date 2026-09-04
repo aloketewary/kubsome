@@ -12,17 +12,27 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
   imports: [RouterLink, RouterLinkActive, HelpDialogComponent],
   template: `
     <div class="sidebar-header" [class.header-mini]="collapsed">
-      <div class="ctx-block" [class.glass]="!collapsed">
-        <div class="ctx-dot" [class.dot-ok]="clusterOk" [class.dot-bad]="!clusterOk" role="status" [attr.aria-label]="clusterOk ? 'Cluster connected' : 'Cluster unreachable'"></div>
+      <div class="ctx-block">
+        <div class="ctx-header">
+          <span class="ctx-kicker">ACTIVE CONTEXT</span>
+          <span class="ctx-state" [class.ctx-state-offline]="!clusterOk">{{ clusterOk ? 'ONLINE' : 'OFFLINE' }}</span>
+        </div>
+        <div class="ctx-readout">
+          <div class="ctx-dot" [class.dot-ok]="clusterOk" [class.dot-bad]="!clusterOk" role="status" [attr.aria-label]="clusterOk ? 'Cluster connected' : 'Cluster unreachable'"></div>
+          @if (!collapsed) {
+            <div class="ctx-info">
+              <span class="ctx-name">{{ currentContext }}</span>
+            </div>
+          }
+        </div>
         @if (!collapsed) {
-          <div class="ctx-info">
-            <span class="ctx-name">{{ currentContext }}</span>
-          </div>
+          <span class="ctx-meta">CONTROL PLANE / {{ clusterOk ? 'READY' : 'UNREACHABLE' }}</span>
         }
       </div>
     </div>
 
-    <!-- Favorites -->
+    <div class="nav-scroll">
+      <!-- Favorites -->
     @if (favorites.length > 0) {
       <nav class="nav-section">
         <span class="nav-label" tabindex="-1">Favorites</span>
@@ -32,8 +42,8 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
               <i [class]="item.icon"></i>
               <span>{{ item.label }}</span>
             </a>
-            <button class="fav-remove" (click)="removeFavorite(item.path)" title="Remove from favorites">
-              <i class="pi pi-times"></i>
+            <button class="fav-remove" (click)="removeFavorite(item.path)" title="Remove from favorites" aria-label="Remove {{ item.label }} from favorites">
+              <i class="pi pi-times" aria-hidden="true"></i>
             </button>
           </div>
         }
@@ -41,11 +51,11 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
     }
 
     <nav class="nav-section">
-      <span class="nav-label" (click)="monitorCollapsed = !monitorCollapsed" (keydown)="onKey($event, toggleMonitor.bind(this))"
-            tabindex="0" role="button" aria-label="Toggle Monitor Section" [attr.aria-expanded]="!monitorCollapsed">
-        <i class="pi collapse-icon" [class.pi-chevron-down]="!monitorCollapsed" [class.pi-chevron-right]="monitorCollapsed"></i>
+      <button class="nav-label" type="button" (click)="monitorCollapsed = !monitorCollapsed" (keydown)="onKey($event, toggleMonitor.bind(this))"
+            aria-label="Toggle Monitor section" [attr.aria-expanded]="!monitorCollapsed">
+        <i class="pi collapse-icon" [class.pi-chevron-down]="!monitorCollapsed" [class.pi-chevron-right]="monitorCollapsed" aria-hidden="true"></i>
         Monitor
-      </span>
+      </button>
       @if (!monitorCollapsed) {
         @for (item of monitorItems; track item.path) {
           <div class="nav-row">
@@ -54,8 +64,10 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
               <span>{{ item.label }}</span>
               @if (item.badge) { <span class="nav-badge">{{ item.badge }}</span> }
             </a>
-            <button class="star-btn" [class.starred]="isFavorite(item.path)" (click)="toggleFavorite(item.path)" title="Toggle favorite">
-              <i class="pi" [class.pi-star-fill]="isFavorite(item.path)" [class.pi-star]="!isFavorite(item.path)"></i>
+            <button class="star-btn" [class.starred]="isFavorite(item.path)" (click)="toggleFavorite(item.path)"
+              [attr.aria-label]="isFavorite(item.path) ? 'Remove ' + item.label + ' from favorites' : 'Add ' + item.label + ' to favorites'"
+              [attr.aria-pressed]="isFavorite(item.path)" title="Toggle favorite">
+              <i class="pi" [class.pi-star-fill]="isFavorite(item.path)" [class.pi-star]="!isFavorite(item.path)" aria-hidden="true"></i>
             </button>
           </div>
         }
@@ -63,11 +75,11 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
     </nav>
 
     <nav class="nav-section">
-      <span class="nav-label" (click)="opsCollapsed = !opsCollapsed" (keydown)="onKey($event, toggleOps.bind(this))"
-            tabindex="0" role="button" aria-label="Toggle Operations Section" [attr.aria-expanded]="!opsCollapsed">
-        <i class="pi collapse-icon" [class.pi-chevron-down]="!opsCollapsed" [class.pi-chevron-right]="opsCollapsed"></i>
+      <button class="nav-label" type="button" (click)="opsCollapsed = !opsCollapsed" (keydown)="onKey($event, toggleOps.bind(this))"
+            aria-label="Toggle Operations section" [attr.aria-expanded]="!opsCollapsed">
+        <i class="pi collapse-icon" [class.pi-chevron-down]="!opsCollapsed" [class.pi-chevron-right]="opsCollapsed" aria-hidden="true"></i>
         Operations
-      </span>
+      </button>
       @if (!opsCollapsed) {
         @for (item of opsItems; track item.path) {
           <div class="nav-row">
@@ -76,8 +88,10 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
               <span>{{ item.label }}</span>
               @if (item.badge) { <span class="nav-badge">{{ item.badge }}</span> }
             </a>
-            <button class="star-btn" [class.starred]="isFavorite(item.path)" (click)="toggleFavorite(item.path)" title="Toggle favorite">
-              <i class="pi" [class.pi-star-fill]="isFavorite(item.path)" [class.pi-star]="!isFavorite(item.path)"></i>
+            <button class="star-btn" [class.starred]="isFavorite(item.path)" (click)="toggleFavorite(item.path)"
+              [attr.aria-label]="isFavorite(item.path) ? 'Remove ' + item.label + ' from favorites' : 'Add ' + item.label + ' to favorites'"
+              [attr.aria-pressed]="isFavorite(item.path)" title="Toggle favorite">
+              <i class="pi" [class.pi-star-fill]="isFavorite(item.path)" [class.pi-star]="!isFavorite(item.path)" aria-hidden="true"></i>
             </button>
           </div>
         }
@@ -85,11 +99,11 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
     </nav>
 
     <nav class="nav-section">
-      <span class="nav-label" (click)="infraCollapsed = !infraCollapsed" (keydown)="onKey($event, toggleInfra.bind(this))"
-            tabindex="0" role="button" aria-label="Toggle Infrastructure Section" [attr.aria-expanded]="!infraCollapsed">
-        <i class="pi collapse-icon" [class.pi-chevron-down]="!infraCollapsed" [class.pi-chevron-right]="infraCollapsed"></i>
+      <button class="nav-label" type="button" (click)="infraCollapsed = !infraCollapsed" (keydown)="onKey($event, toggleInfra.bind(this))"
+            aria-label="Toggle Infrastructure section" [attr.aria-expanded]="!infraCollapsed">
+        <i class="pi collapse-icon" [class.pi-chevron-down]="!infraCollapsed" [class.pi-chevron-right]="infraCollapsed" aria-hidden="true"></i>
         Infrastructure
-      </span>
+      </button>
       @if (!infraCollapsed) {
         @for (item of infraItems; track item.path) {
           <div class="nav-row">
@@ -98,8 +112,10 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
               <span>{{ item.label }}</span>
               @if (item.badge) { <span class="nav-badge">{{ item.badge }}</span> }
             </a>
-            <button class="star-btn" [class.starred]="isFavorite(item.path)" (click)="toggleFavorite(item.path)" title="Toggle favorite">
-              <i class="pi" [class.pi-star-fill]="isFavorite(item.path)" [class.pi-star]="!isFavorite(item.path)"></i>
+            <button class="star-btn" [class.starred]="isFavorite(item.path)" (click)="toggleFavorite(item.path)"
+              [attr.aria-label]="isFavorite(item.path) ? 'Remove ' + item.label + ' from favorites' : 'Add ' + item.label + ' to favorites'"
+              [attr.aria-pressed]="isFavorite(item.path)" title="Toggle favorite">
+              <i class="pi" [class.pi-star-fill]="isFavorite(item.path)" [class.pi-star]="!isFavorite(item.path)" aria-hidden="true"></i>
             </button>
           </div>
         }
@@ -107,11 +123,11 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
     </nav>
 
     <nav class="nav-section">
-      <span class="nav-label" (click)="costCollapsed = !costCollapsed" (keydown)="onKey($event, toggleCost.bind(this))"
-            tabindex="0" role="button" aria-label="Toggle Cost Section" [attr.aria-expanded]="!costCollapsed">
-        <i class="pi collapse-icon" [class.pi-chevron-down]="!costCollapsed" [class.pi-chevron-right]="costCollapsed"></i>
+      <button class="nav-label" type="button" (click)="costCollapsed = !costCollapsed" (keydown)="onKey($event, toggleCost.bind(this))"
+            aria-label="Toggle Cost and Analytics section" [attr.aria-expanded]="!costCollapsed">
+        <i class="pi collapse-icon" [class.pi-chevron-down]="!costCollapsed" [class.pi-chevron-right]="costCollapsed" aria-hidden="true"></i>
         Cost & Analytics
-      </span>
+      </button>
       @if (!costCollapsed) {
         @for (item of costItems; track item.path) {
           <div class="nav-row">
@@ -120,8 +136,10 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
               <span>{{ item.label }}</span>
               @if (item.badge) { <span class="nav-badge">{{ item.badge }}</span> }
             </a>
-            <button class="star-btn" [class.starred]="isFavorite(item.path)" (click)="toggleFavorite(item.path)" title="Toggle favorite">
-              <i class="pi" [class.pi-star-fill]="isFavorite(item.path)" [class.pi-star]="!isFavorite(item.path)"></i>
+            <button class="star-btn" [class.starred]="isFavorite(item.path)" (click)="toggleFavorite(item.path)"
+              [attr.aria-label]="isFavorite(item.path) ? 'Remove ' + item.label + ' from favorites' : 'Add ' + item.label + ' to favorites'"
+              [attr.aria-pressed]="isFavorite(item.path)" title="Toggle favorite">
+              <i class="pi" [class.pi-star-fill]="isFavorite(item.path)" [class.pi-star]="!isFavorite(item.path)" aria-hidden="true"></i>
             </button>
           </div>
         }
@@ -129,11 +147,11 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
     </nav>
 
     <nav class="nav-section">
-      <span class="nav-label" (click)="aiCollapsed = !aiCollapsed" (keydown)="onKey($event, toggleAi.bind(this))"
-            tabindex="0" role="button" aria-label="Toggle Tools Section" [attr.aria-expanded]="!aiCollapsed">
-        <i class="pi collapse-icon" [class.pi-chevron-down]="!aiCollapsed" [class.pi-chevron-right]="aiCollapsed"></i>
+      <button class="nav-label" type="button" (click)="aiCollapsed = !aiCollapsed" (keydown)="onKey($event, toggleAi.bind(this))"
+            aria-label="Toggle Intelligence and Tools section" [attr.aria-expanded]="!aiCollapsed">
+        <i class="pi collapse-icon" [class.pi-chevron-down]="!aiCollapsed" [class.pi-chevron-right]="aiCollapsed" aria-hidden="true"></i>
         Intelligence & Tools
-      </span>
+      </button>
       @if (!aiCollapsed) {
         @for (item of aiItems; track item.path) {
           <a [routerLink]="item.path" routerLinkActive="active" class="nav-item" tabindex="0">
@@ -152,6 +170,7 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
       </a>
     </nav>
 
+    </div>
 
     <div class="nav-footer">
       <a class="nav-item" (click)="openHelp()" (keydown)="onKey($event, openHelp.bind(this))" tabindex="0" role="button">
@@ -163,7 +182,7 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
 
     @if (helpVisible) {
       <div class="help-overlay" (click)="helpVisible = false" (keydown.escape)="helpVisible = false">
-        <div class="help-modal" role="dialog" aria-modal="true" aria-label="Kubsome Help" (click)="$event.stopPropagation()">
+        <div class="help-modal" role="dialog" aria-modal="true" aria-labelledby="help-dialog-title" (click)="$event.stopPropagation()">
           <div class="help-header">
             <span id="help-dialog-title">Kubsome Help</span>
             <button class="help-close" (click)="helpVisible = false" aria-label="Close help dialog" #helpCloseBtn>
@@ -246,19 +265,25 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
     .nav-section:first-of-type { border-top: none; padding-top: 0; }
     .nav-label {
       display: flex;
+      width: 100%;
       align-items: center;
       gap: 4px;
-      font-size: 9px;
-      font-weight: 700;
-      color: rgba(168, 158, 148, 0.45);
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      padding: 6px 12px 4px;
-      user-select: none;
+      margin: 0;
+      border: none;
+      background: transparent;
+      color: rgba(168, 158, 148, 0.62);
       cursor: pointer;
-      outline: none;
+      font-family: var(--font-sans);
+      font-size: 9px;
+      font-weight: 750;
+      letter-spacing: 0.08em;
+      padding: 8px 12px 5px;
+      text-align: left;
+      text-transform: uppercase;
+      user-select: none;
     }
-    .nav-label:focus-visible { color: #d09c60; }
+    .nav-label:focus-visible { color: var(--accent); }
+    .nav-label:hover { color: var(--text-secondary); }
     .collapse-icon {
       font-size: 8px;
       opacity: 0.5;
@@ -267,33 +292,33 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
       display: flex;
       align-items: center;
       gap: 10px;
-      padding: 7px 12px;
-      margin: 0 8px;
-      border-radius: 0;
-      font-size: 12px;
-      font-weight: 500;
-      color: rgba(168, 158, 148, 0.5);
+      min-height: 34px;
+      padding: 7px 10px;
+      margin: 2px 6px;
+      border: 1px solid transparent;
+      border-radius: 7px;
+      color: rgba(168, 158, 148, 0.72);
       cursor: pointer;
-      transition: all 0.12s;
-      text-decoration: none;
+      font-size: 12px;
+      font-weight: 520;
       overflow: hidden;
+      text-decoration: none;
+      transition: color 0.15s var(--transition-smooth), background 0.15s var(--transition-smooth), border-color 0.15s var(--transition-smooth);
       white-space: nowrap;
-      border: none;
-      border-left: 2px solid transparent;
     }
     .nav-item:hover {
-      color: rgba(245, 240, 235, 0.85);
-      background: transparent;
-      transform: translateX(2px);
+      border-color: var(--border);
+      background: var(--bg-hover);
+      color: var(--text);
     }
     .nav-item.active {
-      color: #d09c60;
-      border-left-color: #d09c60;
-      background: transparent;
+      border-color: rgba(var(--accent-rgb), 0.22);
+      background: var(--accent-subtle);
+      color: var(--accent);
     }
     .nav-item:focus-visible {
-      outline: none;
-      border-left-color: rgba(208, 156, 96, 0.4);
+      outline: 2px solid var(--focus-ring);
+      outline-offset: -2px;
     }
     .nav-badge {
       font-size: 7px; font-weight: 800; padding: 1px 4px; border-radius: 0;
@@ -425,6 +450,506 @@ import { HelpDialogComponent } from '../shared/components/help-dialog.component'
     .nav-item-more { opacity: 0.5; }
     .nav-item-more:hover { opacity: 1; }
 
+    /* SaaS Noir navigation pass. */
+    :host {
+      height: 100%;
+    }
+
+    .sidebar-header {
+      padding: 14px 8px 12px;
+    }
+
+    .ctx-block {
+      padding: 9px 10px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg-elevated);
+    }
+
+    .ctx-dot {
+      width: 6px;
+      height: 6px;
+    }
+
+    .dot-ok,
+    .dot-bad {
+      box-shadow: none;
+      animation: none;
+    }
+
+    .dot-bad {
+      background: var(--danger);
+    }
+
+    .ctx-name {
+      color: var(--text-secondary);
+      font-family: var(--font-mono);
+      font-size: 11px;
+    }
+
+    .nav-section {
+      margin-bottom: 7px;
+      padding-top: 7px;
+      border-top-color: var(--border-subtle);
+    }
+
+    .nav-label {
+      color: var(--text-muted);
+      font-size: 10px;
+      font-weight: 650;
+      letter-spacing: 0.01em;
+      text-transform: none;
+    }
+
+    .nav-item {
+      min-height: 35px;
+      color: var(--text-secondary);
+      font-size: 13px;
+    }
+
+    .nav-item i {
+      color: var(--text-muted);
+      opacity: 1;
+    }
+
+    .nav-item:hover i,
+    .nav-item.active i {
+      color: currentColor;
+      opacity: 1;
+    }
+
+    .nav-item.active {
+      border-color: rgba(var(--accent-rgb), 0.24);
+      background: var(--accent-subtle);
+      color: var(--accent);
+    }
+
+    .nav-badge {
+      border: 0;
+      border-radius: 4px;
+      background: var(--accent-subtle);
+      color: var(--accent);
+      font-size: 10px;
+      letter-spacing: 0;
+      padding: 2px 5px;
+    }
+
+    .nav-item kbd {
+      border-left-color: var(--border);
+      color: var(--text-muted);
+      font-size: 10px;
+    }
+
+    .fav-remove,
+    .star-btn {
+      color: var(--text-muted);
+      transition: color 0.15s var(--transition-smooth), opacity 0.15s var(--transition-smooth);
+    }
+
+    .fav-row .fav-remove:focus-visible,
+    .nav-row .star-btn:focus-visible {
+      color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.24);
+    }
+
+    .help-overlay {
+      background: rgba(5, 5, 5, 0.58);
+      backdrop-filter: none;
+    }
+
+    .help-modal {
+      background: var(--bg-card);
+      border-color: var(--border);
+      border-radius: 10px;
+      box-shadow: var(--shadow-lg);
+      animation: none;
+    }
+
+    .help-header {
+      border-bottom-color: var(--border);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .dot-bad,
+      .help-modal {
+        animation: none;
+      }
+    }
+
+    :host-context([data-theme="light"]) .ctx-name,
+    :host-context([data-theme="light"]) .nav-item {
+      color: var(--text-secondary);
+    }
+
+    :host-context([data-theme="light"]) .nav-label {
+      color: var(--text-muted);
+    }
+
+    :host-context([data-theme="light"]) .nav-item.active {
+      color: var(--accent);
+    }
+
+    :host-context([data-theme="light"]) .nav-item kbd {
+      color: var(--text-muted);
+      border-left-color: var(--border);
+    }
+
+    /* Operational shell finish: token-led hierarchy, not decoration. */
+    :host {
+      scrollbar-color: var(--border) transparent;
+      scrollbar-gutter: stable;
+    }
+
+    .ctx-block {
+      position: relative;
+      overflow: hidden;
+      border-color: rgba(var(--accent-rgb), 0.22);
+      background: linear-gradient(90deg, var(--accent-subtle), transparent 78%), var(--bg-elevated);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
+    }
+
+    .ctx-block::before {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      width: 2px;
+      background: var(--accent);
+      content: '';
+      opacity: 0.8;
+    }
+
+    .ctx-dot {
+      margin-left: 2px;
+    }
+
+    .nav-section {
+      border-top-color: var(--border-subtle);
+    }
+
+    .nav-label {
+      min-height: 28px;
+      padding-inline: 10px;
+      color: var(--text-muted);
+    }
+
+    .nav-label:hover,
+    .nav-label:focus-visible {
+      color: var(--accent);
+    }
+
+    .nav-label .collapse-icon {
+      color: currentColor;
+      opacity: 0.7;
+    }
+
+    .nav-item {
+      position: relative;
+      border-color: transparent;
+      transition: color 0.15s var(--transition-smooth), background 0.15s var(--transition-smooth), border-color 0.15s var(--transition-smooth), transform 0.15s var(--transition-smooth);
+    }
+
+    .nav-item::before {
+      position: absolute;
+      top: 7px;
+      bottom: 7px;
+      left: -1px;
+      width: 2px;
+      background: var(--accent);
+      content: '';
+      transform: scaleY(0);
+      transition: transform 0.15s var(--transition-smooth);
+    }
+
+    .nav-item.active {
+      box-shadow: inset 12px 0 20px -22px rgba(var(--accent-rgb), 0.9);
+    }
+
+    .nav-item.active::before {
+      transform: scaleY(1);
+    }
+
+    .nav-item:active,
+    .nav-label:active,
+    .star-btn:active,
+    .fav-remove:active {
+      transform: translateY(1px);
+    }
+
+    .nav-item-more {
+      border-top: 1px solid var(--border-subtle);
+      margin-top: 4px;
+      padding-top: 9px;
+    }
+
+    .nav-footer {
+      border-top-color: var(--border);
+    }
+
+    .fav-remove:focus-visible,
+    .star-btn:focus-visible,
+    .help-close:focus-visible {
+      outline: 2px solid var(--focus-ring);
+      outline-offset: 2px;
+      box-shadow: none;
+    }
+
+    .help-header {
+      background: var(--bg-elevated);
+    }
+
+    :host-context(.rail) .nav-item::before {
+      left: 0;
+    }
+
+    :host-context(.rail) .ctx-block {
+      border-color: rgba(var(--accent-rgb), 0.2);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .nav-item,
+      .nav-item::before,
+      .nav-item:active,
+      .nav-label:active,
+      .star-btn:active,
+      .fav-remove:active {
+        transition: none;
+        transform: none;
+      }
+    }
+
+    /* Pods/Jobs telemetry language for shell chrome. */
+    :host {
+      position: relative;
+      isolation: isolate;
+    }
+
+    :host::before {
+      position: absolute;
+      z-index: 0;
+      inset: 0;
+      background-image: linear-gradient(rgba(var(--info-rgb), 0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(var(--info-rgb), 0.025) 1px, transparent 1px);
+      background-size: 28px 28px;
+      content: '';
+      mask-image: linear-gradient(to bottom, black, transparent 88%);
+      pointer-events: none;
+    }
+
+    :host > * {
+      position: relative;
+      z-index: 1;
+    }
+
+    .sidebar-header {
+      padding: 12px 8px 13px;
+    }
+
+    .ctx-block {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      padding: 10px 11px 9px;
+      border-left: 2px solid var(--accent);
+      border-color: rgba(var(--accent-rgb), 0.28);
+      background: linear-gradient(90deg, var(--accent-subtle), transparent 78%), var(--surface-card);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+    }
+
+    .ctx-header,
+    .ctx-readout {
+      display: flex;
+      align-items: center;
+    }
+
+    .ctx-header {
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .ctx-kicker,
+    .ctx-meta,
+    .ctx-state {
+      font-family: var(--font-mono);
+      font-size: 8px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .ctx-kicker,
+    .ctx-meta {
+      color: var(--text-muted);
+    }
+
+    .ctx-state {
+      color: var(--success);
+    }
+
+    .ctx-state-offline {
+      color: var(--danger);
+    }
+
+    .ctx-readout {
+      min-width: 0;
+      gap: 8px;
+    }
+
+    .ctx-name {
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    .ctx-meta {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .ctx-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+    }
+
+    .dot-ok {
+      background: var(--success);
+      box-shadow: 0 0 0 3px var(--success-subtle);
+    }
+
+    .dot-bad {
+      background: var(--danger);
+      box-shadow: 0 0 0 3px var(--danger-subtle);
+    }
+
+    .nav-section {
+      margin-bottom: 8px;
+      padding-top: 8px;
+      border-top-color: var(--border-subtle);
+    }
+
+    .nav-label {
+      min-height: 27px;
+      padding: 7px 10px 5px;
+      color: var(--info);
+      font-family: var(--font-mono);
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .nav-label:hover,
+    .nav-label:focus-visible {
+      color: var(--accent);
+    }
+
+    .nav-item {
+      min-height: 36px;
+      margin: 2px 5px;
+      padding: 8px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 550;
+    }
+
+    .nav-item i {
+      width: 18px;
+      font-size: 13px;
+    }
+
+    .nav-item.active {
+      border-color: rgba(var(--accent-rgb), 0.3);
+      background: linear-gradient(90deg, var(--accent-subtle), transparent 88%);
+      color: var(--accent);
+    }
+
+    .nav-badge {
+      border: 1px solid rgba(var(--accent-rgb), 0.24);
+      border-radius: 3px;
+      background: transparent;
+      color: var(--accent);
+      font-family: var(--font-mono);
+      font-size: 8px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      padding: 2px 5px;
+    }
+
+    .nav-item-more {
+      margin-top: 6px;
+      border-top-color: var(--border-subtle);
+    }
+
+    :host-context(.rail) .ctx-block {
+      align-items: center;
+      padding: 9px 5px;
+    }
+
+    :host-context(.rail) .ctx-header,
+    :host-context(.rail) .ctx-meta {
+      display: none;
+    }
+
+    :host-context(.rail) .ctx-readout {
+      justify-content: center;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .dot-ok,
+      .dot-bad {
+        box-shadow: none;
+      }
+    }
+
+    /* Keep Help in dedicated bottom space while navigation scrolls. */
+    :host {
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .nav-scroll {
+      min-height: 0;
+      flex: 1 1 auto;
+      overflow-x: hidden;
+      overflow-y: auto;
+      scrollbar-color: var(--border) transparent;
+      scrollbar-gutter: stable;
+    }
+
+    .nav-footer {
+      position: relative;
+      bottom: auto;
+      z-index: 4;
+      display: flex;
+      flex: 0 0 52px;
+      min-height: 52px;
+      align-items: flex-end;
+      margin-top: 0;
+      padding: 8px 0 4px;
+      border-top: 1px solid var(--border);
+      background: linear-gradient(180deg, transparent, var(--surface-card) 18%), var(--surface-card);
+    }
+
+    .nav-footer .nav-item {
+      width: 100%;
+      margin-bottom: 0;
+    }
+
+    :host-context(.rail) .nav-footer {
+      flex-basis: 52px;
+      min-height: 52px;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 0 4px;
+    }
+
+    :host-context(.rail) .nav-footer .nav-item {
+      width: 40px;
+      min-height: 36px;
+      margin: 0 auto;
+      padding: 8px;
+    }
   `],
 })
 export class ShellComponent implements OnInit {
@@ -446,40 +971,40 @@ export class ShellComponent implements OnInit {
   favorites: { path: string; icon: string; label: string }[] = [];
 
   monitorItems: any[] = [
-    { path: '/dashboard', icon: 'pi pi-objects-column', label: 'Dashboard' },
-    { path: '/monitor', icon: 'pi pi-desktop', label: 'Monitor' },
-    { path: '/investigate', icon: 'pi pi-search', label: 'Investigate' },
-    { path: '/metrics', icon: 'pi pi-chart-line', label: 'Metrics' },
-    { path: '/events', icon: 'pi pi-bolt', label: 'Events' },
-    { path: '/logs', icon: 'pi pi-align-left', label: 'Logs' },
+    { path: '/monitor/dashboard', icon: 'pi pi-objects-column', label: 'Dashboard' },
+    { path: '/monitor/overview', icon: 'pi pi-desktop', label: 'Monitor' },
+    { path: '/monitor/investigate', icon: 'pi pi-search', label: 'Investigate' },
+    { path: '/monitor/metrics', icon: 'pi pi-chart-line', label: 'Metrics' },
+    { path: '/monitor/events', icon: 'pi pi-bolt', label: 'Events' },
+    { path: '/monitor/logs', icon: 'pi pi-align-left', label: 'Logs' },
   ];
 
   opsItems: any[] = [
-    { path: '/pods', icon: 'pi pi-box', label: 'Pods' },
-    { path: '/deployments', icon: 'pi pi-send', label: 'Deployments' },
-    { path: '/jobs', icon: 'pi pi-clock', label: 'Jobs' },
-    { path: '/resources', icon: 'pi pi-database', label: 'Resources' },
-    { path: '/incident', icon: 'pi pi-exclamation-circle', label: 'Incident' },
-    { path: '/terminal', icon: 'pi pi-code', label: 'Terminal' },
-    { path: '/runbooks', icon: 'pi pi-book', label: 'Runbooks' },
-    { path: '/yaml', icon: 'pi pi-file-edit', label: 'YAML' },
+    { path: '/operations/pods', icon: 'pi pi-box', label: 'Pods' },
+    { path: '/operations/deployments', icon: 'pi pi-send', label: 'Deployments' },
+    { path: '/operations/jobs', icon: 'pi pi-clock', label: 'Jobs' },
+    { path: '/operations/resources', icon: 'pi pi-database', label: 'Resources' },
+    { path: '/operations/incident', icon: 'pi pi-exclamation-circle', label: 'Incident' },
+    { path: '/operations/terminal', icon: 'pi pi-code', label: 'Terminal' },
+    { path: '/operations/runbooks', icon: 'pi pi-book', label: 'Runbooks' },
+    { path: '/operations/yaml', icon: 'pi pi-file-edit', label: 'YAML' },
   ];
 
   infraItems: any[] = [
-    { path: '/network', icon: 'pi pi-globe', label: 'Network' },
-    { path: '/graph', icon: 'pi pi-sitemap', label: 'Service Map' },
-    { path: '/gitops', icon: 'pi pi-sync', label: 'GitOps' },
-    { path: '/policy', icon: 'pi pi-verified', label: 'Policy' },
+    { path: '/infrastructure/network', icon: 'pi pi-globe', label: 'Network' },
+    { path: '/infrastructure/graph', icon: 'pi pi-sitemap', label: 'Service Map' },
+    { path: '/infrastructure/gitops', icon: 'pi pi-sync', label: 'GitOps' },
+    { path: '/infrastructure/policy', icon: 'pi pi-verified', label: 'Policy' },
   ];
 
   costItems: any[] = [
-    { path: '/analytics', icon: 'pi pi-chart-bar', label: 'Analytics' },
-    { path: '/cost', icon: 'pi pi-dollar', label: 'Optimization' },
+    { path: '/cost-analytics/analytics', icon: 'pi pi-chart-bar', label: 'Analytics' },
+    { path: '/cost-analytics/cost', icon: 'pi pi-dollar', label: 'Optimization' },
   ];
 
   aiItems: any[] = [
-    { path: '/ai', icon: 'pi pi-sparkles', label: 'AI Assistant' },
-    { path: '/settings', icon: 'pi pi-cog', label: 'Settings' },
+    { path: '/intelligence/ai', icon: 'pi pi-sparkles', label: 'AI Assistant' },
+    { path: '/intelligence/settings', icon: 'pi pi-cog', label: 'Settings' },
   ];
 
 
@@ -494,15 +1019,15 @@ export class ShellComponent implements OnInit {
     if (this.pendingG) {
       this.pendingG = false;
       switch (event.key) {
-        case 'd': this.router.navigate(['/dashboard']); break;
-        case 'p': this.router.navigate(['/pods']); break;
-        case 'e': this.router.navigate(['/events']); break;
-        case 'l': this.router.navigate(['/logs']); break;
-        case 't': this.router.navigate(['/terminal']); break;
-        case 'a': this.router.navigate(['/ai']); break;
-        case 'm': this.router.navigate(['/metrics']); break;
-        case 'r': this.router.navigate(['/runbooks']); break;
-        case 's': this.router.navigate(['/settings']); break;
+        case 'd': this.router.navigate(['/monitor/dashboard']); break;
+        case 'p': this.router.navigate(['/operations/pods']); break;
+        case 'e': this.router.navigate(['/monitor/events']); break;
+        case 'l': this.router.navigate(['/monitor/logs']); break;
+        case 't': this.router.navigate(['/operations/terminal']); break;
+        case 'a': this.router.navigate(['/intelligence/ai']); break;
+        case 'm': this.router.navigate(['/monitor/metrics']); break;
+        case 'r': this.router.navigate(['/operations/runbooks']); break;
+        case 's': this.router.navigate(['/intelligence/settings']); break;
       }
       return;
     }

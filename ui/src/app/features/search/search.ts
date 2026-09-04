@@ -88,15 +88,15 @@ export class SearchComponent implements AfterViewInit {
 
   navigateTo(r: any) {
     const kindRoutes: Record<string, string> = {
-      Pod: '/pods',
-      Deployment: '/deployments',
-      Service: '/resources',
-      ConfigMap: '/resources',
-      Secret: '/resources',
-      Job: '/jobs',
-      CronJob: '/jobs',
+      Pod: '/operations/pods',
+      Deployment: '/operations/deployments',
+      Service: '/operations/resources',
+      ConfigMap: '/operations/resources',
+      Secret: '/operations/resources',
+      Job: '/operations/jobs',
+      CronJob: '/operations/jobs',
     };
-    const route = kindRoutes[r.kind] || '/resources';
+    const route = kindRoutes[r.kind] || '/operations/resources';
     this.router.navigate([route], { queryParams: { filter: r.name } });
   }
 }

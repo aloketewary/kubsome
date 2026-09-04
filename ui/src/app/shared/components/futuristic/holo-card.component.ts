@@ -9,7 +9,7 @@ import { Component, Input } from '@angular/core';
          [attr.data-glow]="glow">
       @if (title) {
         <div class="holo-head">
-          @if (icon) { <i [class]="icon" class="holo-ico"></i> }
+          @if (icon) { <i [class]="icon" class="holo-ico" aria-hidden="true"></i> }
           <span class="holo-lbl">{{ title }}</span>
           @if (badge) { <span class="holo-bdg">{{ badge }}</span> }
           <div class="holo-head-slot"><ng-content select="[header-actions]" /></div>
@@ -21,107 +21,92 @@ import { Component, Input } from '@angular/core';
   styles: [`
     .holo {
       position: relative;
-      background: transparent;
-      border: none;
-      border-radius: 0;
+      overflow: hidden;
       padding: 18px 20px;
-      overflow: visible;
-      transition: box-shadow 0.25s, transform 0.25s;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface-card);
+      transition: border-color 0.2s var(--transition-smooth), box-shadow 0.2s var(--transition-smooth), transform 0.2s var(--transition-smooth);
     }
 
-    /* Hairline rules — shared grid dividers */
-    .holo::after {
-      content: '';
-      position: absolute;
-      top: 0; left: 0; right: 0;
-      height: 1px;
-      background: rgba(94, 84, 75, 0.25);
-      pointer-events: none;
-    }
-    .holo::before {
-      content: '';
-      position: absolute;
-      top: 0; left: 0; bottom: 0;
-      width: 1px;
-      background: rgba(94, 84, 75, 0.15);
-      pointer-events: none;
-    }
-
-    /* Noise texture overlay */
     .holo::before {
       content: '';
       position: absolute;
       inset: 0;
-      background: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.015'/%3E%3C/svg%3E");
       pointer-events: none;
-      border-radius: 14px;
+      background: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.012'/%3E%3C/svg%3E");
+      opacity: 0.55;
     }
 
     .holo-interactive:hover {
+      border-color: var(--border-hover);
+      box-shadow: var(--shadow);
       transform: translateY(-1px);
-      box-shadow: 0 8px 32px -12px rgba(0, 0, 0, 0.5);
     }
 
     .holo-compact { padding: 14px 16px; }
-    .holo-flat { background: transparent; padding: 10px 12px; }
+    .holo-flat {
+      border-color: transparent;
+      border-radius: 0;
+      background: transparent;
+      padding: 10px 12px;
+    }
 
-    /* Glow variants — accent the top hairline */
-    [data-glow="cyan"]::after { background: rgba(208, 156, 96, 0.35); }
-    [data-glow="cyan"] { }
-    [data-glow="amber"]::after { background: rgba(245, 158, 11, 0.4); }
-    [data-glow="amber"] { }
-    [data-glow="red"]::after { background: rgba(244, 63, 94, 0.4); }
-    [data-glow="red"] { }
-    [data-glow="green"]::after { background: rgba(74, 222, 128, 0.35); }
-    [data-glow="green"] { }
-    [data-glow="purple"]::after { background: rgba(167, 139, 250, 0.35); }
-    [data-glow="purple"] { }
+    [data-glow="cyan"] { border-top-color: var(--info); }
+    [data-glow="amber"] { border-top-color: var(--warning); }
+    [data-glow="red"] { border-top-color: var(--danger); }
+    [data-glow="green"] { border-top-color: var(--success); }
+    [data-glow="purple"] { border-top-color: var(--purple); }
 
-    /* Header */
     .holo-head {
+      position: relative;
+      z-index: 1;
       display: flex;
       align-items: center;
       gap: 8px;
       margin-bottom: 12px;
     }
-    .holo-ico { font-size: 12px; color: #d09c60; opacity: 0.7; }
-    .holo-lbl {
-      font-size: 10px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: rgba(168, 158, 148, 0.5);
+
+    .holo-ico {
+      color: var(--accent);
+      font-size: 12px;
+      opacity: 0.9;
     }
+
+    .holo-lbl {
+      color: var(--text-secondary);
+      font-size: 10px;
+      font-weight: 750;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
     .holo-bdg {
+      padding: 2px 7px;
+      border: 1px solid rgba(var(--accent-rgb), 0.2);
+      border-radius: var(--radius-pill);
+      background: var(--accent-subtle);
+      color: var(--accent);
+      font-family: var(--font-mono);
       font-size: 9px;
       font-weight: 700;
-      padding: 2px 7px;
-      border-radius: 8px;
-      background: rgba(208, 156, 96, 0.1);
-      color: #d09c60;
-      font-family: 'JetBrains Mono', monospace;
     }
-    .holo-head-slot { margin-left: auto; display: flex; gap: 4px; }
-    .holo-content { position: relative; z-index: 1; }
 
-    /* ─── Light Mode ─────────────────────────────────────────────── */
-    :host-context([data-theme="light"]) .holo::after {
-      background: rgba(0, 0, 0, 0.06);
+    .holo-head-slot {
+      display: flex;
+      gap: 4px;
+      margin-left: auto;
     }
-    :host-context([data-theme="light"]) .holo::before {
-      background: rgba(0, 0, 0, 0.04);
+
+    .holo-content {
+      position: relative;
+      z-index: 1;
     }
-    :host-context([data-theme="light"]) .holo-interactive:hover {
-      box-shadow: 0 4px 20px -8px rgba(0, 0, 0, 0.08);
+
+    @media (prefers-reduced-motion: reduce) {
+      .holo { transition: none; }
+      .holo-interactive:hover { transform: none; }
     }
-    :host-context([data-theme="light"]) [data-glow="cyan"]::after { background: rgba(180, 120, 60, 0.3); }
-    :host-context([data-theme="light"]) [data-glow="amber"]::after { background: rgba(202, 138, 4, 0.35); }
-    :host-context([data-theme="light"]) [data-glow="red"]::after { background: rgba(220, 38, 38, 0.35); }
-    :host-context([data-theme="light"]) [data-glow="green"]::after { background: rgba(22, 163, 74, 0.3); }
-    :host-context([data-theme="light"]) [data-glow="purple"]::after { background: rgba(124, 58, 237, 0.3); }
-    :host-context([data-theme="light"]) .holo-ico { color: #9a5129; }
-    :host-context([data-theme="light"]) .holo-lbl { color: rgba(0, 0, 0, 0.45); }
-    :host-context([data-theme="light"]) .holo-bdg { background: rgba(154, 81, 41, 0.08); color: #9a5129; }
   `],
 })
 export class HoloCardComponent {

@@ -3,7 +3,7 @@ kind: Plugin
 metadata:
   name: kubsome
 spec:
-  version: v1.11.1
+  version: v1.13.33
   homepage: https://github.com/aloketewary/kubsome
   shortDescription: AI-native Kubernetes operational workspace
   description: |
@@ -26,7 +26,7 @@ spec:
       kubectl kubsome scorecard          # Health grade
       kubectl kubsome doctor             # Pre-flight check
   caveats: |
-    Requires Python 3.9+ and pip. Install via:
+    Requires Python 3.10+ and pip. Install via:
       pip install kubsome
 
     Requires kubectl configured with cluster access.
@@ -37,7 +37,7 @@ spec:
           - key: os
             operator: In
             values: [darwin, linux]
-      uri: https://github.com/aloketewary/kubsome/releases/download/v1.11.1/kubsome-v1.11.1.tar.gz
+      uri: https://github.com/aloketewary/kubsome/releases/download/v1.13.33/kubsome-v1.13.33.tar.gz
       sha256: "PLACEHOLDER_SHA256"
       bin: kubectl-kubsome
       files:

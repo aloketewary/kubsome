@@ -1,16 +1,14 @@
 import { Component, inject, OnInit, OnDestroy } from '@angular/core';
 import { Router } from '@angular/router';
-import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { TagModule } from 'primeng/tag';
 import { ButtonModule } from 'primeng/button';
 import { TooltipModule } from 'primeng/tooltip';
 import { DialogModule } from 'primeng/dialog';
 import { ApiService } from '../../core/services/api.service';
-import { Deployment } from '../../core/models';
+import { Deployment, RolloutResponse } from '../../core/models';
 import { ConfirmService } from '../../shared/services/confirm.service';
 import { AiInsightDrawerComponent } from '../../shared/components/ai-insight-drawer.component';
-import { HoloCardComponent } from '../../shared/components/futuristic/holo-card.component';
 import { MetricTileComponent } from '../../shared/components/futuristic/metric-tile.component';
 import { StatusBeaconComponent } from '../../shared/components/futuristic/status-beacon.component';
 import { CommandBarComponent } from '../../shared/components/futuristic/command-bar.component';
@@ -34,7 +32,7 @@ interface DepHealth {
   standalone: true,
   imports: [IntelHeaderComponent,
     FormsModule, TagModule, ButtonModule, TooltipModule, DialogModule,
-    AiInsightDrawerComponent, HoloCardComponent, MetricTileComponent,
+    AiInsightDrawerComponent, MetricTileComponent,
     StatusBeaconComponent, CommandBarComponent, LiveIndicatorComponent, ActionIconComponent,
   ],
   templateUrl: './deployments.html',
@@ -42,7 +40,6 @@ interface DepHealth {
 })
 export class DeploymentsComponent implements OnInit, OnDestroy {
   private api = inject(ApiService);
-  private http = inject(HttpClient);
   private router = inject(Router);
   private confirmService = inject(ConfirmService);
 
@@ -52,13 +49,16 @@ export class DeploymentsComponent implements OnInit, OnDestroy {
   searchQuery = '';
   loading = false;
   loadError = false;
+  healthError = false;
   autoRefresh = true;
   lastUpdated = '';
   private refreshTimer: any;
 
   rolloutVisible = false;
   rolloutName = '';
-  rolloutData: any = null;
+  rolloutData: RolloutResponse | null = null;
+  rolloutLoading = false;
+  rolloutError = '';
 
   scaleVisible = false;
   scaleName = '';
@@ -116,6 +116,17 @@ export class DeploymentsComponent implements OnInit, OnDestroy {
 
   depReason(dep: Deployment): string {
     return this.healthMap.get(dep.name)?.top_reason ?? '';
+  }
+
+  replicaStatus(dep: Deployment): string {
+    if (dep.available === dep.desired) return 'All replicas ready';
+    if (dep.available === 0) return 'No replicas ready';
+    return `${dep.desired - dep.available} replica${dep.desired - dep.available === 1 ? '' : 's'} unavailable`;
+  }
+
+  replicaProgress(dep: Deployment): number {
+    if (dep.desired <= 0) return 0;
+    return Math.min(100, Math.round((dep.available / dep.desired) * 100));
   }
 
   depBeaconStatus(dep: Deployment): 'ok' | 'warning' | 'critical' {
@@ -176,12 +187,18 @@ export class DeploymentsComponent implements OnInit, OnDestroy {
   }
 
   private fetchHealth() {
-    this.http.get<any>('/api/monitor/health').subscribe({
+    this.api.getHealth().subscribe({
       next: (res) => {
+        this.healthError = Boolean(res?.error);
         this.healthMap.clear();
         for (const d of res.deployments || []) {
           this.healthMap.set(d.deployment, d);
         }
+        this.filter();
+      },
+      error: () => {
+        this.healthError = true;
+        this.healthMap.clear();
         this.filter();
       },
     });
@@ -204,9 +221,33 @@ export class DeploymentsComponent implements OnInit, OnDestroy {
       .then(ok => { if (ok) { this.api.scale(this.scaleName, this.scaleReplicas).subscribe(() => { this.scaleVisible = false; this.refresh(); }); } });
   }
 
-  viewRollout(dep: Deployment) { this.rolloutName = dep.name; this.rolloutVisible = true; this.rolloutData = null; this.api.getRollout(dep.name).subscribe(res => (this.rolloutData = res)); }
-  viewPods(dep: Deployment) { this.router.navigate(['/pods'], { queryParams: { filter: dep.name } }); }
-  investigate(dep: Deployment) { this.router.navigateByUrl(`/pods?filter=${dep.name}`); }
+  viewRollout(dep: Deployment) {
+    this.rolloutName = dep.name;
+    this.rolloutVisible = true;
+    this.loadRollout();
+  }
+
+  retryRollout() {
+    if (this.rolloutName) this.loadRollout();
+  }
+
+  private loadRollout() {
+    this.rolloutData = null;
+    this.rolloutError = '';
+    this.rolloutLoading = true;
+    this.api.getRollout(this.rolloutName).subscribe({
+      next: (res) => {
+        this.rolloutData = res;
+        this.rolloutLoading = false;
+      },
+      error: () => {
+        this.rolloutLoading = false;
+        this.rolloutError = 'Unable to load rollout history. Check cluster connectivity and try again.';
+      },
+    });
+  }
+  viewPods(dep: Deployment) { this.router.navigate(['/operations/pods'], { queryParams: { filter: dep.name } }); }
+  investigate(dep: Deployment) { this.router.navigate(['/monitor/investigate'], { queryParams: { target: dep.name } }); }
 
   aiDiagnose(dep: Deployment) {
     this.selectedDepName = dep.name;

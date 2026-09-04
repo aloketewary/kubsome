@@ -34,6 +34,9 @@ jobs:
       - name: Run tests
         run: pytest
 
+      - name: Compile Python sources
+        run: python -m compileall -q main.py api core config plugins tui tests
+
   build:
     runs-on: ubuntu-latest
     needs: test

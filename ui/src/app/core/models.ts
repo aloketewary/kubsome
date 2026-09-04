@@ -109,6 +109,59 @@ export interface DeploymentsResponse {
   deployments: Deployment[];
 }
 
+export interface ResourceSummary {
+  name: string;
+  namespace: string;
+  status: string;
+  ready: string;
+  age: string;
+}
+
+export interface ResourceListResponse {
+  context: string;
+  namespace: string;
+  resource: string;
+  data: { items?: any[] };
+}
+
+export interface ResourceDescribeResponse {
+  context: string;
+  namespace: string;
+  resource: string;
+  name: string;
+  raw: string;
+  yaml?: string;
+  parsed: Record<string, string>;
+}
+
+export interface RolloutCondition {
+  type: string;
+  status: string;
+  reason?: string;
+  message?: string;
+  lastUpdateTime?: string;
+  lastTransitionTime?: string;
+}
+
+export interface RolloutStatus {
+  name: string;
+  desired: number;
+  ready: number;
+  available: number;
+  updated: number;
+  unavailable: number;
+  stuck: boolean;
+  strategy: string;
+  conditions: RolloutCondition[];
+  image: string;
+}
+
+export interface RolloutResponse {
+  name: string;
+  status: RolloutStatus | null;
+  history: string;
+}
+
 export interface LogsResponse {
   pod: string;
   namespace: string;

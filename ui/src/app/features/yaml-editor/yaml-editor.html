@@ -1,104 +1,115 @@
-<app-intel-header title="YAML Editor" icon="pi pi-code"
-  subtitle="Create and apply Kubernetes manifests">
-</app-intel-header>
+<section class="yaml-page" aria-label="YAML manifest operations">
+  <app-intel-header title="YAML Editor" icon="pi pi-code"
+    subtitle="Create, inspect, and apply Kubernetes manifests">
+  </app-intel-header>
 
-    <!-- Quick Templates -->
-    @if (!yaml) {
-      <div class="templates-section">
-        <h3 class="section-label">Quick Start</h3>
-        <div class="template-grid">
-          @for (tpl of templates; track tpl.kind) {
-            <div class="template-card" (click)="useTemplate(tpl)">
-              <div class="tpl-icon" [style.background]="tpl.color + '15'" [style.color]="tpl.color">
-                <i [class]="tpl.icon"></i>
-              </div>
-              <div class="tpl-info">
-                <span class="tpl-name">{{ tpl.kind }}</span>
-                <span class="tpl-desc">{{ tpl.desc }}</span>
-              </div>
-            </div>
-          }
-        </div>
-      </div>
-    }
-
-    <!-- Generator Bar -->
-    <div class="generator-bar">
-      <div class="gen-left">
-        <p-select [options]="kinds" [(ngModel)]="kind" placeholder="Kind" [style]="{ width: '140px' }" (ngModelChange)="onKindChange()" />
-        <input class="gen-input" [(ngModel)]="name" placeholder="Resource name..." (keyup.enter)="generate()" />
-        <button pButton label="Generate" icon="pi pi-sparkles" class="p-button-sm" (click)="generate()" [disabled]="!kind || !name" pTooltip="AI-generate manifest"></button>
-        <button pButton label="Load" icon="pi pi-download" class="p-button-sm p-button-outlined" (click)="loadResource()" [disabled]="!kind || !name" pTooltip="Fetch live resource YAML"></button>
-      </div>
-      <div class="gen-right">
-        @if (yaml) {
-          <button pButton icon="pi pi-trash" class="p-button-sm p-button-text p-button-danger" pTooltip="Clear" (click)="clear()"></button>
-        }
+  <div class="manifest-overview" aria-label="Manifest workbench overview">
+    <div class="deck-primary">
+      <span class="deck-kicker"><i class="pi pi-code" aria-hidden="true"></i> Manifest workbench</span>
+      <h2>Shape, inspect, and verify cluster intent.</h2>
+      <p>Generate a resource, load live YAML, or edit a manifest before validation and apply.</p>
+      <div class="deck-chips" aria-label="YAML editor capabilities">
+        <span><i class="pi pi-sparkles" aria-hidden="true"></i> Generate</span>
+        <span><i class="pi pi-download" aria-hidden="true"></i> Load live YAML</span>
+        <span><i class="pi pi-shield" aria-hidden="true"></i> Validate first</span>
       </div>
     </div>
+    <div class="manifest-readout" aria-label="Current manifest telemetry">
+      <div class="readout-head">
+        <div>
+          <span class="readout-kicker">Control surface</span>
+          <strong>{{ kind || 'No kind selected' }}</strong>
+        </div>
+        <span class="readout-icon" aria-hidden="true"><i class="pi pi-file-edit"></i></span>
+      </div>
+      <div class="readout-grid">
+        <div><span>File</span><strong>{{ fileName }}</strong></div>
+        <div><span>Source</span><strong>{{ isLiveEdit ? 'LIVE RESOURCE' : yaml ? 'DRAFT MANIFEST' : 'TEMPLATE' }}</strong></div>
+        <div><span>Lines</span><strong>{{ lineCount }}</strong></div>
+        <div><span>Status</span><strong>{{ actionLabel }}</strong></div>
+      </div>
+    </div>
+  </div>
 
-    <!-- Resource Picker (when kind selected) -->
+  <div class="yaml-metrics" aria-label="Manifest summary">
+    <div class="yaml-metric"><span>Kind</span><strong>{{ kind || 'NONE' }}</strong><small>resource type</small></div>
+    <div class="yaml-metric"><span>Manifest</span><strong>{{ fileName }}</strong><small>{{ name || 'unnamed resource' }}</small></div>
+    <div class="yaml-metric"><span>Lines</span><strong>{{ lineCount }}</strong><small>editor rows</small></div>
+    <div class="yaml-metric"><span>Characters</span><strong>{{ yaml.length }}</strong><small>document size</small></div>
+    <div class="yaml-metric yaml-metric-state" [class]="'metric-' + actionState"><span>Action state</span><strong>{{ actionLabel }}</strong><small>{{ isLiveEdit ? 'cluster source' : 'local draft' }}</small></div>
+  </div>
+
+  <div class="yaml-workspace">
+    @if (!yaml) {
+      <section class="templates-section" aria-labelledby="quick-start-title">
+        <div class="section-heading">
+          <div><span class="section-label">Quick start</span><h2 id="quick-start-title">Choose a manifest shape</h2><p class="section-help">Start from a common resource shape or load an existing object.</p></div>
+          <span class="section-count">{{ templates.length }} templates</span>
+        </div>
+        <div class="template-grid">
+          @for (tpl of templates; track tpl.kind) {
+            <button class="template-card" type="button" (click)="useTemplate(tpl)">
+              <span class="template-index" aria-hidden="true">{{ $index + 1 }}</span>
+              <span class="tpl-icon" [style.background]="tpl.color + '15'" [style.color]="tpl.color"><i [class]="tpl.icon" aria-hidden="true"></i></span>
+              <span class="tpl-info"><span class="tpl-name">{{ tpl.kind }}</span><span class="tpl-desc">{{ tpl.desc }}</span></span>
+              <i class="pi pi-arrow-up-right tpl-arrow" aria-hidden="true"></i>
+            </button>
+          }
+        </div>
+      </section>
+    }
+
+    <section class="generator-panel" aria-labelledby="resource-controls-title">
+      <div class="section-heading generator-heading">
+        <div><span class="section-label">Resource controls</span><h2 id="resource-controls-title">Generate or load a manifest</h2><p class="section-help">Select a kind and name, then choose the source of truth.</p></div>
+        <span class="action-chip" [class]="'action-' + actionState"><span class="action-dot" aria-hidden="true"></span>{{ actionLabel }}</span>
+      </div>
+      <div class="generator-bar">
+        <div class="gen-left">
+          <label class="field-label" for="yaml-kind">Kind</label>
+          <p-select inputId="yaml-kind" [options]="kinds" [(ngModel)]="kind" placeholder="Select kind" [style]="{ width: '150px' }" (ngModelChange)="onKindChange()" />
+          <label class="field-label" for="yaml-name">Name</label>
+          <input id="yaml-name" class="gen-input" [(ngModel)]="name" placeholder="resource-name" (keyup.enter)="generate()" />
+          <button type="button" pButton label="Generate" icon="pi pi-sparkles" class="p-button-sm" (click)="generate()" [disabled]="!kind || !name || isBusy" pTooltip="Generate manifest"></button>
+          <button type="button" pButton label="Load" icon="pi pi-download" class="p-button-sm p-button-outlined" (click)="loadResource()" [disabled]="!kind || !name || isBusy" pTooltip="Fetch live resource YAML"></button>
+        </div>
+        @if (yaml) { <button type="button" pButton label="Clear" icon="pi pi-trash" class="p-button-sm p-button-text p-button-danger" (click)="clear()" aria-label="Clear manifest editor"></button> }
+      </div>
+      <div class="action-message" role="status" aria-live="polite"><i class="pi pi-info-circle" aria-hidden="true"></i>{{ actionMessage }}</div>
+    </section>
+
     @if (resourceNames.length > 0 && !yaml) {
-      <div class="resource-picker">
-        <span class="picker-label">Existing {{ kind }}s:</span>
-        <div class="picker-list">
-          @for (r of resourceNames; track r) {
-            <button class="picker-item" (click)="name = r; loadResource()">{{ r }}</button>
-          }
-        </div>
-      </div>
+      <section class="resource-picker" aria-labelledby="resource-picker-title">
+        <div class="picker-heading"><span id="resource-picker-title" class="section-label">Existing {{ kind }} resources</span><span class="section-count">{{ resourceNames.length }} available</span></div>
+        <div class="picker-list">@for (r of resourceNames; track r) { <button class="picker-item" type="button" (click)="name = r; loadResource()">{{ r }}</button> }</div>
+      </section>
     }
 
-    <!-- Editor -->
     @if (yaml || showEditor) {
-      <div class="editor-wrap">
-        <!-- Tab Bar -->
+      <section class="editor-wrap" aria-labelledby="editor-title">
         <div class="editor-tabs">
-          <div class="tab active">
-            <i class="pi pi-file"></i>
-            <span>{{ fileName }}</span>
-            @if (isLiveEdit) {
-              <span class="live-badge">LIVE</span>
-            }
-          </div>
+          <div class="tab active" id="editor-title"><i class="pi pi-file" aria-hidden="true"></i><span>{{ fileName }}</span>@if (isLiveEdit) { <span class="live-badge">LIVE</span> }</div>
           <div class="tab-spacer"></div>
-          <div class="editor-actions">
-            <button pButton icon="pi pi-copy" class="p-button-sm p-button-text p-button-rounded" pTooltip="Copy" (click)="copy()"></button>
-            <button pButton label="Dry Run" icon="pi pi-eye" class="p-button-sm p-button-outlined" (click)="dryRun()" [disabled]="!yaml.trim()" pTooltip="Validate without applying"></button>
-            <button pButton label="Apply" icon="pi pi-upload" class="p-button-sm p-button-success" (click)="apply()" [disabled]="!yaml.trim()"></button>
+          <div class="editor-actions" aria-label="Manifest actions">
+            <button type="button" pButton label="Copy" icon="pi pi-copy" class="p-button-sm p-button-text" (click)="copy()" [attr.aria-label]="copied ? 'YAML copied' : 'Copy YAML'"></button>
+            <button type="button" pButton label="Dry run" icon="pi pi-eye" class="p-button-sm p-button-outlined" (click)="dryRun()" [disabled]="!yaml.trim() || isBusy" pTooltip="Validate without applying"></button>
+            <button type="button" pButton label="Apply" icon="pi pi-upload" class="p-button-sm p-button-success" (click)="apply()" [disabled]="!yaml.trim() || isBusy" aria-label="Apply manifest"></button>
           </div>
         </div>
-
-        <!-- Editor Body -->
         <div class="editor-body">
-          <div class="line-numbers">
-            @for (n of lineNumbers; track n) {
-              <span>{{ n }}</span>
-            }
-          </div>
-          <textarea class="code-area" [(ngModel)]="yaml" (ngModelChange)="updateLines()" placeholder="# Paste or generate YAML here..." spellcheck="false"></textarea>
+          <div class="line-numbers" aria-hidden="true">@for (n of lineNumbers; track n) { <span>{{ n }}</span> }</div>
+          <label class="sr-only" for="yaml-code">YAML manifest</label>
+          <textarea id="yaml-code" class="code-area" [(ngModel)]="yaml" (ngModelChange)="onYamlChange()" placeholder="# Paste or generate YAML here..." spellcheck="false"></textarea>
         </div>
-
-        <!-- Status Bar -->
-        <div class="editor-status">
-          <span>{{ lineCount }} lines</span>
-          <span>{{ yaml.length }} chars</span>
-          <span>YAML</span>
-          @if (copied) {
-            <span class="copied-badge"><i class="pi pi-check"></i> Copied</span>
-          }
-        </div>
-      </div>
+        <div class="editor-status"><span>{{ lineCount }} lines</span><span>{{ yaml.length }} chars</span><span>YAML</span>@if (copied) { <span class="copied-badge" role="status"><i class="pi pi-check" aria-hidden="true"></i> Copied</span> }<span class="status-spacer"></span><span class="editor-hint">Review manifest before applying</span></div>
+      </section>
     }
 
-    <!-- Result -->
     @if (result) {
-      <div class="result-card" [class.result-ok]="resultSuccess" [class.result-err]="!resultSuccess">
-        <div class="result-header">
-          <i class="pi" [class.pi-check-circle]="resultSuccess" [class.pi-times-circle]="!resultSuccess"></i>
-          <span class="result-title">{{ resultSuccess ? (isDryRun ? 'Validation Passed' : 'Applied Successfully') : 'Failed' }}</span>
-          <button pButton icon="pi pi-times" class="p-button-sm p-button-text p-button-rounded" (click)="result = ''"></button>
-        </div>
-        <pre class="result-output">{{ result }}</pre>
-      </div>
+      <section class="result-card" [class.result-ok]="resultSuccess" [class.result-err]="!resultSuccess" role="status" aria-live="polite" aria-labelledby="result-title">
+        <div class="result-header"><i class="pi" [class.pi-check-circle]="resultSuccess" [class.pi-times-circle]="!resultSuccess" aria-hidden="true"></i><span id="result-title" class="result-title">{{ resultSuccess ? (isDryRun ? 'Validation passed' : 'Applied successfully') : 'Action failed' }}</span><button type="button" pButton label="Dismiss" icon="pi pi-times" class="p-button-sm p-button-text" (click)="result = ''" aria-label="Dismiss result"></button></div>
+        <pre class="result-output" tabindex="0">{{ result }}</pre>
+      </section>
     }
+  </div>
+</section>

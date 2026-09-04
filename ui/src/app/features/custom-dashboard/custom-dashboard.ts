@@ -6,6 +6,8 @@ import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
 import { TooltipModule } from 'primeng/tooltip';
 import { DialogModule } from 'primeng/dialog';
+import { IntelHeaderComponent } from '../../shared/components/futuristic/intel-header.component';
+import { MetricTileComponent } from '../../shared/components/futuristic/metric-tile.component';
 
 interface Widget {
   id: string;
@@ -38,13 +40,24 @@ const WIDGET_CATALOG = [
   { type: 'security_issues', title: 'Security Issues', icon: 'pi pi-shield', color: '#ef4444', desc: 'Misconfiguration findings', size: 'sm' as const },
   { type: 'context_info', title: 'Cluster Context', icon: 'pi pi-globe', color: '#3b82f6', desc: 'Current context and namespace', size: 'sm' as const },
   { type: 'endpoint_health', title: 'Endpoint Health', icon: 'pi pi-sitemap', color: '#14b8a6', desc: 'Service endpoints status', size: 'sm' as const },
+  { type: 'node_pressure', title: 'Node Pressure', icon: 'pi pi-chart-line', color: '#f97316', desc: 'CPU and memory utilization pressure', size: 'md' as const },
+  { type: 'rollout_status', title: 'Rollout Status', icon: 'pi pi-send', color: '#a855f7', desc: 'Progressing and degraded rollouts', size: 'md' as const },
+  { type: 'hpa_pressure', title: 'HPA Pressure', icon: 'pi pi-sliders-h', color: '#eab308', desc: 'Autoscalers at max or scaling up', size: 'md' as const },
+  { type: 'pvc_capacity', title: 'PVC Capacity', icon: 'pi pi-database', color: '#06b6d4', desc: 'Requested and provisioned storage', size: 'md' as const },
+  { type: 'event_velocity', title: 'Event Velocity', icon: 'pi pi-chart-bar', color: '#eab308', desc: 'Event volume across 24 hours', size: 'md' as const },
+  { type: 'gitops_drift', title: 'GitOps Drift', icon: 'pi pi-sync', color: '#ec4899', desc: 'Synced, drifted, and degraded apps', size: 'sm' as const },
+  { type: 'rightsizing_savings', title: 'Rightsizing Savings', icon: 'pi pi-dollar', color: '#10b981', desc: 'Monthly savings opportunities', size: 'sm' as const },
+  { type: 'health_signals', title: 'Health Signals', icon: 'pi pi-heart', color: '#ef4444', desc: 'OOM, quota, HPA, and rollout signals', size: 'sm' as const },
+  { type: 'api_health', title: 'API Health', icon: 'pi pi-wifi', color: '#22c55e', desc: 'Kubsome API availability', size: 'sm' as const },
+  { type: 'cost_trend', title: 'Cost Trend', icon: 'pi pi-chart-line', color: '#10b981', desc: 'Daily cost over 30 days', size: 'md' as const },
+  { type: 'pod_restart_trend', title: 'Pod Restart Trend', icon: 'pi pi-replay', color: '#ef4444', desc: 'Restart activity over 48 hours', size: 'md' as const },
 ];
 
 
 @Component({
   selector: 'app-custom-dashboard',
   standalone: true,
-  imports: [FormsModule, ButtonModule, TagModule, TooltipModule, DialogModule],
+  imports: [FormsModule, ButtonModule, TagModule, TooltipModule, DialogModule, IntelHeaderComponent, MetricTileComponent],
   templateUrl: './custom-dashboard.html',
   styleUrl: './custom-dashboard.scss',
 })
@@ -183,6 +196,22 @@ export class CustomDashboardComponent implements OnInit, OnDestroy {
     return name;
   }
 
+  private latestByName(rows: any[]): any[] {
+    const latest = new Map<string, any>();
+    for (const row of rows) {
+      const name = row.name || row.hpa_name || row.deployment || '';
+      if (name && !latest.has(name)) latest.set(name, row);
+    }
+    return Array.from(latest.values());
+  }
+
+  private normalizeSeries(series: any[], key: string): any[] {
+    const points = (series || []).slice(-12);
+    const values = points.map(point => Number(point[key]) || 0);
+    const max = Math.max(...values, 1);
+    return points.map((point, index) => ({ ...point, height: Math.max((values[index] / max) * 100, 8) }));
+  }
+
   private fetchWidgetData(widget: Widget) {
     widget.loading = true;
     widget.lastRefresh = Date.now();
@@ -305,6 +334,151 @@ export class CustomDashboardComponent implements OnInit, OnDestroy {
             widget.loading = false;
           },
           error: () => { widget.data = { total: 0, healthy: 0, unhealthy: 0 }; widget.loading = false; },
+        });
+        break;
+      case 'node_pressure':
+        this.http.get<any>('/api/top/nodes').subscribe({
+          next: (r) => {
+            const nodes = (r.nodes || []).map((node: any) => ({
+              ...node,
+              cpuPercent: Number(node.cpu_percent ?? node.cpu_pct_val ?? 0),
+              memoryPercent: Number(node.memory_percent ?? node.mem_pct_val ?? 0),
+            }));
+            const pressured = nodes.filter((node: any) => node.cpuPercent >= 80 || node.memoryPercent >= 80);
+            const hottest = [...nodes].sort((a: any, b: any) => Math.max(b.cpuPercent, b.memoryPercent) - Math.max(a.cpuPercent, a.memoryPercent))[0] || null;
+            widget.data = { nodes: nodes.slice(0, 5), pressured: pressured.length, hottest };
+            widget.loading = false;
+          },
+          error: () => { widget.data = { nodes: [], pressured: 0, hottest: null }; widget.loading = false; },
+        });
+        break;
+      case 'rollout_status':
+        this.http.get<any>('/api/monitor/rollouts').subscribe({
+          next: (r) => {
+            const items = r.rollouts || [];
+            widget.data = {
+              items: items.slice(0, 5),
+              bad: items.filter((item: any) => ['stalled', 'degraded'].includes(item.state)).length,
+              progressing: items.filter((item: any) => item.state === 'progressing').length,
+              complete: items.filter((item: any) => ['complete', 'healthy', 'available'].includes(item.state)).length,
+            };
+            widget.loading = false;
+          },
+          error: () => { widget.data = { items: [], bad: 0, progressing: 0, complete: 0 }; widget.loading = false; },
+        });
+        break;
+      case 'hpa_pressure':
+        this.http.get<any>('/api/monitor/hpa?hours=24').subscribe({
+          next: (r) => {
+            const items = this.latestByName(r.hpa || []);
+            widget.data = {
+              items: items.slice(0, 5),
+              atMax: items.filter((item: any) => item.at_max).length,
+              scalingUp: items.filter((item: any) => item.scaling_up).length,
+            };
+            widget.loading = false;
+          },
+          error: () => { widget.data = { items: [], atMax: 0, scalingUp: 0 }; widget.loading = false; },
+        });
+        break;
+      case 'pvc_capacity':
+        this.http.get<any>('/api/get/pvc').subscribe({
+          next: (r) => {
+            const items = (r.data?.items || []).map((item: any) => ({
+              name: item.metadata?.name || 'PVC',
+              phase: item.status?.phase || 'Unknown',
+              requested: item.spec?.resources?.requests?.storage || 'n/a',
+              capacity: item.status?.capacity?.storage || 'pending',
+              storageClass: item.spec?.storageClassName || 'default',
+            }));
+            widget.data = { items: items.slice(0, 5), total: items.length, bound: items.filter((item: any) => item.phase === 'Bound').length };
+            widget.loading = false;
+          },
+          error: () => { widget.data = { items: [], total: 0, bound: 0 }; widget.loading = false; },
+        });
+        break;
+      case 'event_velocity':
+        this.http.get<any>('/api/analytics/series/events?hours=24').subscribe({
+          next: (r) => {
+            const raw = r.series || [];
+            const series = this.normalizeSeries(raw, 'count');
+            widget.data = { series, total: raw.reduce((sum: number, point: any) => sum + (Number(point.count) || 0), 0), latestRate: Number(raw[raw.length - 1]?.count) || 0 };
+            widget.loading = false;
+          },
+          error: () => { widget.data = { series: [], total: 0, latestRate: 0 }; widget.loading = false; },
+        });
+        break;
+      case 'gitops_drift':
+        this.http.get<any>('/api/gitops').subscribe({
+          next: (r) => {
+            widget.data = {
+              provider: r.provider || 'Unavailable',
+              total: r.total || (r.apps || []).length,
+              synced: r.synced || 0,
+              outOfSync: r.out_of_sync || 0,
+              degraded: r.degraded || 0,
+              apps: (r.apps || []).slice(0, 5),
+            };
+            widget.loading = false;
+          },
+          error: () => { widget.data = { provider: 'Unavailable', total: 0, synced: 0, outOfSync: 0, degraded: 0, apps: [] }; widget.loading = false; },
+        });
+        break;
+      case 'rightsizing_savings':
+        this.http.get<any>('/api/analytics/rightsizing/overview?days=7').subscribe({
+          next: (r) => {
+            widget.data = {
+              savings: Number(r.total_savings_monthly) || 0,
+              deployments: r.deployments_analyzed || 0,
+              atRisk: r.at_risk_count || 0,
+              safe: r.safe_to_apply || 0,
+              opportunities: (r.opportunities || []).slice(0, 3),
+            };
+            widget.loading = false;
+          },
+          error: () => { widget.data = { savings: 0, deployments: 0, atRisk: 0, safe: 0, opportunities: [] }; widget.loading = false; },
+        });
+        break;
+      case 'health_signals':
+        this.http.get<any>('/api/monitor/health-signals').subscribe({
+          next: (r) => {
+            const total = (r.oomkills_24h || 0) + (r.hpa_at_max || 0) + (r.quota_pressure || 0) + (r.stalled_rollouts || 0);
+            widget.data = { ...r, total, status: total > 0 ? 'attention' : 'clear' };
+            widget.loading = false;
+          },
+          error: () => { widget.data = { oomkills_24h: 0, hpa_at_max: 0, quota_pressure: 0, stalled_rollouts: 0, total: 0, status: 'unavailable' }; widget.loading = false; },
+        });
+        break;
+      case 'api_health':
+        this.http.get<any>('/api/health').subscribe({
+          next: (r) => { widget.data = { healthy: r.status === 'ok', status: r.status || 'unknown' }; widget.loading = false; },
+          error: () => { widget.data = { healthy: false, status: 'unavailable' }; widget.loading = false; },
+        });
+        break;
+      case 'cost_trend':
+        this.http.get<any>('/api/analytics/series/cost?days=30').subscribe({
+          next: (r) => {
+            const raw = r.series || [];
+            const series = this.normalizeSeries(raw, 'cost');
+            const total = raw.reduce((sum: number, point: any) => sum + (Number(point.cost) || 0), 0);
+            const latest = Number(raw[raw.length - 1]?.cost) || 0;
+            const first = Number(raw[0]?.cost) || 0;
+            widget.data = { series, total, latest, delta: latest - first };
+            widget.loading = false;
+          },
+          error: () => { widget.data = { series: [], total: 0, latest: 0, delta: 0 }; widget.loading = false; },
+        });
+        break;
+      case 'pod_restart_trend':
+        this.http.get<any>('/api/analytics/series/restarts?hours=48').subscribe({
+          next: (r) => {
+            const raw = r.series || [];
+            const series = this.normalizeSeries(raw, 'restarts');
+            const total = raw.reduce((sum: number, point: any) => sum + (Number(point.restarts) || 0), 0);
+            widget.data = { series, total, latest: Number(raw[raw.length - 1]?.restarts) || 0 };
+            widget.loading = false;
+          },
+          error: () => { widget.data = { series: [], total: 0, latest: 0 }; widget.loading = false; },
         });
         break;
       default:

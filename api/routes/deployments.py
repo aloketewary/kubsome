@@ -60,7 +60,7 @@ def post_scale(name: str, req: ScaleRequest):
             "get", f"deployment/{name}", "-n", str(context.namespace),
             "-o", "jsonpath={.spec.replicas}"
         ]
-        r = subprocess.run(get_cmd, capture_output=True, text=True)
+        r = subprocess.run(get_cmd, capture_output=True, text=True, timeout=15)
         current = int(r.stdout.strip()) if r.returncode == 0 and r.stdout.strip().isdigit() else 1
         replicas = max(0, current + req.replicas)
     cmd = [
@@ -68,7 +68,7 @@ def post_scale(name: str, req: ScaleRequest):
         "scale", f"deployment/{name}",
         f"--replicas={replicas}", "-n", str(context.namespace)
     ]
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
     if result.returncode != 0:
         raise HTTPException(status_code=500, detail=result.stderr.strip())
     return {"scaled": name, "replicas": replicas}

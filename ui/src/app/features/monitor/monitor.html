@@ -1,12 +1,50 @@
+<section class="monitor-page" aria-label="Kubernetes monitoring workspace">
 <app-intel-header title="Monitor" icon="pi pi-desktop"
   [subtitle]="cards.length + ' card' + (cards.length !== 1 ? 's' : '') + ' · multi-cluster overview'">
-  <button class="ctrl-btn" (click)="refreshAll()" pTooltip="Refresh All">
-    <i class="pi pi-refresh"></i>
+  <button type="button" class="ctrl-btn" (click)="refreshAll()" pTooltip="Refresh all monitor cards" aria-label="Refresh all monitor cards">
+    <i class="pi pi-refresh" aria-hidden="true"></i>
   </button>
-  <button class="ctrl-btn" (click)="addCard()" pTooltip="Add Card">
-    <i class="pi pi-plus"></i>
+  <button type="button" class="ctrl-btn" (click)="addCard()" pTooltip="Add monitor card" aria-label="Add monitor card">
+    <i class="pi pi-plus" aria-hidden="true"></i>
   </button>
 </app-intel-header>
+
+<div class="monitor-deck" aria-label="Monitor telemetry overview">
+  <div class="deck-primary">
+    <span class="deck-kicker"><i class="pi pi-desktop" aria-hidden="true"></i> Fleet telemetry</span>
+    <h2>Cluster posture</h2>
+    <p>Compare workload health across clusters, namespaces, and applications.</p>
+    <div class="deck-chips" aria-label="Monitor capabilities">
+      <span><i class="pi pi-sitemap" aria-hidden="true"></i> Multi-cluster</span>
+      <span><i class="pi pi-bell" aria-hidden="true"></i> Health alerts</span>
+    </div>
+  </div>
+  <div class="telemetry-panel" aria-label="Fleet health telemetry">
+    <div class="telemetry-head">
+      <div>
+        <span class="telemetry-kicker">Fleet health</span>
+        <strong>{{ loadedCards }} loaded cards</strong>
+      </div>
+      <span class="telemetry-total">{{ globalHealthPct }}%</span>
+    </div>
+    <div class="health-balance">
+      <div class="balance-row">
+        <span>Healthy</span>
+        <div class="balance-track" aria-hidden="true"><span class="balance-healthy" [style.width.%]="globalHealthPct"></span></div>
+        <strong>{{ totalHealthy }}</strong>
+      </div>
+      <div class="balance-row">
+        <span>Warning</span>
+        <div class="balance-track" aria-hidden="true"><span class="balance-warning" [style.width.%]="(totalHealthy + totalWarning + totalCritical) ? totalWarning / (totalHealthy + totalWarning + totalCritical) * 100 : 0"></span></div>
+        <strong>{{ totalWarning }}</strong>
+      </div>
+    </div>
+    <div class="telemetry-legend">
+      <span><i class="legend-healthy" aria-hidden="true"></i> Healthy <b>{{ totalHealthy }}</b></span>
+      <span><i class="legend-critical" aria-hidden="true"></i> Critical <b>{{ totalCritical }}</b></span>
+    </div>
+  </div>
+</div>
 
     <!-- Global Health Strip -->
     @if (cards.length > 0 && loadedCards > 0) {
@@ -33,8 +71,9 @@
     @if (attentionCards.length > 0) {
       <div class="attention-strip">
         @for (card of attentionCards; track card.id) {
-          <div class="attn-item" [class.attn-crit]="healthPct(card) < 60" [class.attn-warn]="healthPct(card) >= 60">
-            <span class="attn-icon">🔥</span>
+          <button type="button" class="attn-item" [class.attn-crit]="healthPct(card) < 60" [class.attn-warn]="healthPct(card) >= 60"
+                  (click)="openFsDialog(card)" [attr.aria-label]="'Open details for ' + (card.app || card.namespace)">
+            <i class="pi pi-exclamation-triangle attn-icon" aria-hidden="true"></i>
             <span class="attn-name">{{ card.app || card.namespace }}</span>
             <span class="attn-health">{{ healthPct(card) }}%</span>
             @if (healthDelta(card) !== 0) {
@@ -42,7 +81,7 @@
                 {{ healthDelta(card) > 0 ? '↑' : '↓' }}{{ Math.abs(healthDelta(card)) }}%
               </span>
             }
-          </div>
+          </button>
         }
       </div>
     }
@@ -51,11 +90,11 @@
     @if (signals && (signals.oomkills_24h || signals.hpa_at_max || signals.quota_pressure || signals.stalled_rollouts)) {
       <div class="signals-strip">
         @if (signals.oomkills_24h) {
-          <div class="signal-chip signal-danger" (click)="navigateTo('/pods')">
-            <i class="pi pi-exclamation-circle"></i>
+          <button type="button" class="signal-chip signal-danger" (click)="navigateTo('/operations/pods')" aria-label="Open pods with OOMKill events">
+            <i class="pi pi-exclamation-circle" aria-hidden="true"></i>
             <span class="signal-val">{{ signals.oomkills_24h }}</span>
             <span class="signal-label">OOMKills (24h)</span>
-          </div>
+          </button>
         }
         @if (signals.hpa_at_max) {
           <div class="signal-chip signal-warn">
@@ -72,33 +111,36 @@
           </div>
         }
         @if (signals.stalled_rollouts) {
-          <div class="signal-chip signal-danger" (click)="navigateTo('/deployments')">
-            <i class="pi pi-pause-circle"></i>
+          <button type="button" class="signal-chip signal-danger" (click)="navigateTo('/operations/deployments')" aria-label="Open stalled rollouts">
+            <i class="pi pi-pause-circle" aria-hidden="true"></i>
             <span class="signal-val">{{ signals.stalled_rollouts }}</span>
             <span class="signal-label">Stalled rollouts</span>
-          </div>
+          </button>
         }
       </div>
     }
 
     <!-- Cards Grid (P0: auto-sorted by severity) -->
     <div class="monitor-grid">
-      @for (card of sortedCards; track card.id; let i = $index) {
-        <div class="monitor-card" [class.card-critical]="isCritical(card)" [class.card-healthy]="cardHealth(card) === 'healthy'" [class.card-degraded]="cardHealth(card) === 'degraded'"
-             [attr.draggable]="true" (dragstart)="onDragStart(i)" (dragover)="onDragOver($event, i)" (drop)="onDrop(i)">
+      @for (card of sortedCards; track card.id) {
+        <div class="monitor-card" [class.card-critical]="isCritical(card)" [class.card-healthy]="cardHealth(card) === 'healthy'" [class.card-degraded]="cardHealth(card) === 'degraded'" [class.card-stale]="!!card.error && !!card.data"
+             [attr.aria-busy]="card.loading" [attr.draggable]="true" (dragstart)="onDragStart(card.id)" (dragover)="onDragOver($event, card.id)" (drop)="onDrop(card.id)">
 
           <!-- P0: Redesigned Card Header -->
           <div class="mc-toolbar">
-            <div class="mc-drag" pTooltip="Drag to reorder"><i class="pi pi-bars"></i></div>
+            <div class="mc-drag" pTooltip="Drag to reorder" aria-hidden="true"><i class="pi pi-bars"></i></div>
             <div class="mc-header-block">
               <span class="mc-name">{{ card.app || card.namespace || 'New Card' }}</span>
               <span class="mc-ctx-hint">{{ card.context ? (card.context | slice:0:18) : '' }}{{ card.context && card.namespace && !card.app ? '' : card.namespace ? ' / ' + card.namespace : '' }}</span>
             </div>
             <div class="mc-toolbar-actions">
-              <button pButton icon="pi pi-expand" class="p-button-text p-button-sm p-button-rounded" pTooltip="Full screen" (click)="openFsDialog(card)"></button>
-              <button pButton icon="pi pi-cog" class="p-button-text p-button-sm p-button-rounded" pTooltip="Configure" (click)="card.configuring = !card.configuring"></button>
-              <button pButton icon="pi pi-refresh" class="p-button-text p-button-sm p-button-rounded" pTooltip="Refresh" (click)="fetchCardData(card)"></button>
-              <button pButton icon="pi pi-times" class="p-button-text p-button-sm p-button-rounded p-button-danger" pTooltip="Remove" (click)="removeCard(card.id)"></button>
+              @if (card.loading && card.data) {
+                <span class="mc-refreshing" role="status"><i class="pi pi-spin pi-refresh" aria-hidden="true"></i> Updating</span>
+              }
+              <button type="button" pButton icon="pi pi-expand" class="p-button-text p-button-sm p-button-rounded" pTooltip="Open full screen" aria-label="Open full screen" (click)="openFsDialog(card)"></button>
+              <button type="button" pButton icon="pi pi-cog" class="p-button-text p-button-sm p-button-rounded" pTooltip="Configure card" aria-label="Configure card" (click)="card.configuring = !card.configuring"></button>
+              <button type="button" pButton icon="pi pi-refresh" class="p-button-text p-button-sm p-button-rounded" pTooltip="Refresh card" aria-label="Refresh card" [disabled]="card.loading || !card.context || !card.namespace" (click)="fetchCardData(card)"></button>
+              <button type="button" pButton icon="pi pi-times" class="p-button-text p-button-sm p-button-rounded p-button-danger" pTooltip="Remove card" aria-label="Remove card" (click)="removeCard(card.id)"></button>
             </div>
           </div>
 
@@ -164,9 +206,17 @@
               </span>
             </div>
 
+            @if (card.error) {
+              <div class="mc-stale" role="status">
+                <i class="pi pi-info-circle" aria-hidden="true"></i>
+                <span>{{ card.error }}</span>
+                <button type="button" (click)="fetchCardData(card)">Retry</button>
+              </div>
+            }
+
             <div class="mc-stats-row">
               <div class="mc-stat">
-                <span class="mc-stat-val">{{ (card.data.deployments?.healthy || 0) }}/{{ (card.data.deployments?.healthy || 0) + (card.data.deployments?.unavailable || 0) }}</span>
+                <span class="mc-stat-val">{{ deploymentHealthy(card) }}/{{ deploymentTotal(card) }}</span>
                 <span class="mc-stat-label">Deploys</span>
               </div>
               <div class="mc-stat">
@@ -196,13 +246,13 @@
 
             <!-- P1: Card action links -->
             <div class="mc-card-actions">
-              <button class="card-link" (click)="navigateTo('/pods?filter=' + card.namespace)">
+              <button class="card-link" (click)="navigateTo('/operations/pods?filter=' + card.namespace)">
                 <i class="pi pi-search"></i> Investigate
               </button>
-              <button class="card-link" (click)="navigateTo('/events?ns=' + card.namespace)">
+              <button class="card-link" (click)="navigateTo('/monitor/events?ns=' + card.namespace)">
                 <i class="pi pi-bolt"></i> Events
               </button>
-              <button class="card-link" (click)="navigateTo('/metrics?ns=' + card.namespace)">
+              <button class="card-link" (click)="navigateTo('/monitor/metrics?ns=' + card.namespace)">
                 <i class="pi pi-chart-line"></i> Metrics
               </button>
             </div>
@@ -214,15 +264,19 @@
                   <i class="pi pi-bell"></i> {{ healthPct(card) < card.alertThreshold ? 'ALERT' : 'OK' }}
                 </span>
               }
-              <span class="mc-time">{{ card.lastUpdated || '—' }}</span>
+              <span class="mc-time">{{ card.lastUpdated || 'No update yet' }}</span>
             </div>
 
           } @else if (card.loading) {
-            <div class="loading-state"><div class="loader-ring"></div></div>
-          } @else if (card.data?.error) {
-            <div class="mc-error"><i class="pi pi-exclamation-triangle"></i> {{ card.data.error }}</div>
+            <div class="loading-state" role="status" aria-label="Loading monitor data"><div class="loader-ring"></div><span>Loading monitor data</span></div>
+          } @else if (card.error) {
+            <div class="mc-error" role="alert">
+              <i class="pi pi-exclamation-triangle" aria-hidden="true"></i>
+              <span>{{ card.error }}</span>
+              <button type="button" (click)="fetchCardData(card)" [disabled]="!card.context || !card.namespace">Retry</button>
+            </div>
           } @else {
-            <div class="mc-state"><i class="pi pi-chart-bar"></i> Select cluster & namespace</div>
+            <div class="mc-state"><i class="pi pi-chart-bar" aria-hidden="true"></i> Select cluster &amp; namespace</div>
           }
         </div>
       }
@@ -250,7 +304,7 @@
               <div class="fsd-stat"><span class="fsd-stat-val">{{ fsCard!.data.pods?.healthy || 0 }}</span><span class="fsd-stat-label">Running</span></div>
               <div class="fsd-stat fsd-warn"><span class="fsd-stat-val">{{ fsCard!.data.pods?.warning || 0 }}</span><span class="fsd-stat-label">Warning</span></div>
               <div class="fsd-stat fsd-crit"><span class="fsd-stat-val">{{ fsCard!.data.pods?.critical || 0 }}</span><span class="fsd-stat-label">Critical</span></div>
-              <div class="fsd-stat"><span class="fsd-stat-val">{{ fsCard!.data.deployments?.healthy || 0 }}/{{ (fsCard!.data.deployments?.healthy || 0) + (fsCard!.data.deployments?.unavailable || 0) }}</span><span class="fsd-stat-label">Deploys</span></div>
+              <div class="fsd-stat"><span class="fsd-stat-val">{{ deploymentHealthy(fsCard!) }}/{{ deploymentTotal(fsCard!) }}</span><span class="fsd-stat-label">Deploys</span></div>
             </div>
           </div>
 
@@ -314,3 +368,4 @@
       }
     </p-dialog>
     </div>
+</section>

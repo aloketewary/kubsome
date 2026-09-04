@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: ghcr.io/aloketewary/kubsome
-  tag: "1.5.0"
+  tag: "1.13.33"
   pullPolicy: IfNotPresent
 
 service:
@@ -28,26 +28,47 @@ resources:
     cpu: 500m
     memory: 512Mi
 
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
 serviceAccount:
   create: true
   name: kubsome
 
 rbac:
   create: true
-  # ClusterRole with read access to all resources
+  # Keep the default deployment read-only. Enable explicitly only when
+  # mutation routes and pod shell access are required.
+  allowMutations: false
   rules:
     - apiGroups: ["", "apps", "batch", "networking.k8s.io", "autoscaling", "policy"]
       resources: ["*"]
       verbs: ["get", "list", "watch"]
+    - apiGroups: [""]
+      resources: ["pods/log"]
+      verbs: ["get"]
+  mutationRules:
     - apiGroups: ["apps"]
       resources: ["deployments"]
-      verbs: ["get", "list", "watch", "patch"]
+      verbs: ["patch"]
     - apiGroups: [""]
       resources: ["pods"]
-      verbs: ["get", "list", "watch", "delete"]
+      verbs: ["delete"]
     - apiGroups: [""]
-      resources: ["pods/log", "pods/exec"]
-      verbs: ["get", "create"]
+      resources: ["pods/exec"]
+      verbs: ["create"]
 
 nodeSelector: {}
 tolerations: []

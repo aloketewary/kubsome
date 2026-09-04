@@ -49,8 +49,8 @@ export class NamespaceComponent implements OnInit, OnDestroy {
     jobs: 'pi pi-clock', cronjobs: 'pi pi-history', statefulsets: 'pi pi-database', daemonsets: 'pi pi-server',
   };
   private routeMap: Record<string, string> = {
-    pods: '/pods', deployments: '/deployments', services: '/network',
-    jobs: '/jobs', cronjobs: '/jobs', ingress: '/network', secrets: '/secrets',
+    pods: '/operations/pods', deployments: '/operations/deployments', services: '/infrastructure/network',
+    jobs: '/operations/jobs', cronjobs: '/operations/jobs', ingress: '/infrastructure/network', secrets: '/operations/secrets',
   };
 
   get totalResources() { return this.resourceList.reduce((s, r) => s + r.count, 0); }

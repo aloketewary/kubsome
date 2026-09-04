@@ -1,65 +1,117 @@
-<app-intel-header title="Policy Check" icon="pi pi-verified"
-  [subtitle]="'cluster guardrails · ' + (lastChecked || '...')">
-  <button class="ctrl-btn" (click)="load()" pTooltip="Check"><i class="pi pi-refresh" [class.spinning]="loading"></i></button>
-</app-intel-header>
+<section class="policy-page" aria-label="Policy operations">
+  <app-intel-header title="Policy Check" icon="pi pi-verified"
+    [subtitle]="'cluster guardrails · ' + (lastChecked || '...')">
+    <button class="ctrl-btn" type="button" (click)="load()" aria-label="Scan policies" pTooltip="Check">
+      <i class="pi pi-refresh" aria-hidden="true" [class.spinning]="loading"></i>
+    </button>
+  </app-intel-header>
 
-@if (data) {
-  <!-- Metrics -->
-  <div class="metrics-strip">
-    <app-metric-tile label="Total" [value]="'' + data.total" accent="cyan" />
-    <app-metric-tile label="Passed" [value]="'' + data.passed" accent="green" />
-    <app-metric-tile label="Failed" [value]="'' + data.failed" [accent]="data.failed > 0 ? 'red' : 'green'" />
-  </div>
-
-  <!-- Score Banner -->
-  <app-holo-card [glow]="data.failed === 0 ? 'green' : 'red'" [compact]="true">
-    <div class="score-row">
-      <app-status-beacon [status]="data.failed === 0 ? 'ok' : 'critical'" size="lg" [pulse]="data.failed > 0" />
-      <div class="score-info">
-        <span class="score-title">{{ data.failed === 0 ? 'All Policies Pass' : data.failed + ' Violation(s)' }}</span>
-        <span class="score-sub">{{ data.passed }}/{{ data.total }} policies passing</span>
+  @if (data) {
+    <div class="policy-overview" aria-label="Policy guardrail overview">
+      <div class="policy-deck">
+        <span class="deck-kicker"><i class="pi pi-shield" aria-hidden="true"></i> Cluster guardrails</span>
+        <h2>Keep workload standards visible before they become incidents.</h2>
+        <p>Review configured deployment policies, see the current pass rate, and focus attention on resources that violate a guardrail.</p>
+        <div class="policy-meta" aria-label="Policy scan metadata">
+          <span><i class="pi pi-list-check" aria-hidden="true"></i> {{ data.total }} configured policies</span>
+          <span><i class="pi pi-clock" aria-hidden="true"></i> {{ lastChecked || 'scan pending' }}</span>
+        </div>
+      </div>
+      <div class="policy-readout" aria-label="Policy scan telemetry">
+        <span class="readout-kicker">Guardrail posture</span>
+        <strong>{{ data.failed === 0 ? 'All Policies Pass' : data.failed + ' Violation(s)' }}</strong>
+        <div class="policy-track" aria-hidden="true">
+          <span class="policy-passed" [style.width.%]="data.total ? data.passed / data.total * 100 : 0"></span>
+          <span class="policy-failed" [style.width.%]="data.total ? data.failed / data.total * 100 : 0"></span>
+        </div>
+        <div class="policy-legend">
+          <span><i class="legend-dot legend-pass" aria-hidden="true"></i> Passing <b>{{ data.passed }}</b></span>
+          <span><i class="legend-dot legend-fail" aria-hidden="true"></i> Failed <b>{{ data.failed }}</b></span>
+        </div>
       </div>
     </div>
-  </app-holo-card>
 
-  <!-- Policies -->
-  <div class="policy-list">
-    @for (p of data.policies; track p.name) {
-      <div class="policy-row" [class.policy-fail]="isViolated(p.name)">
-        <app-status-beacon [status]="isViolated(p.name) ? 'critical' : 'ok'" size="sm" />
-        <div class="policy-body">
-          <div class="policy-top">
-            <span class="policy-name">{{ p.name }}</span>
-            <p-tag [value]="p.severity" [severity]="p.severity === 'high' ? 'danger' : p.severity === 'medium' ? 'warn' : 'info'" [rounded]="true" />
-          </div>
-          <span class="policy-desc">{{ p.description }}</span>
-          <code class="policy-rule">{{ p.rule }}</code>
+    <div class="metrics-strip" aria-label="Policy summary">
+      <app-metric-tile label="Total" [value]="'' + data.total" accent="cyan" />
+      <app-metric-tile label="Passed" [value]="'' + data.passed" accent="green" />
+      <app-metric-tile label="Failed" [value]="'' + data.failed" [accent]="data.failed > 0 ? 'red' : 'green'" />
+      <div class="metrics-context">
+        <span class="metrics-context-label">Last scan</span>
+        <strong>{{ lastChecked || 'awaiting scan' }}</strong>
+        <span>Deployment guardrail evaluation</span>
+      </div>
+    </div>
+
+    <app-holo-card [glow]="data.failed === 0 ? 'green' : 'red'" [compact]="true">
+      <div class="score-row">
+        <app-status-beacon [status]="data.failed === 0 ? 'ok' : 'critical'" size="lg" [pulse]="data.failed > 0" />
+        <div class="score-info">
+          <span class="score-kicker">Current evaluation</span>
+          <span class="score-title">{{ data.failed === 0 ? 'All Policies Pass' : data.failed + ' Violation(s)' }}</span>
+          <span class="score-sub">{{ data.passed }}/{{ data.total }} policies passing</span>
         </div>
       </div>
-    }
-  </div>
-
-  <!-- Violations -->
-  @if (data.violations.length > 0) {
-    <app-holo-card title="Violations" icon="pi pi-times-circle" glow="red" [compact]="true">
-      @for (v of data.violations; track $index) {
-        <div class="viol-row">
-          <app-status-beacon status="critical" size="sm" />
-          <div class="viol-body">
-            <span class="viol-policy">{{ v.policy }}</span>
-            <code class="viol-resource">{{ v.resource }}</code>
-            <span class="viol-detail">{{ v.detail }}</span>
-          </div>
-          <p-tag [value]="v.severity" [severity]="v.severity === 'high' ? 'danger' : 'warn'" [rounded]="true" />
-        </div>
-      }
     </app-holo-card>
-  }
-}
 
-@if (!data && !loading) {
-  <div class="empty-state"><div class="empty-icon"><i class="pi pi-shield"></i></div><span>No policies configured</span></div>
-}
-@if (loading && !data) {
-  <div class="loading-state"><div class="loader-ring"></div><span>Scanning policies...</span></div>
-}
+    <section class="policy-section" aria-labelledby="policy-list-title">
+      <div class="section-heading">
+        <div><span class="section-label">Configured guardrails</span><h2 id="policy-list-title">Policy inventory</h2></div>
+        <span class="section-count">{{ data.policies?.length || 0 }} policies</span>
+      </div>
+      <div class="policy-list" role="list">
+        @for (p of data.policies; track p.name) {
+          <div class="policy-row" role="listitem" [class.policy-fail]="isViolated(p.name)">
+            <span class="policy-status-rail" [class.policy-status-rail-fail]="isViolated(p.name)" aria-hidden="true"></span>
+            <app-status-beacon [status]="isViolated(p.name) ? 'critical' : 'ok'" size="sm" />
+            <div class="policy-body">
+              <div class="policy-top">
+                <span class="policy-name">{{ p.name }}</span>
+                <p-tag [value]="p.severity" [severity]="p.severity === 'high' ? 'danger' : p.severity === 'medium' ? 'warn' : 'info'" [rounded]="true" />
+              </div>
+              <span class="policy-desc">{{ p.description }}</span>
+              <code class="policy-rule">{{ p.rule }}</code>
+            </div>
+            <span class="policy-state">{{ isViolated(p.name) ? 'Failed' : 'Passing' }}</span>
+          </div>
+        }
+      </div>
+    </section>
+
+    @if (data.violations.length > 0) {
+      <section class="violations-section" aria-labelledby="violations-title">
+        <div class="section-heading">
+          <div><span class="section-label">Resources requiring attention</span><h2 id="violations-title">Violations</h2></div>
+          <span class="section-count">{{ data.violations.length }} findings</span>
+        </div>
+        <app-holo-card title="Violations" icon="pi pi-times-circle" glow="red" [compact]="true">
+          @for (v of data.violations; track $index) {
+            <div class="viol-row">
+              <span class="viol-status-rail" aria-hidden="true"></span>
+              <app-status-beacon status="critical" size="sm" />
+              <div class="viol-body">
+                <span class="viol-policy">{{ v.policy }}</span>
+                <code class="viol-resource">{{ v.resource }}</code>
+                <span class="viol-detail">{{ v.detail }}</span>
+              </div>
+              <p-tag [value]="v.severity" [severity]="v.severity === 'high' ? 'danger' : 'warn'" [rounded]="true" />
+            </div>
+          }
+        </app-holo-card>
+      </section>
+    }
+  }
+
+  @if (!data && !loading) {
+    <div class="empty-state" role="status">
+      <div class="empty-icon"><i class="pi pi-shield" aria-hidden="true"></i></div>
+      <strong>No policies configured</strong>
+      <span>Configure cluster guardrails to begin policy evaluation.</span>
+    </div>
+  }
+  @if (loading && !data) {
+    <div class="loading-state" role="status" aria-live="polite">
+      <div class="loader-ring" aria-hidden="true"></div>
+      <div><span class="state-kicker">Policy evaluation</span><strong>Scanning policies...</strong></div>
+    </div>
+  }
+</section>

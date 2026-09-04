@@ -1,15 +1,16 @@
-<!-- ─── Command Palette (⌘K) — full-screen focused ritual ──────────── -->
+<!-- Command palette -->
 @if (showPalette) {
   <div class="palette-backdrop" (click)="showPalette = false">
     <div class="palette-shell" (click)="$event.stopPropagation()">
       <div class="palette-input-row">
-        <span class="palette-glyph">⌘</span>
+        <span class="palette-glyph" aria-hidden="true">⌘</span>
         <input #paletteInput
                [(ngModel)]="paletteQuery"
                (keydown)="onPaletteKey($event)"
                (keydown.escape)="showPalette = false"
                class="palette-input"
                placeholder="What do you want to do?"
+               aria-label="Command palette search"
                spellcheck="false"
                autocomplete="off" />
       </div>
@@ -20,12 +21,12 @@
             <span class="palette-cat">{{ item.category }}</span>
             <span class="palette-label">{{ item.label }}</span>
             @if (item.command.endsWith(' ')) {
-              <span class="palette-needs-arg">…</span>
+              <span class="palette-needs-arg" aria-label="requires an argument">…</span>
             }
           </div>
         }
         @if (filteredPalette.length === 0) {
-          <div class="palette-nil">No match — try a different term</div>
+          <div class="palette-nil">No match - try a different term</div>
         }
       </div>
       <div class="palette-footer">
@@ -37,168 +38,192 @@
   </div>
 }
 
-<!-- ─── Main Shell ─────────────────────────────────────────────────── -->
-<div class="shell" [class.shell-danger]="isDangerContext" (click)="focusInput()">
+<section class="terminal-page" aria-label="Terminal operations">
+  <app-intel-header title="Terminal" icon="pi pi-terminal"
+    [subtitle]="context + ' / ' + namespace + (isDangerContext ? ' · production scope' : ' · interactive shell')">
+    <button class="ctrl-btn" type="button" (click)="togglePalette(); $event.stopPropagation()"
+      aria-label="Open command palette" pTooltip="Command palette">
+      <span class="ctrl-key">⌘K</span>
+    </button>
+    <button class="ctrl-btn" type="button" (click)="copyOutput($event)"
+      aria-label="Copy terminal output" pTooltip="Copy output">
+      <i class="pi pi-copy" aria-hidden="true"></i>
+    </button>
+    <button class="ctrl-btn" type="button" (click)="clear($event)"
+      aria-label="Clear terminal output" pTooltip="Clear output">
+      <i class="pi pi-eraser" aria-hidden="true"></i>
+    </button>
+  </app-intel-header>
 
-  <!-- ─ Environment Bar ─ -->
-  <div class="env-bar">
-    <div class="env-left">
-      <span class="env-beacon"></span>
-      <span class="env-ctx">{{ context }}</span>
-      <span class="env-sep">/</span>
-      <span class="env-ns">{{ namespace }}</span>
-      @if (isDangerContext) {
-        <span class="env-danger-tag">PRODUCTION</span>
-      }
+  <div class="scope-rail" aria-label="Terminal session scope">
+    <div class="scope-primary">
+      <span class="scope-kicker"><i class="pi pi-bolt" aria-hidden="true"></i> Session scope</span>
+      <strong class="scope-context">{{ context }}</strong>
+      <span class="scope-separator">/</span>
+      <code>{{ namespace }}</code>
     </div>
-    <div class="env-right">
-      <button class="env-action" (click)="togglePalette(); $event.stopPropagation()">
-        <span class="env-action-key">⌘K</span>
-      </button>
-      <button class="env-action" (click)="copyOutput($event)"><i class="pi pi-copy"></i></button>
-      <button class="env-action" (click)="clear($event)"><i class="pi pi-eraser"></i></button>
+    <div class="scope-meta">
+      <span class="scope-status" [class.scope-status-danger]="isDangerContext">
+        <span class="scope-status-dot" aria-hidden="true"></span>
+        {{ isDangerContext ? 'Production gate' : 'Interactive' }}
+      </span>
+      <span>{{ lines.length }} lines</span>
+      <span>{{ favorites.length }}/10 favorites</span>
+      @if (loading) { <span class="scope-loading"><i class="pi pi-spin pi-spinner" aria-hidden="true"></i> executing</span> }
     </div>
   </div>
 
-  <!-- ─ Templates Strip ─ -->
-  <div class="tpl-strip">
-    @for (t of templates; track t.key) {
-      <button class="tpl" (click)="useTemplate(t.cmd); $event.stopPropagation()">
-        <span class="tpl-key">{{ t.key }}</span>{{ t.label }}
-      </button>
-    }
-    <span class="tpl-divider"></span>
-    @for (fav of favorites; track fav; let i = $index) {
-      @if (i < 4) {
-        <button class="tpl tpl-fav" (click)="runFavorite(fav); $event.stopPropagation()"
-                pTooltip="{{ fav }}">
-          <span class="tpl-star">★</span>{{ fav.length > 18 ? fav.substring(0, 18) + '…' : fav }}
+  <div class="shell" [class.shell-danger]="isDangerContext" (click)="focusInput()">
+    <div class="tpl-strip" aria-label="Command templates and favorites">
+      <span class="strip-label">Quick commands</span>
+      @for (t of templates; track t.key) {
+        <button class="tpl" type="button" (click)="useTemplate(t.cmd); $event.stopPropagation()">
+          <span class="tpl-key">{{ t.key }}</span>{{ t.label }}
         </button>
       }
-    }
-  </div>
-
-  <!-- ─ Pinned HUD ─ -->
-  @if (pinnedLines.length > 0) {
-    <div class="hud">
-      @for (pin of pinnedLines; track $index; let i = $index) {
-        <div class="hud-item">
-          <pre class="hud-text">{{ pin.text }}</pre>
-          <button class="hud-dismiss" (click)="unpinLine(i); $event.stopPropagation()">×</button>
-        </div>
+      <span class="tpl-divider" aria-hidden="true"></span>
+      @for (fav of favorites; track fav; let i = $index) {
+        @if (i < 4) {
+          <button class="tpl tpl-fav" type="button" (click)="runFavorite(fav); $event.stopPropagation()"
+                  pTooltip="{{ fav }}">
+            <span class="tpl-star" aria-hidden="true">★</span>{{ fav.length > 18 ? fav.substring(0, 18) + '…' : fav }}
+          </button>
+        }
       }
     </div>
-  }
 
-  <!-- ─ Output Surface ─ -->
-  <div class="surface" #termBody>
-    @if (lines.length === 0) {
-      <div class="empty-state">
-        <div class="empty-glyph">◆</div>
-        <span class="empty-title">Ready</span>
-        <span class="empty-sub">{{ context }} · {{ namespace }}</span>
-        <span class="empty-hint">⌘K open palette · type a command · ↑↓ history</span>
-      </div>
-    }
-
-    @for (line of lines; track $index; let i = $index) {
-      <div class="line" [class]="'line-' + line.type">
-        @if (line.type === 'input') {
-          <span class="line-chevron">›</span>
-        } @else if (line.type === 'error') {
-          <span class="line-x">×</span>
-        } @else if (line.type === 'system') {
-          <span class="line-arrow">→</span>
-        }
-        <pre class="line-body">{{ line.text }}</pre>
-        @if (line.type === 'output' && !line.pinned) {
-          <button class="line-pin" (click)="pinLine(i); $event.stopPropagation()">pin</button>
+    @if (pinnedLines.length > 0) {
+      <div class="hud" aria-label="Pinned output">
+        <div class="hud-heading"><span>Pinned output</span><span>{{ pinnedLines.length }} saved</span></div>
+        @for (pin of pinnedLines; track $index; let i = $index) {
+          <div class="hud-item">
+            <pre class="hud-text">{{ pin.text }}</pre>
+            <button class="hud-dismiss" type="button" (click)="unpinLine(i); $event.stopPropagation()"
+              aria-label="Remove pinned output">×</button>
+          </div>
         }
       </div>
     }
 
-    @if (loading) {
-      <div class="line line-loading">
-        <span class="loader"></span>
-      </div>
-    }
-
-    <!-- Danger gate -->
-    @if (showDangerConfirm) {
-      <div class="danger-gate">
-        <div class="danger-signal">
-          <span class="danger-icon">⚠</span>
-          <span class="danger-title">Confirm destructive action</span>
+    <div class="output-bay">
+      <div class="output-head">
+        <div>
+          <span class="output-kicker"><i class="pi pi-align-left" aria-hidden="true"></i> Output stream</span>
+          <strong>Command results</strong>
         </div>
-        <pre class="danger-cmd">{{ dangerCommand }}</pre>
-        @if (isDangerContext) {
-          <span class="danger-env">executing against production</span>
-        }
-        <div class="danger-choices">
-          <button class="danger-no" (click)="cancelDanger(); $event.stopPropagation()">Cancel <kbd>esc</kbd></button>
-          <button class="danger-yes" (click)="confirmDanger(); $event.stopPropagation()">Execute</button>
-        </div>
+        <span class="output-count">{{ lines.length ? lines.length + ' lines' : 'waiting for command' }}</span>
       </div>
-    }
-
-    <!-- Selection -->
-    @if (selectionChoices.length > 0) {
-      <div class="sel-block">
-        <span class="sel-label">{{ selectionPrompt }}</span>
-        @for (choice of selectionChoices; track choice) {
-          <button class="sel-option" (click)="selectChoice(choice); $event.stopPropagation()">{{ choice }}</button>
+      <div class="surface" #termBody>
+        @if (lines.length === 0) {
+          <div class="empty-state">
+            <div class="empty-glyph" aria-hidden="true">◆</div>
+            <span class="empty-title">Ready</span>
+            <span class="empty-sub">{{ context }} · {{ namespace }}</span>
+            <span class="empty-hint">⌘K open palette · type a command · ↑↓ history</span>
+          </div>
         }
-      </div>
-    }
 
-    <!-- Completions -->
-    @if (showCompletions && completions.length > 0) {
-      <div class="comp-list">
-        @for (c of completions; track c; let i = $index) {
-          <div class="comp-row" [class.comp-row-active]="i === completionIndex"
-               (click)="acceptCompletion(c); $event.stopPropagation()">{{ c }}</div>
+        @for (line of lines; track $index; let i = $index) {
+          <div class="line" [class]="'line-' + line.type">
+            @if (line.type === 'input') {
+              <span class="line-chevron" aria-hidden="true">›</span>
+            } @else if (line.type === 'error') {
+              <span class="line-x" aria-hidden="true">×</span>
+            } @else if (line.type === 'system') {
+              <span class="line-arrow" aria-hidden="true">→</span>
+            }
+            <pre class="line-body">{{ line.text }}</pre>
+            @if (line.type === 'output' && !line.pinned) {
+              <button class="line-pin" type="button" (click)="pinLine(i); $event.stopPropagation()"
+                aria-label="Pin output line">pin</button>
+            }
+          </div>
         }
-      </div>
-    }
-  </div>
 
-  <!-- ─ Recent Resources (ghost row) ─ -->
-  @if (recentResources.length > 0) {
-    <div class="recent-strip">
-      @for (res of recentResources; track res.name; let i = $index) {
-        <div class="recent-chip" [class.recent-chip-open]="activeResourceIdx === i"
-             (click)="activeResourceIdx = activeResourceIdx === i ? -1 : i; $event.stopPropagation()">
-          <span class="recent-kind">{{ res.kind === 'pod' ? '●' : '◎' }}</span>
-          <span class="recent-name">{{ res.name }}</span>
-          @if (activeResourceIdx === i) {
-            <div class="recent-actions">
-              <button (click)="resourceAction(res, 'describe'); $event.stopPropagation()">describe</button>
-              <button (click)="resourceAction(res, 'logs'); $event.stopPropagation()">logs</button>
-              <button (click)="resourceAction(res, 'inspect'); $event.stopPropagation()">inspect</button>
+        @if (loading) {
+          <div class="line line-loading" role="status" aria-label="Executing command">
+            <span class="loader" aria-hidden="true"></span>
+          </div>
+        }
+
+        @if (showDangerConfirm) {
+          <div class="danger-gate" role="alertdialog" aria-label="Confirm destructive action">
+            <div class="danger-signal">
+              <span class="danger-icon" aria-hidden="true">⚠</span>
+              <span class="danger-title">Confirm destructive action</span>
             </div>
-          }
-        </div>
-      }
-    </div>
-  }
+            <pre class="danger-cmd">{{ dangerCommand }}</pre>
+            @if (isDangerContext) {
+              <span class="danger-env">executing against production</span>
+            }
+            <div class="danger-choices">
+              <button class="danger-no" type="button" (click)="cancelDanger(); $event.stopPropagation()">Cancel <kbd>esc</kbd></button>
+              <button class="danger-yes" type="button" (click)="confirmDanger(); $event.stopPropagation()">Execute</button>
+            </div>
+          </div>
+        }
 
-  <!-- ─ Input Dock (the hero) ─ -->
-  <div class="dock">
-    <span class="dock-prompt">❯</span>
-    <input #cmdInput
-           [(ngModel)]="currentCmd"
-           (ngModelChange)="onInputChange($event)"
-           (keydown.enter)="onEnter($event)"
-           (keydown.arrowUp)="onArrowUp($event)"
-           (keydown.arrowDown)="onArrowDown($event)"
-           (keydown.tab)="onTab($event)"
-           (keydown.escape)="showCompletions = false"
-           class="dock-input"
-           spellcheck="false"
-           autocomplete="off"
-           placeholder="enter command or ⌘K" />
-    <button class="dock-star" [class.dock-star-active]="currentCmd.trim() && isFavorite(currentCmd.trim())"
-            (click)="toggleFavorite(); $event.stopPropagation()"
-            [class.dock-star-disabled]="!currentCmd.trim()">★</button>
+        @if (selectionChoices.length > 0) {
+          <div class="sel-block">
+            <span class="sel-label">{{ selectionPrompt }}</span>
+            @for (choice of selectionChoices; track choice) {
+              <button class="sel-option" type="button" (click)="selectChoice(choice); $event.stopPropagation()">{{ choice }}</button>
+            }
+          </div>
+        }
+
+        @if (showCompletions && completions.length > 0) {
+          <div class="comp-list" role="listbox" aria-label="Command completions">
+            @for (c of completions; track c; let i = $index) {
+              <div class="comp-row" role="option" [attr.aria-selected]="i === completionIndex"
+                   [class.comp-row-active]="i === completionIndex"
+                   (click)="acceptCompletion(c); $event.stopPropagation()">{{ c }}</div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+
+    @if (recentResources.length > 0) {
+      <div class="recent-strip" aria-label="Recent resources">
+        <span class="strip-label">Recent resources</span>
+        @for (res of recentResources; track res.name; let i = $index) {
+          <div class="recent-chip" [class.recent-chip-open]="activeResourceIdx === i"
+               (click)="activeResourceIdx = activeResourceIdx === i ? -1 : i; $event.stopPropagation()">
+            <span class="recent-kind" aria-hidden="true">{{ res.kind === 'pod' ? '●' : '◎' }}</span>
+            <span class="recent-name">{{ res.name }}</span>
+            @if (activeResourceIdx === i) {
+              <div class="recent-actions">
+                <button type="button" (click)="resourceAction(res, 'describe'); $event.stopPropagation()">describe</button>
+                <button type="button" (click)="resourceAction(res, 'logs'); $event.stopPropagation()">logs</button>
+                <button type="button" (click)="resourceAction(res, 'inspect'); $event.stopPropagation()">inspect</button>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    }
+
+    <div class="dock" aria-label="Command input">
+      <span class="dock-prompt" aria-hidden="true">❯</span>
+      <span class="dock-label">Command</span>
+      <input #cmdInput
+             [(ngModel)]="currentCmd"
+             (ngModelChange)="onInputChange($event)"
+             (keydown.enter)="onEnter($event)"
+             (keydown.arrowUp)="onArrowUp($event)"
+             (keydown.arrowDown)="onArrowDown($event)"
+             (keydown.tab)="onTab($event)"
+             (keydown.escape)="showCompletions = false"
+             class="dock-input"
+             aria-label="Enter terminal command"
+             spellcheck="false"
+             autocomplete="off"
+             placeholder="enter command or ⌘K" />
+      <button class="dock-star" type="button" [class.dock-star-active]="currentCmd.trim() && isFavorite(currentCmd.trim())"
+              (click)="toggleFavorite(); $event.stopPropagation()"
+              [class.dock-star-disabled]="!currentCmd.trim()"
+              [attr.aria-label]="currentCmd.trim() ? 'Toggle favorite command' : 'Enter a command to favorite'">★</button>
+    </div>
   </div>
-</div>
+</section>

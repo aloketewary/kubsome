@@ -21,6 +21,7 @@ except ImportError:
     duckdb = None
 from pathlib import Path
 from datetime import datetime, timedelta
+from contextlib import contextmanager
 import time
 import threading
 
@@ -32,7 +33,7 @@ PARQUET_DIR = ANALYTICS_DIR / "parquet"
 MAIN_DB = ANALYTICS_DIR / "kubsome.duckdb"
 
 _conn = None
-_conn_lock = threading.Lock()
+_conn_lock = threading.RLock()
 _last_recovery = 0
 _RECOVERY_COOLDOWN = 5  # seconds between recovery attempts
 # --- App-level query cache ---
@@ -139,7 +140,7 @@ def _cleanup_stale_dbs():
 
 def _recover_db():
     """Delete corrupted DB and create fresh. Returns new raw connection."""
-    global _conn, _last_recovery
+    global _last_recovery
     import logging
 
     now = time.time()
@@ -154,8 +155,9 @@ def _recover_db():
     logging.warning(
         "DuckDB corrupted — recreating: %s", MAIN_DB
     )
-    # Reset global connection
-    _conn = None
+    # Keep the existing wrapper as the singleton. Callers replace its raw
+    # connection while holding _conn_lock, preventing a second wrapper from
+    # being created during recovery.
     for f in MAIN_DB.parent.glob("kubsome.duckdb*"):
         try:
             f.unlink(missing_ok=True)
@@ -285,6 +287,23 @@ def execute_many(sql, params_list):
     """Thread-safe batch write."""
     conn = get_conn()
     conn.executemany(sql, params_list)
+
+
+@contextmanager
+def write_transaction():
+    """Serialize and commit a group of analytics writes atomically."""
+    conn = get_conn()
+    with _conn_lock:
+        conn._conn.execute("BEGIN TRANSACTION")
+        try:
+            yield conn
+            conn._conn.execute("COMMIT")
+        except Exception:
+            try:
+                conn._conn.execute("ROLLBACK")
+            except Exception:
+                pass
+            raise
 
 
 def _ensure_dirs():

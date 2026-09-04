@@ -1,147 +1,287 @@
-@if (data) {
-  <!-- ─── Header ─────────────────────────────────────────────────────── -->
-  <div class="intel-header">
+@if (isLoading && !hasData) {
+<section class="dashboard-loading" aria-label="Loading cluster dashboard">
+  <div class="sk-header"></div>
+  <div class="sk-summary"></div>
+  <div class="sk-grid">
+    <div class="sk-card"></div>
+    <div class="sk-card"></div>
+    <div class="sk-card"></div>
+    <div class="sk-card"></div>
+  </div>
+  <div class="sk-panel"></div>
+</section>
+} @else {
+<div class="dashboard-shell" [class.dashboard-stale]="isUnavailable && hasData" [attr.data-health]="overallHealth">
+  <header class="intel-header">
     <div class="intel-title-block">
-      <h1 class="intel-title">
-        <i class="pi pi-objects-column title-icon"></i>
-        Cluster Intelligence
-      </h1>
-      <p class="intel-subtitle">{{ lastUpdated }} · {{ uptime?.day || '' }}</p>
+      <span class="intel-kicker">Operations / Overview</span>
+      <h1 class="intel-title">Cluster overview</h1>
+      <p class="intel-subtitle">
+        <span>{{ lastSuccessfulSync ? 'Last successful sync ' + lastSuccessfulSync : 'Waiting for first sync' }}</span>
+        <span class="intel-separator" aria-hidden="true">/</span>
+        <span>{{ uptime?.day || 'Automatic refresh every 30 seconds' }}</span>
+      </p>
     </div>
     <div class="intel-controls">
-      <app-live-indicator [active]="!refreshing" label="SYNC" offLabel="..." />
-      <button class="ctrl-btn" (click)="refresh()" pTooltip="Refresh">
-        <i class="pi pi-refresh" [class.spinning]="refreshing"></i>
+      <span class="live-state" [class.live-offline]="isUnavailable || refreshing" role="status">
+        <span class="live-dot" aria-hidden="true"></span>
+        {{ isUnavailable ? 'Offline' : refreshing ? 'Updating' : 'Live' }}
+      </span>
+      <button class="ctrl-btn" type="button" (click)="refresh()" [disabled]="refreshing" aria-label="Refresh dashboard"
+        pTooltip="Refresh dashboard">
+        <i class="pi pi-refresh" [class.spinning]="refreshing" aria-hidden="true"></i>
+        <span class="ctrl-label">{{ refreshing ? 'Refreshing' : 'Refresh' }}</span>
       </button>
-      <button class="ctrl-btn" (click)="router.navigate(['/my-dashboard'])" pTooltip="Customize">
-        <i class="pi pi-sliders-h"></i>
+      <button class="ctrl-btn ctrl-btn-icon" type="button" (click)="router.navigate(['/monitor/my-dashboard'])"
+        aria-label="Customize dashboard" pTooltip="Customize dashboard">
+        <i class="pi pi-sliders-h" aria-hidden="true"></i>
       </button>
     </div>
-  </div>
+  </header>
 
-  <!-- ━━━ P0: Incident Hero (only when problems exist) ━━━━━━━━━━━━━━ -->
-  @if (hasProblems) {
-    <div class="incident-hero" [attr.data-health]="overallHealth">
-      <div class="hero-status">{{ overallHealth === 'critical' ? 'CRITICAL' : 'DEGRADED' }}</div>
-      <div class="hero-summary">
-        @if (data.pods.critical > 0) { {{ data.pods.critical }} pod(s) critical }
-        @if (data.pods.critical > 0 && data.nodes.warning > 0) { · }
-        @if (data.nodes.warning > 0) { {{ data.nodes.warning }} node(s) not ready }
-        @if ((data.deployments.unavailable || 0) > 0) { · {{ data.deployments.unavailable }} deploy(s) down }
-      </div>
-
-      @if (topIssue) {
-        <div class="hero-top-issue">
-          <span class="hero-issue-label">Top Issue</span>
-          <span class="hero-issue-text">{{ topIssue.object }}: {{ topIssue.reason }}</span>
-        </div>
+  @if (isUnavailable) {
+  <section class="state-banner state-unavailable" role="alert" aria-live="assertive">
+    <div class="state-icon"><i class="pi pi-cloud" aria-hidden="true"></i></div>
+    <div class="state-copy">
+      <strong>Cluster unavailable</strong>
+      <span>{{ statusDescription }}</span>
+      @if (hasData && lastSuccessfulSync) {
+      <small>Showing last successful snapshot from {{ lastSuccessfulSync }}.</small>
       }
-
-      <div class="hero-ctas">
-        <button class="hero-cta hero-cta-primary" (click)="goToPods()">
-          <i class="pi pi-search"></i> Investigate
-        </button>
-        <button class="hero-cta" (click)="router.navigate(['/ai'], { queryParams: { q: 'why are pods failing' } })">
-          <i class="pi pi-sparkles"></i> AI Diagnose
-        </button>
-      </div>
     </div>
+    <button class="state-action" type="button" (click)="refresh()" [disabled]="refreshing">
+      <i class="pi pi-refresh" [class.spinning]="refreshing" aria-hidden="true"></i>
+      {{ refreshing ? 'Retrying' : 'Retry connection' }}
+    </button>
+  </section>
   }
 
-  <!-- ━━━ Metrics Strip ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
-  <div class="metrics-strip">
-    <app-metric-tile label="Pods" [value]="'' + podTotal" accent="cyan" />
-    <app-metric-tile label="Nodes" [value]="'' + nodeTotal" accent="green" />
-    <app-metric-tile label="Deploys" [value]="'' + depTotal" accent="purple" />
-    <app-metric-tile label="Health" [value]="healthPct + '%'" [accent]="healthColor === 'red' ? 'red' : healthColor === 'amber' ? 'amber' : 'green'" />
-  </div>
-
-  <!-- ━━━ P0: Problem Resources (only unhealthy, by name) ━━━━━━━━━━━ -->
-  @if (problemPods.length > 0) {
-    <div class="problem-section">
-      <div class="problem-header">
-        <span class="problem-title">Problem Resources</span>
-        <span class="problem-count">{{ problemPods.length }}</span>
+  @if (!isUnavailable && hasProblems) {
+  <section class="attention-banner" [attr.data-health]="overallHealth" role="status" aria-live="polite"
+    aria-labelledby="attention-title">
+    <div class="attention-main">
+      <div class="attention-heading">
+        <span class="attention-status">{{ overallHealth === 'critical' ? 'CRITICAL' : 'DEGRADED' }}</span>
+        <h2 id="attention-title">Attention required</h2>
       </div>
-      <div class="problem-list">
+      <p class="attention-summary">
+        @if ((data?.pods?.critical || 0) > 0) { <span>{{ data?.pods?.critical }} pod(s) critical</span> }
+        @if ((data?.pods?.critical || 0) > 0 && (data?.nodes?.warning || 0) > 0) { <span class="attention-divider"
+          aria-hidden="true">/</span> }
+        @if ((data?.nodes?.warning || 0) > 0) { <span>{{ data?.nodes?.warning }} node(s) not ready</span> }
+        @if ((data?.deployments?.unavailable || 0) > 0) { <span class="attention-divider" aria-hidden="true">/</span><span>{{
+          data?.deployments?.unavailable }} deployment(s) unavailable</span> }
+      </p>
+      @if (topIssue) {
+      <p class="attention-issue"><span>Top issue</span><strong>{{ topIssue.object }}: {{ topIssue.reason }}</strong></p>
+      }
+    </div>
+    <div class="attention-actions">
+      <button class="hero-cta hero-cta-primary" type="button" (click)="goToInvestigate()">
+        <i class="pi pi-search" aria-hidden="true"></i> Investigate
+      </button>
+      <button class="hero-cta" type="button"
+        (click)="router.navigate(['/intelligence/ai'], { queryParams: { q: 'why are pods failing' } })">
+        <i class="pi pi-sparkles" aria-hidden="true"></i> AI diagnose
+      </button>
+    </div>
+  </section>
+  }
+
+  @if (!isUnavailable && isEmpty) {
+  <section class="state-banner state-empty" role="status" aria-live="polite">
+    <div class="state-icon"><i class="pi pi-inbox" aria-hidden="true"></i></div>
+    <div class="state-copy">
+      <strong>No resources detected</strong>
+      <span>{{ statusDescription }}</span>
+    </div>
+    <button class="state-action" type="button" (click)="refresh()" [disabled]="refreshing">
+      <i class="pi pi-refresh" [class.spinning]="refreshing" aria-hidden="true"></i>
+      Refresh
+    </button>
+  </section>
+  }
+
+  @if (hasData && !isEmpty) {
+  <section class="health-summary" [attr.data-health]="overallHealth" aria-labelledby="health-summary-title"
+    role="status" aria-live="polite">
+    <div class="health-summary-main">
+      <div class="health-score" [attr.data-health]="overallHealth" aria-label="{{ healthPct }} percent healthy">
+        <strong>{{ healthPct }}</strong><span>%</span>
+      </div>
+      <div class="health-info">
+        <div class="health-label">Current health</div>
+        <h2 class="health-title" id="health-summary-title">{{ statusTitle }}</h2>
+        <p class="health-sub">{{ statusDescription }}</p>
+        <div class="health-meter" aria-hidden="true">
+          <span [style.width.%]="healthPct"></span>
+        </div>
+      </div>
+    </div>
+    <div class="health-facts" aria-label="Cluster health summary">
+      <div class="health-fact">
+        <span>Needs attention</span>
+        <strong>{{ attentionCount }}</strong>
+      </div>
+      <div class="health-fact">
+        <span>Pods healthy</span>
+        <strong>{{ data?.pods?.healthy || 0 }}<small> / {{ podTotal }}</small></strong>
+      </div>
+      <div class="health-fact">
+        <span>Deployments ready</span>
+        <strong>{{ data?.deployments?.healthy || 0 }}<small> / {{ depTotal }}</small></strong>
+      </div>
+    </div>
+  </section>
+
+  <section class="resource-section" aria-labelledby="resource-summary-title">
+    <div class="section-heading">
+      <div>
+        <h2 id="resource-summary-title">Resource inventory</h2>
+        <p>Current totals across the selected cluster and namespace.</p>
+      </div>
+      @if (isUnavailable) { <span class="snapshot-label">Stale snapshot</span> }
+    </div>
+    <div class="metrics-strip" [class.metrics-stale]="isUnavailable" aria-label="Cluster resource totals">
+      <div class="metric-card">
+        <div class="metric-card-head">
+          <span class="metric-label">Pods total</span>
+          <i class="pi pi-box" aria-hidden="true"></i>
+        </div>
+        <strong>{{ podTotal }}</strong>
+      </div>
+      <div class="metric-card">
+        <div class="metric-card-head">
+          <span class="metric-label">Nodes total</span>
+          <i class="pi pi-server" aria-hidden="true"></i>
+        </div>
+        <strong>{{ nodeTotal }}</strong>
+      </div>
+      <div class="metric-card">
+        <div class="metric-card-head">
+          <span class="metric-label">Deployments total</span>
+          <i class="pi pi-send" aria-hidden="true"></i>
+        </div>
+        <strong>{{ depTotal }}</strong>
+      </div>
+      <div class="metric-card" [attr.data-health]="overallHealth">
+        <div class="metric-card-head">
+          <span class="metric-label">Healthy resources</span>
+          <i class="pi pi-check-circle" aria-hidden="true"></i>
+        </div>
+        <strong>{{ healthPct }}<small>%</small></strong>
+      </div>
+    </div>
+  </section>
+
+  <div class="dashboard-workspace" [class.workspace-wide]="problemPods.length === 0 || isUnavailable">
+    @if (problemPods.length > 0 && !isUnavailable) {
+    <section class="dashboard-panel problem-section" aria-labelledby="problem-resources-title">
+      <div class="panel-heading">
+        <div>
+          <span class="panel-kicker">Needs attention</span>
+          <h2 id="problem-resources-title">Problem resources</h2>
+        </div>
+        <span class="problem-count" aria-label="problem resource count">{{ problemPods.length }}</span>
+      </div>
+      <div class="problem-list" role="list">
         @for (pod of problemPods; track pod.name) {
-          <div class="problem-row" [attr.data-severity]="podSeverity(pod)">
-            <app-status-beacon [status]="podSeverity(pod)" size="sm" />
+        <div class="problem-row" [attr.data-severity]="podSeverity(pod)" role="listitem">
+          <span class="severity-dot" [attr.data-severity]="podSeverity(pod)" [attr.aria-label]="podSeverity(pod) + ' severity'" role="img"></span>
+          <div class="problem-resource">
             <span class="problem-name">{{ pod.name }}</span>
             <span class="problem-status">{{ pod.status }}</span>
-            @if (pod.restarts > 0) {
-              <span class="problem-restarts">{{ pod.restarts }} restarts</span>
-            }
-            <button class="problem-btn" (click)="router.navigate(['/investigate'], { queryParams: { target: pod.name } })">
-              Investigate
-            </button>
           </div>
+          @if (pod.restarts > 0) {
+          <span class="problem-restarts">{{ pod.restarts }} restarts</span>
+          }
+          <button class="problem-btn" type="button" aria-label="Investigate {{ pod.name }}"
+            (click)="router.navigate(['/monitor/investigate'], { queryParams: { target: pod.name } })">
+            Investigate <i class="pi pi-arrow-up-right" aria-hidden="true"></i>
+          </button>
+        </div>
         }
       </div>
-    </div>
-  }
+      <button class="panel-link" type="button" (click)="goToPods()">View all pods <i class="pi pi-arrow-right" aria-hidden="true"></i></button>
+    </section>
+    }
 
-  <!-- ━━━ Health Ring (confirmation — shows when stable) ━━━━━━━━━━━━━ -->
-  @if (!hasProblems) {
-    <app-holo-card [glow]="healthColor" [compact]="true">
-      <div class="health-hero">
-        <div class="health-ring">
-          <app-health-ring [pct]="healthPct" status="ok" size="md" />
+    <section class="dashboard-panel events-section" aria-labelledby="recent-events-title">
+      <div class="panel-heading">
+        <div>
+          <span class="panel-kicker">Activity stream</span>
+          <h2 id="recent-events-title">Recent events</h2>
         </div>
-        <div class="health-info">
-          <span class="health-title">All Systems Operational</span>
-          <span class="health-sub">{{ (data.pods.healthy || 0) + (data.nodes.healthy || 0) + (data.deployments.healthy || 0) }} / {{ podTotal + nodeTotal + depTotal }} resources healthy</span>
-        </div>
+        <button class="panel-icon-btn" type="button" (click)="router.navigate(['/monitor/events'])"
+          aria-label="View all events" pTooltip="View all events">
+          <i class="pi pi-arrow-up-right" aria-hidden="true"></i>
+        </button>
       </div>
-    </app-holo-card>
-  }
 
-  <!-- ━━━ P0: Recent Events — Warnings First ━━━━━━━━━━━━━━━━━━━━━━━━ -->
-  <app-holo-card title="Recent Events" icon="pi pi-bolt" glow="none" [compact]="true">
-    <button header-actions class="ctrl-btn" (click)="router.navigate(['/events'])" pTooltip="View all">
-      <i class="pi pi-arrow-right"></i>
-    </button>
-
-    @if (warningEvents.length > 0) {
-      @for (event of warningEvents; track $index) {
-        <div class="ev-row ev-row-warning">
-          <app-status-beacon status="warning" size="sm" />
+      @if (recentEvents.length > 0) {
+      <div class="event-list" role="list" aria-label="Recent cluster events">
+        @for (event of warningEvents; track $index) {
+        <div class="ev-row ev-row-warning" role="listitem">
+          <span class="severity-dot" data-severity="warning" aria-label="warning event" role="img"></span>
           <span class="ev-reason">{{ event.reason }}</span>
           <span class="ev-msg">{{ event.message }}</span>
           <code class="ev-obj">{{ event.object }}</code>
         </div>
-      }
-    }
+        }
 
-    @for (event of normalEvents; track $index) {
-      <div class="ev-row">
-        <app-status-beacon status="info" size="sm" />
-        <span class="ev-reason">{{ event.reason }}</span>
-        <span class="ev-msg">{{ event.message }}</span>
-        <code class="ev-obj">{{ event.object }}</code>
+        @for (event of normalEvents; track $index) {
+        <div class="ev-row" role="listitem">
+          <span class="severity-dot" data-severity="info" aria-label="informational event" role="img"></span>
+          <span class="ev-reason">{{ event.reason }}</span>
+          <span class="ev-msg">{{ event.message }}</span>
+          <code class="ev-obj">{{ event.object }}</code>
+        </div>
+        }
       </div>
-    }
-
-    @if (recentEvents.length === 0) {
-      <div class="ev-empty"><i class="pi pi-check-circle"></i> No recent events</div>
-    }
-  </app-holo-card>
-
-  <!-- ━━━ Quick Actions (context-aware) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
-  <div class="actions-grid">
-    @if (hasProblems && topIssue) {
-      <button class="action-card action-card-hot" (click)="router.navigate(['/investigate'], { queryParams: { target: topIssue.object } })"><i class="pi pi-search"></i><span>Investigate {{ topIssue.object | slice:0:12 }}</span></button>
-      <button class="action-card action-card-hot" (click)="router.navigate(['/ai'], { queryParams: { q: 'why is ' + topIssue.object + ' failing' } })"><i class="pi pi-sparkles"></i><span>AI Diagnose</span></button>
-    }
-    <button class="action-card" (click)="router.navigate(['/ai'], { queryParams: { q: 'summarize cluster health' } })"><i class="pi pi-sparkles"></i><span>AI Summary</span></button>
-    <button class="action-card" (click)="router.navigate(['/terminal'])"><i class="pi pi-code"></i><span>Terminal</span></button>
-    <button class="action-card" (click)="router.navigate(['/runbooks'])"><i class="pi pi-book"></i><span>Runbooks</span></button>
-    <button class="action-card" (click)="router.navigate(['/incident'])"><i class="pi pi-exclamation-circle"></i><span>Incident</span></button>
-    <button class="action-card" (click)="router.navigate(['/scorecard'])"><i class="pi pi-trophy"></i><span>Scorecard</span></button>
-    <button class="action-card" (click)="router.navigate(['/cost'])"><i class="pi pi-dollar"></i><span>Optimize</span></button>
+      } @else {
+      <div class="ev-empty" role="status">
+        <i class="pi pi-check-circle" aria-hidden="true"></i>
+        <span>No events in the current window</span>
+      </div>
+      }
+    </section>
   </div>
-} @else {
-  <!-- Skeleton -->
-  <div class="sk-hero"></div>
-  <div class="sk-grid"><div class="sk-card"></div><div class="sk-card"></div><div class="sk-card"></div></div>
+
+  <nav class="actions-section" aria-labelledby="dashboard-actions-title">
+    <div class="section-heading section-heading-compact">
+      <div>
+        <h2 id="dashboard-actions-title">Common actions</h2>
+        <p>Move from overview to the tools used during response.</p>
+      </div>
+    </div>
+    <div class="actions-grid">
+      @if (hasProblems && topIssue) {
+      <button class="action-card action-card-hot" type="button"
+        (click)="router.navigate(['/monitor/investigate'], { queryParams: { target: topIssue.object } })">
+        <i class="pi pi-search" aria-hidden="true"></i><span>Investigate {{ topIssue.object | slice:0:12 }}</span>
+      </button>
+      }
+      <button class="action-card" type="button"
+        (click)="router.navigate(['/intelligence/ai'], { queryParams: { q: 'summarize cluster health' } })">
+        <i class="pi pi-sparkles" aria-hidden="true"></i><span>AI summary</span>
+      </button>
+      <button class="action-card" type="button" (click)="router.navigate(['/operations/terminal'])">
+        <i class="pi pi-code" aria-hidden="true"></i><span>Terminal</span>
+      </button>
+      <button class="action-card" type="button" (click)="router.navigate(['/operations/runbooks'])">
+        <i class="pi pi-book" aria-hidden="true"></i><span>Runbooks</span>
+      </button>
+      <button class="action-card" type="button" (click)="router.navigate(['/operations/incident'])">
+        <i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>Incident</span>
+      </button>
+      <button class="action-card" type="button" (click)="router.navigate(['/monitor/scorecard'])">
+        <i class="pi pi-trophy" aria-hidden="true"></i><span>Scorecard</span>
+      </button>
+      <button class="action-card" type="button" (click)="router.navigate(['/cost-analytics/cost'])">
+        <i class="pi pi-dollar" aria-hidden="true"></i><span>Optimize</span>
+      </button>
+    </div>
+  </nav>
+  }
+</div>
 }

@@ -25,6 +25,21 @@ export class IncidentComponent implements OnInit, OnDestroy {
 
   active: any = null;
   resolved: any = null;
+  statusLoading = true;
+  statusLoaded = false;
+  statusError = '';
+  historyLoading = true;
+  historyError = '';
+  reportLoading = false;
+  reportError = '';
+  mutationError = '';
+  startPending = false;
+  notePending = false;
+  snapshotPending = false;
+  actionPending = false;
+  affectedPending = false;
+  severityPending = false;
+  resolvePending = false;
   resolvedDuration = '';
   resolvedExportPath = '';
   reportData: any = null;
@@ -82,7 +97,7 @@ export class IncidentComponent implements OnInit, OnDestroy {
   }
 
   get mttr(): string {
-    if (!this.resolved?.started || !this.resolved?.ended) return '—';
+    if (!this.resolved?.started || !this.resolved?.ended) return 'Not available';
     const ms = new Date(this.resolved.ended).getTime() - new Date(this.resolved.started).getTime();
     const mins = Math.floor(ms / 60000);
     if (mins < 60) return `${mins}m`;
@@ -94,78 +109,152 @@ export class IncidentComponent implements OnInit, OnDestroy {
   ngOnDestroy() { clearInterval(this.timerInterval); }
 
   loadHistory() {
-    this.http.get<any>(`${this.base}/incident/history`).subscribe(res => {
-      this.history = res.incidents || [];
+    this.historyLoading = true;
+    this.historyError = '';
+    this.http.get<any>(`${this.base}/incident/history`).subscribe({
+      next: (res) => {
+        this.history = res.incidents || [];
+        this.historyLoading = false;
+      },
+      error: () => {
+        this.historyLoading = false;
+        this.historyError = 'Past incidents are unavailable right now.';
+      },
     });
   }
 
   viewHistoryReport(item: any) {
-    this.http.get<any>(`${this.base}/incident/report`, { params: { path: item.path } }).subscribe(res => {
-      if (!res.error) {
+    this.reportLoading = true;
+    this.reportError = '';
+    this.http.get<any>(`${this.base}/incident/report`, { params: { path: item.path } }).subscribe({
+      next: (res) => {
+        this.reportLoading = false;
+        if (res.error) {
+          this.reportError = res.error;
+          return;
+        }
         this.resolved = res;
         this.resolvedExportPath = item.path;
         this.resolvedDuration = this.calcDuration(res);
-      }
+      },
+      error: () => {
+        this.reportLoading = false;
+        this.reportError = 'Unable to open this incident report.';
+      },
     });
   }
 
   loadStatus() {
-    this.http.get<any>(`${this.base}/incident/status`).subscribe(res => {
-      this.active = res.status === 'no active incident' ? null : res;
-      if (this.active) {
-        this.startTimer();
-        this.affectedResources = this.active.affected || [];
-        this.commander = this.active.commander || this.commander;
-        this.severityHistory = this.active.severity_history || [];
-        this.computeSnapshotDiff();
-        this.loadRelatedAlerts();
-      }
+    const initialLoad = !this.statusLoaded;
+    this.statusLoading = initialLoad;
+    this.statusError = '';
+    this.http.get<any>(`${this.base}/incident/status`).subscribe({
+      next: (res) => {
+        this.statusLoaded = true;
+        this.statusLoading = false;
+        this.active = res.status === 'no active incident' ? null : res;
+        if (this.active) {
+          this.severity = this.active.severity || this.severity;
+          this.startTimer();
+          this.affectedResources = this.active.affected || this.affectedResources;
+          this.commander = this.active.commander || this.commander;
+          if (this.active.severity_history?.length) {
+            this.severityHistory = this.active.severity_history;
+          }
+          this.computeSnapshotDiff();
+          this.loadRelatedAlerts();
+        } else {
+          clearInterval(this.timerInterval);
+        }
+      },
+      error: () => {
+        this.statusLoaded = true;
+        this.statusLoading = false;
+        if (!this.active) this.statusError = 'Unable to determine incident status. Retry to continue.';
+      },
     });
   }
 
   start() {
+    if (!this.title.trim() || this.startPending) return;
+    this.startPending = true;
+    this.mutationError = '';
     this.http.post<any>(`${this.base}/incident/start`, {
       title: this.title,
       commander: this.commander,
       severity: this.severity,
-    }).subscribe(() => {
-      this.title = '';
-      this.loadStatus();
-      // Auto-snapshot on start
-      setTimeout(() => this.snapshot(), 500);
+    }).subscribe({
+      next: () => {
+        this.startPending = false;
+        this.title = '';
+        this.loadStatus();
+      },
+      error: () => {
+        this.startPending = false;
+        this.mutationError = 'Unable to start incident tracking. Try again.';
+      },
     });
   }
 
   stop() {
+    if (this.resolvePending || this.resolveDisabled) return;
     const rootCause = this.rootCauseCategory
       ? `[${this.rootCauseCategory}] ${this.rootCauseDetail}`.trim()
       : this.rootCauseDetail;
-    // Auto-snapshot before resolve
-    this.http.post<any>(`${this.base}/incident/snapshot`, {}).subscribe(() => {
+    this.confirmService.confirm({
+      title: 'Resolve Incident',
+      message: 'Resolve this incident and export its final report?',
+      confirmLabel: 'Resolve & Export',
+      severity: 'warning',
+      productionGuard: true,
+    }).then(ok => {
+      if (!ok) return;
+      this.resolvePending = true;
+      this.mutationError = '';
       this.http.post<any>(`${this.base}/incident/stop`, {
         root_cause: rootCause,
         resolution: this.resolutionText,
-      }).subscribe(res => {
-        this.active = null;
-        this.showResolveForm = false;
-        clearInterval(this.timerInterval);
-        if (res?.incident) {
-          this.resolved = res.incident;
-          this.resolvedExportPath = res.export_path || '';
-          this.resolvedDuration = this.calcDuration(res.incident);
-        }
-        this.loadHistory();
+      }).subscribe({
+        next: (res) => {
+          this.resolvePending = false;
+          this.active = null;
+          this.showResolveForm = false;
+          clearInterval(this.timerInterval);
+          if (res?.incident) {
+            this.resolved = res.incident;
+            this.resolvedExportPath = res.export_path || '';
+            this.resolvedDuration = this.calcDuration(res.incident);
+          }
+          this.loadHistory();
+        },
+        error: () => {
+          this.resolvePending = false;
+          this.mutationError = 'Unable to resolve incident. Current tracking remains active.';
+        },
       });
     });
   }
 
   changeSeverity(newSev: string) {
-    if (newSev === (this.active?.severity || this.severity)) return;
+    if (newSev === (this.active?.severity || this.severity) || this.severityPending) return;
     const oldSev = this.active?.severity || this.severity;
+    this.severityPending = true;
+    this.mutationError = '';
+    this.severity = newSev;
+    if (this.active) this.active.severity = newSev;
     this.severityHistory.push({ time: new Date().toISOString(), from: oldSev, to: newSev });
     this.http.post<any>(`${this.base}/incident/note`, {
       text: `[severity] Changed from ${oldSev} to ${newSev}`,
-    }).subscribe(() => this.loadStatus());
+    }).subscribe({
+      next: () => {
+        this.severityPending = false;
+        this.loadStatus();
+      },
+      error: () => {
+        this.severityPending = false;
+        this.mutationError = 'Severity change was not recorded.';
+      },
+    });
   }
 
   dismissResolved() {
@@ -176,14 +265,27 @@ export class IncidentComponent implements OnInit, OnDestroy {
   }
 
   loadReport() {
-    if (!this.resolvedExportPath) return;
-    this.http.get<any>(`${this.base}/incident/report`, { params: { path: this.resolvedExportPath } }).subscribe(res => {
-      if (!res.error) this.reportData = res;
+    if (!this.resolvedExportPath || this.reportLoading) return;
+    this.reportLoading = true;
+    this.reportError = '';
+    this.http.get<any>(`${this.base}/incident/report`, { params: { path: this.resolvedExportPath } }).subscribe({
+      next: (res) => {
+        this.reportLoading = false;
+        if (res.error) {
+          this.reportError = res.error;
+          return;
+        }
+        this.reportData = res;
+      },
+      error: () => {
+        this.reportLoading = false;
+        this.reportError = 'Unable to load the full report.';
+      },
     });
   }
 
   calcDuration(incident: any): string {
-    if (!incident.started || !incident.ended) return '—';
+    if (!incident.started || !incident.ended) return 'Not available';
     const ms = new Date(incident.ended).getTime() - new Date(incident.started).getTime();
     const mins = Math.floor(ms / 60000);
     if (mins < 60) return `${mins}m`;
@@ -192,45 +294,90 @@ export class IncidentComponent implements OnInit, OnDestroy {
   }
 
   addNote() {
-    if (!this.noteText.trim()) return;
-    this.http.post<any>(`${this.base}/incident/note`, { text: this.noteText }).subscribe(() => {
-      this.noteText = '';
-      this.lastUpdateTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      this.loadStatus();
+    if (!this.noteText.trim() || this.notePending) return;
+    this.notePending = true;
+    this.mutationError = '';
+    this.http.post<any>(`${this.base}/incident/note`, { text: this.noteText }).subscribe({
+      next: () => {
+        this.notePending = false;
+        this.noteText = '';
+        this.lastUpdateTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        this.loadStatus();
+      },
+      error: () => {
+        this.notePending = false;
+        this.mutationError = 'Note was not added. Try again.';
+      },
     });
   }
 
   snapshot() {
-    this.http.post<any>(`${this.base}/incident/snapshot`, {}).subscribe(() => {
-      this.snapshotTaken = true;
-      this.lastUpdateTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      this.loadStatus();
-      setTimeout(() => this.snapshotTaken = false, 3000);
+    if (this.snapshotPending) return;
+    this.snapshotPending = true;
+    this.mutationError = '';
+    this.http.post<any>(`${this.base}/incident/snapshot`, {}).subscribe({
+      next: (res) => {
+        this.snapshotPending = false;
+        if (res?.captured === false) {
+          this.mutationError = res.reason || 'Snapshot was not captured.';
+          return;
+        }
+        this.snapshotTaken = true;
+        this.lastUpdateTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        this.loadStatus();
+        setTimeout(() => this.snapshotTaken = false, 3000);
+      },
+      error: () => {
+        this.snapshotPending = false;
+        this.mutationError = 'Snapshot failed. Current incident data is unchanged.';
+      },
     });
   }
 
   logAction() {
-    if (!this.actionTarget.trim()) return;
+    if (!this.actionTarget.trim() || this.actionPending) return;
+    this.actionPending = true;
+    this.mutationError = '';
     this.http.post<any>(`${this.base}/incident/action`, {
       action: this.actionType,
       target: this.actionTarget,
       result: this.actionResult,
-    }).subscribe(() => {
-      this.actionTarget = '';
-      this.actionResult = '';
-      this.showActionInput = false;
-      this.lastUpdateTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      this.loadStatus();
+    }).subscribe({
+      next: () => {
+        this.actionPending = false;
+        this.actionTarget = '';
+        this.actionResult = '';
+        this.showActionInput = false;
+        this.lastUpdateTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        this.loadStatus();
+      },
+      error: () => {
+        this.actionPending = false;
+        this.mutationError = 'Action was not logged. Try again.';
+      },
     });
   }
 
   addAffected() {
-    if (!this.affectedInput.trim()) return;
-    this.affectedResources.push(this.affectedInput.trim());
-    this.http.post<any>(`${this.base}/incident/note`, {
-      text: `[affected] ${this.affectedInput.trim()}`
-    }).subscribe(() => this.loadStatus());
+    const resource = this.affectedInput.trim();
+    if (!resource || this.affectedPending) return;
+    this.affectedPending = true;
+    this.mutationError = '';
+    this.affectedResources.push(resource);
     this.affectedInput = '';
+    this.http.post<any>(`${this.base}/incident/note`, {
+      text: `[affected] ${resource}`
+    }).subscribe({
+      next: () => {
+        this.affectedPending = false;
+        this.loadStatus();
+      },
+      error: () => {
+        this.affectedPending = false;
+        this.affectedResources = this.affectedResources.filter(r => r !== resource);
+        this.mutationError = 'Resource was not added to the incident.';
+      },
+    });
   }
 
   removeAffected(res: string) {
@@ -244,31 +391,44 @@ export class IncidentComponent implements OnInit, OnDestroy {
   }
 
   runAiAnalysis() {
+    if (this.analyzing) return;
     this.analyzing = true;
-    this.http.get<any>(`${this.base}/anomalies`).subscribe(res => {
-      const alerts = res.alerts || [];
-      if (alerts.length > 0) {
-        this.probableCause = alerts[0].message;
-        this.blastRadius = `${alerts.length} resources affected across the namespace.`;
-        this.healthScore = Math.max(20, 100 - (alerts.length * 15));
-      } else {
-        this.probableCause = 'No clear infrastructure anomalies detected. Investigating application logic.';
-        this.blastRadius = 'Limited to selected deployment.';
-        this.healthScore = 95;
-      }
-      this.analyzing = false;
+    this.mutationError = '';
+    this.http.get<any>(`${this.base}/anomalies`).subscribe({
+      next: (res) => {
+        const alerts = res.alerts || [];
+        if (alerts.length > 0) {
+          this.probableCause = alerts[0].message;
+          this.blastRadius = `${alerts.length} resources affected across the namespace.`;
+          this.healthScore = Math.max(20, 100 - (alerts.length * 15));
+        } else {
+          this.probableCause = 'No clear infrastructure anomalies detected. Investigating application logic.';
+          this.blastRadius = 'Limited to selected deployment.';
+          this.healthScore = 95;
+        }
+        this.analyzing = false;
+      },
+      error: () => {
+        this.analyzing = false;
+        this.mutationError = 'AI analysis is unavailable. Incident tracking continues normally.';
+      },
     });
   }
 
   shareIncident() {
+    if (this.sharing) return;
     this.sharing = true;
+    this.mutationError = '';
     this.http.post<any>(`${this.base}/incident/share`, {}).subscribe({
       next: (res) => {
         this.sharing = false;
-        this.shareMsg = res.success ? '✓ Shared' : res.message;
+        this.shareMsg = res.success ? 'Shared' : res.message;
         setTimeout(() => this.shareMsg = '', 4000);
       },
-      error: () => { this.sharing = false; },
+      error: () => {
+        this.sharing = false;
+        this.mutationError = 'Incident could not be shared.';
+      },
     });
   }
 
@@ -297,13 +457,16 @@ export class IncidentComponent implements OnInit, OnDestroy {
 
   private startTimer() {
     if (this.timerInterval) clearInterval(this.timerInterval);
-    const startTime = this.active?.started_at ? new Date(this.active.started_at).getTime() : Date.now();
-    this.timerInterval = setInterval(() => {
-      const elapsed = Math.floor((Date.now() - startTime) / 1000);
+    const startValue = this.active?.started || this.active?.started_at;
+    const startTime = startValue ? new Date(startValue).getTime() : Date.now();
+    const updateElapsed = () => {
+      const elapsed = Math.max(0, Math.floor((Date.now() - startTime) / 1000));
       const m = Math.floor(elapsed / 60).toString().padStart(2, '0');
       const s = (elapsed % 60).toString().padStart(2, '0');
       const h = Math.floor(elapsed / 3600);
       this.elapsedTime = h > 0 ? `${h}:${m}:${s}` : `${m}:${s}`;
-    }, 1000);
+    };
+    updateElapsed();
+    this.timerInterval = setInterval(updateElapsed, 1000);
   }
 }

@@ -26,10 +26,10 @@ export class HealthSignalsComponent implements OnInit, OnDestroy {
   private timer: any;
 
   relatedPages = [
-    { path: '/monitor', icon: 'pi pi-desktop', label: 'Monitor', description: 'Multi-cluster card view' },
-    { path: '/pods', icon: 'pi pi-box', label: 'Pods', description: 'Pod list and status' },
-    { path: '/deployments', icon: 'pi pi-send', label: 'Deployments', description: 'Rollout management' },
-    { path: '/rightsizing', icon: 'pi pi-sliders-h', label: 'Right-Sizing', description: 'Resource recommendations' },
+    { path: '/monitor/overview', icon: 'pi pi-desktop', label: 'Monitor', description: 'Multi-cluster card view' },
+    { path: '/operations/pods', icon: 'pi pi-box', label: 'Pods', description: 'Pod list and status' },
+    { path: '/operations/deployments', icon: 'pi pi-send', label: 'Deployments', description: 'Rollout management' },
+    { path: '/cost-analytics/rightsizing', icon: 'pi pi-sliders-h', label: 'Right-Sizing', description: 'Resource recommendations' },
   ];
 
   get totalIssues(): number {

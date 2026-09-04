@@ -6,14 +6,40 @@ Token saved to ~/.kubsome/.api_token (mode 600).
 
 import secrets
 import os
+import time
+from collections import defaultdict
+from http.cookies import SimpleCookie
 from pathlib import Path
-from fastapi import Request
+from threading import Lock
+from urllib.parse import urlparse
+
+from fastapi import Request, WebSocket
 from starlette.middleware.base import BaseHTTPMiddleware
 
 _TOKEN_FILE = Path.home() / ".kubsome" / ".api_token"
 _SESSION_TOKEN = None
+_WS_HANDSHAKE_LIMIT = 30
+_WS_HANDSHAKE_WINDOW = 60
+_WS_HANDSHAKES = defaultdict(list)
+_WS_HANDSHAKE_LOCK = Lock()
 
 PUBLIC_PATHS = {"/health", "/api/health", "/api/version", "/api/token", "/docs", "/openapi.json"}
+
+
+def _allow_websocket_handshake(websocket: WebSocket) -> bool:
+    """Throttle WebSocket handshakes before authentication and acceptance."""
+    client = websocket.client
+    client_key = client.host if client else "unknown"
+    now = time.time()
+
+    with _WS_HANDSHAKE_LOCK:
+        timestamps = _WS_HANDSHAKES[client_key]
+        cutoff = now - _WS_HANDSHAKE_WINDOW
+        timestamps[:] = [timestamp for timestamp in timestamps if timestamp > cutoff]
+        if len(timestamps) >= _WS_HANDSHAKE_LIMIT:
+            return False
+        timestamps.append(now)
+    return True
 
 
 def generate_token():
@@ -40,6 +66,52 @@ def get_token():
         else:
             generate_token()
     return _SESSION_TOKEN
+
+
+async def authenticate_websocket(websocket: WebSocket) -> bool:
+    """Authenticate and origin-check a WebSocket before accepting it."""
+    if not _allow_websocket_handshake(websocket):
+        await websocket.close(code=1013, reason="Too many connection attempts")
+        return False
+
+    origin = websocket.headers.get("origin")
+    if origin:
+        origin_url = urlparse(origin)
+        origin_host = origin_url.hostname or ""
+        request_host = websocket.headers.get("host", "").split(":", 1)[0]
+        local_origin = origin_host in {"localhost", "127.0.0.1", "::1"}
+        same_host = origin_host == request_host
+        if not local_origin and not same_host:
+            await websocket.close(code=1008, reason="Origin not allowed")
+            return False
+
+    auth = websocket.headers.get("authorization", "")
+    provided = auth[7:] if auth.startswith("Bearer ") else ""
+
+    if not provided:
+        cookies = SimpleCookie()
+        cookies.load(websocket.headers.get("cookie", ""))
+        token_cookie = cookies.get("kubsome_token")
+        provided = token_cookie.value if token_cookie else ""
+
+    # Query-token fallback keeps native clients compatible; browser clients use
+    # the HttpOnly cookie set by /api/token to avoid URL credential leakage.
+    if not provided:
+        provided = websocket.query_params.get("token", "")
+
+    if not provided:
+        protocols = websocket.headers.get("sec-websocket-protocol", "")
+        for protocol in (item.strip() for item in protocols.split(",")):
+            if protocol.startswith("bearer."):
+                provided = protocol[7:]
+                break
+
+    token = get_token()
+    if provided and token and secrets.compare_digest(provided, token):
+        return True
+
+    await websocket.close(code=1008, reason="Unauthorized")
+    return False
 
 
 class AuthMiddleware(BaseHTTPMiddleware):

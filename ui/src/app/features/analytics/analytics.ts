@@ -36,10 +36,17 @@ export class AnalyticsComponent implements OnInit {
   // Resources tab charts
   cpuMemChart: any = null;
   consumersChart: any = null;
+  resourcesLoading = false;
+  resourcesLoaded = false;
+  cpuMemError = false;
+  consumersError = false;
 
   // Cost tab
   costData: any[] = [];
   costSummary: any = null;
+  costLoading = false;
+  costLoaded = false;
+  costError = false;
 
   // Investigate tab
   querying = false;
@@ -70,9 +77,9 @@ export class AnalyticsComponent implements OnInit {
   ];
 
   relatedPages = [
-    { path: '/rightsizing', icon: 'pi pi-sliders-h', label: 'Right-Sizing', description: 'CPU/memory recommendations' },
-    { path: '/cost-estimate', icon: 'pi pi-calculator', label: 'Cost Estimate', description: 'Per-deployment cost' },
-    { path: '/metrics', icon: 'pi pi-chart-line', label: 'Live Metrics', description: 'Real-time usage' },
+    { path: '/cost-analytics/rightsizing', icon: 'pi pi-sliders-h', label: 'Right-Sizing', description: 'CPU/memory recommendations' },
+    { path: '/cost-analytics/cost-estimate', icon: 'pi pi-calculator', label: 'Cost Estimate', description: 'Per-deployment cost' },
+    { path: '/monitor/metrics', icon: 'pi pi-chart-line', label: 'Live Metrics', description: 'Real-time usage' },
   ];
 
   ngOnInit() { this.refresh(); }
@@ -95,12 +102,24 @@ export class AnalyticsComponent implements OnInit {
 
   onTabChange(tab: string) {
     this.activeTab = tab;
-    if (tab === '1' && !this.cpuMemChart) this.loadResourcesCharts();
-    if (tab === '2' && !this.costData.length) this.loadCostData();
+    if (tab === '1' && !this.resourcesLoaded && !this.resourcesLoading) this.loadResourcesCharts();
+    if (tab === '2' && !this.costLoaded && !this.costLoading) this.loadCostData();
   }
 
   // --- Resources tab ---
   loadResourcesCharts() {
+    this.resourcesLoading = true;
+    this.cpuMemError = false;
+    this.consumersError = false;
+    let pending = 2;
+    const settle = () => {
+      pending -= 1;
+      if (pending === 0) {
+        this.resourcesLoading = false;
+        this.resourcesLoaded = true;
+      }
+    };
+
     this.http.get<any>('/api/analytics/series/cpu-memory?hours=24').subscribe({
       next: (res) => {
         const series = res.series || [];
@@ -113,7 +132,9 @@ export class AnalyticsComponent implements OnInit {
             ],
           };
         }
+        settle();
       },
+      error: () => { this.cpuMemError = true; settle(); },
     });
     this.http.get<any>('/api/analytics/series/top-consumers?hours=6').subscribe({
       next: (res) => {
@@ -127,14 +148,28 @@ export class AnalyticsComponent implements OnInit {
             ],
           };
         }
+        settle();
       },
+      error: () => { this.consumersError = true; settle(); },
     });
   }
 
   // --- Cost tab ---
   loadCostData() {
+    this.costLoading = true;
+    this.costError = false;
     this.http.get<any>('/api/analytics/cost').subscribe({
-      next: (res) => { this.costData = res.deployments || []; this.costSummary = res.summary; },
+      next: (res) => {
+        this.costData = res.deployments || [];
+        this.costSummary = res.summary;
+        this.costLoading = false;
+        this.costLoaded = true;
+      },
+      error: () => {
+        this.costLoading = false;
+        this.costLoaded = true;
+        this.costError = true;
+      },
     });
   }
 

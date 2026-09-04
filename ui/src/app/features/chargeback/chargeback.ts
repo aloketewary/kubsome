@@ -55,10 +55,10 @@ export class ChargebackComponent implements OnInit, OnDestroy {
   get hasData() { return this.teamData.length > 0 || this.nsData.length > 0 || this.billingData.length > 0; }
 
   relatedPages = [
-    { path: '/analytics', icon: 'pi pi-chart-bar', label: 'Analytics', description: 'Raw metrics and SQL queries' },
-    { path: '/cost', icon: 'pi pi-dollar', label: 'Optimization', description: 'Resource optimization' },
-    { path: '/rightsizing', icon: 'pi pi-sliders-h', label: 'Right-Sizing', description: 'Reduce waste per deployment' },
-    { path: '/cost-estimate', icon: 'pi pi-calculator', label: 'Cost Estimate', description: 'Per-deployment cost' },
+    { path: '/cost-analytics/analytics', icon: 'pi pi-chart-bar', label: 'Analytics', description: 'Raw metrics and SQL queries' },
+    { path: '/cost-analytics/cost', icon: 'pi pi-dollar', label: 'Optimization', description: 'Resource optimization' },
+    { path: '/cost-analytics/rightsizing', icon: 'pi pi-sliders-h', label: 'Right-Sizing', description: 'Reduce waste per deployment' },
+    { path: '/cost-analytics/cost-estimate', icon: 'pi pi-calculator', label: 'Cost Estimate', description: 'Per-deployment cost' },
   ];
 
   ngOnInit() { this.refresh(); this.startAutoRefresh(); }

@@ -1,8 +1,6 @@
 from rapidfuzz import process
 
-from core.kubeconfig import (
-    enriched_contexts
-)
+from core.kubeconfig import enriched_contexts
 
 import subprocess
 
@@ -10,24 +8,32 @@ from core.context import context
 from core.state import save_state
 
 
-def switch_context(ctx):
-
-    command = [
-        "kubectl", "config", "use-context", ctx["name"]
-    ]
-
-    subprocess.run(command)
+def switch_context(ctx, persist=True):
+    """Switch active context, persisting kubeconfig only for CLI usage."""
+    if persist:
+        command = [
+            "kubectl", "config", "use-context", ctx["name"]
+        ]
+        try:
+            result = subprocess.run(command, timeout=10)
+        except subprocess.TimeoutExpired:
+            return False
+        if result.returncode != 0:
+            return False
 
     context.current_context = ctx["name"]
     context.namespace = ctx["namespace"]
 
-    save_state(
-        context.current_context,
-        context.namespace
-    )
+    if persist:
+        save_state(
+            context.current_context,
+            context.namespace
+        )
 
     from core.cache import invalidate
     invalidate()
+    return True
+
 
 def find_context(query: str):
     contexts = enriched_contexts()

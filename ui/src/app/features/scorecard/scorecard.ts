@@ -65,6 +65,6 @@ export class ScorecardComponent implements OnInit, OnDestroy {
   }
 
   runWithAi(action: string) {
-    this.router.navigate(['/ai'], { queryParams: { q: action } });
+    this.router.navigate(['/intelligence/ai'], { queryParams: { q: action } });
   }
 }

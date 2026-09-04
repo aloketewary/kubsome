@@ -14,10 +14,16 @@ const STORAGE_KEY = 'kubsome_prefs';
 const DEFAULTS: UserPreferences = {
   theme: 'dark',
   refreshInterval: 30000,
-  sidebarFavorites: ['/dashboard', '/pods', '/logs'],
+  sidebarFavorites: ['/monitor/dashboard', '/operations/pods', '/monitor/logs'],
   defaultNamespace: '',
   notifications: true,
   dashboardWidgets: ['hero', 'metrics', 'charts', 'uptime', 'events', 'actions'],
+};
+
+const LEGACY_ROUTE_MAP: Record<string, string> = {
+  '/dashboard': '/monitor/dashboard',
+  '/pods': '/operations/pods',
+  '/logs': '/monitor/logs',
 };
 
 @Injectable({ providedIn: 'root' })
@@ -45,7 +51,12 @@ export class PreferencesService {
   private load(): UserPreferences {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
-      return stored ? { ...DEFAULTS, ...JSON.parse(stored) } : DEFAULTS;
+      if (!stored) return DEFAULTS;
+      const parsed = { ...DEFAULTS, ...JSON.parse(stored) } as UserPreferences;
+      return {
+        ...parsed,
+        sidebarFavorites: parsed.sidebarFavorites.map(path => LEGACY_ROUTE_MAP[path] ?? path),
+      };
     } catch {
       return DEFAULTS;
     }

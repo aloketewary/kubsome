@@ -16,17 +16,18 @@ router = APIRouter(tags=["describe"])
 
 
 @router.get("/describe/{resource}/{name}")
-def describe_resource(resource: str, name: str):
-    """Describe a resource with fuzzy name matching."""
+def describe_resource(resource: str, name: str, namespace: str = ""):
+    """Describe a resource with fuzzy resolution."""
     resolved = _fuzzy_resolve(resource, name)
+    target_namespace = namespace.strip() or context.namespace
 
     args = [
         "kubectl", "--context", context.current_context,
-        "describe", resource, resolved, "-n", context.namespace
+        "describe", resource, resolved, "-n", target_namespace
     ]
 
     # Cluster-scoped resources
-    cluster_scoped = {"node", "nodes", "namespace", "namespaces"}
+    cluster_scoped = {"node", "nodes", "namespace", "namespaces", "pv", "persistentvolumes"}
     if resource in cluster_scoped:
         args = [
             "kubectl", "--context", context.current_context,
@@ -47,23 +48,26 @@ def describe_resource(resource: str, name: str):
 
     raw = result.stdout.strip()
     parsed = _parse_describe(raw)
+    yaml = _get_yaml(resource, resolved, target_namespace)
 
     return {
         "context": context.current_context,
-        "namespace": context.namespace,
+        "namespace": target_namespace,
         "resource": resource,
         "name": resolved,
         "raw": raw,
+        "yaml": yaml,
         "parsed": parsed,
     }
 
 
 @router.get("/get/{resource}")
-def get_resource(resource: str, name: str = ""):
+def get_resource(resource: str, name: str = "", namespace: str = ""):
     """Get resources with optional fuzzy name."""
     resolved = ""
     if name:
         resolved = _fuzzy_resolve(resource, name)
+    target_namespace = namespace.strip() or context.namespace
 
     args = [
         "kubectl", "--context", context.current_context,
@@ -77,7 +81,7 @@ def get_resource(resource: str, name: str = ""):
         "pv", "persistentvolumes",
     }
     if resource not in cluster_scoped:
-        args.extend(["-n", context.namespace])
+        args.extend(["-n", target_namespace])
 
     args.extend(["-o", "json"])
 
@@ -96,7 +100,7 @@ def get_resource(resource: str, name: str = ""):
     data = json.loads(result.stdout)
     return {
         "context": context.current_context,
-        "namespace": context.namespace,
+        "namespace": target_namespace,
         "resource": resource,
         "data": data,
     }
@@ -125,6 +129,20 @@ def delete_resource(resource: str, name: str):
         )
 
     return {"deleted": resolved, "resource": resource}
+
+
+def _get_yaml(resource: str, name: str, namespace: str) -> str:
+    args = [
+        "kubectl", "--context", context.current_context,
+        "get", resource, name,
+    ]
+    cluster_scoped = {"node", "nodes", "namespace", "namespaces", "pv", "persistentvolumes"}
+    if resource not in cluster_scoped:
+        args.extend(["-n", namespace])
+    args.extend(["-o", "yaml"])
+
+    result = subprocess.run(args, capture_output=True, text=True, timeout=15)
+    return result.stdout.strip() if result.returncode == 0 else ""
 
 
 def _fuzzy_resolve(resource: str, name: str) -> str:

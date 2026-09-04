@@ -1,4 +1,5 @@
 import re
+import shlex
 import subprocess
 import os
 from fastapi import APIRouter
@@ -44,25 +45,53 @@ RESOURCE_COMMANDS = {
     "trigger": "cronjob",
 }
 
-# Add at top of file
-ALLOWED_PREFIXES = (
-    "kubectl", "k ", "pods", "events", "overview", "nodes",
-    "services", "deployments", "top ", "logs ", "inspect ",
-    "diagnose ", "shell ", "rollout ", "rollback ", "restart ",
-    "scale ", "trace ", "diff ", "trigger ", "find ", "cronjobs",
-    "jobs", "hpa", "pdb", "capacity", "quota", "security",
-    "optimize", "unused", "check", "audit", "timeline",
-    "rbac", "ingress", "mesh", "why ", "summarize", "what ",
-    "which ", "explain ", "generate ", "watch-alert ", "watch-status",
-    "help", "scorecard", "cost", "doctor", "policy", "stats",
-    "correlate", "playbook", "export", "changelog", "snap",
-    "incident", "note ", "forward ", "netcheck ", "dns ",
-    "compare", "labels", "ns", "dep-health", "uptime",
-)
+# Exact top-level Kubsome command names accepted by the API.
+KUBSOME_COMMANDS = frozenset({
+    "pods", "events", "overview", "nodes", "services", "deployments",
+    "top", "logs", "inspect", "diagnose", "shell", "rollout", "rollback",
+    "restart", "scale", "trace", "diff", "trigger", "find", "cronjobs",
+    "jobs", "hpa", "pdb", "capacity", "quota", "security", "optimize",
+    "unused", "check", "audit", "timeline", "rbac", "ingress", "mesh",
+    "why", "summarize", "what", "which", "explain", "generate",
+    "watch-alert", "watch-status", "help", "scorecard", "cost", "doctor",
+    "policy", "stats", "correlate", "playbook", "export", "changelog",
+    "snap", "incident", "note", "forward", "netcheck", "dns", "compare",
+    "labels", "ns", "dep-health", "uptime",
+})
+
+# Direct kubectl access is intentionally read-oriented. Mutations use explicit
+# Kubsome routes, which can apply their own confirmation and policy checks.
+KUBECTL_READ_SUBCOMMANDS = frozenset({
+    "api-resources", "cluster-info", "describe", "diff", "explain",
+    "get", "logs", "top", "version",
+})
+
+
+def _has_flag(tokens, name):
+    return any(token == name or token.startswith(f"{name}=") for token in tokens)
+
+
+def _flag_value(tokens, name):
+    for index, token in enumerate(tokens):
+        if token.startswith(f"{name}="):
+            return token.split("=", 1)[1]
+        if token == name and index + 1 < len(tokens):
+            return tokens[index + 1]
+    return None
+
 
 def _is_allowed(cmd: str) -> bool:
-    """Only allow kubsome commands and kubectl."""
-    return any(cmd.startswith(p) for p in ALLOWED_PREFIXES)
+    """Validate command tokens, not string prefixes."""
+    try:
+        tokens = shlex.split(cmd)
+    except ValueError:
+        return False
+
+    if not tokens:
+        return False
+    if tokens[0] in {"kubectl", "k"}:
+        return len(tokens) > 1 and tokens[1] in KUBECTL_READ_SUBCOMMANDS
+    return tokens[0] in KUBSOME_COMMANDS
 
 
 
@@ -92,14 +121,50 @@ def exec_command(req: CommandRequest):
     if cmd == "watch-status":
         return _handle_watch_status_api()
 
-    # Direct kubectl passthrough
-    if cmd.startswith("kubectl") or cmd.startswith("k "):
-        actual = cmd.replace("k ", "kubectl ", 1) if cmd.startswith("k ") else cmd
-        if "--context" not in actual:
-            actual += f" --context {context.current_context}"
-        if "-n " not in actual and "--namespace" not in actual and "get ns" not in actual and "get namespaces" not in actual:
-            actual += f" -n {context.namespace}"
-        return _run(actual)
+    # Direct kubectl passthrough is restricted to read-oriented commands.
+    tokens = shlex.split(cmd)
+    if tokens and tokens[0] in {"kubectl", "k"}:
+        actual_tokens = list(tokens)
+        if actual_tokens[0] == "k":
+            actual_tokens[0] = "kubectl"
+
+        expected_context = str(context.current_context)
+        requested_context = _flag_value(actual_tokens, "--context")
+        if requested_context and requested_context != expected_context:
+            return {
+                "output": "Command not allowed: context override is not permitted.",
+                "exit_code": 1,
+            }
+
+        expected_namespace = str(context.namespace)
+        requested_namespace = (
+            _flag_value(actual_tokens, "--namespace")
+            or _flag_value(actual_tokens, "-n")
+        )
+        if requested_namespace and requested_namespace != expected_namespace:
+            return {
+                "output": "Command not allowed: namespace override is not permitted.",
+                "exit_code": 1,
+            }
+
+        if "--context" not in actual_tokens:
+            actual_tokens.extend(["--context", expected_context])
+
+        subcommand = actual_tokens[1]
+        cluster_scoped = len(actual_tokens) > 2 and actual_tokens[2] in {
+            "ns", "namespace", "namespaces", "nodes", "node",
+        }
+        if (
+            subcommand in {"get", "describe", "logs", "top", "diff"}
+            and not cluster_scoped
+            and not _has_flag(actual_tokens, "-n")
+            and not _has_flag(actual_tokens, "--namespace")
+            and "-A" not in actual_tokens
+            and "--all-namespaces" not in actual_tokens
+        ):
+            actual_tokens.extend(["-n", expected_namespace])
+
+        return _run(shlex.join(actual_tokens))
 
     # Help
     if cmd == "help":

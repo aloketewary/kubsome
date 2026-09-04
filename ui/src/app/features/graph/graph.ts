@@ -6,6 +6,7 @@ import { TagModule } from 'primeng/tag';
 import { TooltipModule } from 'primeng/tooltip';
 import { Select } from 'primeng/select';
 import cytoscape from 'cytoscape';
+import { Router } from '@angular/router';
 import { IntelHeaderComponent } from '../../shared/components/futuristic/intel-header.component';
 
 
@@ -19,6 +20,7 @@ import { IntelHeaderComponent } from '../../shared/components/futuristic/intel-h
 export class GraphComponent implements OnInit, OnDestroy {
   @ViewChild('cyContainer', { static: true }) cyContainer!: ElementRef;
   private http = inject(HttpClient);
+  private router = inject(Router);
   private cy: cytoscape.Core | null = null;
 
   deployments: string[] = [];
@@ -69,7 +71,9 @@ export class GraphComponent implements OnInit, OnDestroy {
   }
 
   navigateTo(path: string) {
-    window.location.hash = path;
+    const [route, query] = path.split('?');
+    const queryParams = query ? Object.fromEntries(new URLSearchParams(query)) : undefined;
+    this.router.navigate([route], queryParams ? { queryParams } : undefined);
   }
 
   shortName(name: string): string {

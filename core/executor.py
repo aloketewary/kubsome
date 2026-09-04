@@ -25,7 +25,8 @@ def execute(command):
         result = subprocess.run(
             shlex.split(command),
             capture_output=True,
-            text=True
+            text=True,
+            timeout=30,
         )
 
         if result.stdout:
